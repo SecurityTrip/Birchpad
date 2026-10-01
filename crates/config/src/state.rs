@@ -19,6 +19,9 @@ pub struct UserState {
     pub recent_files: Vec<PathBuf>,
     /// Zoom level in steps relative to the default font size.
     pub zoom: i32,
+    /// View > Word Wrap as last toggled; unset means `editor.word-wrap` from the settings.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub word_wrap: Option<bool>,
 }
 
 impl UserState {

@@ -509,7 +509,11 @@ mod tests {
         cx.run_until_parked();
         assert_eq!(tab_names(&workspace, cx), ["second.txt"]);
         assert_eq!(fs::read_to_string(&second).unwrap(), "2");
-        assert_eq!(recent(cx), std::slice::from_ref(&first), "closed files become recent");
+        assert_eq!(
+            recent(cx),
+            std::slice::from_ref(&first),
+            "closed files become recent"
+        );
 
         // Reopening a recent file removes it from the list.
         open(&workspace, &first, cx);

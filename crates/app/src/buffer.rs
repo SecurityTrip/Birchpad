@@ -3,7 +3,7 @@
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use birchpad_core::{
     Document, Encoding, Format, RevisionId, Rope, Selection, Transaction, UndoGrouping,
@@ -100,12 +100,16 @@ impl Buffer {
         let total = std::fs::metadata(&path).map_or(0, |metadata| metadata.len());
         let progress = Arc::new(AtomicU64::new(0));
         let reader_progress = progress.clone();
+        let started = Instant::now();
         let task = cx.spawn(async move |this, cx| {
             let result = cx
                 .background_spawn(
                     async move { birchpad_io::load(&path, options, &reader_progress) },
                 )
                 .await;
+            if std::env::var_os("BIRCHPAD_TIMINGS").is_some() {
+                eprintln!("timing: read and decoded in {:?}", started.elapsed());
+            }
             this.update(cx, |buffer, cx| {
                 buffer.finish_loading(result, options, cx);
                 if let Some(bom) = bom {

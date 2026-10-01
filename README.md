@@ -44,6 +44,7 @@ cargo test --workspace
 | `crates/config` | Layered settings: defaults, machine defaults, user settings, administrator policies. |
 | `crates/commands` | Command catalog, keymaps and the menu model, as data. No UI. |
 | `crates/io` | Encoding detection and conversion, reading and safely saving files. No UI. |
+| `crates/view` | Layout of a document view in cells: tab stops, word wrap, visual rows. No UI. |
 | `crates/app` | The desktop application. |
 | `packaging/` | Installers (MSI for per-machine installs). |
 | `docs/` | Roadmap and architecture decision records. |

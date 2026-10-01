@@ -50,13 +50,33 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
         "search.find-next",
         "search.find-previous",
         "search.go-to",
-        "view.word-wrap",
-        "view.zoom-in",
-        "view.zoom-out",
-        "view.zoom-reset",
         "help.check-updates",
     ] {
         registry.pending(id);
+    }
+    registry.workspace("view.word-wrap", |this, (), _, cx| {
+        let current = crate::editor::ViewSettings::read(cx).word_wrap;
+        AppState::update_state(cx, |state, _| state.word_wrap = Some(!current));
+        this.refresh_views(cx);
+        Ok(())
+    });
+    for (id, step) in [
+        ("view.zoom-in", 1),
+        ("view.zoom-out", -1),
+        ("view.zoom-reset", 0),
+    ] {
+        registry.workspace(id, move |this, (), _, cx| {
+            let range = crate::editor::ZOOM_RANGE;
+            AppState::update_state(cx, |state, _| {
+                state.zoom = if step == 0 {
+                    0
+                } else {
+                    (state.zoom + step).clamp(*range.start(), *range.end())
+                };
+            });
+            this.refresh_views(cx);
+            Ok(())
+        });
     }
     crate::encoding_ui::register_commands(registry);
     crate::file_ops::register_commands(registry);
@@ -253,7 +273,7 @@ impl Workspace {
         let subscription = cx.subscribe_in(&buffer, window, Self::on_buffer_event);
         self.buffer_subscriptions
             .insert(buffer.entity_id(), subscription);
-        let view = cx.new(|cx| EditorView::new(buffer, cx));
+        let view = cx.new(|cx| EditorView::new(buffer, window, cx));
         self.active_pane()
             .update(cx, |pane, cx| pane.add(view, window, cx));
         cx.notify();
@@ -347,13 +367,26 @@ impl Workspace {
         }
     }
 
+    /// Redraws every editor after a view setting (zoom, word wrap) changed.
+    fn refresh_views(&mut self, cx: &mut Context<Self>) {
+        for view in self.all_views(cx) {
+            view.update(cx, |view, cx| view.settings_changed(cx));
+        }
+        self.refresh_menus(cx);
+        cx.notify();
+    }
+
     /// Rebuilds the menus from the current state.
     pub(crate) fn refresh_menus(&mut self, cx: &mut Context<Self>) {
         let format = self
             .active_view(cx)
             .map(|view| view.read(cx).buffer.read(cx).doc().format());
         let ansi = AppState::global(cx).ansi;
+        let word_wrap = crate::editor::ViewSettings::read(cx).word_wrap;
         let checked = |invocation: &Invocation| {
+            if invocation.command == "view.word-wrap" {
+                return word_wrap;
+            }
             let Some(format) = format else {
                 return false;
             };
@@ -424,6 +457,7 @@ impl Workspace {
             );
             let format = doc.format();
             items.push(birchpad_io::display_name(format.encoding, format.bom));
+            items.push(if view.overwrite { "OVR" } else { "INS" }.to_owned());
         }
         div()
             .flex()
