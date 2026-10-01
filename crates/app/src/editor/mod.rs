@@ -469,6 +469,12 @@ impl EditorView {
         self.request_autoscroll(cx);
     }
 
+    /// Column of `pos` counted in cells from the line start (tabs to their stops).
+    pub(crate) fn column_of(&mut self, pos: usize, cx: &App) -> usize {
+        let text = self.text(cx).clone();
+        self.display.column(&text, pos)
+    }
+
     /// Selects `range` (a search match) and scrolls it into view.
     pub(crate) fn select_range(&mut self, range: ByteRange<usize>, cx: &mut Context<Self>) {
         self.selection = Selection::single(Range::new(range.start, range.end));

@@ -6,8 +6,7 @@ use std::path::Path;
 
 use anyhow::Result;
 use birchpad_commands::Invocation;
-use birchpad_core::motion::{line_count, line_of, line_range};
-use birchpad_core::{Document, LineEnding, Range};
+use birchpad_core::Document;
 use gpui_kit::component::WindowExt as _;
 use gpui_kit::component::menu::AppMenuBar;
 use gpui_kit::component::notification::Notification;
@@ -23,6 +22,7 @@ use crate::editor::EditorView;
 use crate::find::FindBar;
 use crate::menus::{self, MenuState};
 use crate::pane::{Pane, PaneEvent};
+use crate::status_bar::StatusInfo;
 
 pub(crate) fn register_commands(registry: &mut CommandRegistry) {
     registry.workspace("file.new", |this, (), window, cx| {
@@ -420,61 +420,15 @@ impl Workspace {
             self.title = title;
         }
     }
-
-    fn status_bar(&self, cx: &App) -> impl IntoElement {
-        let mut items = Vec::new();
-        if let Some(view) = self.active_view(cx) {
-            let view = view.read(cx);
-            let doc = view.buffer.read(cx).doc();
-            let text = doc.text();
-            let primary = view.selection.primary();
-            let line = line_of(text, primary.head);
-            let column = text
-                .slice(line_range(text, line).start..primary.head)
-                .chars()
-                .count();
-            let selected: usize = view.selection.iter().map(Range::len).sum();
-            items.push(format!(
-                "Length : {}    Lines : {}",
-                text.len(),
-                line_count(text)
-            ));
-            items.push(format!(
-                "Ln : {}    Col : {}    Sel : {selected}",
-                line + 1,
-                column + 1
-            ));
-            items.push(
-                match doc.line_ending() {
-                    LineEnding::CrLf => "Windows (CR LF)",
-                    LineEnding::Lf => "Unix (LF)",
-                    LineEnding::Cr => "Macintosh (CR)",
-                }
-                .to_owned(),
-            );
-            let format = doc.format();
-            items.push(birchpad_io::display_name(format.encoding, format.bom));
-            items.push(if view.overwrite { "OVR" } else { "INS" }.to_owned());
-        }
-        div()
-            .flex()
-            .flex_row()
-            .gap_6()
-            .px_3()
-            .h(px(24.))
-            .flex_none()
-            .items_center()
-            .border_t_1()
-            .border_color(rgb(0xd0d7de))
-            .bg(rgb(0xf6f8fa))
-            .text_size(px(12.))
-            .children(items)
-    }
 }
 
 impl Render for Workspace {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         self.update_title(window, cx);
+        let status = self
+            .active_view(cx)
+            .map(|view| view.update(cx, |view, cx| StatusInfo::of(view, cx)));
+        let ansi = AppState::global(cx).ansi;
         div()
             .id("workspace")
             .key_context("Workspace")
@@ -510,7 +464,7 @@ impl Render for Workspace {
             .when(self.find_bar.read(cx).visible, |this| {
                 this.child(self.find_bar.clone())
             })
-            .child(self.status_bar(cx))
+            .child(crate::status_bar::render(status, ansi, cx))
     }
 }
 

@@ -16,6 +16,7 @@ mod find;
 mod menus;
 mod pane;
 mod path_dialog;
+mod status_bar;
 mod workspace;
 
 use std::fmt::Write as _;
