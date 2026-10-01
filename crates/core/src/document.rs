@@ -2,6 +2,7 @@
 
 use ropey::Rope;
 
+use crate::format::Format;
 use crate::history::{History, RevisionId, UndoGrouping};
 use crate::line_ending::LineEnding;
 use crate::selection::Selection;
@@ -17,7 +18,7 @@ pub struct Document {
     text: Rope,
     history: History,
     saved: RevisionId,
-    line_ending: LineEnding,
+    format: Format,
 }
 
 impl Default for Document {
@@ -31,15 +32,21 @@ impl Document {
         Self::default()
     }
 
-    /// Wraps loaded text. Its line ending is detected from the first line break, falling back to
-    /// the platform default.
+    /// Wraps loaded text as UTF-8. Its line ending is detected from the first line break,
+    /// falling back to the platform default.
     pub fn from_text(text: Rope) -> Self {
-        let line_ending = LineEnding::detect(&text).unwrap_or_else(LineEnding::native);
+        Self::with_format(text, Format::new())
+    }
+
+    /// Wraps text loaded in `format`. The line-ending mode is detected from the first line break;
+    /// `format.line_ending` is used only when the text has none.
+    pub fn with_format(text: Rope, format: Format) -> Self {
+        let line_ending = LineEnding::detect(&text).unwrap_or(format.line_ending);
         Self {
             text,
             history: History::new(),
             saved: RevisionId::INITIAL,
-            line_ending,
+            format: format.with_line_ending(line_ending),
         }
     }
 
@@ -47,8 +54,12 @@ impl Document {
         &self.text
     }
 
+    pub fn format(&self) -> Format {
+        self.format
+    }
+
     pub fn line_ending(&self) -> LineEnding {
-        self.line_ending
+        self.format.line_ending
     }
 
     pub fn history(&self) -> &History {
@@ -67,23 +78,36 @@ impl Document {
         grouping: UndoGrouping,
     ) {
         let original = self.text.clone();
-        transaction.changes().apply(&mut self.text);
-        self.history
-            .commit(transaction.clone(), &original, selection_before, grouping);
+        let original_format = self.format;
+        self.apply_to_state(transaction);
+        self.history.commit(
+            transaction.clone(),
+            &original,
+            original_format,
+            selection_before,
+            grouping,
+        );
     }
 
     /// Undoes the last step and returns what was applied, so views can update.
     pub fn undo(&mut self) -> Option<Transaction> {
         let transaction = self.history.undo()?.clone();
-        transaction.changes().apply(&mut self.text);
+        self.apply_to_state(&transaction);
         Some(transaction)
     }
 
     /// Redoes the next step and returns what was applied, so views can update.
     pub fn redo(&mut self) -> Option<Transaction> {
         let transaction = self.history.redo()?.clone();
-        transaction.changes().apply(&mut self.text);
+        self.apply_to_state(&transaction);
         Some(transaction)
+    }
+
+    fn apply_to_state(&mut self, transaction: &Transaction) {
+        transaction.changes().apply(&mut self.text);
+        if let Some(format) = transaction.format() {
+            self.format = format;
+        }
     }
 
     /// True if the text differs from the last saved state. Undoing back to the saved state makes
@@ -92,9 +116,29 @@ impl Document {
         self.history.current() != self.saved
     }
 
+    /// A transaction converting every line break to `target` and making it the line-ending
+    /// mode, as one undo step (Edit > EOL Conversion).
+    pub fn convert_line_endings(&self, target: LineEnding) -> Transaction {
+        let edits = crate::line_ending::convert_line_breaks(&self.text, target);
+        Transaction::from_edits(&self.text, edits)
+            .expect("line breaks lie on character boundaries")
+            .with_format(self.format.with_line_ending(target))
+    }
+
     /// Marks the current state as saved.
     pub fn mark_saved(&mut self) {
         self.saved = self.history.current();
+    }
+
+    /// The current state of the history. Saving in the background records the revision it
+    /// wrote, so edits made while writing keep the document modified.
+    pub fn revision(&self) -> RevisionId {
+        self.history.current()
+    }
+
+    /// Marks `revision` as the state on disk.
+    pub fn mark_saved_at(&mut self, revision: RevisionId) {
+        self.saved = revision;
     }
 }
 
@@ -150,6 +194,81 @@ mod tests {
         type_text(&mut doc, &selection, "?", UndoGrouping::MergeWithPrevious);
         assert_eq!(doc.text(), "saved!?");
         assert!(doc.is_modified());
+    }
+
+    #[test]
+    fn format_changes_are_undoable() {
+        use crate::format::Encoding;
+
+        let mut doc = Document::from_text(Rope::from_str("a\nb"));
+        assert_eq!(doc.line_ending(), LineEnding::Lf);
+        let utf16 = Format {
+            encoding: Encoding::Utf16Le,
+            bom: true,
+            ..doc.format()
+        };
+        let convert = Transaction::set_format(doc.text().len(), utf16);
+        doc.apply(&convert, &Selection::point(0), UndoGrouping::NewStep);
+        assert_eq!(doc.format(), utf16);
+        assert!(doc.is_modified());
+
+        // Typing merges into the conversion step; undo restores both text and format.
+        type_text(
+            &mut doc,
+            &Selection::point(3),
+            "!",
+            UndoGrouping::MergeWithPrevious,
+        );
+        assert_eq!(doc.text(), "a\nb!");
+        doc.undo();
+        assert_eq!(doc.text(), "a\nb");
+        assert_eq!(doc.format().encoding, Encoding::Utf8);
+        assert!(!doc.is_modified());
+        doc.redo();
+        assert_eq!(doc.format(), utf16);
+    }
+
+    #[test]
+    fn edits_during_a_save_keep_the_document_modified() {
+        let mut doc = Document::new();
+        let selection = type_text(&mut doc, &Selection::point(0), "a", UndoGrouping::NewStep);
+        let written = doc.revision();
+        // The user keeps typing while the file is being written.
+        type_text(&mut doc, &selection, "b", UndoGrouping::MergeWithPrevious);
+        doc.mark_saved_at(written);
+        assert!(doc.is_modified());
+        let mut doc = Document::new();
+        type_text(&mut doc, &Selection::point(0), "a", UndoGrouping::NewStep);
+        let written = doc.revision();
+        doc.mark_saved_at(written);
+        assert!(!doc.is_modified());
+    }
+
+    #[test]
+    fn eol_conversion_is_one_undo_step() {
+        let mut doc = Document::from_text(Rope::from_str("a\r\nb\nc"));
+        let convert = doc.convert_line_endings(LineEnding::Lf);
+        doc.apply(&convert, &Selection::point(0), UndoGrouping::NewStep);
+        assert_eq!(doc.text(), "a\nb\nc");
+        assert_eq!(doc.line_ending(), LineEnding::Lf);
+        doc.undo();
+        assert_eq!(doc.text(), "a\r\nb\nc");
+        assert_eq!(doc.line_ending(), LineEnding::CrLf);
+        assert!(!doc.history().can_undo());
+    }
+
+    #[test]
+    fn line_ending_mode_falls_back_to_given_format() {
+        let doc = Document::with_format(
+            Rope::from_str("one line"),
+            Format::new().with_line_ending(LineEnding::Cr),
+        );
+        assert_eq!(doc.line_ending(), LineEnding::Cr);
+        let doc = Document::with_format(
+            Rope::from_str("a\r\nb"),
+            Format::new().with_line_ending(LineEnding::Cr),
+        );
+        assert_eq!(doc.line_ending(), LineEnding::CrLf);
     }
 
     #[test]

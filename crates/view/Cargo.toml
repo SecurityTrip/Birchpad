@@ -1,0 +1,19 @@
+[package]
+name = "birchpad-view"
+description = "UI-independent layout of a Birchpad document view: tab stops, columns, word wrap, visual rows."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[dependencies]
+birchpad-core.workspace = true
+unicode-width = "0.2"
+
+[dev-dependencies]
+proptest.workspace = true
+
+[lints]
+workspace = true

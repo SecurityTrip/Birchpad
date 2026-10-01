@@ -3,15 +3,18 @@
 use ropey::Rope;
 
 use crate::change::{ChangeSet, Edit, InvalidEdit};
+use crate::format::Format;
 use crate::selection::{Range, Selection};
 
-/// One editing action: what changes in the text and, optionally, where the selection ends up.
+/// One editing action: what changes in the text, optionally where the selection ends up, and
+/// optionally a new format (encoding, BOM, line-ending mode) for the document.
 ///
 /// Every edit with several carets is a single transaction, so it is also a single undo step.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Transaction {
     pub(crate) changes: ChangeSet,
     pub(crate) selection: Option<Selection>,
+    pub(crate) format: Option<Format>,
 }
 
 impl Transaction {
@@ -19,7 +22,13 @@ impl Transaction {
         Self {
             changes,
             selection: None,
+            format: None,
         }
+    }
+
+    /// A transaction that only changes the document's format, e.g. "Convert to UTF-8".
+    pub fn set_format(len: usize, format: Format) -> Self {
+        Self::new(ChangeSet::identity(len)).with_format(format)
     }
 
     pub fn from_edits<I>(text: &Rope, edits: I) -> Result<Self, InvalidEdit>
@@ -37,18 +46,32 @@ impl Transaction {
         selection: &Selection,
         replacement: &str,
     ) -> Result<Self, InvalidEdit> {
-        let edits = selection
+        Self::replace_selections_with(text, selection, |_| replacement.to_owned())
+    }
+
+    /// Replaces every range of `selection` with its own text (e.g. a different number of spaces
+    /// per caret to reach the next tab stop) and leaves a caret after each.
+    pub fn replace_selections_with(
+        text: &Rope,
+        selection: &Selection,
+        mut replacement: impl FnMut(Range) -> String,
+    ) -> Result<Self, InvalidEdit> {
+        let replacements: Vec<(Range, String)> = selection
             .iter()
-            .map(|range| Edit::replace(range.from()..range.to(), replacement));
+            .map(|&range| (range, replacement(range)))
+            .collect();
+        let edits = replacements
+            .iter()
+            .map(|(range, text)| Edit::replace(range.from()..range.to(), text.clone()));
         let changes = ChangeSet::from_edits(text, edits)?;
 
         let mut added = 0;
         let mut removed = 0;
-        let carets = selection.iter().map(|range| {
+        let carets = replacements.iter().map(|(range, inserted)| {
             let start = range.from() + added - removed;
-            added += replacement.len();
+            added += inserted.len();
             removed += range.len();
-            Range::point(start + replacement.len())
+            Range::point(start + inserted.len())
         });
         let selection = Selection::new(carets, selection.primary_index());
 
@@ -60,12 +83,22 @@ impl Transaction {
         self
     }
 
+    pub fn with_format(mut self, format: Format) -> Self {
+        self.format = Some(format);
+        self
+    }
+
     pub fn changes(&self) -> &ChangeSet {
         &self.changes
     }
 
     pub fn selection(&self) -> Option<&Selection> {
         self.selection.as_ref()
+    }
+
+    /// The format the document has after this transaction, if it changes.
+    pub fn format(&self) -> Option<Format> {
+        self.format
     }
 }
 
@@ -87,6 +120,22 @@ mod tests {
             [Range::point(2), Range::point(7), Range::point(12)]
         );
         assert_eq!(carets.primary_index(), 2);
+    }
+
+    #[test]
+    fn each_caret_can_insert_different_text() {
+        let mut text = Rope::from_str("a\nbcd");
+        let selection = Selection::new([Range::point(1), Range::point(5)], 0);
+        let transaction = Transaction::replace_selections_with(&text, &selection, |range| {
+            " ".repeat(range.head % 3)
+        })
+        .unwrap();
+        transaction.changes().apply(&mut text);
+        assert_eq!(text, "a \nbcd  ");
+        assert_eq!(
+            transaction.selection().unwrap().ranges(),
+            [Range::point(2), Range::point(8)]
+        );
     }
 
     #[test]

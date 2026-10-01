@@ -1,6 +1,7 @@
 //! Property tests for the text model: random edits on random multilingual text, checked against
 //! a naive `String`-based implementation.
 
+use birchpad_core::search::{Direction, Query, Searcher};
 use birchpad_core::{
     Assoc, ChangeSet, Document, Edit, Range, Rope, Selection, Transaction, UndoGrouping,
 };
@@ -156,5 +157,40 @@ proptest! {
 
         while document.redo().is_some() {}
         prop_assert_eq!(document.text(), &last);
+    }
+
+    #[test]
+    fn search_matches_naive_search(
+        hay in prop::collection::vec(prop::sample::select(vec!["ab", "a", "b", "Ж", "ж", "\n", "x"]), 0..300),
+        needle in prop::collection::vec(prop::sample::select(vec!["a", "b", "ж", "Ж"]), 1..4),
+        match_case: bool,
+    ) {
+        let hay = hay.concat();
+        let needle = needle.concat();
+        let rope = Rope::from_str(&hay);
+        let searcher = Searcher::new(&Query {
+            pattern: needle.clone(),
+            match_case,
+            ..Query::default()
+        }).unwrap();
+        // Naive: non-overlapping matches, comparing lowercased characters when ignoring case.
+        let fold = |s: &str| -> String {
+            if match_case { s.to_owned() } else { s.chars().map(|c| c.to_lowercase().next().unwrap()).collect() }
+        };
+        let (folded_hay, folded_needle) = (fold(&hay), fold(&needle));
+        // Folding keeps byte lengths for these characters, so offsets carry over.
+        let expected: Vec<std::ops::Range<usize>> = folded_hay
+            .match_indices(&folded_needle)
+            .map(|(at, m)| at..at + m.len())
+            .collect();
+        prop_assert_eq!(searcher.find_all(&rope), expected);
+        // Searching backward finds the match that starts last, which may overlap others.
+        let last = folded_hay
+            .char_indices()
+            .map(|(at, _)| at)
+            .filter(|&at| folded_hay[at..].starts_with(&folded_needle))
+            .max()
+            .map(|at| at..at + folded_needle.len());
+        prop_assert_eq!(searcher.find(&rope, rope.len(), Direction::Backward, false), last);
     }
 }

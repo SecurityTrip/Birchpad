@@ -9,6 +9,7 @@ repository.workspace = true
 authors.workspace = true
 
 [dependencies]
+memchr = "2"
 ropey.workspace = true
 thiserror.workspace = true
 smallvec.workspace = true

@@ -7,7 +7,11 @@
 
 use std::ops::Range;
 
-use ropey::Rope;
+use ropey::{Rope, RopeBuilder};
+
+/// Above this many operations, [`ChangeSet::apply`] rebuilds the rope in one pass instead of
+/// editing it in place: one O(n) pass beats a million O(log n) edits (Replace All, EOL conversion).
+const REBUILD_THRESHOLD: usize = 4096;
 
 /// A single edit expressed in coordinates of the text *before* any edit of the batch is applied.
 ///
@@ -169,6 +173,10 @@ impl ChangeSet {
             self.len_before,
             "change set was built for a text of a different length"
         );
+        if self.ops.len() > REBUILD_THRESHOLD {
+            *text = self.rebuild(text);
+            return;
+        }
         let mut pos = 0;
         for op in &self.ops {
             match op {
@@ -180,6 +188,25 @@ impl ChangeSet {
                 }
             }
         }
+    }
+
+    /// Builds the changed text from scratch, streaming the retained parts of `text`.
+    fn rebuild(&self, text: &Rope) -> Rope {
+        let mut builder = RopeBuilder::new();
+        let mut pos = 0;
+        for op in &self.ops {
+            match op {
+                Operation::Retain(n) => {
+                    for chunk in text.slice(pos..pos + n).chunks() {
+                        builder.append(chunk);
+                    }
+                    pos += n;
+                }
+                Operation::Delete(n) => pos += n,
+                Operation::Insert(s) => builder.append(s),
+            }
+        }
+        builder.finish()
     }
 
     /// Returns the change set that undoes `self`. `original` is the text `self` applies to.
@@ -445,6 +472,20 @@ mod tests {
         let second = ChangeSet::from_edits(&intermediate, vec![Edit::delete(2..5)]).unwrap();
         first.compose(second).apply(&mut text);
         assert_eq!(text, "a1c");
+    }
+
+    #[test]
+    fn many_edits_rebuild_the_same_text() {
+        let line = "ab\r\n";
+        let original = Rope::from_str(&line.repeat(REBUILD_THRESHOLD + 10));
+        let edits = (0..REBUILD_THRESHOLD + 10).map(|i| Edit::replace(i * 4 + 2..i * 4 + 4, "\n"));
+        let changes = ChangeSet::from_edits(&original, edits).unwrap();
+        assert!(changes.ops().len() > REBUILD_THRESHOLD);
+        let mut text = original.clone();
+        changes.apply(&mut text);
+        assert_eq!(text, "ab\n".repeat(REBUILD_THRESHOLD + 10).as_str());
+        changes.invert(&original).apply(&mut text);
+        assert_eq!(text, original);
     }
 
     #[test]

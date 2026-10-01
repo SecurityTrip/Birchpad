@@ -3,6 +3,7 @@
 
 use ropey::Rope;
 
+use crate::format::Format;
 use crate::selection::Selection;
 use crate::transaction::Transaction;
 
@@ -74,17 +75,20 @@ impl History {
         self.applied < self.revisions.len()
     }
 
-    /// Records `transaction`, which has just been applied to `original`.
+    /// Records `transaction`, which has just been applied to `original` in `original_format`.
     ///
-    /// `selection_before` is restored when the step is undone.
+    /// `selection_before` is restored when the step is undone, and so is the format if the
+    /// transaction changed it.
     pub fn commit(
         &mut self,
         transaction: Transaction,
         original: &Rope,
+        original_format: Format,
         selection_before: &Selection,
         grouping: UndoGrouping,
     ) {
         let inverse_changes = transaction.changes.invert(original);
+        let inverse_format = transaction.format.map(|_| original_format);
         let id = self.fresh_id();
 
         if grouping == UndoGrouping::MergeWithPrevious && self.can_undo() && !self.can_redo() {
@@ -92,10 +96,14 @@ impl History {
             let forward = Transaction {
                 changes: previous.forward.changes.compose(transaction.changes),
                 selection: transaction.selection.or(previous.forward.selection),
+                format: transaction.format.or(previous.forward.format),
             };
+            // Undoing the merged step undoes the new part first, then the previous one, so the
+            // format to restore is the oldest one recorded.
             let inverse = Transaction {
                 changes: inverse_changes.compose(previous.inverse.changes),
                 selection: previous.inverse.selection,
+                format: previous.inverse.format.or(inverse_format),
             };
             self.revisions.push(Revision {
                 id,
@@ -106,10 +114,13 @@ impl History {
         }
 
         self.revisions.truncate(self.applied);
+        let mut inverse =
+            Transaction::new(inverse_changes).with_selection(selection_before.clone());
+        inverse.format = inverse_format;
         self.revisions.push(Revision {
             id,
             forward: transaction,
-            inverse: Transaction::new(inverse_changes).with_selection(selection_before.clone()),
+            inverse,
         });
         self.applied += 1;
     }

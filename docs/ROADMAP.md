@@ -16,18 +16,32 @@ dependency, not by calendar. Architecture decisions live in [`adr/`](adr).
 
 ## Phase 1: MVP notepad
 
-- Tabs: new, open, save, save as, close, close others; modified marker; confirm on close;
-  drag and drop files
-- Status bar: line/column/selection, length, line ending, encoding, INS/OVR
-- Editing: overwrite mode, word movement, smart Home, real tab stops, horizontal scrolling
-- Long lines: shape and wrap only the visible part of a line
-- Encodings: UTF-8 with and without BOM, UTF-16 LE/BE, legacy code pages (Windows-1251 and
-  friends) with detection; "Encode in" (reinterpret) vs "Convert to" (transcode)
-- Line endings: detection and conversion
-- Simple find/replace, go to line, recent files, zoom, word wrap
-- Single instance with command-line compatibility (`-n<line>`, `-multiInst`, `-nosession`, ...)
-- Command registry: every action has a string id and serializable arguments
-- First installable builds: portable ZIP and installer, manual update check
+- [x] Command registry: every action has a string id and serializable arguments; key bindings
+      and menus are data ([ADR 0006](adr/0006-commands-and-keymap.md))
+- [x] Tabs: new, open (several files), save, save as, save all, close, close all, close others;
+      modified marker; Save / Don't Save / Cancel on close and exit; drag and drop files;
+      recent files (configurable length); read-only files and `-ro`
+- [x] Encodings: detection (BOM, UTF-8, UTF-16 without BOM, legacy code pages), UTF-8 with and
+      without BOM, UTF-16 LE/BE, legacy code pages; "Encode in" (reinterpret) vs "Convert to"
+      (transcode, undoable); lossless round trips and safe in-place saving
+      ([ADR 0007](adr/0007-encodings-and-saving.md))
+- [x] Line endings: detection and conversion as one undoable step
+- [x] Editing: overwrite mode, word movement and deletion, smart Home, real tab stops,
+      insert spaces, horizontal scrolling, double/triple click, blinking caret
+- [x] Long lines: shape only the visible part of a row; word wrap through a display map ready
+      for folding; documents over 4 MB rewrapped in the background
+      ([ADR 0008](adr/0008-editor-view-layout.md))
+- [x] Simple find/replace (match case, whole word, wrap around, direction, Replace All as one
+      undo step), go to line or offset, zoom (remembered), word wrap
+- [x] Status bar like Notepad++'s, with clickable line ending and encoding menus
+- [x] Single instance with Notepad++-compatible command line (`-n`, `-c`, `-p`, `-ro`,
+      `-multiInst`, `-nosession`; `-l` and other options accepted and ignored)
+- [x] First installable builds: release workflow with portable ZIPs (Windows x64/ARM64, Linux
+      x64, macOS universal), MSI x64, SBOM and provenance; portable mode; manual update check;
+      About ([ADR 0009](adr/0009-releases-portable-mode-and-update-check.md)). The workflow has
+      not run on a real tag yet, and the binaries are not signed yet.
+
+What Phase 1 left for later is marked *(from Phase 1)* in the phases below.
 
 ## Phase 2: Notepad++-level editor
 
@@ -39,9 +53,21 @@ dependency, not by calendar. Architecture decisions live in [`adr/`](adr).
   case conversion, comment toggling, tab/space conversion
 - Show whitespace and line endings, indentation guides, edge column
 - Split view, clone document to the other view, synchronized scrolling
-- Sessions and periodic backup of unsaved changes
+- Sessions and periodic backup of unsaved changes (`-nosession` already accepted); they also
+  cover quitting from the macOS Dock, which bypasses the unsaved-changes prompt today
+  *(from Phase 1)*
 - External change detection and reload; tail -f monitoring
 - Nightly channel with automatic updates
+- Incremental column index for multi-megabyte lines: typing into a 10 MB line takes about
+  70 ms per keystroke because the line's index is rebuilt *(from Phase 1)*
+- "Edit anyway" for files that do not decode cleanly; they open read-only with a Reopen with
+  Encoding choice for now *(from Phase 1)*
+- Keyboard access to the menu bar on Windows and Linux (Alt, mnemonics) *(from Phase 1)*
+- Columns count terminal-style cells (East Asian wide characters take two) where Notepad++
+  counts characters; decide together with column editing *(from Phase 1)*
+- Verify IME input (Windows TSF, macOS, IBus/Fcitx) on real systems; Phase 1 tested text
+  input through GPUI's input handler but not with a real IME *(from Phase 1)*
+- Tests that saving preserves Windows ACLs and alternate data streams *(from Phase 1)*
 
 ## Phase 3: search and navigation
 
@@ -59,6 +85,8 @@ dependency, not by calendar. Architecture decisions live in [`adr/`](adr).
 - Word and API-file auto-completion, call tips, auto-closing brackets
 - Run menu with `$(FULL_CURRENT_PATH)`-style variables
 - Hashes, Base64/URL encoding, HEX converter
+- Character sets that `encoding_rs` lacks: OEM 437/850 and other DOS code pages, EBCDIC
+  *(from Phase 1)*
 - Localization (English, Russian first), printing, right-to-left text
 
 ## Phase 5: plugins
@@ -90,6 +118,9 @@ dependency, not by calendar. Architecture decisions live in [`adr/`](adr).
   updated by IT; portable ZIP; winget and Scoop manifests
 - Authenticode signing (SignPath Foundation for OSS) plus an ed25519-signed update manifest
 - ADMX/ADML templates generated from the policy list in `birchpad-config`
-- SBOM and build provenance attestations with every release
+- SBOM and build provenance attestations with every release (the release workflow does both)
+- Background update checks (`notify`) and automatic updates (`auto`) with the signed manifest;
+  Phase 1 checks only on Help > Check for Updates *(from Phase 1)*
+- MSI for pre-release versions and for ARM64 *(from Phase 1)*
 
 See [ADR 0005](adr/0005-distribution-and-updates.md).

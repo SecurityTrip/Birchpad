@@ -2,8 +2,8 @@
 
 A fast, extensible, cross-platform text editor in the spirit of Notepad++, written in Rust.
 
-> **Status: pre-alpha.** The text model and project infrastructure are being built.
-> Nothing is usable yet. See the [roadmap](docs/ROADMAP.md).
+> **Status: pre-alpha.** Phase 1 is done: a basic notepad with tabs, encodings, find/replace
+> and a Notepad++-compatible command line. Expect rough edges. See the [roadmap](docs/ROADMAP.md).
 
 ## Goals
 
@@ -36,14 +36,42 @@ cargo run -p birchpad
 cargo test --workspace
 ```
 
+## Command line
+
+Birchpad accepts the Notepad++ options that make sense for it:
+
+```text
+birchpad [-n<line>] [-c<column>] [-p<position>] [-ro] [-multiInst] [-nosession] [FILE]...
+```
+
+A second launch opens its files as tabs in the running window and exits; `-multiInst` starts a
+separate instance instead. Other Notepad++ options (`-l<language>`, `-x`, `-y`, `-notabbar`, ...)
+are accepted and ignored.
+
+## Portable mode and the network
+
+Put a file named `birchpad-portable.txt` next to the executable (the Windows and Linux ZIPs come
+with it) and Birchpad keeps its settings and data in a `data` folder next to it. Administrator
+policies of the machine still apply.
+
+Birchpad uses the network only when you pick Help > Check for Updates. With
+`updates.mode = "off"` (a setting or an administrator policy) that command is disabled and
+Birchpad makes no network requests at all. See
+[ADR 0009](docs/adr/0009-releases-portable-mode-and-update-check.md).
+
 ## Repository layout
 
 | Path | Contents |
 |---|---|
 | `crates/core` | Text model: rope buffer, selections, change sets, transactions, undo history. No UI. |
 | `crates/config` | Layered settings: defaults, machine defaults, user settings, administrator policies. |
+| `crates/commands` | Command catalog, keymaps and the menu model, as data. No UI. |
+| `crates/io` | Encoding detection and conversion, reading and safely saving files. No UI. |
+| `crates/view` | Layout of a document view in cells: tab stops, word wrap, visual rows. No UI. |
+| `crates/cli` | Notepad++-compatible command line and the single-instance hand-off. No UI. |
+| `crates/update` | Checking for updates: release feeds, channels, version comparison. No UI. |
 | `crates/app` | The desktop application. |
-| `packaging/` | Installers (MSI for per-machine installs). |
+| `packaging/` | Release packaging: per-machine MSI, macOS app bundle, portable-mode marker. |
 | `docs/` | Roadmap and architecture decision records. |
 
 ## Contributing
