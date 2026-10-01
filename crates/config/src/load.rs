@@ -16,6 +16,16 @@ pub struct ConfigPaths {
     pub user_settings: Option<PathBuf>,
     /// Policy file, on platforms without a policy registry.
     pub policy_file: Option<PathBuf>,
+    /// Per-user application data that is not a setting: recent files, recovery copies, and
+    /// later sessions and backups.
+    pub user_data: Option<PathBuf>,
+}
+
+impl ConfigPaths {
+    /// The directory of the user's settings file, where `keymap.toml` lives too.
+    pub fn user_config_dir(&self) -> Option<&Path> {
+        self.user_settings.as_deref().and_then(Path::parent)
+    }
 }
 
 impl ConfigPaths {
@@ -26,6 +36,7 @@ impl ConfigPaths {
     /// | machine | `%ProgramData%\Birchpad\defaults.toml` | `/Library/Application Support/Birchpad/defaults.toml` | `/etc/birchpad/defaults.toml` |
     /// | user | `%APPDATA%\Birchpad\settings.toml` | `~/Library/Application Support/Birchpad/settings.toml` | `$XDG_CONFIG_HOME/birchpad/settings.toml` |
     /// | policy | registry | `/Library/Application Support/Birchpad/policies.toml` | `/etc/birchpad/policies.toml` |
+    /// | data | `%LOCALAPPDATA%\Birchpad` | `~/Library/Application Support/Birchpad` | `$XDG_DATA_HOME/birchpad` |
     pub fn platform() -> Self {
         if cfg!(windows) {
             let program_data =
@@ -35,22 +46,28 @@ impl ConfigPaths {
                 user_settings: env_path("APPDATA")
                     .map(|dir| dir.join("Birchpad").join("settings.toml")),
                 policy_file: None,
+                user_data: env_path("LOCALAPPDATA").map(|dir| dir.join("Birchpad")),
             }
         } else if cfg!(target_os = "macos") {
             let system = Path::new("/Library/Application Support/Birchpad");
+            let user =
+                env_path("HOME").map(|home| home.join("Library/Application Support/Birchpad"));
             Self {
                 machine_defaults: Some(system.join("defaults.toml")),
-                user_settings: env_path("HOME")
-                    .map(|home| home.join("Library/Application Support/Birchpad/settings.toml")),
+                user_settings: user.as_ref().map(|dir| dir.join("settings.toml")),
                 policy_file: Some(system.join("policies.toml")),
+                user_data: user,
             }
         } else {
             let config_home = env_path("XDG_CONFIG_HOME")
                 .or_else(|| env_path("HOME").map(|home| home.join(".config")));
+            let data_home = env_path("XDG_DATA_HOME")
+                .or_else(|| env_path("HOME").map(|home| home.join(".local/share")));
             Self {
                 machine_defaults: Some(PathBuf::from("/etc/birchpad/defaults.toml")),
                 user_settings: config_home.map(|dir| dir.join("birchpad").join("settings.toml")),
                 policy_file: Some(PathBuf::from("/etc/birchpad/policies.toml")),
+                user_data: data_home.map(|dir| dir.join("birchpad")),
             }
         }
     }
@@ -134,6 +151,7 @@ mod tests {
             machine_defaults: Some(dir.join("missing.toml")),
             user_settings: Some(broken),
             policy_file: None,
+            user_data: None,
         });
         fs::remove_dir_all(&dir).unwrap();
 

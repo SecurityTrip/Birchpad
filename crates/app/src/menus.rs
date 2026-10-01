@@ -15,8 +15,6 @@ use crate::commands::{CommandRegistry, RunCommand};
 /// Live state the menus reflect.
 pub(crate) struct MenuState<'a> {
     pub(crate) recent_files: &'a [PathBuf],
-    /// Legacy encodings grouped by script, as `(group, [(name, label)])`.
-    pub(crate) character_sets: &'a [(&'a str, Vec<(&'a str, &'a str)>)],
     /// Whether a command item shows a check mark (word wrap, current encoding, ...).
     pub(crate) checked: &'a dyn Fn(&Invocation) -> bool,
 }
@@ -71,7 +69,7 @@ fn build_menu(menu: Menu, state: &MenuState, registry: &CommandRegistry) -> gpui
                 }
             }
             MenuItem::Placeholder(Placeholder::CharacterSets { command }) => {
-                for (group, encodings) in state.character_sets {
+                for (group, encodings) in birchpad_io::CHARACTER_SETS {
                     let entries = encodings.iter().map(|(name, label)| {
                         let invocation =
                             Invocation::with_args(command, json!({ "encoding": name }));

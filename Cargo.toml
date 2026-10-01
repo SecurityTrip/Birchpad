@@ -14,6 +14,7 @@ authors = ["The Birchpad Contributors"]
 birchpad-commands = { path = "crates/commands", version = "0.1.0" }
 birchpad-config = { path = "crates/config", version = "0.1.0" }
 birchpad-core = { path = "crates/core", version = "0.1.0" }
+birchpad-io = { path = "crates/io", version = "0.1.0" }
 
 anyhow = "1"
 proptest = "1.11"

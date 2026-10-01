@@ -5,9 +5,12 @@
 //! birchpad --generate [LINES]   # synthetic multilingual text, 1 000 000 lines by default
 //! ```
 
+mod app_state;
+mod banner;
 mod buffer;
 mod commands;
 mod editor;
+mod encoding_ui;
 mod line_element;
 mod menus;
 mod pane;
@@ -19,6 +22,7 @@ use std::path::PathBuf;
 use birchpad_core::{Document, Rope};
 use gpui_kit::{App, AppContext as _, Bounds, WindowBounds, WindowOptions, px, size};
 
+use crate::app_state::AppState;
 use crate::workspace::Workspace;
 
 pub(crate) const MONOSPACE: &str = if cfg!(windows) {
@@ -36,12 +40,15 @@ fn main() {
         .with_assets(gpui_kit::assets::Assets)
         .run(move |cx: &mut App| {
             gpui_kit::init(cx);
-            let config = birchpad_config::ConfigPaths::platform();
-            let user_keymap = config
-                .user_settings
-                .as_ref()
-                .and_then(|settings| settings.parent())
+            let paths = birchpad_config::ConfigPaths::platform();
+            let settings = birchpad_config::resolve(birchpad_config::load(&paths));
+            for diagnostic in &settings.diagnostics {
+                eprintln!("settings ({}): {}", diagnostic.layer, diagnostic.message);
+            }
+            let user_keymap = paths
+                .user_config_dir()
                 .and_then(|dir| std::fs::read_to_string(dir.join("keymap.toml")).ok());
+            cx.set_global(AppState::new(settings, paths));
             commands::init(user_keymap.as_deref(), cx);
             cx.on_window_closed(|cx, _| {
                 if cx.windows().is_empty() {
@@ -58,15 +65,17 @@ fn main() {
             let opened = gpui_kit::open_window(options, cx, |window, cx| {
                 cx.new(|cx| {
                     let mut workspace = Workspace::new(window, cx);
+                    workspace.new_file(window, cx);
                     for source in sources {
-                        match source.load() {
-                            Ok((doc, path)) => workspace.open_document(doc, path, window, cx),
-                            Err(error) => eprintln!("{error:#}"),
+                        match source {
+                            Source::File(path) => workspace.open_path(&path, window, cx),
+                            Source::Generated(lines) => {
+                                let doc = Document::from_text(Rope::from_str(&generate(lines)));
+                                workspace.open_document(doc, window, cx);
+                            }
                         }
                     }
-                    if workspace.active_view(cx).is_none() {
-                        workspace.new_file(window, cx);
-                    }
+                    workspace.report_pending_recoveries(window, cx);
                     workspace
                 })
             });
@@ -99,22 +108,6 @@ impl Source {
             }
         }
         sources
-    }
-
-    /// Reads the source. Files must be UTF-8 until encoding support lands.
-    fn load(self) -> anyhow::Result<(Document, PathBuf)> {
-        match self {
-            Self::Generated(lines) => Ok((
-                Document::from_text(Rope::from_str(&generate(lines))),
-                PathBuf::from(format!("generated-{lines}.txt")),
-            )),
-            Self::File(path) => {
-                let bytes = std::fs::read(&path)
-                    .map_err(|error| anyhow::anyhow!("cannot open {}: {error}", path.display()))?;
-                let text = String::from_utf8_lossy(&bytes);
-                Ok((Document::from_text(Rope::from_str(&text)), path))
-            }
-        }
     }
 }
 

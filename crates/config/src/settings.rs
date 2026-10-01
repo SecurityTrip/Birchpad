@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 #[serde(default, rename_all = "kebab-case")]
 pub struct Settings {
     pub editor: EditorSettings,
+    pub files: FileSettings,
     pub session: SessionSettings,
     pub updates: UpdateSettings,
     pub plugins: PluginSettings,
@@ -30,6 +31,16 @@ impl Default for EditorSettings {
             word_wrap: false,
         }
     }
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, rename_all = "kebab-case")]
+pub struct FileSettings {
+    /// Legacy encoding for files that are neither Unicode nor recognizably something else
+    /// ("ANSI"), e.g. `windows-1251`. Unset: the system code page on Windows, Windows-1252
+    /// elsewhere.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ansi_encoding: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

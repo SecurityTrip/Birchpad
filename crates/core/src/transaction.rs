@@ -3,15 +3,18 @@
 use ropey::Rope;
 
 use crate::change::{ChangeSet, Edit, InvalidEdit};
+use crate::format::Format;
 use crate::selection::{Range, Selection};
 
-/// One editing action: what changes in the text and, optionally, where the selection ends up.
+/// One editing action: what changes in the text, optionally where the selection ends up, and
+/// optionally a new format (encoding, BOM, line-ending mode) for the document.
 ///
 /// Every edit with several carets is a single transaction, so it is also a single undo step.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Transaction {
     pub(crate) changes: ChangeSet,
     pub(crate) selection: Option<Selection>,
+    pub(crate) format: Option<Format>,
 }
 
 impl Transaction {
@@ -19,7 +22,13 @@ impl Transaction {
         Self {
             changes,
             selection: None,
+            format: None,
         }
+    }
+
+    /// A transaction that only changes the document's format, e.g. "Convert to UTF-8".
+    pub fn set_format(len: usize, format: Format) -> Self {
+        Self::new(ChangeSet::identity(len)).with_format(format)
     }
 
     pub fn from_edits<I>(text: &Rope, edits: I) -> Result<Self, InvalidEdit>
@@ -60,12 +69,22 @@ impl Transaction {
         self
     }
 
+    pub fn with_format(mut self, format: Format) -> Self {
+        self.format = Some(format);
+        self
+    }
+
     pub fn changes(&self) -> &ChangeSet {
         &self.changes
     }
 
     pub fn selection(&self) -> Option<&Selection> {
         self.selection.as_ref()
+    }
+
+    /// The format the document has after this transaction, if it changes.
+    pub fn format(&self) -> Option<Format> {
+        self.format
     }
 }
 

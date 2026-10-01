@@ -1,6 +1,9 @@
 //! The workspace: the contents of a main window. It owns the panes, routes commands and draws
 //! the menu bar and the status bar.
 
+use std::collections::HashMap;
+use std::path::Path;
+
 use anyhow::Result;
 use birchpad_commands::Invocation;
 use birchpad_core::motion::{line_count, line_of, line_range};
@@ -9,11 +12,12 @@ use gpui_kit::component::WindowExt as _;
 use gpui_kit::component::menu::AppMenuBar;
 use gpui_kit::component::notification::Notification;
 use gpui_kit::{
-    App, AppContext as _, Context, Entity, FocusHandle, Focusable, PromptLevel, Subscription,
-    Window, div, prelude::*, px, rgb,
+    App, AppContext as _, Context, Entity, EntityId, FocusHandle, Focusable, PromptLevel,
+    Subscription, Window, div, prelude::*, px, rgb,
 };
 
-use crate::buffer::Buffer;
+use crate::app_state::AppState;
+use crate::buffer::{Buffer, BufferEvent};
 use crate::commands::{CommandRegistry, Handler, RunCommand};
 use crate::editor::EditorView;
 use crate::menus::{self, MenuState};
@@ -81,17 +85,21 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
         "view.zoom-in",
         "view.zoom-out",
         "view.zoom-reset",
-        "encoding.encode-in",
-        "encoding.convert-to",
         "help.check-updates",
     ] {
         registry.pending(id);
     }
+    crate::encoding_ui::register_commands(registry);
 }
 
 /// Shows an error to the user without interrupting them.
 pub(crate) fn report_error(error: &anyhow::Error, window: &mut Window, cx: &mut App) {
     window.push_notification(Notification::error(format!("{error:#}")), cx);
+}
+
+/// Shows a warning to the user without interrupting them.
+pub(crate) fn report_warning(message: impl Into<String>, window: &mut Window, cx: &mut App) {
+    window.push_notification(Notification::warning(message.into()), cx);
 }
 
 pub(crate) struct Workspace {
@@ -100,6 +108,7 @@ pub(crate) struct Workspace {
     active_pane: usize,
     menu_bar: Option<Entity<AppMenuBar>>,
     title: String,
+    buffer_subscriptions: HashMap<EntityId, Subscription>,
     _subscriptions: Vec<Subscription>,
 }
 
@@ -113,6 +122,7 @@ impl Workspace {
             active_pane: 0,
             menu_bar: None,
             title: String::new(),
+            buffer_subscriptions: HashMap::new(),
             _subscriptions: vec![subscription],
         };
         this.refresh_menus(cx);
@@ -130,7 +140,10 @@ impl Workspace {
         cx: &mut Context<Self>,
     ) {
         match event {
-            PaneEvent::ActiveItemChanged => cx.notify(),
+            PaneEvent::ActiveItemChanged => {
+                self.refresh_menus(cx);
+                cx.notify();
+            }
             PaneEvent::CloseRequested(view) => self.close_view(view, window, cx),
         }
     }
@@ -168,23 +181,113 @@ impl Workspace {
         self.add_buffer(buffer, window, cx);
     }
 
-    /// Opens a document that has been read from `path`.
+    /// Opens a document that was not read from a file (e.g. generated text) as untitled.
     pub(crate) fn open_document(
         &mut self,
         doc: Document,
-        path: std::path::PathBuf,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        let buffer = cx.new(|_| Buffer::from_file(doc, path));
+        let number = self.next_untitled_number(cx);
+        let buffer = cx.new(|_| Buffer::untitled_with(number, doc));
         self.add_buffer(buffer, window, cx);
     }
 
+    /// Opens a file in a new tab, or switches to its tab if it is already open. The file is read
+    /// in the background.
+    pub(crate) fn open_path(&mut self, path: &Path, window: &mut Window, cx: &mut Context<Self>) {
+        let path = std::path::absolute(path).unwrap_or_else(|_| path.to_owned());
+        if let Some(view) = self.view_for_path(&path, cx) {
+            self.activate_view(&view, window, cx);
+            return;
+        }
+        // Like Notepad++, an untouched "new 1" is replaced by the first file opened.
+        let pristine = self.active_view(cx).filter(|view| {
+            let buffer = view.read(cx).buffer.read(cx);
+            buffer.path().is_none()
+                && buffer.doc().text().len() == 0
+                && !buffer.is_modified()
+                && !buffer.doc().history().can_undo()
+        });
+        let options = AppState::global(cx).load_options(None);
+        let buffer = cx.new(|cx| Buffer::open(path, options, cx));
+        self.add_buffer(buffer, window, cx);
+        if let Some(pristine) = pristine {
+            self.close_view(&pristine, window, cx);
+        }
+    }
+
+    /// Tells the user about recovery copies left by saves that were interrupted (a crash or
+    /// power loss while writing).
+    pub(crate) fn report_pending_recoveries(&self, window: &mut Window, cx: &mut App) {
+        let Some(dir) = AppState::global(cx).recovery_dir() else {
+            return;
+        };
+        for recovery in birchpad_io::pending_recoveries(&dir) {
+            report_warning(
+                format!(
+                    "Saving {} was interrupted last time. The text that was being saved is in {}.",
+                    recovery.original.display(),
+                    recovery.data.display()
+                ),
+                window,
+                cx,
+            );
+        }
+    }
+
+    fn view_for_path(&self, path: &Path, cx: &App) -> Option<Entity<EditorView>> {
+        self.all_views(cx)
+            .into_iter()
+            .find(|view| view.read(cx).buffer.read(cx).path() == Some(path))
+    }
+
+    pub(crate) fn activate_view(
+        &mut self,
+        view: &Entity<EditorView>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        for (index, pane) in self.panes.clone().into_iter().enumerate() {
+            if let Some(position) = pane.read(cx).index_of(view) {
+                self.active_pane = index;
+                pane.update(cx, |pane, cx| pane.activate(position, window, cx));
+            }
+        }
+    }
+
     fn add_buffer(&mut self, buffer: Entity<Buffer>, window: &mut Window, cx: &mut Context<Self>) {
+        let subscription = cx.subscribe_in(&buffer, window, Self::on_buffer_event);
+        self.buffer_subscriptions
+            .insert(buffer.entity_id(), subscription);
         let view = cx.new(|cx| EditorView::new(buffer, cx));
         self.active_pane()
             .update(cx, |pane, cx| pane.add(view, window, cx));
         cx.notify();
+    }
+
+    fn on_buffer_event(
+        &mut self,
+        buffer: &Entity<Buffer>,
+        event: &BufferEvent,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        match event {
+            BufferEvent::LoadFailed(error) => {
+                report_error(&anyhow::anyhow!("{error}"), window, cx);
+                for view in self.all_views(cx) {
+                    if &view.read(cx).buffer == buffer {
+                        self.close_view(&view, window, cx);
+                    }
+                }
+            }
+            BufferEvent::StateChanged | BufferEvent::Reloaded => {
+                self.refresh_menus(cx);
+                cx.notify();
+            }
+            BufferEvent::Edited { .. } => {}
+        }
     }
 
     pub(crate) fn close_view(
@@ -196,6 +299,13 @@ impl Workspace {
         for pane in &self.panes {
             pane.update(cx, |pane, cx| pane.remove(view, window, cx));
         }
+        // Forget buffers no view shows any more.
+        let live: Vec<EntityId> = self
+            .all_views(cx)
+            .iter()
+            .map(|view| view.read(cx).buffer.entity_id())
+            .collect();
+        self.buffer_subscriptions.retain(|id, _| live.contains(id));
         // Like Notepad++, closing the last document leaves an empty "new 1".
         if self.all_views(cx).is_empty() {
             self.new_file(window, cx);
@@ -236,10 +346,18 @@ impl Workspace {
 
     /// Rebuilds the menus from the current state.
     pub(crate) fn refresh_menus(&mut self, cx: &mut Context<Self>) {
-        let checked = |_: &Invocation| false;
+        let format = self
+            .active_view(cx)
+            .map(|view| view.read(cx).buffer.read(cx).doc().format());
+        let ansi = AppState::global(cx).ansi;
+        let checked = |invocation: &Invocation| {
+            let Some(format) = format else {
+                return false;
+            };
+            crate::encoding_ui::is_current(invocation, format, ansi)
+        };
         let state = MenuState {
             recent_files: &[],
-            character_sets: &[],
             checked: &checked,
         };
         menus::install(&state, cx);
@@ -298,7 +416,8 @@ impl Workspace {
                 }
                 .to_owned(),
             );
-            items.push("UTF-8".to_owned());
+            let format = doc.format();
+            items.push(birchpad_io::display_name(format.encoding, format.bom));
         }
         div()
             .flex()
@@ -357,7 +476,7 @@ impl Focusable for Workspace {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
     use gpui_kit::{TestAppContext, VisualTestContext};
 
@@ -376,6 +495,11 @@ mod tests {
     ) -> (Entity<Workspace>, &mut VisualTestContext) {
         cx.update(|cx| {
             gpui_kit::init(cx);
+            let settings = birchpad_config::resolve(birchpad_config::Sources::default());
+            cx.set_global(AppState::new(
+                settings,
+                birchpad_config::ConfigPaths::default(),
+            ));
             crate::commands::init(None, cx);
         });
         cx.add_window_view(|window, cx| {
@@ -398,7 +522,7 @@ mod tests {
         })
     }
 
-    fn active_text(workspace: &Entity<Workspace>, cx: &mut VisualTestContext) -> String {
+    pub(crate) fn active_text(workspace: &Entity<Workspace>, cx: &mut VisualTestContext) -> String {
         workspace.read_with(cx, |workspace, cx| {
             let view = workspace.active_view(cx).unwrap();
             view.read(cx).text(cx).to_string()

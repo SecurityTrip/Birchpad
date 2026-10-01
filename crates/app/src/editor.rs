@@ -7,7 +7,7 @@ use std::collections::HashMap;
 use std::ops::Range as ByteRange;
 
 use birchpad_core::motion::{self, line_count, line_of, line_range};
-use birchpad_core::{Edit, Range, Rope, Selection, Transaction, UndoGrouping};
+use birchpad_core::{Edit, LineEnding, Range, Rope, Selection, Transaction, UndoGrouping};
 use gpui_kit::{
     App, Bounds, ClipboardItem, Context, CursorStyle, ElementInputHandler, Entity,
     EntityInputHandler, FocusHandle, Focusable, MouseButton, MouseDownEvent, MouseMoveEvent,
@@ -16,7 +16,7 @@ use gpui_kit::{
 };
 use serde::Deserialize;
 
-use crate::buffer::{Buffer, BufferEvent};
+use crate::buffer::{Buffer, BufferEvent, ReadOnly};
 use crate::commands::{CommandRegistry, Handler, RunCommand};
 use crate::line_element::LineElement;
 
@@ -63,6 +63,19 @@ const MOTIONS: [(&str, &str, Motion); 10] = [
 #[derive(Deserialize)]
 struct InsertTextArgs {
     text: String,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "lowercase")]
+enum EolName {
+    Crlf,
+    Lf,
+    Cr,
+}
+
+#[derive(Deserialize)]
+struct ConvertEolArgs {
+    eol: EolName,
 }
 
 pub(crate) fn register_commands(registry: &mut CommandRegistry) {
@@ -121,6 +134,16 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
         this.insert(&args.text, LastEdit::None, cx);
         Ok(())
     });
+    registry.editor("edit.convert-eol", |this, args: ConvertEolArgs, _, cx| {
+        let target = match args.eol {
+            EolName::Crlf => LineEnding::CrLf,
+            EolName::Lf => LineEnding::Lf,
+            EolName::Cr => LineEnding::Cr,
+        };
+        let transaction = this.buffer.read(cx).doc().convert_line_endings(target);
+        this.apply(transaction, LastEdit::None, cx);
+        Ok(())
+    });
     for id in [
         "cursor.word-left",
         "cursor.word-right",
@@ -129,7 +152,6 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
         "edit.delete-word-left",
         "edit.delete-word-right",
         "edit.toggle-overwrite",
-        "edit.convert-eol",
     ] {
         registry.pending(id);
     }
@@ -177,7 +199,15 @@ impl EditorView {
                 }
                 cx.notify();
             }
-            BufferEvent::StateChanged => cx.notify(),
+            BufferEvent::Reloaded => {
+                this.selection = Selection::point(0);
+                this.marked = None;
+                this.preferred_column = None;
+                this.last_edit = LastEdit::None;
+                this.scroll.scroll_to_item(0, ScrollStrategy::Top);
+                cx.notify();
+            }
+            BufferEvent::StateChanged | BufferEvent::LoadFailed(_) => cx.notify(),
         });
         Self {
             focus_handle: cx.focus_handle(),
@@ -306,7 +336,15 @@ impl EditorView {
 
     // --- Editing -------------------------------------------------------------------------------
 
+    /// False while the buffer is loading, has a decoding problem or is a read-only file.
+    pub(crate) fn is_editable(&self, cx: &App) -> bool {
+        self.buffer.read(cx).read_only().is_none()
+    }
+
     fn apply(&mut self, transaction: Transaction, kind: LastEdit, cx: &mut Context<Self>) {
+        if !self.is_editable(cx) {
+            return;
+        }
         let grouping = if kind != LastEdit::None && kind == self.last_edit {
             UndoGrouping::MergeWithPrevious
         } else {
@@ -330,6 +368,9 @@ impl EditorView {
 
     /// Replaces every selection range with `text`.
     pub(crate) fn insert(&mut self, text: &str, kind: LastEdit, cx: &mut Context<Self>) {
+        if !self.is_editable(cx) {
+            return;
+        }
         let transaction = Transaction::replace_selections(self.text(cx), &self.selection, text)
             .expect("the selection always lies on character boundaries of the document");
         self.apply(transaction, kind, cx);
@@ -346,6 +387,9 @@ impl EditorView {
     }
 
     fn backspace(&mut self, cx: &mut Context<Self>) {
+        if !self.is_editable(cx) {
+            return;
+        }
         let text = self.text(cx).clone();
         self.selection = self.selection.transform(|range| {
             if range.is_empty() {
@@ -358,6 +402,9 @@ impl EditorView {
     }
 
     fn delete(&mut self, cx: &mut Context<Self>) {
+        if !self.is_editable(cx) {
+            return;
+        }
         let text = self.text(cx).clone();
         self.selection = self.selection.transform(|range| {
             if range.is_empty() {
@@ -370,6 +417,9 @@ impl EditorView {
     }
 
     fn undo(&mut self, cx: &mut Context<Self>) {
+        if !self.is_editable(cx) {
+            return;
+        }
         let origin = Some(cx.entity_id());
         if let Some(transaction) = self.buffer.update(cx, |buffer, cx| buffer.undo(origin, cx)) {
             self.restore_from_history(&transaction, cx);
@@ -377,6 +427,9 @@ impl EditorView {
     }
 
     fn redo(&mut self, cx: &mut Context<Self>) {
+        if !self.is_editable(cx) {
+            return;
+        }
         let origin = Some(cx.entity_id());
         if let Some(transaction) = self.buffer.update(cx, |buffer, cx| buffer.redo(origin, cx)) {
             self.restore_from_history(&transaction, cx);
@@ -543,25 +596,46 @@ impl Render for EditorView {
         .absolute()
         .size_full();
 
+        let buffer = self.buffer.read(cx);
+        let banner = match buffer.read_only() {
+            Some(ReadOnly::Decoding(problem)) => {
+                let encoding = birchpad_io::display_name(buffer.doc().format().encoding, false);
+                Some(crate::banner::decoding_problem(&encoding, problem))
+            }
+            Some(ReadOnly::File) => Some(crate::banner::read_only_file()),
+            Some(ReadOnly::Loading) | None => None,
+        };
+        let loading = buffer.loading_progress();
+
         div()
             .id("editor")
             .key_context("Editor")
             .track_focus(&self.focus_handle)
-            .relative()
+            .on_action(cx.listener(Self::run_command))
             .size_full()
+            .flex()
+            .flex_col()
             .bg(rgb(0xffffff))
             .text_color(rgb(0x1f2328))
-            .font_family(crate::MONOSPACE)
-            .text_size(px(14.))
-            .line_height(px(LINE_HEIGHT))
-            .cursor(CursorStyle::IBeam)
-            .on_action(cx.listener(Self::run_command))
-            .on_mouse_down(MouseButton::Left, cx.listener(Self::mouse_down))
-            .on_mouse_move(cx.listener(Self::mouse_move))
-            .on_mouse_up(MouseButton::Left, cx.listener(Self::mouse_up))
-            .on_mouse_up_out(MouseButton::Left, cx.listener(Self::mouse_up))
-            .child(lines)
-            .child(input_handler)
+            .children(banner)
+            .child(
+                div()
+                    .id("text")
+                    .relative()
+                    .flex_1()
+                    .min_h(px(0.))
+                    .font_family(crate::MONOSPACE)
+                    .text_size(px(14.))
+                    .line_height(px(LINE_HEIGHT))
+                    .cursor(CursorStyle::IBeam)
+                    .on_mouse_down(MouseButton::Left, cx.listener(Self::mouse_down))
+                    .on_mouse_move(cx.listener(Self::mouse_move))
+                    .on_mouse_up(MouseButton::Left, cx.listener(Self::mouse_up))
+                    .on_mouse_up_out(MouseButton::Left, cx.listener(Self::mouse_up))
+                    .child(lines)
+                    .child(input_handler)
+                    .children(loading.map(crate::banner::loading)),
+            )
     }
 }
 
@@ -637,6 +711,9 @@ impl EntityInputHandler for EditorView {
         _: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        if !self.is_editable(cx) {
+            return;
+        }
         let target = range_utf16
             .map(|range| self.bytes_from_utf16(&range, cx))
             .or_else(|| self.marked.clone())
