@@ -140,6 +140,9 @@ impl Workspace {
                  menu) before saving"
                     .to_owned(),
             ),
+            Some(ReadOnly::Requested) if mode == SaveMode::Save => {
+                Some("the file was opened read-only (-ro); use Save As".to_owned())
+            }
             Some(ReadOnly::File) if mode == SaveMode::Save => Some(format!(
                 "{} is read-only; use Save As",
                 buffer.read(cx).display_name()

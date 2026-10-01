@@ -37,6 +37,8 @@ pub(crate) enum ReadOnly {
     Decoding(DecodeProblem),
     /// The file has the read-only attribute or no write permission.
     File,
+    /// Opened read-only on purpose (`-ro` on the command line).
+    Requested,
 }
 
 struct Loading {
@@ -52,6 +54,7 @@ pub(crate) struct Buffer {
     untitled: Option<usize>,
     problem: Option<DecodeProblem>,
     file_read_only: bool,
+    requested_read_only: bool,
     loading: Option<Loading>,
 }
 
@@ -65,6 +68,7 @@ impl Buffer {
             untitled: Some(number),
             problem: None,
             file_read_only: false,
+            requested_read_only: false,
             loading: None,
         }
     }
@@ -78,13 +82,19 @@ impl Buffer {
     }
 
     /// A buffer for `path` whose content is read in the background.
-    pub(crate) fn open(path: PathBuf, options: LoadOptions, cx: &mut Context<Self>) -> Self {
+    pub(crate) fn open(
+        path: PathBuf,
+        options: LoadOptions,
+        read_only: bool,
+        cx: &mut Context<Self>,
+    ) -> Self {
         let mut buffer = Self {
             doc: Document::new(),
             path: Some(path),
             untitled: None,
             problem: None,
             file_read_only: false,
+            requested_read_only: read_only,
             loading: None,
         };
         buffer.load(options, None, cx);
@@ -239,6 +249,8 @@ impl Buffer {
             Some(ReadOnly::Decoding(problem))
         } else if self.file_read_only {
             Some(ReadOnly::File)
+        } else if self.requested_read_only {
+            Some(ReadOnly::Requested)
         } else {
             None
         }

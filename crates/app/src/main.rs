@@ -1,9 +1,11 @@
 //! Birchpad desktop application.
 //!
 //! ```text
-//! birchpad [FILE]...
+//! birchpad [-n<line>] [-c<column>] [-p<position>] [-multiInst] [-ro] [-nosession] [FILE]...
 //! birchpad --generate [LINES]   # synthetic multilingual text, 1 000 000 lines by default
 //! ```
+//!
+//! See `birchpad_cli::CommandLine` for every option.
 
 mod app_state;
 mod banner;
@@ -20,10 +22,12 @@ mod status_bar;
 mod workspace;
 
 use std::fmt::Write as _;
-use std::path::PathBuf;
 
-use birchpad_core::{Document, Rope};
-use gpui_kit::{App, AppContext as _, Bounds, WindowBounds, WindowOptions, px, size};
+use birchpad_cli::{Address, CommandLine, Instance};
+use futures::StreamExt as _;
+use gpui_kit::{
+    AnyWindowHandle, App, AppContext as _, Bounds, Entity, WindowBounds, WindowOptions, px, size,
+};
 
 use crate::app_state::AppState;
 use crate::workspace::Workspace;
@@ -37,13 +41,32 @@ pub(crate) const MONOSPACE: &str = if cfg!(windows) {
 };
 
 fn main() {
-    let sources = Source::from_args(std::env::args().skip(1));
+    let cwd = std::env::current_dir().unwrap_or_default();
+    let command_line = CommandLine::parse(std::env::args_os().skip(1), &cwd);
+    for warning in &command_line.warnings {
+        eprintln!("birchpad: {warning}");
+    }
+    let paths = birchpad_config::ConfigPaths::platform();
+
+    // A second launch hands its files to the running instance and exits.
+    let server = match (&paths.user_data, command_line.multi_instance) {
+        (Some(data), false) => {
+            match birchpad_cli::start(&Address::for_installation(data), &command_line) {
+                Instance::Secondary => return,
+                Instance::Primary(server) => Some(server),
+                Instance::Standalone(error) => {
+                    eprintln!("birchpad: running without single-instance support: {error}");
+                    None
+                }
+            }
+        }
+        _ => None,
+    };
 
     gpui_kit::application()
         .with_assets(gpui_kit::assets::Assets)
         .run(move |cx: &mut App| {
             gpui_kit::init(cx);
-            let paths = birchpad_config::ConfigPaths::platform();
             let settings = birchpad_config::resolve(birchpad_config::load(&paths));
             for diagnostic in &settings.diagnostics {
                 eprintln!("settings ({}): {}", diagnostic.layer, diagnostic.message);
@@ -69,53 +92,57 @@ fn main() {
                 cx.new(|cx| {
                     let mut workspace = Workspace::new(window, cx);
                     workspace.new_file(window, cx);
-                    for source in sources {
-                        match source {
-                            Source::File(path) => workspace.open_path(&path, window, cx),
-                            Source::Generated(lines) => {
-                                let doc = Document::from_text(Rope::from_str(&generate(lines)));
-                                workspace.open_document(doc, window, cx);
-                            }
-                        }
-                    }
+                    workspace.open_command_line(&command_line, window, cx);
                     workspace.report_pending_recoveries(window, cx);
                     workspace
                 })
             });
-            if let Err(error) = opened {
-                eprintln!("failed to open the main window: {error:#}");
-                cx.quit();
+            let (window, workspace) = match opened {
+                Ok(opened) => opened,
+                Err(error) => {
+                    eprintln!("failed to open the main window: {error:#}");
+                    cx.quit();
+                    return;
+                }
+            };
+            if let Some(server) = server {
+                serve_later_launches(server, window, workspace, cx);
             }
             cx.activate(true);
         });
 }
 
-enum Source {
-    File(PathBuf),
-    Generated(usize),
-}
-
-impl Source {
-    fn from_args(args: impl Iterator<Item = String>) -> Vec<Self> {
-        let mut sources = Vec::new();
-        let mut args = args.peekable();
-        while let Some(arg) = args.next() {
-            if arg == "--generate" {
-                let lines = args
-                    .next_if(|next| next.parse::<usize>().is_ok())
-                    .and_then(|n| n.parse().ok())
-                    .unwrap_or(1_000_000);
-                sources.push(Self::Generated(lines));
-            } else {
-                sources.push(Self::File(PathBuf::from(arg)));
+/// Opens what later launches send, in this window, and brings it to the front.
+fn serve_later_launches(
+    server: birchpad_cli::Server,
+    window: AnyWindowHandle,
+    workspace: Entity<Workspace>,
+    cx: &mut App,
+) {
+    let (sender, mut requests) = futures::channel::mpsc::unbounded::<CommandLine>();
+    server.serve(move |request| {
+        let _ = sender.unbounded_send(request);
+    });
+    cx.spawn(async move |cx| {
+        while let Some(request) = requests.next().await {
+            let opened = cx.update_window(window, |_, window, cx| {
+                workspace.update(cx, |workspace, cx| {
+                    workspace.open_command_line(&request, window, cx);
+                });
+                window.activate_window();
+            });
+            if opened.is_err() {
+                break;
             }
         }
-        sources
-    }
+    })
+    .detach();
 }
 
-/// Multilingual text for stress-testing scrolling and shaping.
-fn generate(lines: usize) -> String {
+/// Multilingual text for stress-testing scrolling and shaping (`--generate N`), at most
+/// 5 000 000 lines (about 350 MB), so that a typo in N cannot take the running instance down.
+pub(crate) fn generate(lines: usize) -> String {
+    let lines = lines.min(5_000_000);
     const SAMPLES: [&str; 4] = [
         "The quick brown fox jumps over the lazy dog.",
         "Съешь же ещё этих мягких французских булок, да выпей чаю.",

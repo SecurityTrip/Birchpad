@@ -36,6 +36,18 @@ cargo run -p birchpad
 cargo test --workspace
 ```
 
+## Command line
+
+Birchpad accepts the Notepad++ options that make sense for it:
+
+```text
+birchpad [-n<line>] [-c<column>] [-p<position>] [-ro] [-multiInst] [-nosession] [FILE]...
+```
+
+A second launch opens its files as tabs in the running window and exits; `-multiInst` starts a
+separate instance instead. Other Notepad++ options (`-l<language>`, `-x`, `-y`, `-notabbar`, ...)
+are accepted and ignored.
+
 ## Repository layout
 
 | Path | Contents |
@@ -45,6 +57,7 @@ cargo test --workspace
 | `crates/commands` | Command catalog, keymaps and the menu model, as data. No UI. |
 | `crates/io` | Encoding detection and conversion, reading and safely saving files. No UI. |
 | `crates/view` | Layout of a document view in cells: tab stops, word wrap, visual rows. No UI. |
+| `crates/cli` | Notepad++-compatible command line and the single-instance hand-off. No UI. |
 | `crates/app` | The desktop application. |
 | `packaging/` | Installers (MSI for per-machine installs). |
 | `docs/` | Roadmap and architecture decision records. |

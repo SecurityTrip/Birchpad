@@ -11,6 +11,7 @@ repository = "https://github.com/SecurityTrip/Birchpad"
 authors = ["The Birchpad Contributors"]
 
 [workspace.dependencies]
+birchpad-cli = { path = "crates/cli", version = "0.1.0" }
 birchpad-commands = { path = "crates/commands", version = "0.1.0" }
 birchpad-config = { path = "crates/config", version = "0.1.0" }
 birchpad-core = { path = "crates/core", version = "0.1.0" }

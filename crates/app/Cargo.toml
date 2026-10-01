@@ -10,6 +10,7 @@ authors.workspace = true
 
 [dependencies]
 anyhow.workspace = true
+birchpad-cli.workspace = true
 birchpad-commands.workspace = true
 birchpad-config.workspace = true
 birchpad-core.workspace = true

@@ -5,6 +5,7 @@ use std::collections::HashMap;
 use std::path::Path;
 
 use anyhow::Result;
+use birchpad_cli::CommandLine;
 use birchpad_commands::Invocation;
 use birchpad_core::Document;
 use gpui_kit::component::WindowExt as _;
@@ -205,10 +206,41 @@ impl Workspace {
     /// Opens a file in a new tab, or switches to its tab if it is already open. The file is read
     /// in the background.
     pub(crate) fn open_path(&mut self, path: &Path, window: &mut Window, cx: &mut Context<Self>) {
+        self.open_path_with(path, false, window, cx);
+    }
+
+    /// Opens files and places carets as a command line asks (also from a second launch).
+    pub(crate) fn open_command_line(
+        &mut self,
+        command_line: &CommandLine,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if let Some(lines) = command_line.generate {
+            let doc = Document::from_text(birchpad_core::Rope::from_str(&crate::generate(lines)));
+            self.open_document(doc, window, cx);
+        }
+        let target = command_line.caret_target();
+        for path in &command_line.files {
+            let view = self.open_path_with(path, command_line.read_only, window, cx);
+            if let Some(target) = target {
+                view.update(cx, |view, cx| view.set_caret_target(target, cx));
+            }
+        }
+    }
+
+    /// Opens `path` (read-only if asked) or switches to its tab; returns the view.
+    fn open_path_with(
+        &mut self,
+        path: &Path,
+        read_only: bool,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Entity<EditorView> {
         let path = std::path::absolute(path).unwrap_or_else(|_| path.to_owned());
         if let Some(view) = self.view_for_path(&path, cx) {
             self.activate_view(&view, window, cx);
-            return;
+            return view;
         }
         // Like Notepad++, an untouched "new 1" is replaced by the first file opened.
         let pristine = self.active_view(cx).filter(|view| {
@@ -220,11 +252,12 @@ impl Workspace {
         });
         AppState::remove_recent(&path, cx);
         let options = AppState::global(cx).load_options(None);
-        let buffer = cx.new(|cx| Buffer::open(path, options, cx));
-        self.add_buffer(buffer, window, cx);
+        let buffer = cx.new(|cx| Buffer::open(path, options, read_only, cx));
+        let view = self.add_buffer(buffer, window, cx);
         if let Some(pristine) = pristine {
             self.close_view(&pristine, window, cx);
         }
+        view
     }
 
     /// Tells the user about recovery copies left by saves that were interrupted (a crash or
@@ -266,14 +299,20 @@ impl Workspace {
         }
     }
 
-    fn add_buffer(&mut self, buffer: Entity<Buffer>, window: &mut Window, cx: &mut Context<Self>) {
+    fn add_buffer(
+        &mut self,
+        buffer: Entity<Buffer>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Entity<EditorView> {
         let subscription = cx.subscribe_in(&buffer, window, Self::on_buffer_event);
         self.buffer_subscriptions
             .insert(buffer.entity_id(), subscription);
         let view = cx.new(|cx| EditorView::new(buffer, window, cx));
         self.active_pane()
-            .update(cx, |pane, cx| pane.add(view, window, cx));
+            .update(cx, |pane, cx| pane.add(view.clone(), window, cx));
         cx.notify();
+        view
     }
 
     fn on_buffer_event(
@@ -580,6 +619,51 @@ pub(crate) mod tests {
         cx.run_until_parked();
         assert_eq!(tab_names(&workspace, cx), ["new 1"]);
         assert_eq!(active_text(&workspace, cx), "");
+    }
+
+    #[gpui_kit::test]
+    fn command_line_opens_files_at_a_line_read_only(cx: &mut TestAppContext) {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("a b.txt"), "one\n\ttwo\nthree\n").unwrap();
+        std::fs::write(dir.path().join("other.txt"), "other").unwrap();
+        let (workspace, cx) = open_workspace(cx);
+        let caret = |workspace: &Entity<Workspace>, cx: &mut VisualTestContext| {
+            workspace.update(cx, |workspace, cx| {
+                let view = workspace.active_view(cx).unwrap();
+                let info = view.update(cx, |view, cx| crate::status_bar::StatusInfo::of(view, cx));
+                (info.line, info.column)
+            })
+        };
+        let open = |args: &[&str], cx: &mut VisualTestContext| {
+            let args = args.iter().map(std::ffi::OsString::from);
+            let command_line = CommandLine::parse(args, dir.path());
+            workspace.update_in(cx, |workspace, window, cx| {
+                workspace.open_command_line(&command_line, window, cx);
+            });
+            cx.run_until_parked();
+        };
+
+        // The caret is placed once the file has been read; -c counts tab stops like the status
+        // bar's Col.
+        open(&["-n2", "-c6", "-ro", "a b.txt", "other.txt"], cx);
+        assert_eq!(tab_names(&workspace, cx), ["a b.txt", "other.txt"]);
+        assert_eq!(caret(&workspace, cx), (1, 6));
+        cx.simulate_input("x");
+        assert_eq!(active_text(&workspace, cx), "other");
+        cx.simulate_keystrokes("ctrl-shift-tab");
+        assert_eq!(caret(&workspace, cx), (2, 6));
+
+        // A later launch with an open file switches to its tab and moves the caret.
+        open(&["-n3", "a b.txt"], cx);
+        assert_eq!(caret(&workspace, cx), (3, 1));
+        cx.simulate_input("x");
+        assert_eq!(active_text(&workspace, cx), "one\n\ttwo\nthree\n");
+        open(&["-p5", "other.txt"], cx);
+        assert_eq!(caret(&workspace, cx), (1, 6));
+
+        // Line numbers past the end go to the last line.
+        open(&["-n99", "a b.txt"], cx);
+        assert_eq!(caret(&workspace, cx), (4, 1));
     }
 
     #[gpui_kit::test]

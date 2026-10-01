@@ -49,6 +49,12 @@ pub(crate) fn decoding_problem(encoding: &str, problem: DecodeProblem) -> AnyEle
         .into_any_element()
 }
 
+pub(crate) fn read_only_requested() -> AnyElement {
+    bar(0xf6f8fa, 0xd0d7de)
+        .child("Opened read-only from the command line (-ro).")
+        .into_any_element()
+}
+
 pub(crate) fn read_only_file() -> AnyElement {
     bar(0xf6f8fa, 0xd0d7de)
         .child("This file is read-only. Use Save As to keep your changes in another file.")

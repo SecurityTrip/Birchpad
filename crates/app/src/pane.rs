@@ -129,7 +129,7 @@ impl Pane {
             let modified = buffer.is_modified();
             let read_only = matches!(
                 buffer.read_only(),
-                Some(ReadOnly::File | ReadOnly::Decoding(_))
+                Some(ReadOnly::File | ReadOnly::Decoding(_) | ReadOnly::Requested)
             );
             let label = buffer.display_name();
             let close_item = item.clone();

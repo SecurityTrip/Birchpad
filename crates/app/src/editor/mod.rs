@@ -22,6 +22,8 @@ use gpui_kit::{
 };
 use serde::Deserialize;
 
+use birchpad_cli::CaretTarget;
+
 use crate::app_state::AppState;
 use crate::buffer::{Buffer, BufferEvent, ReadOnly};
 use crate::commands::{CommandRegistry, Handler, RunCommand};
@@ -245,6 +247,8 @@ pub(crate) struct EditorView {
     pub(crate) overwrite: bool,
     display: DisplayMap,
     wrap_job: Option<WrapJob>,
+    /// Where to put the caret once the file has been read (`-n`, `-c`, `-p`).
+    pending_caret: Option<CaretTarget>,
     /// First visible row; fractional while scrolling smoothly.
     scroll_top: f64,
     /// Horizontal scroll offset of the text.
@@ -295,6 +299,9 @@ impl EditorView {
                 this.scroll_top = 0.;
                 this.scroll_left = px(0.);
                 this.scroll_width = px(0.);
+                if let Some(target) = this.pending_caret.take() {
+                    this.place_caret(target, cx);
+                }
                 cx.notify();
             }
             BufferEvent::StateChanged | BufferEvent::LoadFailed(_) => cx.notify(),
@@ -317,6 +324,7 @@ impl EditorView {
             overwrite: false,
             display,
             wrap_job: None,
+            pending_caret: None,
             scroll_top: 0.,
             scroll_left: px(0.),
             scroll_width: px(0.),
@@ -473,6 +481,31 @@ impl EditorView {
     pub(crate) fn column_of(&mut self, pos: usize, cx: &App) -> usize {
         let text = self.text(cx).clone();
         self.display.column(&text, pos)
+    }
+
+    /// Puts the caret where the command line asked, now or once the file has been read.
+    pub(crate) fn set_caret_target(&mut self, target: CaretTarget, cx: &mut Context<Self>) {
+        if self.buffer.read(cx).read_only() == Some(ReadOnly::Loading) {
+            self.pending_caret = Some(target);
+        } else {
+            self.place_caret(target, cx);
+        }
+    }
+
+    fn place_caret(&mut self, target: CaretTarget, cx: &mut Context<Self>) {
+        let text = self.text(cx).clone();
+        let pos = match target {
+            CaretTarget::Position(offset) => {
+                crate::find::go_to_position(&text, crate::find::GoToTarget::Offset(offset))
+            }
+            CaretTarget::LineColumn { line, column } => {
+                let start = crate::find::go_to_position(&text, crate::find::GoToTarget::Line(line));
+                let line_range = line_range(&text, line_of(&text, start));
+                let tab_width = self.display.config().tab_width;
+                birchpad_view::pos_at_column(&text, line_range, 0, column - 1, tab_width).0
+            }
+        };
+        self.go_to(pos, cx);
     }
 
     /// Selects `range` (a search match) and scrolls it into view.
@@ -899,6 +932,7 @@ impl Render for EditorView {
                 Some(crate::banner::decoding_problem(&encoding, problem))
             }
             Some(ReadOnly::File) => Some(crate::banner::read_only_file()),
+            Some(ReadOnly::Requested) => Some(crate::banner::read_only_requested()),
             Some(ReadOnly::Loading) | None => None,
         };
         let loading = buffer.loading_progress();
