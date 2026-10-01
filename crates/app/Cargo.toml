@@ -14,12 +14,14 @@ birchpad-commands.workspace = true
 birchpad-config.workspace = true
 birchpad-core.workspace = true
 birchpad-io.workspace = true
+futures = "0.3"
 gpui-kit = "0.7"
 serde.workspace = true
 serde_json.workspace = true
 
 [dev-dependencies]
 gpui-kit = { version = "0.7", features = ["test-support"] }
+tempfile = "3"
 
 [lints]
 workspace = true

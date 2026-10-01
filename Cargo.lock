@@ -598,9 +598,11 @@ dependencies = [
  "birchpad-config",
  "birchpad-core",
  "birchpad-io",
+ "futures",
  "gpui-kit",
  "serde",
  "serde_json",
+ "tempfile",
 ]
 
 [[package]]

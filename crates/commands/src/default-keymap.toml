@@ -7,6 +7,8 @@
 #   unbind    - remove an earlier binding of the same keys and context (user keymaps)
 #
 # `secondary` is Ctrl on Windows and Linux and Cmd on macOS.
+#
+# When a command has several bindings, menus show the last one, so alternates come first.
 
 # --- File ---------------------------------------------------------------------------------------
 
@@ -31,13 +33,13 @@ keys = "secondary-shift-s"
 command = "file.save-all"
 
 [[binding]]
-keys = "secondary-w"
-command = "file.close"
-
-[[binding]]
 keys = "ctrl-f4"
 command = "file.close"
 platforms = ["windows", "linux"]
+
+[[binding]]
+keys = "secondary-w"
+command = "file.close"
 
 [[binding]]
 keys = "secondary-shift-w"
@@ -71,11 +73,8 @@ keys = "secondary-g"
 command = "search.go-to"
 
 # --- View ---------------------------------------------------------------------------------------
-# Windows reports the keypad +, - and 0 as "+", "-" and "0"; Linux as "add", "subtract" and "0".
 
-[[binding]]
-keys = "secondary-+"
-command = "view.zoom-in"
+# Windows reports the keypad +, - and 0 as "+", "-" and "0"; Linux as "add", "subtract" and "0".
 
 [[binding]]
 keys = "secondary-="
@@ -86,43 +85,42 @@ keys = "secondary-add"
 command = "view.zoom-in"
 
 [[binding]]
-keys = "secondary--"
-command = "view.zoom-out"
+keys = "secondary-+"
+command = "view.zoom-in"
 
 [[binding]]
 keys = "secondary-subtract"
 command = "view.zoom-out"
 
 [[binding]]
-keys = "secondary-0"
-command = "view.zoom-reset"
+keys = "secondary--"
+command = "view.zoom-out"
 
 [[binding]]
 keys = "secondary-divide"
 command = "view.zoom-reset"
 
 [[binding]]
-keys = "ctrl-tab"
-command = "view.next-tab"
-
-[[binding]]
-keys = "ctrl-shift-tab"
-command = "view.previous-tab"
+keys = "secondary-0"
+command = "view.zoom-reset"
 
 [[binding]]
 keys = "ctrl-pagedown"
 command = "view.next-tab"
 
 [[binding]]
+keys = "ctrl-tab"
+command = "view.next-tab"
+
+[[binding]]
 keys = "ctrl-pageup"
 command = "view.previous-tab"
 
-# --- Edit ---------------------------------------------------------------------------------------
-
 [[binding]]
-keys = "secondary-z"
-command = "edit.undo"
-context = "Editor"
+keys = "ctrl-shift-tab"
+command = "view.previous-tab"
+
+# --- Edit ---------------------------------------------------------------------------------------
 
 [[binding]]
 keys = "alt-backspace"
@@ -131,8 +129,8 @@ context = "Editor"
 platforms = ["windows", "linux"]
 
 [[binding]]
-keys = "secondary-y"
-command = "edit.redo"
+keys = "secondary-z"
+command = "edit.undo"
 context = "Editor"
 
 [[binding]]
@@ -141,8 +139,8 @@ command = "edit.redo"
 context = "Editor"
 
 [[binding]]
-keys = "secondary-x"
-command = "edit.cut"
+keys = "secondary-y"
+command = "edit.redo"
 context = "Editor"
 
 [[binding]]
@@ -151,8 +149,8 @@ command = "edit.cut"
 context = "Editor"
 
 [[binding]]
-keys = "secondary-c"
-command = "edit.copy"
+keys = "secondary-x"
+command = "edit.cut"
 context = "Editor"
 
 [[binding]]
@@ -162,8 +160,8 @@ context = "Editor"
 platforms = ["windows", "linux"]
 
 [[binding]]
-keys = "secondary-v"
-command = "edit.paste"
+keys = "secondary-c"
+command = "edit.copy"
 context = "Editor"
 
 [[binding]]
@@ -171,6 +169,11 @@ keys = "shift-insert"
 command = "edit.paste"
 context = "Editor"
 platforms = ["windows", "linux"]
+
+[[binding]]
+keys = "secondary-v"
+command = "edit.paste"
+context = "Editor"
 
 [[binding]]
 keys = "secondary-a"
@@ -183,26 +186,26 @@ command = "edit.delete"
 context = "Editor"
 
 [[binding]]
-keys = "backspace"
-command = "edit.backspace"
-context = "Editor"
-
-[[binding]]
 keys = "shift-backspace"
 command = "edit.backspace"
 context = "Editor"
 
 [[binding]]
-keys = "ctrl-backspace"
-command = "edit.delete-word-left"
+keys = "backspace"
+command = "edit.backspace"
 context = "Editor"
-platforms = ["windows", "linux"]
 
 [[binding]]
 keys = "alt-backspace"
 command = "edit.delete-word-left"
 context = "Editor"
 platforms = ["macos"]
+
+[[binding]]
+keys = "ctrl-backspace"
+command = "edit.delete-word-left"
+context = "Editor"
+platforms = ["windows", "linux"]
 
 [[binding]]
 keys = "ctrl-delete"
@@ -217,12 +220,12 @@ context = "Editor"
 platforms = ["macos"]
 
 [[binding]]
-keys = "enter"
+keys = "shift-enter"
 command = "edit.newline"
 context = "Editor"
 
 [[binding]]
-keys = "shift-enter"
+keys = "enter"
 command = "edit.newline"
 context = "Editor"
 

@@ -5,12 +5,12 @@
 
 use gpui_kit::component::button::{Button, ButtonVariants};
 use gpui_kit::component::tab::{Tab, TabBar};
-use gpui_kit::component::{IconName, Sizable};
+use gpui_kit::component::{Icon, IconName, Sizable};
 use gpui_kit::{
     Context, Entity, EventEmitter, ScrollHandle, Subscription, Window, div, prelude::*, px, rgb,
 };
 
-use crate::buffer::BufferEvent;
+use crate::buffer::{BufferEvent, ReadOnly};
 use crate::editor::EditorView;
 
 pub(crate) enum PaneEvent {
@@ -127,17 +127,29 @@ impl Pane {
         let tabs = self.items.iter().enumerate().map(|(index, item)| {
             let buffer = item.read(cx).buffer.read(cx);
             let modified = buffer.is_modified();
+            let read_only = matches!(
+                buffer.read_only(),
+                Some(ReadOnly::File | ReadOnly::Decoding(_))
+            );
             let label = buffer.display_name();
             let close_item = item.clone();
             Tab::new()
                 .label(label)
-                .prefix(
+                .prefix(if read_only {
+                    // Read-only: an eye, as in "view only".
+                    Icon::new(IconName::Eye)
+                        .xsmall()
+                        .ml_1()
+                        .text_color(rgb(0x8c959f))
+                        .into_any_element()
+                } else {
                     div()
                         .ml_2()
                         .size(px(8.))
                         .rounded_full()
-                        .when(modified, |dot| dot.bg(rgb(0xd1242f))),
-                )
+                        .when(modified, |dot| dot.bg(rgb(0xd1242f)))
+                        .into_any_element()
+                })
                 .suffix(
                     Button::new(("close-tab", index))
                         .ghost()

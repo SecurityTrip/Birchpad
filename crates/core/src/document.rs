@@ -129,6 +129,17 @@ impl Document {
     pub fn mark_saved(&mut self) {
         self.saved = self.history.current();
     }
+
+    /// The current state of the history. Saving in the background records the revision it
+    /// wrote, so edits made while writing keep the document modified.
+    pub fn revision(&self) -> RevisionId {
+        self.history.current()
+    }
+
+    /// Marks `revision` as the state on disk.
+    pub fn mark_saved_at(&mut self, revision: RevisionId) {
+        self.saved = revision;
+    }
 }
 
 #[cfg(test)]
@@ -215,6 +226,22 @@ mod tests {
         assert!(!doc.is_modified());
         doc.redo();
         assert_eq!(doc.format(), utf16);
+    }
+
+    #[test]
+    fn edits_during_a_save_keep_the_document_modified() {
+        let mut doc = Document::new();
+        let selection = type_text(&mut doc, &Selection::point(0), "a", UndoGrouping::NewStep);
+        let written = doc.revision();
+        // The user keeps typing while the file is being written.
+        type_text(&mut doc, &selection, "b", UndoGrouping::MergeWithPrevious);
+        doc.mark_saved_at(written);
+        assert!(doc.is_modified());
+        let mut doc = Document::new();
+        type_text(&mut doc, &Selection::point(0), "a", UndoGrouping::NewStep);
+        let written = doc.revision();
+        doc.mark_saved_at(written);
+        assert!(!doc.is_modified());
     }
 
     #[test]

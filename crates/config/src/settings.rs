@@ -33,14 +33,25 @@ impl Default for EditorSettings {
     }
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default, rename_all = "kebab-case")]
 pub struct FileSettings {
+    /// How many recently closed files File > Recent Files remembers.
+    pub recent_limit: u16,
     /// Legacy encoding for files that are neither Unicode nor recognizably something else
     /// ("ANSI"), e.g. `windows-1251`. Unset: the system code page on Windows, Windows-1252
     /// elsewhere.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub ansi_encoding: Option<String>,
+}
+
+impl Default for FileSettings {
+    fn default() -> Self {
+        Self {
+            recent_limit: 10,
+            ansi_encoding: None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

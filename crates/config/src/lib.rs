@@ -8,6 +8,7 @@ mod layers;
 mod load;
 mod policy;
 mod settings;
+mod state;
 
 pub use layers::{Diagnostic, Layer, ResolvedSettings, Sources, resolve};
 pub use load::{ConfigPaths, load, load_platform_settings};
@@ -16,3 +17,4 @@ pub use settings::{
     DiagnosticsSettings, EditorSettings, FileSettings, NetworkSettings, PluginInstall,
     PluginSettings, SessionSettings, Settings, UpdateChannel, UpdateMode, UpdateSettings,
 };
+pub use state::{MAX_RECENT_FILES, UserState};

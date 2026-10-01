@@ -5,7 +5,9 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 
-use birchpad_core::{Document, Encoding, Format, Rope, Selection, Transaction, UndoGrouping};
+use birchpad_core::{
+    Document, Encoding, Format, RevisionId, Rope, Selection, Transaction, UndoGrouping,
+};
 use birchpad_io::{DecodeProblem, LoadOptions, LoadedFile, ReadError};
 use gpui_kit::{AppContext as _, Context, EntityId, EventEmitter, Task};
 
@@ -200,6 +202,18 @@ impl Buffer {
 
     pub(crate) fn is_modified(&self) -> bool {
         self.doc.is_modified()
+    }
+
+    /// Records that `revision` of the document was written to `path` (a new path after Save As).
+    pub(crate) fn did_save(&mut self, path: PathBuf, revision: RevisionId, cx: &mut Context<Self>) {
+        if self.path.as_deref() != Some(&path) {
+            self.path = Some(path);
+            self.untitled = None;
+            self.file_read_only = false;
+        }
+        self.doc.mark_saved_at(revision);
+        cx.emit(BufferEvent::StateChanged);
+        cx.notify();
     }
 
     /// Fraction of the file read so far, while loading.

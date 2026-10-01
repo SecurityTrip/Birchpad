@@ -11,9 +11,11 @@ mod buffer;
 mod commands;
 mod editor;
 mod encoding_ui;
+mod file_ops;
 mod line_element;
 mod menus;
 mod pane;
+mod path_dialog;
 mod workspace;
 
 use std::fmt::Write as _;

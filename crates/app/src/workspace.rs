@@ -12,8 +12,8 @@ use gpui_kit::component::WindowExt as _;
 use gpui_kit::component::menu::AppMenuBar;
 use gpui_kit::component::notification::Notification;
 use gpui_kit::{
-    App, AppContext as _, Context, Entity, EntityId, FocusHandle, Focusable, PromptLevel,
-    Subscription, Window, div, prelude::*, px, rgb,
+    App, AppContext as _, Context, Entity, EntityId, ExternalPaths, FocusHandle, Focusable,
+    PromptLevel, Subscription, Window, div, prelude::*, px, rgb,
 };
 
 use crate::app_state::AppState;
@@ -26,31 +26,6 @@ use crate::pane::{Pane, PaneEvent};
 pub(crate) fn register_commands(registry: &mut CommandRegistry) {
     registry.workspace("file.new", |this, (), window, cx| {
         this.new_file(window, cx);
-        Ok(())
-    });
-    registry.workspace("file.close", |this, (), window, cx| {
-        if let Some(view) = this.active_view(cx) {
-            this.close_view(&view, window, cx);
-        }
-        Ok(())
-    });
-    registry.workspace("file.close-all", |this, (), window, cx| {
-        for view in this.all_views(cx) {
-            this.close_view(&view, window, cx);
-        }
-        Ok(())
-    });
-    registry.workspace("file.close-others", |this, (), window, cx| {
-        let active = this.active_view(cx);
-        for view in this.all_views(cx) {
-            if Some(&view) != active.as_ref() {
-                this.close_view(&view, window, cx);
-            }
-        }
-        Ok(())
-    });
-    registry.workspace("file.exit", |_, (), _, cx| {
-        cx.quit();
         Ok(())
     });
     registry.workspace("view.next-tab", |this, (), window, cx| {
@@ -70,12 +45,6 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
         Ok(())
     });
     for id in [
-        "file.open",
-        "file.open-recent",
-        "file.clear-recent",
-        "file.save",
-        "file.save-as",
-        "file.save-all",
         "search.find",
         "search.replace",
         "search.find-next",
@@ -90,6 +59,7 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
         registry.pending(id);
     }
     crate::encoding_ui::register_commands(registry);
+    crate::file_ops::register_commands(registry);
 }
 
 /// Shows an error to the user without interrupting them.
@@ -126,6 +96,28 @@ impl Workspace {
             _subscriptions: vec![subscription],
         };
         this.refresh_menus(cx);
+        // The window's close button: ask about unsaved changes first.
+        let workspace = cx.entity().downgrade();
+        window.on_window_should_close(cx, move |window, cx| {
+            workspace
+                .update(cx, |workspace, cx| {
+                    if workspace.has_unsaved_changes(cx) {
+                        let views = workspace.all_views(cx);
+                        let closing = workspace.close_with_confirmation(views, window, cx);
+                        cx.spawn_in(window, async move |_, cx| {
+                            if closing.await {
+                                cx.update(|window, _| window.remove_window()).ok();
+                            }
+                        })
+                        .detach();
+                        false
+                    } else {
+                        workspace.remember_open_files(cx);
+                        true
+                    }
+                })
+                .unwrap_or(true)
+        });
         if !cfg!(target_os = "macos") {
             this.menu_bar = Some(AppMenuBar::new(cx));
         }
@@ -156,7 +148,7 @@ impl Workspace {
         self.active_pane().read(cx).active_item().cloned()
     }
 
-    fn all_views(&self, cx: &App) -> Vec<Entity<EditorView>> {
+    pub(crate) fn all_views(&self, cx: &App) -> Vec<Entity<EditorView>> {
         self.panes
             .iter()
             .flat_map(|pane| pane.read(cx).items().to_vec())
@@ -209,6 +201,7 @@ impl Workspace {
                 && !buffer.is_modified()
                 && !buffer.doc().history().can_undo()
         });
+        AppState::remove_recent(&path, cx);
         let options = AppState::global(cx).load_options(None);
         let buffer = cx.new(|cx| Buffer::open(path, options, cx));
         self.add_buffer(buffer, window, cx);
@@ -299,6 +292,16 @@ impl Workspace {
         for pane in &self.panes {
             pane.update(cx, |pane, cx| pane.remove(view, window, cx));
         }
+        // A file whose last view closes becomes a recent file, as in Notepad++.
+        let buffer = view.read(cx).buffer.clone();
+        let still_shown = self
+            .all_views(cx)
+            .iter()
+            .any(|other| other.read(cx).buffer == buffer);
+        if !still_shown && let Some(path) = buffer.read(cx).path().map(Path::to_owned) {
+            AppState::add_recent(&path, cx);
+            self.refresh_menus(cx);
+        }
         // Forget buffers no view shows any more.
         let live: Vec<EntityId> = self
             .all_views(cx)
@@ -356,8 +359,9 @@ impl Workspace {
             };
             crate::encoding_ui::is_current(invocation, format, ansi)
         };
+        let recent_files = AppState::global(cx).state.recent_files.clone();
         let state = MenuState {
-            recent_files: &[],
+            recent_files: &recent_files,
             checked: &checked,
         };
         menus::install(&state, cx);
@@ -381,6 +385,8 @@ impl Workspace {
         };
         if title != self.title {
             window.set_window_title(&title);
+            // macOS shows a dot in the close button of a window with unsaved changes.
+            window.set_window_edited(title.starts_with('*'));
             self.title = title;
         }
     }
@@ -443,6 +449,11 @@ impl Render for Workspace {
             .key_context("Workspace")
             .track_focus(&self.focus_handle)
             .on_action(cx.listener(Self::run_command))
+            .on_drop(cx.listener(|this, paths: &ExternalPaths, window, cx| {
+                for path in paths.paths() {
+                    this.open_path(path, window, cx);
+                }
+            }))
             .size_full()
             .flex()
             .flex_col()
@@ -502,11 +513,27 @@ pub(crate) mod tests {
             ));
             crate::commands::init(None, cx);
         });
-        cx.add_window_view(|window, cx| {
-            let mut workspace = Workspace::new(window, cx);
-            workspace.new_file(window, cx);
-            workspace
-        })
+        // The production entry point, so the window has gpui-component's Root (notifications,
+        // dialogs).
+        let (window, workspace) = cx.update(|cx| {
+            let options = gpui_kit::WindowOptions {
+                window_bounds: Some(gpui_kit::WindowBounds::Windowed(
+                    gpui_kit::Bounds::maximized(None, cx),
+                )),
+                ..Default::default()
+            };
+            gpui_kit::open_window(options, cx, |window, cx| {
+                cx.new(|cx| {
+                    let mut workspace = Workspace::new(window, cx);
+                    workspace.new_file(window, cx);
+                    workspace
+                })
+            })
+            .expect("open test window")
+        });
+        let cx = VisualTestContext::from_window(window, cx).into_mut();
+        cx.run_until_parked();
+        (workspace, cx)
     }
 
     pub(crate) fn tab_names(
@@ -560,6 +587,9 @@ pub(crate) mod tests {
                 .dispatch(&Invocation::new("file.close-all"), window, cx)
                 .unwrap();
         });
+        cx.run_until_parked();
+        cx.simulate_prompt_answer("Don't Save");
+        cx.run_until_parked();
         assert_eq!(tab_names(&workspace, cx), ["new 1"]);
         assert_eq!(active_text(&workspace, cx), "");
     }
