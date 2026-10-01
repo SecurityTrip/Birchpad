@@ -48,6 +48,17 @@ A second launch opens its files as tabs in the running window and exits; `-multi
 separate instance instead. Other Notepad++ options (`-l<language>`, `-x`, `-y`, `-notabbar`, ...)
 are accepted and ignored.
 
+## Portable mode and the network
+
+Put a file named `birchpad-portable.txt` next to the executable (the Windows and Linux ZIPs come
+with it) and Birchpad keeps its settings and data in a `data` folder next to it. Administrator
+policies of the machine still apply.
+
+Birchpad uses the network only when you pick Help > Check for Updates. With
+`updates.mode = "off"` (a setting or an administrator policy) that command is disabled and
+Birchpad makes no network requests at all. See
+[ADR 0009](docs/adr/0009-releases-portable-mode-and-update-check.md).
+
 ## Repository layout
 
 | Path | Contents |
@@ -58,6 +69,7 @@ are accepted and ignored.
 | `crates/io` | Encoding detection and conversion, reading and safely saving files. No UI. |
 | `crates/view` | Layout of a document view in cells: tab stops, word wrap, visual rows. No UI. |
 | `crates/cli` | Notepad++-compatible command line and the single-instance hand-off. No UI. |
+| `crates/update` | Checking for updates: release feeds, channels, version comparison. No UI. |
 | `crates/app` | The desktop application. |
 | `packaging/` | Installers (MSI for per-machine installs). |
 | `docs/` | Roadmap and architecture decision records. |

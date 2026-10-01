@@ -29,11 +29,16 @@ fn build(model: Vec<Menu>, state: &MenuState, cx: &App) -> Vec<gpui_kit::Menu> {
     };
     model
         .into_iter()
-        .map(|menu| build_menu(menu, state, registry))
+        .map(|menu| build_menu(menu, state, registry, cx))
         .collect()
 }
 
-fn build_menu(menu: Menu, state: &MenuState, registry: &CommandRegistry) -> gpui_kit::Menu {
+fn build_menu(
+    menu: Menu,
+    state: &MenuState,
+    registry: &CommandRegistry,
+    cx: &App,
+) -> gpui_kit::Menu {
     let mut items = Vec::new();
     for item in menu.items {
         match item {
@@ -42,7 +47,7 @@ fn build_menu(menu: Menu, state: &MenuState, registry: &CommandRegistry) -> gpui
                 let MenuItem::Command { invocation, .. } = item else {
                     unreachable!()
                 };
-                let disabled = registry.is_pending(&invocation.command);
+                let disabled = !registry.is_enabled(&invocation.command, cx);
                 let checked = (state.checked)(&invocation);
                 items.push(
                     GpuiMenuItem::action(label, RunCommand(invocation))
@@ -51,9 +56,9 @@ fn build_menu(menu: Menu, state: &MenuState, registry: &CommandRegistry) -> gpui
                 );
             }
             MenuItem::Separator => items.push(GpuiMenuItem::separator()),
-            MenuItem::Submenu(submenu) => {
-                items.push(GpuiMenuItem::submenu(build_menu(submenu, state, registry)))
-            }
+            MenuItem::Submenu(submenu) => items.push(GpuiMenuItem::submenu(build_menu(
+                submenu, state, registry, cx,
+            ))),
             MenuItem::Placeholder(Placeholder::RecentFiles) => {
                 if state.recent_files.is_empty() {
                     items.push(

@@ -68,6 +68,20 @@ impl ResolvedSettings {
     pub fn locked_keys(&self) -> impl Iterator<Item = &str> {
         self.locked.iter().map(String::as_str)
     }
+
+    /// The keys set by policy with their values in TOML syntax, e.g. `("updates.mode", "\"off\"")`.
+    pub fn policies(&self) -> Vec<(String, String)> {
+        let table = Table::try_from(&self.settings).expect("settings serialize to a table");
+        self.locked
+            .iter()
+            .filter_map(|key| {
+                let mut parts = key.split('.');
+                let first = table.get(parts.next()?)?;
+                let value = parts.try_fold(first, |value, part| value.get(part))?;
+                Some((key.clone(), value.to_string()))
+            })
+            .collect()
+    }
 }
 
 /// Merges the layers in priority order.
@@ -177,6 +191,10 @@ mod tests {
         assert!(resolved.is_locked("updates.mode"));
         assert!(!resolved.is_locked("updates.channel"));
         assert!(resolved.diagnostics.is_empty());
+        assert_eq!(
+            resolved.policies(),
+            [("updates.mode".to_owned(), "\"off\"".to_owned())]
+        );
     }
 
     #[test]

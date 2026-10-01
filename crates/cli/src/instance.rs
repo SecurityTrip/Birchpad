@@ -36,19 +36,29 @@ pub enum Address {
 impl Address {
     /// The address for the current user and the installation using `data_dir`.
     ///
-    /// On Unix the socket goes into `$XDG_RUNTIME_DIR` (private to the user) when set, else
-    /// into `data_dir`.
+    /// On Unix the socket goes into the first directory private to the user where its path
+    /// fits the platform's limit: `$XDG_RUNTIME_DIR` (Linux sessions), `$TMPDIR` on macOS
+    /// (a per-user directory there), then `data_dir`.
     pub fn for_installation(data_dir: &Path) -> Self {
         let scope = fnv1a(data_dir.to_string_lossy().as_bytes());
         if cfg!(windows) {
             let user = std::env::var("USERNAME").unwrap_or_default();
             Self::Namespaced(format!("birchpad-{user}-{scope:016x}"))
         } else {
-            let dir = std::env::var_os("XDG_RUNTIME_DIR")
-                .filter(|dir| !dir.is_empty())
-                .map(PathBuf::from)
-                .unwrap_or_else(|| data_dir.to_owned());
-            Self::File(dir.join(format!("birchpad-{scope:016x}.sock")))
+            let env_dir = |name| {
+                std::env::var_os(name)
+                    .filter(|dir| !dir.is_empty())
+                    .map(PathBuf::from)
+            };
+            let mut candidates: Vec<PathBuf> = env_dir("XDG_RUNTIME_DIR").into_iter().collect();
+            if cfg!(target_os = "macos") {
+                candidates.extend(env_dir("TMPDIR"));
+            }
+            candidates.push(data_dir.to_owned());
+            Self::File(socket_path(
+                &format!("birchpad-{scope:016x}.sock"),
+                &candidates,
+            ))
         }
     }
 
@@ -58,6 +68,19 @@ impl Address {
             Self::File(path) => path.clone().to_fs_name::<GenericFilePath>(),
         }
     }
+}
+
+/// Longest socket path that fits `sockaddr_un` everywhere: 104 bytes on macOS and the BSDs,
+/// 108 on Linux, including the terminating NUL.
+const MAX_SOCKET_PATH: usize = 100;
+
+/// `name` in the first of `dirs` where the path is short enough, else in the last one (where
+/// listening fails and Birchpad runs without single instance).
+fn socket_path(name: &str, dirs: &[PathBuf]) -> PathBuf {
+    dirs.iter()
+        .map(|dir| dir.join(name))
+        .find(|path| path.as_os_str().len() <= MAX_SOCKET_PATH)
+        .unwrap_or_else(|| dirs.last().map_or_else(PathBuf::new, |dir| dir.join(name)))
 }
 
 /// The outcome of [`start`].
@@ -276,6 +299,17 @@ mod tests {
             panic!("a launch that gets no answer should run on its own");
         };
         assert_eq!(error.kind(), io::ErrorKind::TimedOut);
+    }
+
+    #[test]
+    fn socket_paths_respect_the_length_limit() {
+        let deep = PathBuf::from(format!("/home/u/{}", "nested/".repeat(20)));
+        let dirs = [deep.clone(), PathBuf::from("/home/u/.local/share/birchpad")];
+        assert_eq!(
+            socket_path("b.sock", &dirs),
+            PathBuf::from("/home/u/.local/share/birchpad/b.sock")
+        );
+        assert_eq!(socket_path("b.sock", &dirs[..1]), deep.join("b.sock"));
     }
 
     #[test]

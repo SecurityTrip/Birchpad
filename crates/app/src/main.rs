@@ -7,6 +7,9 @@
 //!
 //! See `birchpad_cli::CommandLine` for every option.
 
+// A GUI program: no console window on Windows (debug builds keep it for diagnostics).
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+
 mod app_state;
 mod banner;
 mod buffer;
@@ -15,6 +18,7 @@ mod editor;
 mod encoding_ui;
 mod file_ops;
 mod find;
+mod help;
 mod menus;
 mod pane;
 mod path_dialog;
@@ -46,7 +50,7 @@ fn main() {
     for warning in &command_line.warnings {
         eprintln!("birchpad: {warning}");
     }
-    let paths = birchpad_config::ConfigPaths::platform();
+    let paths = birchpad_config::ConfigPaths::current();
 
     // A second launch hands its files to the running instance and exits.
     let server = match (&paths.user_data, command_line.multi_instance) {
@@ -75,6 +79,7 @@ fn main() {
                 .user_config_dir()
                 .and_then(|dir| std::fs::read_to_string(dir.join("keymap.toml")).ok());
             cx.set_global(AppState::new(settings, paths));
+            help::Updates::install(help::Updates::http(), cx);
             commands::init(user_keymap.as_deref(), cx);
             cx.on_window_closed(|cx, _| {
                 if cx.windows().is_empty() {

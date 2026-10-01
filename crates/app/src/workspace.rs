@@ -9,11 +9,13 @@ use birchpad_cli::CommandLine;
 use birchpad_commands::Invocation;
 use birchpad_core::Document;
 use gpui_kit::component::WindowExt as _;
+use gpui_kit::component::button::Button;
+use gpui_kit::component::dialog::DialogAction;
 use gpui_kit::component::menu::AppMenuBar;
 use gpui_kit::component::notification::Notification;
 use gpui_kit::{
     App, AppContext as _, Context, Entity, EntityId, ExternalPaths, FocusHandle, Focusable,
-    PromptLevel, Subscription, Window, div, prelude::*, px, rgb,
+    Subscription, Window, div, prelude::*, px, rgb,
 };
 
 use crate::app_state::AppState;
@@ -40,13 +42,6 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
             .update(cx, |pane, cx| pane.cycle(-1, window, cx));
         Ok(())
     });
-    registry.workspace("help.about", |_, (), window, cx| {
-        let detail = format!("Version {}", env!("CARGO_PKG_VERSION"));
-        // The answer does not matter; dropping the receiver leaves the dialog open.
-        drop(window.prompt(PromptLevel::Info, "Birchpad", Some(&detail), &["OK"], cx));
-        Ok(())
-    });
-    registry.pending("help.check-updates");
     registry.workspace("view.word-wrap", |this, (), _, cx| {
         let current = crate::editor::ViewSettings::read(cx).word_wrap;
         AppState::update_state(cx, |state, _| state.word_wrap = Some(!current));
@@ -74,11 +69,18 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
     crate::encoding_ui::register_commands(registry);
     crate::file_ops::register_commands(registry);
     crate::find::register_commands(registry);
+    crate::help::register_commands(registry);
 }
 
 /// Shows an error to the user without interrupting them.
 pub(crate) fn report_error(error: &anyhow::Error, window: &mut Window, cx: &mut App) {
     window.push_notification(Notification::error(format!("{error:#}")), cx);
+}
+
+/// The confirming button of a dialog footer, at its natural width (`DialogAction` alone fills
+/// the footer).
+pub(crate) fn dialog_action(button: Button) -> impl IntoElement {
+    div().child(DialogAction::new().child(button))
 }
 
 /// Shows a warning to the user without interrupting them.
@@ -386,7 +388,13 @@ impl Workspace {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> Result<()> {
-        let handler = cx.global::<CommandRegistry>().get(&invocation.command);
+        let registry = cx.global::<CommandRegistry>();
+        if registry.get(&invocation.command).is_some()
+            && !registry.is_enabled(&invocation.command, cx)
+        {
+            anyhow::bail!("{} is turned off", invocation.command);
+        }
+        let handler = registry.get(&invocation.command);
         match handler {
             Some(Handler::Workspace(run)) => run(self, invocation, window, cx),
             Some(Handler::Editor(run)) => match self.active_view(cx) {

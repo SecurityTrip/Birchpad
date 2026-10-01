@@ -19,12 +19,49 @@ pub struct ConfigPaths {
     /// Per-user application data that is not a setting: recent files, recovery copies, and
     /// later sessions and backups.
     pub user_data: Option<PathBuf>,
+    /// Portable mode: user settings and data live next to the executable.
+    pub portable: bool,
 }
+
+/// A file with this name next to the executable turns on portable mode.
+pub const PORTABLE_MARKER: &str = "birchpad-portable.txt";
+/// In portable mode, the directory next to the executable that holds settings and data.
+pub const PORTABLE_DATA_DIR: &str = "data";
 
 impl ConfigPaths {
     /// The directory of the user's settings file, where `keymap.toml` lives too.
     pub fn user_config_dir(&self) -> Option<&Path> {
         self.user_settings.as_deref().and_then(Path::parent)
+    }
+
+    /// The locations for the executable at `exe`: portable if [`PORTABLE_MARKER`] is next to
+    /// it, the platform's conventional ones otherwise.
+    pub fn for_executable(exe: &Path) -> Self {
+        match exe.parent() {
+            Some(dir) if dir.join(PORTABLE_MARKER).is_file() => Self::portable(dir),
+            _ => Self::platform(),
+        }
+    }
+
+    /// The locations for the running executable (see [`Self::for_executable`]).
+    pub fn current() -> Self {
+        match env::current_exe() {
+            Ok(exe) => Self::for_executable(&exe),
+            Err(_) => Self::platform(),
+        }
+    }
+
+    /// Portable mode for an executable in `dir`: the user's settings, keymap, recent files and
+    /// recovery copies go to `dir/data`. Machine defaults and administrator policies still come
+    /// from the system, so a portable copy cannot escape the policies of the machine it runs on.
+    pub fn portable(dir: &Path) -> Self {
+        let data = dir.join(PORTABLE_DATA_DIR);
+        Self {
+            user_settings: Some(data.join("settings.toml")),
+            user_data: Some(data),
+            portable: true,
+            ..Self::platform()
+        }
     }
 }
 
@@ -47,6 +84,7 @@ impl ConfigPaths {
                     .map(|dir| dir.join("Birchpad").join("settings.toml")),
                 policy_file: None,
                 user_data: env_path("LOCALAPPDATA").map(|dir| dir.join("Birchpad")),
+                portable: false,
             }
         } else if cfg!(target_os = "macos") {
             let system = Path::new("/Library/Application Support/Birchpad");
@@ -57,6 +95,7 @@ impl ConfigPaths {
                 user_settings: user.as_ref().map(|dir| dir.join("settings.toml")),
                 policy_file: Some(system.join("policies.toml")),
                 user_data: user,
+                portable: false,
             }
         } else {
             let config_home = env_path("XDG_CONFIG_HOME")
@@ -68,6 +107,7 @@ impl ConfigPaths {
                 user_settings: config_home.map(|dir| dir.join("birchpad").join("settings.toml")),
                 policy_file: Some(PathBuf::from("/etc/birchpad/policies.toml")),
                 user_data: data_home.map(|dir| dir.join("birchpad")),
+                portable: false,
             }
         }
     }
@@ -105,7 +145,7 @@ pub fn load(paths: &ConfigPaths) -> Sources {
 
 /// Reads and resolves settings from the conventional locations.
 pub fn load_platform_settings() -> ResolvedSettings {
-    resolve(load(&ConfigPaths::platform()))
+    resolve(load(&ConfigPaths::current()))
 }
 
 fn read_table(layer: Layer, path: &Path, diagnostics: &mut Vec<Diagnostic>) -> Option<Table> {
@@ -152,6 +192,7 @@ mod tests {
             user_settings: Some(broken),
             policy_file: None,
             user_data: None,
+            portable: false,
         });
         fs::remove_dir_all(&dir).unwrap();
 
@@ -163,5 +204,24 @@ mod tests {
             .filter(|d| d.layer == Layer::User)
             .collect();
         assert_eq!(user_problems.len(), 1);
+    }
+
+    #[test]
+    fn a_marker_next_to_the_executable_makes_it_portable() {
+        let dir = env::temp_dir().join(format!("birchpad-portable-test-{}", std::process::id()));
+        fs::create_dir_all(&dir).unwrap();
+        let exe = dir.join("birchpad.exe");
+        let installed = ConfigPaths::for_executable(&exe);
+        fs::write(dir.join(PORTABLE_MARKER), "").unwrap();
+        let portable = ConfigPaths::for_executable(&exe);
+        fs::remove_dir_all(&dir).unwrap();
+
+        assert_eq!(installed, ConfigPaths::platform());
+        assert!(portable.portable);
+        assert_eq!(portable.user_data, Some(dir.join("data")));
+        assert_eq!(portable.user_config_dir(), Some(dir.join("data").as_path()));
+        // Policies and machine defaults are not the portable copy's to choose.
+        assert_eq!(portable.policy_file, installed.policy_file);
+        assert_eq!(portable.machine_defaults, installed.machine_defaults);
     }
 }

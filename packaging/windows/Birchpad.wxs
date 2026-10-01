@@ -1,6 +1,6 @@
 <!--
-  Per-machine MSI for enterprise deployment (WiX Toolset v4+).
-  Not wired into CI yet. Build manually with:
+  Per-machine MSI for enterprise deployment (WiX Toolset v4+). Built by
+  .github/workflows/release.yml for stable releases; to build it manually:
     wix build packaging/windows/Birchpad.wxs -arch x64 -d Version=0.1.0 -d BinDir=target/release -o packaging/out/birchpad-x64.msi
 
   UpgradeCode must never change: it is how Windows Installer recognizes newer versions of Birchpad.

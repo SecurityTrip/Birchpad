@@ -14,12 +14,15 @@ pub(crate) struct AppState {
     pub(crate) ansi: Encoding,
     /// Recent files and other state kept between runs, in `state.toml`.
     pub(crate) state: UserState,
+    /// Settings fixed by administrator policy, as `(key, value)`, for Help > About.
+    pub(crate) policies: Vec<(String, String)>,
 }
 
 impl Global for AppState {}
 
 impl AppState {
     pub(crate) fn new(settings: ResolvedSettings, paths: ConfigPaths) -> Self {
+        let policies = settings.policies();
         let settings = settings.settings;
         let system = birchpad_io::system_ansi();
         let ansi = match settings.files.ansi_encoding.as_deref() {
@@ -42,6 +45,7 @@ impl AppState {
             paths,
             ansi,
             state,
+            policies,
         }
     }
 

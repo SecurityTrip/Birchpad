@@ -46,6 +46,8 @@ pub(crate) struct CommandRegistry {
     handlers: HashMap<&'static str, Handler>,
     /// Commands in the catalog that are not implemented yet: shown disabled in menus.
     pending: HashSet<&'static str>,
+    /// Commands that are available only in some states (e.g. turned off by a setting).
+    enabled: HashMap<&'static str, fn(&App) -> bool>,
 }
 
 impl Global for CommandRegistry {}
@@ -90,6 +92,10 @@ impl CommandRegistry {
     }
 
     /// Marks a catalog command as not implemented yet.
+    #[expect(
+        dead_code,
+        reason = "every catalog command is implemented at the moment"
+    )]
     pub(crate) fn pending(&mut self, id: &'static str) {
         assert!(
             birchpad_commands::find(id).is_some(),
@@ -104,6 +110,21 @@ impl CommandRegistry {
 
     pub(crate) fn is_pending(&self, id: &str) -> bool {
         self.pending.contains(id)
+    }
+
+    /// Makes a registered command available only while `enabled` says so; menus show it
+    /// disabled otherwise.
+    pub(crate) fn enabled_when(&mut self, id: &'static str, enabled: fn(&App) -> bool) {
+        assert!(
+            self.handlers.contains_key(id),
+            "command {id} is not registered"
+        );
+        self.enabled.insert(id, enabled);
+    }
+
+    /// Whether the command can run now.
+    pub(crate) fn is_enabled(&self, id: &str, cx: &App) -> bool {
+        !self.is_pending(id) && self.enabled.get(id).is_none_or(|enabled| enabled(cx))
     }
 
     fn insert(&mut self, id: &'static str, scope: Scope, handler: Handler) {

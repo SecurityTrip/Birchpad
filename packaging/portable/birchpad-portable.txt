@@ -1,0 +1,9 @@
+This file makes Birchpad portable.
+
+While it is next to the Birchpad program, settings, key bindings, recent files and other data
+are kept in the "data" folder next to the program instead of in your user profile, so the whole
+folder can be moved or carried on a USB drive.
+
+Administrator policies of the computer still apply to a portable copy.
+
+Delete this file to use the usual per-user locations instead.

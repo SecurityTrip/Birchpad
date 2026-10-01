@@ -12,7 +12,7 @@ use birchpad_core::{Edit, Rope, Transaction};
 use gpui_kit::component::WindowExt as _;
 use gpui_kit::component::button::{Button, ButtonVariants as _};
 use gpui_kit::component::checkbox::Checkbox;
-use gpui_kit::component::dialog::{DialogAction, DialogClose, DialogFooter};
+use gpui_kit::component::dialog::{DialogClose, DialogFooter};
 use gpui_kit::component::input::{Input, InputEvent, InputState};
 use gpui_kit::component::{IconName, Selectable as _, Sizable};
 use gpui_kit::{
@@ -496,7 +496,9 @@ impl Workspace {
                 .footer(
                     DialogFooter::new()
                         .child(DialogClose::new().trigger(|button| button.label("Cancel")))
-                        .child(DialogAction::new().child(Button::new("go").label("Go"))),
+                        .child(crate::workspace::dialog_action(
+                            Button::new("go").label("Go"),
+                        )),
                 )
                 .on_ok(move |_, _, cx| {
                     confirm.update(cx, |go_to, cx| match go_to.go(cx) {

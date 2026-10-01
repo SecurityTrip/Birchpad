@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 use futures::channel::oneshot;
 use gpui_kit::component::WindowExt as _;
 use gpui_kit::component::button::Button;
-use gpui_kit::component::dialog::{DialogAction, DialogClose, DialogFooter};
+use gpui_kit::component::dialog::{DialogClose, DialogFooter};
 use gpui_kit::component::input::{Input, InputState};
 use gpui_kit::{AppContext as _, AsyncWindowContext, PathPromptOptions, Window, prelude::*};
 
@@ -94,7 +94,9 @@ fn open_path_dialog(
             .footer(
                 DialogFooter::new()
                     .child(DialogClose::new().trigger(|button| button.label("Cancel")))
-                    .child(DialogAction::new().child(Button::new("ok").label(title))),
+                    .child(crate::workspace::dialog_action(
+                        Button::new("ok").label(title),
+                    )),
             )
             .on_ok(move |_, _, cx| {
                 let value = input.read(cx).value().trim().to_owned();

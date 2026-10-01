@@ -15,9 +15,11 @@ birchpad-commands.workspace = true
 birchpad-config.workspace = true
 birchpad-core.workspace = true
 birchpad-io.workspace = true
+birchpad-update.workspace = true
 birchpad-view.workspace = true
 futures = "0.3"
 gpui-kit = "0.7"
+semver = "1"
 serde.workspace = true
 serde_json.workspace = true
 
