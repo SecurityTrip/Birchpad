@@ -33,6 +33,8 @@ pub enum Placeholder {
     /// Every supported legacy encoding, grouped by script, each invoking `command` with
     /// `{ "encoding": <name> }`.
     CharacterSets { command: &'static str },
+    /// The languages, grouped by first letter as in Notepad++, each invoking `language.set`.
+    Languages,
 }
 
 impl MenuItem {
@@ -158,6 +160,8 @@ pub fn main_menu() -> Vec<Menu> {
             cmd("search.replace"),
             Separator,
             cmd("search.go-to"),
+            cmd("search.go-to-matching-brace"),
+            cmd("search.select-to-matching-brace"),
         ],
     );
 
@@ -218,12 +222,21 @@ pub fn main_menu() -> Vec<Menu> {
     )));
     let encoding = Menu::new("Encoding", encoding_items);
 
+    let language = Menu::new(
+        "Language",
+        vec![
+            MenuItem::command_with("language.set", json!({ "language": "text" }), "Normal Text"),
+            Separator,
+            Dynamic(Placeholder::Languages),
+        ],
+    );
+
     let help = Menu::new(
         "Help",
         vec![cmd("help.check-updates"), Separator, cmd("help.about")],
     );
 
-    vec![file, edit, search, view, encoding, help]
+    vec![file, edit, search, view, encoding, language, help]
 }
 
 #[cfg(test)]
@@ -235,7 +248,9 @@ mod tests {
         let titles: Vec<String> = main_menu().into_iter().map(|menu| menu.title).collect();
         assert_eq!(
             titles,
-            ["File", "Edit", "Search", "View", "Encoding", "Help"]
+            [
+                "File", "Edit", "Search", "View", "Encoding", "Language", "Help"
+            ]
         );
     }
 

@@ -10,11 +10,11 @@ use birchpad_core::Rope;
 use birchpad_core::motion::line_count;
 use birchpad_view::{DisplayMap, DisplayText, LayoutConfig, Row};
 use gpui_kit::{
-    App, AppContext as _, Bounds, Context, Font, Hsla, Pixels, Point, ShapedLine, TextRun,
-    UnderlineStyle, Window, font, point, px, rgb, size,
+    App, AppContext as _, Bounds, Context, Font, FontStyle, FontWeight, Hsla, Pixels, Point,
+    ShapedLine, TextRun, UnderlineStyle, Window, font, point, px, rgb, size,
 };
 
-use super::theme::{self, Paint};
+use super::theme::{self, Paint, TextStyle};
 use super::{EditorView, ViewSettings};
 
 /// Documents larger than this are rewrapped on a background thread.
@@ -35,6 +35,51 @@ pub(super) struct Metrics {
     pub(super) line_height: Pixels,
     /// Width of one cell of the monospace grid.
     pub(super) cell: Pixels,
+}
+
+/// Gaps smaller than this between the parts of the text shown in a frame are highlighted with
+/// one query; larger ones (inside a long, partly shown line) split the query.
+const QUERY_GAP: usize = 4096;
+
+/// Syntax highlights of the text shown in the last frame, reused while the tree and the
+/// visible text stay the same (as when the caret blinks).
+pub(super) struct HighlightCache {
+    language: &'static str,
+    version: u64,
+    ranges: Vec<ByteRange<usize>>,
+    spans: Vec<(ByteRange<usize>, TextStyle)>,
+}
+
+/// How the text of a frame is colored: syntax highlights and the brackets at the caret.
+#[derive(Default)]
+struct FrameStyles {
+    /// Sorted, non-overlapping.
+    spans: Vec<(ByteRange<usize>, TextStyle)>,
+    braces: Vec<(ByteRange<usize>, TextStyle)>,
+}
+
+impl FrameStyles {
+    /// The style at document position `pos`: a bracket's, else the highlight's.
+    fn at(&self, pos: usize) -> Option<TextStyle> {
+        if let Some((_, style)) = self.braces.iter().find(|(range, _)| range.contains(&pos)) {
+            return Some(*style);
+        }
+        let index = self.spans.partition_point(|(range, _)| range.end <= pos);
+        self.spans
+            .get(index)
+            .filter(|(range, _)| range.start <= pos)
+            .map(|(_, style)| *style)
+    }
+
+    /// Positions where the style may change, within `range`.
+    fn boundaries(&self, range: ByteRange<usize>) -> impl Iterator<Item = usize> + '_ {
+        let first = self.spans.partition_point(|(r, _)| r.end <= range.start);
+        self.spans[first..]
+            .iter()
+            .take_while(move |(r, _)| r.start < range.end)
+            .chain(self.braces.iter())
+            .flat_map(|(r, _)| [r.start, r.end])
+    }
 }
 
 /// A row painted in this frame.
@@ -211,7 +256,8 @@ impl EditorView {
         let offset = line_height * (self.scroll_top - first_row as f64) as f32;
         let visible_count = full_rows + 2;
 
-        let mut rows = Vec::with_capacity(visible_count);
+        // First the rows and the part of each that is shown, then their highlights, then shaping.
+        let mut pending = Vec::with_capacity(visible_count);
         let mut line_numbers = Vec::new();
         let mut widest = px(0.);
         for index in first_row..(first_row + visible_count).min(total_rows) {
@@ -246,10 +292,6 @@ impl EditorView {
                 };
                 (display, x)
             };
-            let shaped = self.shape_row(&display, &metrics, window);
-            if row.range.len() <= LONG_ROW {
-                widest = widest.max(shaped.width());
-            }
             if row.index_in_line == 0
                 && let Some(margin) = margins.line_numbers
             {
@@ -258,6 +300,15 @@ impl EditorView {
                     shape(window, &number, &metrics, rgb(theme::GUTTER_TEXT).into());
                 let x = margin.right() - cell - shaped_number.width();
                 line_numbers.push((point(x, y), shaped_number));
+            }
+            pending.push((row, y, x, display));
+        }
+        let styles = self.frame_styles(&pending, &text, cx);
+        let mut rows = Vec::with_capacity(pending.len());
+        for (row, y, x, display) in pending {
+            let shaped = self.shape_row(&display, &metrics, &styles, window);
+            if row.range.len() <= LONG_ROW {
+                widest = widest.max(shaped.width());
             }
             rows.push(VisibleRow {
                 row,
@@ -352,10 +403,75 @@ impl EditorView {
         });
     }
 
+    /// Highlights and bracket styles for the text shown in this frame.
+    fn frame_styles(
+        &mut self,
+        rows: &[(birchpad_view::Row, Pixels, Pixels, DisplayText)],
+        text: &Rope,
+        cx: &App,
+    ) -> FrameStyles {
+        let buffer = self.buffer.read(cx);
+        let mut styles = FrameStyles::default();
+        if let Some(found) =
+            birchpad_syntax::matching_bracket(text, buffer.syntax(), self.selection.primary().head)
+        {
+            match found.partner {
+                Some(partner) => {
+                    styles.braces.push((found.bracket, theme::BRACE_MATCH));
+                    styles.braces.push((partner, theme::BRACE_MATCH));
+                }
+                None => styles.braces.push((found.bracket, theme::BRACE_BAD)),
+            }
+        }
+        let Some(syntax) = buffer.syntax() else {
+            self.highlight_cache = None;
+            return styles;
+        };
+        // The shown parts of the rows, merged where they are close.
+        let mut ranges: Vec<ByteRange<usize>> = Vec::new();
+        for (_, _, _, display) in rows {
+            let shown = display.doc_start()..display.doc_end();
+            match ranges.last_mut() {
+                Some(last) if shown.start <= last.end + QUERY_GAP => {
+                    last.end = last.end.max(shown.end);
+                }
+                _ => ranges.push(shown),
+            }
+        }
+        let language = syntax.language().id;
+        let version = syntax.version();
+        let cached = self.highlight_cache.as_ref().is_some_and(|cache| {
+            cache.language == language && cache.version == version && cache.ranges == ranges
+        });
+        if !cached {
+            let mut spans = Vec::new();
+            for range in &ranges {
+                for (span, highlight) in syntax.highlights(text, range.clone()) {
+                    if let Some(style) = theme::syntax_style(highlight) {
+                        spans.push((span, style));
+                    }
+                }
+            }
+            self.highlight_cache = Some(HighlightCache {
+                language,
+                version,
+                ranges,
+                spans,
+            });
+        }
+        styles.spans = self
+            .highlight_cache
+            .as_ref()
+            .map(|cache| cache.spans.clone())
+            .unwrap_or_default();
+        styles
+    }
+
     fn shape_row(
         &self,
         display: &DisplayText,
         metrics: &Metrics,
+        styles: &FrameStyles,
         window: &mut Window,
     ) -> ShapedLine {
         let color: Hsla = rgb(TEXT_COLOR).into();
@@ -367,33 +483,50 @@ impl EditorView {
             underline: None,
             strikethrough: None,
         };
-        // Underline the text an input method is composing.
-        let mut runs = Vec::new();
-        if let Some(marked) = &self.marked {
-            let start =
-                display.to_display(marked.start.clamp(display.doc_start(), display.doc_end()));
-            let end = display.to_display(marked.end.clamp(display.doc_start(), display.doc_end()));
-            if start < end {
-                runs.push(TextRun {
-                    len: start,
+        let (doc_start, doc_end) = (display.doc_start(), display.doc_end());
+        let marked = self
+            .marked
+            .clone()
+            .filter(|marked| marked.start < doc_end && marked.end > doc_start);
+        // Cut the row wherever the style changes, in display offsets.
+        let to_display = |pos: usize| display.to_display(pos.clamp(doc_start, doc_end));
+        let mut cuts: Vec<usize> = styles
+            .boundaries(doc_start..doc_end)
+            .chain(marked.iter().flat_map(|m| [m.start, m.end]))
+            .map(to_display)
+            .chain([0, display.text.len()])
+            .collect();
+        cuts.sort_unstable();
+        cuts.dedup();
+        let mut runs: Vec<TextRun> = cuts
+            .windows(2)
+            .filter(|cut| cut[0] < cut[1])
+            .map(|cut| {
+                let pos = display.to_doc(cut[0]);
+                let mut run = TextRun {
+                    len: cut[1] - cut[0],
                     ..base.clone()
-                });
-                runs.push(TextRun {
-                    len: end - start,
-                    underline: Some(UnderlineStyle {
-                        color: Some(color),
+                };
+                if let Some(style) = styles.at(pos) {
+                    run.color = rgb(style.color).into();
+                    if style.bold {
+                        run.font.weight = FontWeight::BOLD;
+                    }
+                    if style.italic {
+                        run.font.style = FontStyle::Italic;
+                    }
+                }
+                // Underline the text an input method is composing.
+                if marked.as_ref().is_some_and(|m| m.contains(&pos)) {
+                    run.underline = Some(UnderlineStyle {
+                        color: Some(run.color),
                         thickness: px(1.),
                         wavy: false,
-                    }),
-                    ..base.clone()
-                });
-                runs.push(TextRun {
-                    len: display.text.len() - end,
-                    ..base.clone()
-                });
-                runs.retain(|run| run.len > 0);
-            }
-        }
+                    });
+                }
+                run
+            })
+            .collect();
         if runs.is_empty() {
             runs.push(base);
         }

@@ -30,6 +30,8 @@ pub(crate) struct StatusInfo {
     pub(crate) selected_lines: usize,
     pub(crate) format: Format,
     pub(crate) overwrite: bool,
+    /// The language's description ("Rust file"), or `None` for normal text.
+    pub(crate) language: Option<&'static str>,
 }
 
 impl StatusInfo {
@@ -52,6 +54,11 @@ impl StatusInfo {
             selected_lines,
             format: view.buffer.read(cx).doc().format(),
             overwrite: view.overwrite,
+            language: view
+                .buffer
+                .read(cx)
+                .language()
+                .map(|language| language.description),
         }
     }
 
@@ -104,11 +111,16 @@ pub(crate) fn render<V: 'static>(
         .border_t_1()
         .border_color(rgb(0xd0d7de))
         .bg(rgb(0xf6f8fa))
-        .text_size(px(12.))
-        .child(div().px_3().flex_1().child("Normal text file"));
+        .text_size(px(12.));
     let Some(info) = info else {
-        return bar;
+        return bar.child(div().px_3().flex_1().child("Normal text file"));
     };
+    bar = bar.child(
+        div()
+            .px_3()
+            .flex_1()
+            .child(info.language.unwrap_or("Normal text file")),
+    );
     let [length, position, selection, eol, encoding, mode] = info.sections();
     let format = info.format;
     bar = bar
@@ -215,7 +227,8 @@ fn add_items(
                     });
                 }
             }
-            MenuItem::Placeholder(Placeholder::RecentFiles) => {}
+            // The status bar's menus show line endings and encodings only.
+            MenuItem::Placeholder(Placeholder::RecentFiles | Placeholder::Languages) => {}
         }
     }
     menu

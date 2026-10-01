@@ -1,0 +1,37 @@
+---
+source: crates/syntax/tests/highlights.rs
+expression: render(&path)
+---
+language: cs
+keyword                  using
+variable                 System
+punctuation.delimiter    ;
+comment                  // A greeter.
+keyword                  public
+keyword                  class
+type                     Greeter
+punctuation.bracket      {
+keyword                  private
+keyword                  readonly
+type.builtin             string
+variable                 name
+operator                 =
+string                   "world"
+punctuation.delimiter    ;
+keyword                  public
+type.builtin             void
+function                 Greet
+punctuation.bracket      ()
+operator                 =>
+variable                 Console
+punctuation.delimiter    .
+function                 WriteLine
+punctuation.bracket      (
+string                   $"Hello, 
+punctuation.bracket      {
+variable                 name
+punctuation.bracket      }
+string                   !"
+punctuation.bracket      )
+punctuation.delimiter    ;
+punctuation.bracket      }

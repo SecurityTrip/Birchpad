@@ -1,0 +1,25 @@
+---
+source: crates/syntax/tests/highlights.rs
+expression: render(&path)
+---
+language: java
+keyword                  import
+variable                 java
+variable                 util
+variable                 List
+comment                  /** A greeter. */
+keyword                  public
+keyword                  class
+type                     Greeter
+operator                 @
+attribute                Override
+keyword                  public
+type                     String
+function.method          toString
+keyword                  return
+string                   "Hello, "
+type                     List
+function.method          of
+number                   1
+number                   2
+function.method          size

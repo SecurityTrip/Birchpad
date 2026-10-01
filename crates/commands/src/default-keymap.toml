@@ -73,6 +73,16 @@ keys = "secondary-g"
 command = "search.go-to"
 
 [[binding]]
+keys = "secondary-b"
+command = "search.go-to-matching-brace"
+context = "Editor"
+
+[[binding]]
+keys = "secondary-alt-b"
+command = "search.select-to-matching-brace"
+context = "Editor"
+
+[[binding]]
 keys = "escape"
 command = "search.close"
 context = "FindBar"

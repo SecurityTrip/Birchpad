@@ -104,6 +104,11 @@ pub const COMMANDS: &[CommandSpec] = &[
     workspace("search.find-next", "Find Next"),
     workspace("search.find-previous", "Find Previous"),
     workspace("search.go-to", "Go To..."),
+    editor("search.go-to-matching-brace", "Go to Matching Brace"),
+    editor(
+        "search.select-to-matching-brace",
+        "Select All In-between {} [] or ()",
+    ),
     workspace("search.close", "Close Find Panel"),
     // View
     workspace("view.word-wrap", "Word Wrap"),
@@ -115,6 +120,8 @@ pub const COMMANDS: &[CommandSpec] = &[
     // Encoding; { "encoding": "utf-8" | "utf-8-bom" | "utf-16le-bom" | "ansi" | "windows-1251" | ... }
     workspace("encoding.encode-in", "Encode in"),
     workspace("encoding.convert-to", "Convert to"),
+    // Language; { "language": "rust" | "cpp" | ... | "text" }
+    workspace("language.set", "Language"),
     // Help
     workspace("help.check-updates", "Check for Updates..."),
     workspace("help.about", "About Birchpad"),

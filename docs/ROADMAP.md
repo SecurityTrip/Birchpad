@@ -49,7 +49,12 @@ What Phase 1 left for later is marked *(from Phase 1)* in the phases below.
       markers); margins for line numbers, bookmarks and folding; clicking the symbol margin
       toggles a bookmark, the line number margin selects lines
       ([ADR 0010](adr/0010-decorations-markers-and-margins.md))
-- Syntax highlighting with tree-sitter for ~20 popular languages, auto-indent, brace matching
+- [x] Syntax highlighting with tree-sitter for 27 languages, incremental and in the
+      background; language detection by name, extension, `#!` line and first line; Language
+      menu and `-l`; Large File Restriction (`files.large-file-limit-mb`); brace matching with
+      Ctrl+B / Ctrl+Alt+B; basic and advanced auto-indent
+      ([ADR 0011](adr/0011-syntax-highlighting.md))
+- Language injections (scripts in HTML, code blocks and inline formatting in Markdown)
 - Folding
 - Multi-editing, column selection (Alt+drag, Alt+Shift+arrows), Column Editor
 - Smart highlighting, Mark with 5 styles, bookmarks and bookmarked-line operations

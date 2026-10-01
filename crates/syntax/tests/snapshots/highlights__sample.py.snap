@@ -1,0 +1,26 @@
+---
+source: crates/syntax/tests/highlights.rs
+expression: render(&path)
+---
+language: python
+keyword                  import
+variable                 os
+comment                  # Greets everyone.
+keyword                  def
+function                 greet
+variable                 name
+type                     str
+operator                 ->
+type                     str
+string                   """Return a greeting."""
+keyword                  return
+string                   f"Hello, 
+punctuation.special      {
+variable                 name
+punctuation.special      }
+string                   !"
+keyword                  class
+constructor              Greeter
+variable                 count
+operator                 =
+number                   42

@@ -2,15 +2,18 @@
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::time::{Duration, Instant};
 
 use birchpad_core::{
-    Document, Encoding, Format, LineMarkers, RangeSet, RevisionId, Rope, Selection, Transaction,
-    UndoGrouping,
+    ChangeSet, Document, Encoding, Format, LineMarkers, RangeSet, RevisionId, Rope, Selection,
+    Transaction, UndoGrouping,
 };
 use birchpad_io::{DecodeProblem, LoadOptions, LoadedFile, ReadError};
+use birchpad_syntax::{Language, Syntax, Tree};
 use gpui_kit::{AppContext as _, Context, EntityId, EventEmitter, Task};
+
+use crate::app_state::AppState;
 
 /// What changed in a buffer, so that every view showing it can follow.
 #[derive(Debug, Clone)]
@@ -27,6 +30,8 @@ pub(crate) enum BufferEvent {
     StateChanged,
     /// Bookmarks or token styles changed without an edit.
     MarksChanged,
+    /// The language changed or a new syntax tree arrived: highlights need redrawing.
+    SyntaxChanged,
     /// The file could not be read; the buffer stays empty.
     LoadFailed(Arc<ReadError>),
 }
@@ -65,6 +70,33 @@ impl DocumentMarks {
     }
 }
 
+/// The buffer's language and syntax tree, and the background parse that keeps the tree current.
+#[derive(Default)]
+struct SyntaxState {
+    language: Option<&'static Language>,
+    /// Chosen in the Language menu or with `-l`: kept when the file gets another name.
+    chosen: bool,
+    /// `None` for plain text, and for files over the large file limit.
+    syntax: Option<Syntax>,
+    parsing: Option<Parsing>,
+}
+
+/// A parse running in the background.
+struct Parsing {
+    /// The text it parses.
+    text: Rope,
+    /// Edits made since it started, composed into one, to replay on its tree.
+    since: Option<ChangeSet>,
+    cancel: Arc<AtomicBool>,
+    task: Option<Task<()>>,
+}
+
+impl Drop for Parsing {
+    fn drop(&mut self) {
+        self.cancel.store(true, Ordering::Relaxed);
+    }
+}
+
 struct Loading {
     progress: Arc<AtomicU64>,
     total: u64,
@@ -81,6 +113,7 @@ pub(crate) struct Buffer {
     requested_read_only: bool,
     loading: Option<Loading>,
     marks: DocumentMarks,
+    syntax: SyntaxState,
 }
 
 impl EventEmitter<BufferEvent> for Buffer {}
@@ -96,6 +129,7 @@ impl Buffer {
             requested_read_only: false,
             loading: None,
             marks: DocumentMarks::default(),
+            syntax: SyntaxState::default(),
         }
     }
 
@@ -123,6 +157,7 @@ impl Buffer {
             requested_read_only: read_only,
             loading: None,
             marks: DocumentMarks::default(),
+            syntax: SyntaxState::default(),
         };
         buffer.load(options, None, cx);
         buffer
@@ -199,6 +234,7 @@ impl Buffer {
                 self.file_read_only = file.info.read_only;
                 self.doc = Document::with_format(file.text, file.format);
                 self.marks = DocumentMarks::default();
+                self.detect_language(cx);
                 cx.emit(BufferEvent::Reloaded);
             }
             Err(ReadError::NotFound(_)) => {
@@ -211,6 +247,7 @@ impl Buffer {
                 self.problem = None;
                 self.doc = Document::with_format(Rope::new(), format);
                 self.marks = DocumentMarks::default();
+                self.detect_language(cx);
                 cx.emit(BufferEvent::Reloaded);
             }
             Err(error) => cx.emit(BufferEvent::LoadFailed(Arc::new(error))),
@@ -236,6 +273,137 @@ impl Buffer {
         change(&mut self.marks, self.doc.text());
         cx.emit(BufferEvent::MarksChanged);
         cx.notify();
+    }
+
+    pub(crate) fn language(&self) -> Option<&'static Language> {
+        self.syntax.language
+    }
+
+    /// The syntax tree, unless the buffer is plain text or over the large file limit.
+    pub(crate) fn syntax(&self) -> Option<&Syntax> {
+        self.syntax.syntax.as_ref()
+    }
+
+    /// Sets the language from the Language menu or the command line (`None` for normal text).
+    /// A chosen language is kept when the file is saved under another name, and it applies
+    /// even over the large file limit.
+    pub(crate) fn set_language(
+        &mut self,
+        language: Option<&'static Language>,
+        cx: &mut Context<Self>,
+    ) {
+        self.syntax.chosen = true;
+        self.install_language(language, cx);
+    }
+
+    /// Recognizes the language from the file name and the first line, unless one was chosen.
+    fn detect_language(&mut self, cx: &mut Context<Self>) {
+        if self.syntax.chosen {
+            self.install_language(self.syntax.language, cx);
+            return;
+        }
+        let text = self.doc.text();
+        let first_line = text
+            .lines(birchpad_core::LINE_TYPE)
+            .next()
+            .map(|line| {
+                let end = line.floor_char_boundary(line.len().min(512));
+                line.slice(..end).to_string()
+            })
+            .unwrap_or_default();
+        let language = birchpad_syntax::detect(self.path.as_deref(), &first_line);
+        self.install_language(language, cx);
+    }
+
+    fn install_language(&mut self, language: Option<&'static Language>, cx: &mut Context<Self>) {
+        self.syntax.parsing = None;
+        let limit = u64::from(AppState::global(cx).settings.files.large_file_limit_mb) << 20;
+        let too_large = self.doc.text().len() as u64 > limit && !self.syntax.chosen;
+        let language = language.filter(|_| !too_large);
+        self.syntax.language = language;
+        self.syntax.syntax =
+            language.and_then(|language| match birchpad_syntax::config(language) {
+                Ok(config) => Some(Syntax::new(config)),
+                Err(error) => {
+                    eprintln!("syntax: {error}");
+                    None
+                }
+            });
+        self.start_parse(cx);
+        cx.emit(BufferEvent::SyntaxChanged);
+        cx.emit(BufferEvent::StateChanged);
+        cx.notify();
+    }
+
+    /// Starts parsing the current text in the background, unless a parse is running.
+    fn start_parse(&mut self, cx: &mut Context<Self>) {
+        let Some(syntax) = &self.syntax.syntax else {
+            return;
+        };
+        if self.syntax.parsing.is_some() || self.loading.is_some() {
+            return;
+        }
+        let text = self.doc.text().clone();
+        let job = syntax.parse_job(text.clone());
+        let cancel = Arc::new(AtomicBool::new(false));
+        let flag = cancel.clone();
+        let started = Instant::now();
+        let task = cx.spawn(async move |this, cx| {
+            let tree = cx.background_spawn(async move { job.run(&flag) }).await;
+            if std::env::var_os("BIRCHPAD_TIMINGS").is_some() {
+                eprintln!("timing: parsed in {:?}", started.elapsed());
+            }
+            this.update(cx, |buffer, cx| buffer.finish_parse(tree, cx))
+                .ok();
+        });
+        self.syntax.parsing = Some(Parsing {
+            text,
+            since: None,
+            cancel,
+            task: Some(task),
+        });
+    }
+
+    fn finish_parse(&mut self, tree: Option<Tree>, cx: &mut Context<Self>) {
+        let Some(mut parsing) = self.syntax.parsing.take() else {
+            return;
+        };
+        // This runs inside the parse task: let it finish instead of cancelling it from within.
+        if let Some(task) = parsing.task.take() {
+            task.detach();
+        }
+        let (Some(tree), Some(syntax)) = (tree, &mut self.syntax.syntax) else {
+            return;
+        };
+        syntax.install(tree);
+        if let Some(since) = parsing.since.take() {
+            // The text changed while parsing: bring the new tree up to date and parse again.
+            syntax.edit(&parsing.text, &since);
+            self.start_parse(cx);
+        }
+        cx.emit(BufferEvent::SyntaxChanged);
+        cx.notify();
+    }
+
+    /// Keeps decorations and the syntax tree in step with an edit of `old_text`.
+    fn follow_edit(&mut self, old_text: &Rope, transaction: &Transaction, cx: &mut Context<Self>) {
+        self.marks.map(transaction, self.doc.text());
+        let changes = transaction.changes();
+        if changes.is_identity() {
+            return;
+        }
+        if let Some(syntax) = &mut self.syntax.syntax {
+            syntax.edit(old_text, changes);
+            match &mut self.syntax.parsing {
+                Some(parsing) => {
+                    parsing.since = Some(match parsing.since.take() {
+                        Some(earlier) => earlier.compose(changes.clone()),
+                        None => changes.clone(),
+                    });
+                }
+                None => self.start_parse(cx),
+            }
+        }
     }
 
     pub(crate) fn path(&self) -> Option<&Path> {
@@ -268,6 +436,8 @@ impl Buffer {
             self.path = Some(path);
             self.untitled = None;
             self.file_read_only = false;
+            // Saved under another name: the extension may say another language.
+            self.detect_language(cx);
         }
         self.doc.mark_saved_at(revision);
         cx.emit(BufferEvent::StateChanged);
@@ -310,8 +480,9 @@ impl Buffer {
     ) {
         let was_modified = self.doc.is_modified();
         let format_before = self.doc.format();
+        let old_text = self.doc.text().clone();
         self.doc.apply(&transaction, selection_before, grouping);
-        self.marks.map(&transaction, self.doc.text());
+        self.follow_edit(&old_text, &transaction, cx);
         cx.emit(BufferEvent::Edited {
             transaction,
             origin,
@@ -347,8 +518,9 @@ impl Buffer {
         origin: Option<EntityId>,
         cx: &mut Context<Self>,
     ) -> Option<Transaction> {
+        let old_text = self.doc.text().clone();
         let transaction = self.doc.undo()?;
-        self.after_history_step(transaction.clone(), origin, cx);
+        self.after_history_step(&old_text, transaction.clone(), origin, cx);
         Some(transaction)
     }
 
@@ -357,18 +529,20 @@ impl Buffer {
         origin: Option<EntityId>,
         cx: &mut Context<Self>,
     ) -> Option<Transaction> {
+        let old_text = self.doc.text().clone();
         let transaction = self.doc.redo()?;
-        self.after_history_step(transaction.clone(), origin, cx);
+        self.after_history_step(&old_text, transaction.clone(), origin, cx);
         Some(transaction)
     }
 
     fn after_history_step(
         &mut self,
+        old_text: &Rope,
         transaction: Transaction,
         origin: Option<EntityId>,
         cx: &mut Context<Self>,
     ) {
-        self.marks.map(&transaction, self.doc.text());
+        self.follow_edit(old_text, &transaction, cx);
         cx.emit(BufferEvent::Edited {
             transaction,
             origin,

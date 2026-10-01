@@ -86,6 +86,35 @@ fn build_menu(
                     ));
                 }
             }
+            MenuItem::Placeholder(Placeholder::Languages) => {
+                // Grouped by first letter, as in Notepad++.
+                let mut letters: Vec<char> = birchpad_syntax::LANGUAGES
+                    .iter()
+                    .filter_map(|language| language.name.chars().next())
+                    .map(|letter| letter.to_ascii_uppercase())
+                    .collect();
+                letters.dedup();
+                for letter in letters {
+                    let entries = birchpad_syntax::LANGUAGES
+                        .iter()
+                        .filter(|language| {
+                            language.name.chars().next().map(|c| c.to_ascii_uppercase())
+                                == Some(letter)
+                        })
+                        .map(|language| {
+                            let invocation = Invocation::with_args(
+                                "language.set",
+                                json!({ "language": language.id }),
+                            );
+                            let checked = (state.checked)(&invocation);
+                            GpuiMenuItem::action(language.name, RunCommand(invocation))
+                                .checked(checked)
+                        });
+                    items.push(GpuiMenuItem::submenu(
+                        gpui_kit::Menu::new(letter.to_string()).items(entries),
+                    ));
+                }
+            }
         }
     }
     gpui_kit::Menu::new(menu.title).items(items)

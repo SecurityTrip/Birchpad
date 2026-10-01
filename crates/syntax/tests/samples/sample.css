@@ -1,0 +1,6 @@
+/* Page styles */
+body > .content {
+  color: #1f2328;
+  margin: 0 auto !important;
+}
+@media (max-width: 600px) { body { font-size: 14px; } }

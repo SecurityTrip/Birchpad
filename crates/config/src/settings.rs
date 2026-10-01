@@ -26,6 +26,22 @@ pub struct EditorSettings {
     pub line_numbers: bool,
     pub bookmark_margin: bool,
     pub fold_margin: bool,
+    /// What Enter does with indentation.
+    pub auto_indent: AutoIndent,
+}
+
+/// Notepad++'s auto-indent modes.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum AutoIndent {
+    /// A new line starts at column 1.
+    Off,
+    /// A new line gets the indentation of the line above.
+    Basic,
+    /// Like basic, and one level more after an opening bracket (or a colon in Python); Enter
+    /// between a pair of braces puts the closing one on its own line.
+    #[default]
+    Advanced,
 }
 
 impl Default for EditorSettings {
@@ -37,6 +53,7 @@ impl Default for EditorSettings {
             line_numbers: true,
             bookmark_margin: true,
             fold_margin: true,
+            auto_indent: AutoIndent::default(),
         }
     }
 }
@@ -51,6 +68,9 @@ pub struct FileSettings {
     /// elsewhere.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub ansi_encoding: Option<String>,
+    /// Like Notepad++'s Large File Restriction: files larger than this many megabytes open
+    /// without syntax highlighting, brace matching, smart highlighting and folding.
+    pub large_file_limit_mb: u32,
 }
 
 impl Default for FileSettings {
@@ -58,6 +78,7 @@ impl Default for FileSettings {
         Self {
             recent_limit: 10,
             ansi_encoding: None,
+            large_file_limit_mb: 20,
         }
     }
 }

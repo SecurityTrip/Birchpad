@@ -24,6 +24,7 @@ use gpui_kit::{
 use serde::Deserialize;
 
 use birchpad_cli::CaretTarget;
+use birchpad_config::AutoIndent;
 
 use crate::app_state::AppState;
 use crate::buffer::{Buffer, BufferEvent, ReadOnly};
@@ -147,8 +148,15 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
         Ok(())
     });
     registry.editor("edit.newline", |this, (), _, cx| {
-        let line_ending = this.buffer.read(cx).doc().line_ending();
-        this.insert(line_ending.as_str(), LastEdit::Typing, cx);
+        this.newline(cx);
+        Ok(())
+    });
+    registry.editor("search.go-to-matching-brace", |this, (), _, cx| {
+        this.go_to_matching_brace(false, cx);
+        Ok(())
+    });
+    registry.editor("search.select-to-matching-brace", |this, (), _, cx| {
+        this.go_to_matching_brace(true, cx);
         Ok(())
     });
     registry.editor("edit.tab", |this, (), _, cx| {
@@ -274,6 +282,7 @@ pub(crate) struct EditorView {
     blink: Task<()>,
     /// Geometry of the last frame, for mouse and IME hit testing.
     layout: Option<Layout>,
+    highlight_cache: Option<layout::HighlightCache>,
     _subscriptions: Vec<Subscription>,
 }
 
@@ -311,9 +320,10 @@ impl EditorView {
                 }
                 cx.notify();
             }
-            BufferEvent::StateChanged | BufferEvent::MarksChanged | BufferEvent::LoadFailed(_) => {
-                cx.notify()
-            }
+            BufferEvent::StateChanged
+            | BufferEvent::MarksChanged
+            | BufferEvent::SyntaxChanged
+            | BufferEvent::LoadFailed(_) => cx.notify(),
         });
         let focus_handle = cx.focus_handle();
         let text = buffer.read(cx).doc().text().clone();
@@ -345,6 +355,7 @@ impl EditorView {
             focused: false,
             blink: Task::ready(()),
             layout: None,
+            highlight_cache: None,
             _subscriptions: vec![events],
         }
     }
@@ -617,6 +628,97 @@ impl EditorView {
             });
         }
         self.insert(typed, LastEdit::Typing, cx);
+    }
+
+    /// Enter: a line break, indented as `editor.auto-indent` says.
+    fn newline(&mut self, cx: &mut Context<Self>) {
+        if !self.is_editable(cx) {
+            return;
+        }
+        let buffer = self.buffer.read(cx);
+        let text = buffer.doc().text().clone();
+        let eol = buffer.doc().line_ending().as_str();
+        let python = buffer
+            .language()
+            .is_some_and(|language| language.id == "python");
+        let mode = AppState::global(cx).settings.editor.auto_indent;
+        let settings = ViewSettings::read(cx);
+        let unit = if settings.insert_spaces {
+            " ".repeat(settings.tab_width)
+        } else {
+            "\t".to_owned()
+        };
+        let mut edits = Vec::new();
+        let mut carets = Vec::new();
+        let mut shift: isize = 0;
+        for range in self.selection.ranges() {
+            let (from, to) = (range.from(), range.to());
+            let line = line_of(&text, from);
+            let line_start = line_range(&text, line).start;
+            let indent = match mode {
+                AutoIndent::Off => String::new(),
+                _ => {
+                    let end = motion::indent_end(&text, line).min(from);
+                    text.slice(line_start..end).to_string()
+                }
+            };
+            let mut inserted = format!("{eol}{indent}");
+            let mut caret = inserted.len();
+            if mode == AutoIndent::Advanced {
+                let prefix = text.slice(line_start..from);
+                let before = prefix
+                    .chars_at(prefix.len())
+                    .reversed()
+                    .find(|c| !c.is_whitespace());
+                let opens =
+                    matches!(before, Some('{' | '[' | '(')) || (python && before == Some(':'));
+                if opens {
+                    let inner = format!("{eol}{indent}{unit}");
+                    let after = text.slice(to..).chars().next();
+                    let closes = matches!(
+                        (before, after),
+                        (Some('{'), Some('}')) | (Some('['), Some(']')) | (Some('('), Some(')'))
+                    );
+                    caret = inner.len();
+                    // Enter between a pair of brackets: the closing one goes on its own line.
+                    inserted = if closes {
+                        format!("{inner}{eol}{indent}")
+                    } else {
+                        inner
+                    };
+                }
+            }
+            let start = (from as isize + shift) as usize;
+            carets.push(Range::point(start + caret));
+            shift += inserted.len() as isize - (to - from) as isize;
+            edits.push(Edit::replace(from..to, inserted));
+        }
+        let selection = Selection::new(carets, self.selection.primary_index());
+        let transaction = Transaction::from_edits(&text, edits)
+            .expect("the selection lies on character boundaries")
+            .with_selection(selection);
+        self.apply(transaction, LastEdit::Typing, cx);
+    }
+
+    /// Ctrl+B: to the bracket matching the one at the caret; with `select`, selects both
+    /// brackets and everything between them (Ctrl+Alt+B), as in Notepad++.
+    fn go_to_matching_brace(&mut self, select: bool, cx: &mut Context<Self>) {
+        let buffer = self.buffer.read(cx);
+        let text = buffer.doc().text();
+        let head = self.selection.primary().head;
+        let Some(found) = birchpad_syntax::matching_bracket(text, buffer.syntax(), head) else {
+            return;
+        };
+        let Some(partner) = found.partner else {
+            return;
+        };
+        if select {
+            let from = found.bracket.start.min(partner.start);
+            let to = found.bracket.end.max(partner.end);
+            self.select_range(from..to, cx);
+        } else {
+            self.go_to(partner.start, cx);
+        }
     }
 
     /// Tab: a tab character, or spaces up to the next tab stop with `editor.insert-spaces`.

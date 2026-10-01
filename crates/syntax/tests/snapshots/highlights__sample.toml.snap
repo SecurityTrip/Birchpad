@@ -1,0 +1,29 @@
+---
+source: crates/syntax/tests/highlights.rs
+expression: render(&path)
+---
+language: toml
+comment                  # Package
+punctuation.bracket      [
+type                     package
+punctuation.bracket      ]
+type                     name
+property                  
+operator                 =
+property                  
+string                   "birchpad"
+type                     version
+property                  
+operator                 =
+property                  
+string                   "0.1.0"
+type                     features
+property                  
+operator                 =
+property                  
+punctuation.bracket      [
+string                   "a"
+punctuation.delimiter    ,
+property                  
+string                   "b"
+punctuation.bracket      ]

@@ -1,0 +1,34 @@
+---
+source: crates/syntax/tests/highlights.rs
+expression: render(&path)
+---
+language: cpp
+keyword                  #include
+string                   <vector>
+keyword                  namespace
+keyword                  template
+operator                 <
+keyword                  typename
+type                     T
+operator                 >
+keyword                  class
+type                     Box
+keyword                  public
+keyword                  explicit
+function                 Box
+type                     T
+variable                 value
+property                 value_
+variable                 value
+type                     T
+function                 get
+keyword                  const
+keyword                  return
+variable                 value_
+punctuation.delimiter    ;
+comment                  // accessor
+keyword                  private
+type                     T
+property                 value_
+punctuation.delimiter    ;
+punctuation.delimiter    ;
