@@ -2,8 +2,8 @@
 
 A fast, extensible, cross-platform text editor in the spirit of Notepad++, written in Rust.
 
-> **Status: pre-alpha.** The text model and project infrastructure are being built.
-> Nothing is usable yet. See the [roadmap](docs/ROADMAP.md).
+> **Status: pre-alpha.** Phase 1 is done: a basic notepad with tabs, encodings, find/replace
+> and a Notepad++-compatible command line. Expect rough edges. See the [roadmap](docs/ROADMAP.md).
 
 ## Goals
 
@@ -71,7 +71,7 @@ Birchpad makes no network requests at all. See
 | `crates/cli` | Notepad++-compatible command line and the single-instance hand-off. No UI. |
 | `crates/update` | Checking for updates: release feeds, channels, version comparison. No UI. |
 | `crates/app` | The desktop application. |
-| `packaging/` | Installers (MSI for per-machine installs). |
+| `packaging/` | Release packaging: per-machine MSI, macOS app bundle, portable-mode marker. |
 | `docs/` | Roadmap and architecture decision records. |
 
 ## Contributing
