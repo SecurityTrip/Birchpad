@@ -1,0 +1,16 @@
+[package]
+name = "birchpad"
+description = "Birchpad: a fast, extensible text editor in the spirit of Notepad++."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[dependencies]
+birchpad-config.workspace = true
+birchpad-core.workspace = true
+
+[lints]
+workspace = true

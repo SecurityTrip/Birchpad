@@ -1,0 +1,15 @@
+# Normalize text files to LF in the repository.
+* text=auto eol=lf
+
+# Windows-only scripts keep CRLF.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Test fixtures must stay byte-for-byte as committed: an editor is tested
+# on exact encodings, BOMs and line endings.
+**/tests/fixtures/** -text -diff
+
+*.png binary
+*.ico binary
+*.ttf binary
