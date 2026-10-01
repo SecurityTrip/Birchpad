@@ -1,0 +1,34 @@
+name: Bug report
+description: Something does not work as expected
+labels: [bug]
+body:
+  - type: textarea
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open a UTF-16 file with CR line endings
+        2. ...
+    validations:
+      required: true
+  - type: input
+    attributes:
+      label: Birchpad version and channel
+      placeholder: 0.1.0 nightly
+    validations:
+      required: true
+  - type: input
+    attributes:
+      label: Operating system
+      placeholder: Windows 11 24H2 x64
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Sample file or logs
+      description: If the problem depends on a file, attach a minimal one (zip it to keep its exact bytes).

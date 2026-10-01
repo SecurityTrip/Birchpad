@@ -1,0 +1,16 @@
+name: Feature request
+description: Suggest an improvement or a missing Notepad++ feature
+labels: [enhancement]
+body:
+  - type: textarea
+    attributes:
+      label: What would you like to do?
+      description: Describe the problem or workflow, not only the solution.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: How does Notepad++ (or another editor) handle it?
+  - type: textarea
+    attributes:
+      label: Proposed solution

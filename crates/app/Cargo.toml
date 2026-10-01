@@ -11,6 +11,7 @@ authors.workspace = true
 [dependencies]
 birchpad-config.workspace = true
 birchpad-core.workspace = true
+gpui-kit = "0.7"
 
 [lints]
 workspace = true

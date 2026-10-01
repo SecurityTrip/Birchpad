@@ -14,7 +14,7 @@ thiserror.workspace = true
 toml.workspace = true
 
 [target.'cfg(windows)'.dependencies]
-windows-registry = "0.6"
+windows-registry = "0.100"
 
 [lints]
 workspace = true

@@ -1,0 +1,30 @@
+<!--
+  Per-machine MSI for enterprise deployment (WiX Toolset v4+).
+  Not wired into CI yet. Build manually with:
+    wix build packaging/windows/Birchpad.wxs -arch x64 -d Version=0.1.0 -d BinDir=target/release -o packaging/out/birchpad-x64.msi
+
+  UpgradeCode must never change: it is how Windows Installer recognizes newer versions of Birchpad.
+-->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Package
+    Name="Birchpad"
+    Manufacturer="The Birchpad Contributors"
+    Version="$(var.Version)"
+    UpgradeCode="A1F35DF8-07F9-400E-92E7-E761EC9BAE37"
+    Scope="perMachine"
+    Compressed="yes">
+
+    <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
+    <MediaTemplate EmbedCab="yes" />
+
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLFOLDER" Name="Birchpad" />
+    </StandardDirectory>
+
+    <Feature Id="Main" Title="Birchpad" Level="1">
+      <Component Directory="INSTALLFOLDER">
+        <File Source="$(var.BinDir)\birchpad.exe" KeyPath="yes" />
+      </Component>
+    </Feature>
+  </Package>
+</Wix>

@@ -11,11 +11,11 @@ repository = "https://github.com/SecurityTrip/Birchpad"
 authors = ["The Birchpad Contributors"]
 
 [workspace.dependencies]
-birchpad-config = { path = "crates/config" }
-birchpad-core = { path = "crates/core" }
+birchpad-config = { path = "crates/config", version = "0.1.0" }
+birchpad-core = { path = "crates/core", version = "0.1.0" }
 
 proptest = "1.11"
-ropey = "=2.0.0-beta.1"
+ropey = { version = "=2.0.0-beta.1", features = ["metric_utf16"] }
 serde = { version = "1", features = ["derive"] }
 smallvec = "1.15"
 thiserror = "2"

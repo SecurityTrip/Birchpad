@@ -7,6 +7,9 @@ all-features = true
 [advisories]
 version = 2
 yanked = "deny"
+# Only crates we depend on directly are checked for being unmaintained; transitive ones (mostly
+# under GPUI) are outside our control.
+unmaintained = "workspace"
 
 [licenses]
 version = 2
@@ -24,8 +27,8 @@ allow = [
     "BSL-1.0",
     "CC0-1.0",
     "Unicode-3.0",
-    "Unicode-DFS-2016",
-    "OFL-1.1",
+    # BSD-style; used by the pure-Rust bzip2 port pulled in through GPUI's HTTP stack.
+    "bzip2-1.0.6",
     # File-level copyleft: fine to depend on, but never copy MPL code into our crates.
     "MPL-2.0",
 ]
