@@ -1,0 +1,443 @@
+# Birchpad's default key bindings, modeled on Notepad++.
+#
+# Each [[binding]] maps `keys` to a `command` from the catalog, with optional `args`. Optional
+# fields:
+#   context   - only active when that UI context has focus ("Editor"); global otherwise
+#   platforms - limit to some of "windows", "linux", "macos"
+#   unbind    - remove an earlier binding of the same keys and context (user keymaps)
+#
+# `secondary` is Ctrl on Windows and Linux and Cmd on macOS.
+
+# --- File ---------------------------------------------------------------------------------------
+
+[[binding]]
+keys = "secondary-n"
+command = "file.new"
+
+[[binding]]
+keys = "secondary-o"
+command = "file.open"
+
+[[binding]]
+keys = "secondary-s"
+command = "file.save"
+
+[[binding]]
+keys = "secondary-alt-s"
+command = "file.save-as"
+
+[[binding]]
+keys = "secondary-shift-s"
+command = "file.save-all"
+
+[[binding]]
+keys = "secondary-w"
+command = "file.close"
+
+[[binding]]
+keys = "ctrl-f4"
+command = "file.close"
+platforms = ["windows", "linux"]
+
+[[binding]]
+keys = "secondary-shift-w"
+command = "file.close-all"
+
+[[binding]]
+keys = "cmd-q"
+command = "file.exit"
+platforms = ["macos"]
+
+# --- Search -------------------------------------------------------------------------------------
+
+[[binding]]
+keys = "secondary-f"
+command = "search.find"
+
+[[binding]]
+keys = "secondary-h"
+command = "search.replace"
+
+[[binding]]
+keys = "f3"
+command = "search.find-next"
+
+[[binding]]
+keys = "shift-f3"
+command = "search.find-previous"
+
+[[binding]]
+keys = "secondary-g"
+command = "search.go-to"
+
+# --- View ---------------------------------------------------------------------------------------
+# Windows reports the keypad +, - and 0 as "+", "-" and "0"; Linux as "add", "subtract" and "0".
+
+[[binding]]
+keys = "secondary-+"
+command = "view.zoom-in"
+
+[[binding]]
+keys = "secondary-="
+command = "view.zoom-in"
+
+[[binding]]
+keys = "secondary-add"
+command = "view.zoom-in"
+
+[[binding]]
+keys = "secondary--"
+command = "view.zoom-out"
+
+[[binding]]
+keys = "secondary-subtract"
+command = "view.zoom-out"
+
+[[binding]]
+keys = "secondary-0"
+command = "view.zoom-reset"
+
+[[binding]]
+keys = "secondary-divide"
+command = "view.zoom-reset"
+
+[[binding]]
+keys = "ctrl-tab"
+command = "view.next-tab"
+
+[[binding]]
+keys = "ctrl-shift-tab"
+command = "view.previous-tab"
+
+[[binding]]
+keys = "ctrl-pagedown"
+command = "view.next-tab"
+
+[[binding]]
+keys = "ctrl-pageup"
+command = "view.previous-tab"
+
+# --- Edit ---------------------------------------------------------------------------------------
+
+[[binding]]
+keys = "secondary-z"
+command = "edit.undo"
+context = "Editor"
+
+[[binding]]
+keys = "alt-backspace"
+command = "edit.undo"
+context = "Editor"
+platforms = ["windows", "linux"]
+
+[[binding]]
+keys = "secondary-y"
+command = "edit.redo"
+context = "Editor"
+
+[[binding]]
+keys = "secondary-shift-z"
+command = "edit.redo"
+context = "Editor"
+
+[[binding]]
+keys = "secondary-x"
+command = "edit.cut"
+context = "Editor"
+
+[[binding]]
+keys = "shift-delete"
+command = "edit.cut"
+context = "Editor"
+
+[[binding]]
+keys = "secondary-c"
+command = "edit.copy"
+context = "Editor"
+
+[[binding]]
+keys = "ctrl-insert"
+command = "edit.copy"
+context = "Editor"
+platforms = ["windows", "linux"]
+
+[[binding]]
+keys = "secondary-v"
+command = "edit.paste"
+context = "Editor"
+
+[[binding]]
+keys = "shift-insert"
+command = "edit.paste"
+context = "Editor"
+platforms = ["windows", "linux"]
+
+[[binding]]
+keys = "secondary-a"
+command = "edit.select-all"
+context = "Editor"
+
+[[binding]]
+keys = "delete"
+command = "edit.delete"
+context = "Editor"
+
+[[binding]]
+keys = "backspace"
+command = "edit.backspace"
+context = "Editor"
+
+[[binding]]
+keys = "shift-backspace"
+command = "edit.backspace"
+context = "Editor"
+
+[[binding]]
+keys = "ctrl-backspace"
+command = "edit.delete-word-left"
+context = "Editor"
+platforms = ["windows", "linux"]
+
+[[binding]]
+keys = "alt-backspace"
+command = "edit.delete-word-left"
+context = "Editor"
+platforms = ["macos"]
+
+[[binding]]
+keys = "ctrl-delete"
+command = "edit.delete-word-right"
+context = "Editor"
+platforms = ["windows", "linux"]
+
+[[binding]]
+keys = "alt-delete"
+command = "edit.delete-word-right"
+context = "Editor"
+platforms = ["macos"]
+
+[[binding]]
+keys = "enter"
+command = "edit.newline"
+context = "Editor"
+
+[[binding]]
+keys = "shift-enter"
+command = "edit.newline"
+context = "Editor"
+
+[[binding]]
+keys = "tab"
+command = "edit.tab"
+context = "Editor"
+
+[[binding]]
+keys = "insert"
+command = "edit.toggle-overwrite"
+context = "Editor"
+
+# --- Caret movement -----------------------------------------------------------------------------
+
+[[binding]]
+keys = "left"
+command = "cursor.left"
+context = "Editor"
+
+[[binding]]
+keys = "right"
+command = "cursor.right"
+context = "Editor"
+
+[[binding]]
+keys = "up"
+command = "cursor.up"
+context = "Editor"
+
+[[binding]]
+keys = "down"
+command = "cursor.down"
+context = "Editor"
+
+[[binding]]
+keys = "home"
+command = "cursor.home"
+context = "Editor"
+
+[[binding]]
+keys = "end"
+command = "cursor.end"
+context = "Editor"
+
+[[binding]]
+keys = "pageup"
+command = "cursor.page-up"
+context = "Editor"
+
+[[binding]]
+keys = "pagedown"
+command = "cursor.page-down"
+context = "Editor"
+
+[[binding]]
+keys = "shift-left"
+command = "select.left"
+context = "Editor"
+
+[[binding]]
+keys = "shift-right"
+command = "select.right"
+context = "Editor"
+
+[[binding]]
+keys = "shift-up"
+command = "select.up"
+context = "Editor"
+
+[[binding]]
+keys = "shift-down"
+command = "select.down"
+context = "Editor"
+
+[[binding]]
+keys = "shift-home"
+command = "select.home"
+context = "Editor"
+
+[[binding]]
+keys = "shift-end"
+command = "select.end"
+context = "Editor"
+
+[[binding]]
+keys = "shift-pageup"
+command = "select.page-up"
+context = "Editor"
+
+[[binding]]
+keys = "shift-pagedown"
+command = "select.page-down"
+context = "Editor"
+
+# Windows and Linux: Ctrl moves by word, Ctrl+Home/End to the ends of the document.
+
+[[binding]]
+keys = "ctrl-left"
+command = "cursor.word-left"
+context = "Editor"
+platforms = ["windows", "linux"]
+
+[[binding]]
+keys = "ctrl-right"
+command = "cursor.word-right"
+context = "Editor"
+platforms = ["windows", "linux"]
+
+[[binding]]
+keys = "ctrl-shift-left"
+command = "select.word-left"
+context = "Editor"
+platforms = ["windows", "linux"]
+
+[[binding]]
+keys = "ctrl-shift-right"
+command = "select.word-right"
+context = "Editor"
+platforms = ["windows", "linux"]
+
+[[binding]]
+keys = "ctrl-home"
+command = "cursor.document-start"
+context = "Editor"
+platforms = ["windows", "linux"]
+
+[[binding]]
+keys = "ctrl-end"
+command = "cursor.document-end"
+context = "Editor"
+platforms = ["windows", "linux"]
+
+[[binding]]
+keys = "ctrl-shift-home"
+command = "select.document-start"
+context = "Editor"
+platforms = ["windows", "linux"]
+
+[[binding]]
+keys = "ctrl-shift-end"
+command = "select.document-end"
+context = "Editor"
+platforms = ["windows", "linux"]
+
+# macOS: Option moves by word, Cmd to the ends of the line and the document.
+
+[[binding]]
+keys = "alt-left"
+command = "cursor.word-left"
+context = "Editor"
+platforms = ["macos"]
+
+[[binding]]
+keys = "alt-right"
+command = "cursor.word-right"
+context = "Editor"
+platforms = ["macos"]
+
+[[binding]]
+keys = "alt-shift-left"
+command = "select.word-left"
+context = "Editor"
+platforms = ["macos"]
+
+[[binding]]
+keys = "alt-shift-right"
+command = "select.word-right"
+context = "Editor"
+platforms = ["macos"]
+
+[[binding]]
+keys = "cmd-left"
+command = "cursor.home"
+context = "Editor"
+platforms = ["macos"]
+
+[[binding]]
+keys = "cmd-right"
+command = "cursor.end"
+context = "Editor"
+platforms = ["macos"]
+
+[[binding]]
+keys = "cmd-shift-left"
+command = "select.home"
+context = "Editor"
+platforms = ["macos"]
+
+[[binding]]
+keys = "cmd-shift-right"
+command = "select.end"
+context = "Editor"
+platforms = ["macos"]
+
+[[binding]]
+keys = "cmd-up"
+command = "cursor.document-start"
+context = "Editor"
+platforms = ["macos"]
+
+[[binding]]
+keys = "cmd-down"
+command = "cursor.document-end"
+context = "Editor"
+platforms = ["macos"]
+
+[[binding]]
+keys = "cmd-shift-up"
+command = "select.document-start"
+context = "Editor"
+platforms = ["macos"]
+
+[[binding]]
+keys = "cmd-shift-down"
+command = "select.document-end"
+context = "Editor"
+platforms = ["macos"]

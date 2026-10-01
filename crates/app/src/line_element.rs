@@ -6,18 +6,20 @@ use gpui_kit::{
     fill, point, px, relative, rgb, rgba, size,
 };
 
-use crate::editor::{Editor, VisibleLine};
+use birchpad_core::motion::{line_of, line_range};
+
+use crate::editor::{EditorView, VisibleLine};
 
 const SELECTION: u32 = 0x3390ff40;
 const CARET: u32 = 0x1f2328;
 
 pub(crate) struct LineElement {
-    editor: Entity<Editor>,
+    editor: Entity<EditorView>,
     line: usize,
 }
 
 impl LineElement {
-    pub(crate) fn new(editor: Entity<Editor>, line: usize) -> Self {
+    pub(crate) fn new(editor: Entity<EditorView>, line: usize) -> Self {
         Self { editor, line }
     }
 }
@@ -72,14 +74,10 @@ impl Element for LineElement {
         cx: &mut App,
     ) -> Self::PrepaintState {
         let editor = self.editor.read(cx);
-        let range = editor.line_range(self.line);
+        let text = editor.text(cx);
+        let range = line_range(text, self.line);
         // Tabs are drawn as single spaces for now: one byte each, so offsets stay valid.
-        let content = editor
-            .doc
-            .text()
-            .slice(range.clone())
-            .to_string()
-            .replace('\t', " ");
+        let content = text.slice(range.clone()).to_string().replace('\t', " ");
 
         let style = window.text_style();
         let font_size = style.font_size.to_pixels(window.rem_size());
@@ -151,7 +149,7 @@ impl Element for LineElement {
                     rgba(SELECTION),
                 ));
             }
-            if editor.line_of(selection.head) == self.line {
+            if line_of(text, selection.head) == self.line {
                 let x = shaped.x_for_index(selection.head - range.start);
                 let origin = point(bounds.left() + x, bounds.top());
                 carets.push(fill(Bounds::new(origin, size(px(2.), height)), rgb(CARET)));

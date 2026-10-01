@@ -1,102 +1,120 @@
 //! Birchpad desktop application.
 //!
-//! Phase 0 spike: one window with one document, to validate GPUI for the editor view.
-//!
 //! ```text
-//! birchpad [FILE]
+//! birchpad [FILE]...
 //! birchpad --generate [LINES]   # synthetic multilingual text, 1 000 000 lines by default
 //! ```
 
+mod buffer;
+mod commands;
 mod editor;
 mod line_element;
+mod menus;
+mod pane;
+mod workspace;
 
 use std::fmt::Write as _;
 use std::path::PathBuf;
-use std::time::Instant;
 
 use birchpad_core::{Document, Rope};
 use gpui_kit::{App, AppContext as _, Bounds, WindowBounds, WindowOptions, px, size};
 
-use crate::editor::{Editor, LoadInfo, Quit};
+use crate::workspace::Workspace;
+
+pub(crate) const MONOSPACE: &str = if cfg!(windows) {
+    "Consolas"
+} else if cfg!(target_os = "macos") {
+    "Menlo"
+} else {
+    "DejaVu Sans Mono"
+};
 
 fn main() {
-    let source = Source::from_args(std::env::args().skip(1));
+    let sources = Source::from_args(std::env::args().skip(1));
 
-    gpui_kit::application().run(move |cx: &mut App| {
-        gpui_kit::init(cx);
-        editor::bind_keys(cx);
-        cx.on_action(|_: &Quit, cx| cx.quit());
-        cx.on_window_closed(|cx, _| {
-            if cx.windows().is_empty() {
+    gpui_kit::application()
+        .with_assets(gpui_kit::assets::Assets)
+        .run(move |cx: &mut App| {
+            gpui_kit::init(cx);
+            let config = birchpad_config::ConfigPaths::platform();
+            let user_keymap = config
+                .user_settings
+                .as_ref()
+                .and_then(|settings| settings.parent())
+                .and_then(|dir| std::fs::read_to_string(dir.join("keymap.toml")).ok());
+            commands::init(user_keymap.as_deref(), cx);
+            cx.on_window_closed(|cx, _| {
+                if cx.windows().is_empty() {
+                    cx.quit();
+                }
+            })
+            .detach();
+
+            let bounds = Bounds::centered(None, size(px(1100.), px(760.)), cx);
+            let options = WindowOptions {
+                window_bounds: Some(WindowBounds::Windowed(bounds)),
+                ..WindowOptions::default()
+            };
+            let opened = gpui_kit::open_window(options, cx, |window, cx| {
+                cx.new(|cx| {
+                    let mut workspace = Workspace::new(window, cx);
+                    for source in sources {
+                        match source.load() {
+                            Ok((doc, path)) => workspace.open_document(doc, path, window, cx),
+                            Err(error) => eprintln!("{error:#}"),
+                        }
+                    }
+                    if workspace.active_view(cx).is_none() {
+                        workspace.new_file(window, cx);
+                    }
+                    workspace
+                })
+            });
+            if let Err(error) = opened {
+                eprintln!("failed to open the main window: {error:#}");
                 cx.quit();
             }
-        })
-        .detach();
-
-        let (document, info) = source.load();
-        let bounds = Bounds::centered(None, size(px(1100.), px(760.)), cx);
-        let options = WindowOptions {
-            window_bounds: Some(WindowBounds::Windowed(bounds)),
-            ..WindowOptions::default()
-        };
-        let opened = gpui_kit::open_window(options, cx, |window, cx| {
-            cx.new(|cx| Editor::new(document, info, window, cx))
+            cx.activate(true);
         });
-        if let Err(error) = opened {
-            eprintln!("failed to open the main window: {error:#}");
-            cx.quit();
-        }
-        cx.activate(true);
-    });
 }
 
 enum Source {
-    Empty,
     File(PathBuf),
     Generated(usize),
 }
 
 impl Source {
-    fn from_args(mut args: impl Iterator<Item = String>) -> Self {
-        match args.next().as_deref() {
-            None => Self::Empty,
-            Some("--generate") => Self::Generated(
-                args.next()
+    fn from_args(args: impl Iterator<Item = String>) -> Vec<Self> {
+        let mut sources = Vec::new();
+        let mut args = args.peekable();
+        while let Some(arg) = args.next() {
+            if arg == "--generate" {
+                let lines = args
+                    .next_if(|next| next.parse::<usize>().is_ok())
                     .and_then(|n| n.parse().ok())
-                    .unwrap_or(1_000_000),
-            ),
-            Some(path) => Self::File(PathBuf::from(path)),
+                    .unwrap_or(1_000_000);
+                sources.push(Self::Generated(lines));
+            } else {
+                sources.push(Self::File(PathBuf::from(arg)));
+            }
         }
+        sources
     }
 
-    fn load(self) -> (Document, LoadInfo) {
-        let started = Instant::now();
-        let (text, path, lossy) = match self {
-            Self::Empty => (String::new(), None, false),
-            Self::Generated(lines) => (generate(lines), None, false),
-            Self::File(path) => match std::fs::read(&path) {
-                Ok(bytes) => match String::from_utf8(bytes) {
-                    Ok(text) => (text, Some(path), false),
-                    Err(error) => {
-                        let text = String::from_utf8_lossy(error.as_bytes()).into_owned();
-                        (text, Some(path), true)
-                    }
-                },
-                Err(error) => {
-                    eprintln!("cannot open {}: {error}", path.display());
-                    (String::new(), Some(path), false)
-                }
-            },
-        };
-        let document = Document::from_text(Rope::from_str(&text));
-        (
-            document,
-            LoadInfo {
-                path,
-                load_time: started.elapsed(),
-                lossy,
-            },
-        )
+    /// Reads the source. Files must be UTF-8 until encoding support lands.
+    fn load(self) -> anyhow::Result<(Document, PathBuf)> {
+        match self {
+            Self::Generated(lines) => Ok((
+                Document::from_text(Rope::from_str(&generate(lines))),
+                PathBuf::from(format!("generated-{lines}.txt")),
+            )),
+            Self::File(path) => {
+                let bytes = std::fs::read(&path)
+                    .map_err(|error| anyhow::anyhow!("cannot open {}: {error}", path.display()))?;
+                let text = String::from_utf8_lossy(&bytes);
+                Ok((Document::from_text(Rope::from_str(&text)), path))
+            }
+        }
     }
 }
 

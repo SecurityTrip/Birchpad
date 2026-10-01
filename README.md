@@ -42,6 +42,7 @@ cargo test --workspace
 |---|---|
 | `crates/core` | Text model: rope buffer, selections, change sets, transactions, undo history. No UI. |
 | `crates/config` | Layered settings: defaults, machine defaults, user settings, administrator policies. |
+| `crates/commands` | Command catalog, keymaps and the menu model, as data. No UI. |
 | `crates/app` | The desktop application. |
 | `packaging/` | Installers (MSI for per-machine installs). |
 | `docs/` | Roadmap and architecture decision records. |
