@@ -10,10 +10,11 @@ use birchpad_core::Rope;
 use birchpad_core::motion::line_count;
 use birchpad_view::{DisplayMap, DisplayText, LayoutConfig, Row};
 use gpui_kit::{
-    AppContext as _, Bounds, Context, Font, Hsla, Pixels, Point, ShapedLine, TextRun,
+    App, AppContext as _, Bounds, Context, Font, Hsla, Pixels, Point, ShapedLine, TextRun,
     UnderlineStyle, Window, font, point, px, rgb, size,
 };
 
+use super::theme::{self, Paint};
 use super::{EditorView, ViewSettings};
 
 /// Documents larger than this are rewrapped on a background thread.
@@ -69,14 +70,58 @@ pub(super) struct Scrollbar {
     pub(super) thumb: Bounds<Pixels>,
 }
 
+/// The margins left of the text, as in Notepad++: line numbers, symbols (bookmarks), folding.
+/// A margin that is turned off is `None`.
+pub(super) struct Margins {
+    /// All margins together.
+    pub(super) gutter: Bounds<Pixels>,
+    pub(super) line_numbers: Option<Bounds<Pixels>>,
+    pub(super) symbols: Option<Bounds<Pixels>>,
+    pub(super) folding: Option<Bounds<Pixels>>,
+}
+
+impl Margins {
+    fn new(
+        bounds: Bounds<Pixels>,
+        settings: &ViewSettings,
+        metrics: &Metrics,
+        line_count: usize,
+    ) -> Self {
+        let mut x = bounds.left();
+        let mut column = |enabled: bool, width: Pixels| {
+            enabled.then(|| {
+                let margin = Bounds::new(point(x, bounds.top()), size(width, bounds.size.height));
+                x += width;
+                margin
+            })
+        };
+        // Wide enough for the largest line number (at least three digits).
+        let digits = line_count.to_string().len().max(3);
+        let line_numbers = column(settings.line_numbers, metrics.cell * (digits as f32 + 2.));
+        let symbols = column(settings.bookmark_margin, metrics.line_height);
+        let folding = column(settings.fold_margin, (metrics.line_height * 0.8).round());
+        let gutter = Bounds::from_corners(bounds.origin, point(x, bounds.bottom()));
+        Self {
+            gutter,
+            line_numbers,
+            symbols,
+            folding,
+        }
+    }
+}
+
 pub(super) struct Layout {
     pub(super) metrics: Metrics,
-    pub(super) gutter: Bounds<Pixels>,
+    pub(super) margins: Margins,
     pub(super) text_bounds: Bounds<Pixels>,
     /// Window x of column 0 of an unwrapped row (scrolled).
     pub(super) column_zero: Pixels,
     pub(super) rows: Vec<VisibleRow>,
     pub(super) line_numbers: Vec<(Point<Pixels>, ShapedLine)>,
+    /// Bookmark symbols in the symbol margin.
+    pub(super) bookmarks: Vec<Bounds<Pixels>>,
+    /// Decoration ranges (token styles, matches) drawn behind or around the text.
+    pub(super) decorations: Vec<(Bounds<Pixels>, Paint)>,
     pub(super) selections: Vec<Bounds<Pixels>>,
     pub(super) carets: Vec<Bounds<Pixels>>,
     pub(super) vertical_bar: Option<Scrollbar>,
@@ -87,7 +132,6 @@ pub(super) struct Layout {
 }
 
 pub(super) const TEXT_COLOR: u32 = 0x1f2328;
-const GUTTER_TEXT: u32 = 0x8c959f;
 
 impl EditorView {
     /// Computes the frame's layout for `bounds`, applying pending scroll requests.
@@ -104,11 +148,8 @@ impl EditorView {
         let line_height = metrics.line_height;
         let cell = metrics.cell;
 
-        // Gutter wide enough for the largest line number (at least three digits).
-        let digits = line_count(&text).to_string().len().max(3);
-        let gutter_width = cell * (digits as f32 + 2.);
-        let gutter = Bounds::new(bounds.origin, size(gutter_width, bounds.size.height));
-        let text_left = bounds.left() + gutter_width;
+        let margins = Margins::new(bounds, &settings, &metrics, line_count(&text));
+        let text_left = margins.gutter.right();
         let mut text_bounds = Bounds::from_corners(
             point(text_left, bounds.top()),
             point(bounds.right() - SCROLLBAR, bounds.bottom()),
@@ -209,10 +250,13 @@ impl EditorView {
             if row.range.len() <= LONG_ROW {
                 widest = widest.max(shaped.width());
             }
-            if row.index_in_line == 0 {
+            if row.index_in_line == 0
+                && let Some(margin) = margins.line_numbers
+            {
                 let number = (row.line + 1).to_string();
-                let shaped_number = shape(window, &number, &metrics, rgb(GUTTER_TEXT).into());
-                let x = gutter.right() - cell - shaped_number.width();
+                let shaped_number =
+                    shape(window, &number, &metrics, rgb(theme::GUTTER_TEXT).into());
+                let x = margin.right() - cell - shaped_number.width();
                 line_numbers.push((point(x, y), shaped_number));
             }
             rows.push(VisibleRow {
@@ -231,11 +275,13 @@ impl EditorView {
 
         let mut layout = Layout {
             metrics,
-            gutter,
+            margins,
             text_bounds,
             column_zero,
             rows,
             line_numbers,
+            bookmarks: Vec::new(),
+            decorations: Vec::new(),
             selections: Vec::new(),
             carets: Vec::new(),
             vertical_bar: None,
@@ -243,6 +289,8 @@ impl EditorView {
             total_rows,
             full_rows,
         };
+        layout.bookmarks = self.bookmark_symbols(&layout, &text, cx);
+        layout.decorations = self.decoration_bounds(&layout, &text, cx);
         layout.selections = self.selection_bounds(&layout, &text);
         layout.carets = self.caret_bounds(&layout, &text);
         layout.vertical_bar = vertical_scrollbar(bounds, &layout, self.scroll_top);
@@ -363,6 +411,91 @@ impl EditorView {
         })
     }
 
+    /// The document bytes shown in this frame.
+    fn visible_range(layout: &Layout) -> ByteRange<usize> {
+        match (layout.rows.first(), layout.rows.last()) {
+            (Some(first), Some(last)) => first.row.range.start..last.row.range.end,
+            _ => 0..0,
+        }
+    }
+
+    /// Bounds of `range` in each visible row it touches (line breaks excluded).
+    pub(super) fn range_bounds(
+        &mut self,
+        layout: &Layout,
+        text: &Rope,
+        range: ByteRange<usize>,
+    ) -> Vec<Bounds<Pixels>> {
+        let mut quads = Vec::new();
+        for row in &layout.rows {
+            let from = range.start.max(row.row.range.start);
+            let to = range.end.min(row.row.range.end);
+            if from >= to {
+                continue;
+            }
+            let left = self.x_in_row(layout, row, from, text);
+            let right = self.x_in_row(layout, row, to, text);
+            quads.push(Bounds::from_corners(
+                point(left, row.y),
+                point(right, row.y + layout.metrics.line_height),
+            ));
+        }
+        quads
+    }
+
+    fn bookmark_symbols(&self, layout: &Layout, text: &Rope, cx: &App) -> Vec<Bounds<Pixels>> {
+        let Some(margin) = layout.margins.symbols else {
+            return Vec::new();
+        };
+        let (Some(first), Some(last)) = (layout.rows.first(), layout.rows.last()) else {
+            return Vec::new();
+        };
+        let marks = self.buffer.read(cx).marks();
+        let marked = marks
+            .bookmarks
+            .lines_in(text, first.row.line..last.row.line + 1);
+        let line_height = layout.metrics.line_height;
+        let side = (margin.size.width.min(line_height) * 0.6).round();
+        layout
+            .rows
+            .iter()
+            .filter(|row| row.row.index_in_line == 0 && marked.contains(&row.row.line))
+            .map(|row| {
+                let origin = point(
+                    margin.left() + (margin.size.width - side) / 2.,
+                    row.y + (line_height - side) / 2.,
+                );
+                Bounds::new(origin, size(side, side))
+            })
+            .collect()
+    }
+
+    fn decoration_bounds(
+        &mut self,
+        layout: &Layout,
+        text: &Rope,
+        cx: &App,
+    ) -> Vec<(Bounds<Pixels>, Paint)> {
+        let visible = Self::visible_range(layout);
+        let mut ranges = Vec::new();
+        let marks = self.buffer.read(cx).marks();
+        for (index, style) in marks.styles.iter().enumerate() {
+            let paint = theme::mark_style(index);
+            ranges.extend(
+                style
+                    .overlapping(visible.clone())
+                    .map(|(range, _)| (range, paint)),
+            );
+        }
+        let mut quads = Vec::new();
+        for (range, paint) in ranges {
+            for bounds in self.range_bounds(layout, text, range) {
+                quads.push((bounds, paint));
+            }
+        }
+        quads
+    }
+
     fn selection_bounds(&mut self, layout: &Layout, text: &Rope) -> Vec<Bounds<Pixels>> {
         let mut quads = Vec::new();
         let line_height = layout.metrics.line_height;
@@ -421,6 +554,13 @@ impl EditorView {
 }
 
 impl Layout {
+    /// The visible row at window y, if any.
+    pub(super) fn row_at_y(&self, y: Pixels) -> Option<&VisibleRow> {
+        self.rows
+            .iter()
+            .find(|row| row.y <= y && y < row.y + self.metrics.line_height)
+    }
+
     /// The document position under a window point; above or below the rows, the nearest row.
     pub(super) fn position_for_point(
         &self,

@@ -6,6 +6,7 @@
 
 mod element;
 mod layout;
+pub(crate) mod theme;
 
 use std::ops::Range as ByteRange;
 use std::time::Duration;
@@ -215,6 +216,9 @@ pub(crate) struct ViewSettings {
     pub(crate) insert_spaces: bool,
     pub(crate) word_wrap: bool,
     pub(crate) font_size: Pixels,
+    pub(crate) line_numbers: bool,
+    pub(crate) bookmark_margin: bool,
+    pub(crate) fold_margin: bool,
 }
 
 impl ViewSettings {
@@ -227,6 +231,9 @@ impl ViewSettings {
             insert_spaces: editor.insert_spaces,
             word_wrap: app.state.word_wrap.unwrap_or(editor.word_wrap),
             font_size: px(BASE_FONT_SIZE + zoom as f32),
+            line_numbers: editor.line_numbers,
+            bookmark_margin: editor.bookmark_margin,
+            fold_margin: editor.fold_margin,
         }
     }
 }
@@ -304,7 +311,9 @@ impl EditorView {
                 }
                 cx.notify();
             }
-            BufferEvent::StateChanged | BufferEvent::LoadFailed(_) => cx.notify(),
+            BufferEvent::StateChanged | BufferEvent::MarksChanged | BufferEvent::LoadFailed(_) => {
+                cx.notify()
+            }
         });
         let focus_handle = cx.focus_handle();
         let text = buffer.read(cx).doc().text().clone();
@@ -795,11 +804,37 @@ impl EditorView {
             self.drag_scrollbar(event.position, cx);
             return;
         }
+        if let Some(margin) = layout.margins.symbols
+            && margin.contains(&event.position)
+        {
+            // A click in the symbol margin toggles the bookmark, as in Notepad++.
+            if let Some(line) = layout.row_at_y(event.position.y).map(|row| row.row.line) {
+                self.buffer.update(cx, |buffer, cx| {
+                    buffer.update_marks(cx, |marks, text| {
+                        marks.bookmarks.toggle(text, line);
+                    });
+                });
+            }
+            return;
+        }
+        if layout
+            .margins
+            .folding
+            .is_some_and(|margin| margin.contains(&event.position))
+        {
+            return;
+        }
+        // In the line number margin, clicking and dragging selects whole lines.
+        let in_line_numbers = layout
+            .margins
+            .line_numbers
+            .is_some_and(|margin| margin.contains(&event.position));
         let text = self.text(cx).clone();
         let Some(pos) = self.position_for_point(event.position, cx) else {
             return;
         };
         let granularity = match event.click_count {
+            _ if in_line_numbers => Granularity::Line,
             0 | 1 => Granularity::Char,
             2 => Granularity::Word,
             _ => Granularity::Line,
@@ -1106,7 +1141,7 @@ fn utf16_to_byte_offset(text: &str, utf16: usize) -> usize {
 
 #[cfg(test)]
 mod tests {
-    use gpui_kit::{TestAppContext, VisualTestContext};
+    use gpui_kit::{Modifiers, TestAppContext, VisualTestContext};
 
     use super::*;
     use crate::workspace::Workspace;
@@ -1218,5 +1253,59 @@ mod tests {
         assert_eq!(primary(&workspace, cx), Range::point(13), "column 4 again");
         cx.simulate_keystrokes("shift-up shift-up");
         assert_eq!(primary(&workspace, cx), Range::new(13, 4));
+    }
+
+    fn bookmarks(workspace: &Entity<Workspace>, cx: &mut VisualTestContext) -> Vec<usize> {
+        workspace.read_with(cx, |workspace, cx| {
+            let buffer = workspace.active_view(cx).unwrap().read(cx).buffer.read(cx);
+            buffer.marks().bookmarks.lines(buffer.doc().text())
+        })
+    }
+
+    /// Window points in the middle of `row` (a visible row index) in the symbol margin and in
+    /// the line number margin, from the last frame's layout.
+    fn margin_points(
+        workspace: &Entity<Workspace>,
+        row: usize,
+        cx: &mut VisualTestContext,
+    ) -> (Point<Pixels>, Point<Pixels>) {
+        workspace.read_with(cx, |workspace, cx| {
+            let view = workspace.active_view(cx).unwrap();
+            let layout = view.read(cx).layout.as_ref().expect("a frame was drawn");
+            let y = layout.rows[row].y + layout.metrics.line_height / 2.;
+            let center = |bounds: Bounds<Pixels>| point(bounds.left() + bounds.size.width / 2., y);
+            (
+                center(layout.margins.symbols.expect("symbol margin")),
+                center(layout.margins.line_numbers.expect("line number margin")),
+            )
+        })
+    }
+
+    #[gpui_kit::test]
+    fn margin_clicks_toggle_bookmarks_and_select_lines(cx: &mut TestAppContext) {
+        let (workspace, cx) = open_workspace(cx);
+        cx.simulate_input(
+            "one
+two
+three",
+        );
+        let (symbol, _) = margin_points(&workspace, 1, cx);
+        cx.simulate_click(symbol, Modifiers::none());
+        assert_eq!(bookmarks(&workspace, cx), [1]);
+
+        // A line inserted above moves the bookmark down with its line.
+        cx.simulate_keystrokes(document_start());
+        cx.simulate_input(
+            "zero
+",
+        );
+        assert_eq!(bookmarks(&workspace, cx), [2]);
+        let (symbol, number) = margin_points(&workspace, 2, cx);
+        cx.simulate_click(symbol, Modifiers::none());
+        assert!(bookmarks(&workspace, cx).is_empty());
+
+        // A click on a line number selects the line with its line break.
+        cx.simulate_click(number, Modifiers::none());
+        assert_eq!(primary(&workspace, cx), Range::new(9, 13));
     }
 }

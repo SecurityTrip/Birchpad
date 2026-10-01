@@ -21,6 +21,11 @@ pub struct EditorSettings {
     pub tab_width: u8,
     pub insert_spaces: bool,
     pub word_wrap: bool,
+    /// Margins left of the text, as in Notepad++'s Preferences > Margins: line numbers, the
+    /// symbol margin (bookmarks) and the folding margin.
+    pub line_numbers: bool,
+    pub bookmark_margin: bool,
+    pub fold_margin: bool,
 }
 
 impl Default for EditorSettings {
@@ -29,6 +34,9 @@ impl Default for EditorSettings {
             tab_width: 4,
             insert_spaces: false,
             word_wrap: false,
+            line_numbers: true,
+            bookmark_margin: true,
+            fold_margin: true,
         }
     }
 }

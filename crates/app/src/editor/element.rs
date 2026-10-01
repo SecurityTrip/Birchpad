@@ -1,14 +1,15 @@
-//! The element that paints an editor view: gutter, selections, text, carets, scrollbars.
+//! The element that paints an editor view: margins, decorations, selections, text, carets,
+//! scrollbars.
 
 use gpui_kit::{
     App, Bounds, ContentMask, CursorStyle, Element, ElementId, ElementInputHandler, Entity,
     GlobalElementId, Hitbox, HitboxBehavior, InspectorElementId, IntoElement, LayoutId, Pixels,
-    Style, TextAlign, Window, fill, relative, rgb, rgba,
+    Style, TextAlign, Window, fill, outline, point, px, relative, rgb, rgba, size,
 };
 
 use super::EditorView;
+use super::theme::{self, Paint};
 
-const GUTTER_BACKGROUND: u32 = 0xf6f8fa;
 const SELECTION: u32 = 0x3390ff40;
 const CARET: u32 = 0x1f2328;
 const SCROLLBAR_TRACK: u32 = 0xf6f8fa;
@@ -102,24 +103,55 @@ impl Element for EditorElement {
         };
         let line_height = layout.metrics.line_height;
 
-        window.paint_quad(fill(layout.gutter, rgb(GUTTER_BACKGROUND)));
-        window.with_content_mask(
-            Some(ContentMask {
-                bounds: layout.gutter,
-            }),
-            |window| {
-                for (origin, number) in &layout.line_numbers {
-                    number
-                        .paint(*origin, line_height, TextAlign::Left, None, window, cx)
-                        .ok();
-                }
-            },
-        );
+        let gutter = layout.margins.gutter;
+        window.paint_quad(fill(gutter, rgb(theme::GUTTER_BACKGROUND)));
+        if gutter.size.width > px(0.) {
+            window.paint_quad(fill(
+                Bounds::new(
+                    point(gutter.right() - px(1.), gutter.top()),
+                    size(px(1.), gutter.size.height),
+                ),
+                rgb(theme::GUTTER_BORDER),
+            ));
+        }
+        window.with_content_mask(Some(ContentMask { bounds: gutter }), |window| {
+            for (origin, number) in &layout.line_numbers {
+                number
+                    .paint(*origin, line_height, TextAlign::Left, None, window, cx)
+                    .ok();
+            }
+            for symbol in &layout.bookmarks {
+                window.paint_quad(
+                    fill(*symbol, rgb(theme::BOOKMARK)).corner_radii(symbol.size.width / 2.),
+                );
+            }
+        });
         window.with_content_mask(
             Some(ContentMask {
                 bounds: layout.text_bounds,
             }),
             |window| {
+                for (bounds, paint) in &layout.decorations {
+                    match *paint {
+                        Paint::Fill(color) => {
+                            window.paint_quad(fill(*bounds, color).corner_radii(px(2.)));
+                        }
+                        Paint::Outline(color) => {
+                            window.paint_quad(outline(
+                                *bounds,
+                                color,
+                                gpui_kit::BorderStyle::Solid,
+                            ));
+                        }
+                        Paint::Underline(color) => {
+                            let line = Bounds::new(
+                                point(bounds.left(), bounds.bottom() - px(2.)),
+                                size(bounds.size.width, px(1.)),
+                            );
+                            window.paint_quad(fill(line, color));
+                        }
+                    }
+                }
                 for selection in &layout.selections {
                     window.paint_quad(fill(*selection, rgba(SELECTION)));
                 }

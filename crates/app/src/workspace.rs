@@ -337,7 +337,7 @@ impl Workspace {
                 self.refresh_menus(cx);
                 cx.notify();
             }
-            BufferEvent::Edited { .. } => {}
+            BufferEvent::Edited { .. } | BufferEvent::MarksChanged => {}
         }
     }
 

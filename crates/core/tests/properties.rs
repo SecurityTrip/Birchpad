@@ -1,9 +1,11 @@
 //! Property tests for the text model: random edits on random multilingual text, checked against
 //! a naive `String`-based implementation.
 
+use birchpad_core::motion::{line_count, line_of};
 use birchpad_core::search::{Direction, Query, Searcher};
 use birchpad_core::{
-    Assoc, ChangeSet, Document, Edit, Range, Rope, Selection, Transaction, UndoGrouping,
+    Assoc, ChangeSet, Document, Edit, LineMarkers, Range, RangeSet, Rope, Selection, Transaction,
+    UndoGrouping,
 };
 use proptest::prelude::*;
 
@@ -192,5 +194,77 @@ proptest! {
             .max()
             .map(|at| at..at + folded_needle.len());
         prop_assert_eq!(searcher.find(&rope, rope.len(), Direction::Backward, false), last);
+    }
+
+    #[test]
+    fn mapper_matches_map_pos(doc in text(), raw in raw_edits(), assoc_after: bool) {
+        let rope = Rope::from_str(&doc);
+        let changes = ChangeSet::from_edits(&rope, edits_for(&doc, raw)).unwrap();
+        let assoc = if assoc_after { Assoc::After } else { Assoc::Before };
+        let mut mapper = changes.mapper(assoc);
+        for pos in 0..=doc.len() {
+            prop_assert_eq!(mapper.map(pos), changes.map_pos(pos, assoc));
+        }
+    }
+
+    #[test]
+    fn range_sets_map_like_their_endpoints(
+        doc in text(),
+        raw in raw_edits(),
+        cuts in prop::collection::vec(any::<usize>(), 0..10),
+    ) {
+        let rope = Rope::from_str(&doc);
+        let boundaries: Vec<usize> =
+            doc.char_indices().map(|(i, _)| i).chain([doc.len()]).collect();
+        let mut points: Vec<usize> = cuts.iter().map(|c| boundaries[c % boundaries.len()]).collect();
+        points.sort_unstable();
+        points.dedup();
+        let ranges: Vec<(std::ops::Range<usize>, usize)> = points
+            .as_chunks::<2>()
+            .0
+            .iter()
+            .enumerate()
+            .map(|(i, &[start, end])| (start..end, i))
+            .collect();
+        let mut set = RangeSet::from_sorted(ranges.clone());
+        let changes = ChangeSet::from_edits(&rope, edits_for(&doc, raw)).unwrap();
+        set.map(&changes);
+
+        let expected: Vec<(std::ops::Range<usize>, usize)> = ranges
+            .into_iter()
+            .map(|(range, value)| {
+                let start = changes.map_pos(range.start, Assoc::After);
+                let end = changes.map_pos(range.end, Assoc::Before).max(start);
+                (start..end, value)
+            })
+            .filter(|(range, _)| !range.is_empty())
+            .collect();
+        let actual: Vec<_> = set.iter().map(|(r, v)| (r, *v)).collect();
+        prop_assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn line_markers_stay_one_per_line_and_in_bounds(
+        doc in text(),
+        raw in raw_edits(),
+        marked in prop::collection::vec(any::<usize>(), 0..8),
+    ) {
+        let mut rope = Rope::from_str(&doc);
+        let mut markers = LineMarkers::new();
+        for line in &marked {
+            markers.add(&rope, line % line_count(&rope));
+        }
+        let before: Vec<usize> = markers.lines(&rope);
+        let positions: Vec<usize> = before.iter().map(|&l| rope.line_to_byte_idx(l, birchpad_core::LINE_TYPE)).collect();
+        let changes = ChangeSet::from_edits(&rope, edits_for(&doc, raw)).unwrap();
+        changes.apply(&mut rope);
+        markers.map(&changes, &rope);
+
+        let mut expected: Vec<usize> = positions
+            .iter()
+            .map(|&pos| line_of(&rope, changes.map_pos(pos, Assoc::After)))
+            .collect();
+        expected.dedup();
+        prop_assert_eq!(markers.lines(&rope), expected);
     }
 }

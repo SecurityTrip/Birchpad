@@ -45,8 +45,12 @@ What Phase 1 left for later is marked *(from Phase 1)* in the phases below.
 
 ## Phase 2: Notepad++-level editor
 
+- [x] Decorations that follow edits (ranges like Scintilla's indicators, line markers like its
+      markers); margins for line numbers, bookmarks and folding; clicking the symbol margin
+      toggles a bookmark, the line number margin selects lines
+      ([ADR 0010](adr/0010-decorations-markers-and-margins.md))
 - Syntax highlighting with tree-sitter for ~20 popular languages, auto-indent, brace matching
-- Folding; margins for line numbers, bookmarks and folding
+- Folding
 - Multi-editing, column selection (Alt+drag, Alt+Shift+arrows), Column Editor
 - Smart highlighting, Mark with 5 styles, bookmarks and bookmarked-line operations
 - Line operations: duplicate, move, sort, remove duplicates/empty lines, join/split, trim,

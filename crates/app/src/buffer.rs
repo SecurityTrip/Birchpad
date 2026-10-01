@@ -6,7 +6,8 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, Instant};
 
 use birchpad_core::{
-    Document, Encoding, Format, RevisionId, Rope, Selection, Transaction, UndoGrouping,
+    Document, Encoding, Format, LineMarkers, RangeSet, RevisionId, Rope, Selection, Transaction,
+    UndoGrouping,
 };
 use birchpad_io::{DecodeProblem, LoadOptions, LoadedFile, ReadError};
 use gpui_kit::{AppContext as _, Context, EntityId, EventEmitter, Task};
@@ -24,6 +25,8 @@ pub(crate) enum BufferEvent {
     Reloaded,
     /// The modified flag, path, format or read-only state changed.
     StateChanged,
+    /// Bookmarks or token styles changed without an edit.
+    MarksChanged,
     /// The file could not be read; the buffer stays empty.
     LoadFailed(Arc<ReadError>),
 }
@@ -41,6 +44,27 @@ pub(crate) enum ReadOnly {
     Requested,
 }
 
+/// Number of styles of Search > Style All Occurrences of Token, as in Notepad++.
+pub(crate) const MARK_STYLES: usize = 5;
+
+/// Decorations that belong to the document, so every view of it shows them: bookmarks and
+/// the token styles. They follow every edit, undo and redo.
+#[derive(Debug, Clone, Default)]
+pub(crate) struct DocumentMarks {
+    pub(crate) bookmarks: LineMarkers,
+    pub(crate) styles: [RangeSet<()>; MARK_STYLES],
+}
+
+impl DocumentMarks {
+    fn map(&mut self, transaction: &Transaction, text: &Rope) {
+        let changes = transaction.changes();
+        self.bookmarks.map(changes, text);
+        for style in &mut self.styles {
+            style.map(changes);
+        }
+    }
+}
+
 struct Loading {
     progress: Arc<AtomicU64>,
     total: u64,
@@ -56,6 +80,7 @@ pub(crate) struct Buffer {
     file_read_only: bool,
     requested_read_only: bool,
     loading: Option<Loading>,
+    marks: DocumentMarks,
 }
 
 impl EventEmitter<BufferEvent> for Buffer {}
@@ -70,6 +95,7 @@ impl Buffer {
             file_read_only: false,
             requested_read_only: false,
             loading: None,
+            marks: DocumentMarks::default(),
         }
     }
 
@@ -96,6 +122,7 @@ impl Buffer {
             file_read_only: false,
             requested_read_only: read_only,
             loading: None,
+            marks: DocumentMarks::default(),
         };
         buffer.load(options, None, cx);
         buffer
@@ -171,6 +198,7 @@ impl Buffer {
                 self.problem = file.problem;
                 self.file_read_only = file.info.read_only;
                 self.doc = Document::with_format(file.text, file.format);
+                self.marks = DocumentMarks::default();
                 cx.emit(BufferEvent::Reloaded);
             }
             Err(ReadError::NotFound(_)) => {
@@ -182,6 +210,7 @@ impl Buffer {
                 }
                 self.problem = None;
                 self.doc = Document::with_format(Rope::new(), format);
+                self.marks = DocumentMarks::default();
                 cx.emit(BufferEvent::Reloaded);
             }
             Err(error) => cx.emit(BufferEvent::LoadFailed(Arc::new(error))),
@@ -192,6 +221,21 @@ impl Buffer {
 
     pub(crate) fn doc(&self) -> &Document {
         &self.doc
+    }
+
+    pub(crate) fn marks(&self) -> &DocumentMarks {
+        &self.marks
+    }
+
+    /// Changes the document's decorations (bookmarks, token styles) and redraws its views.
+    pub(crate) fn update_marks(
+        &mut self,
+        cx: &mut Context<Self>,
+        change: impl FnOnce(&mut DocumentMarks, &Rope),
+    ) {
+        change(&mut self.marks, self.doc.text());
+        cx.emit(BufferEvent::MarksChanged);
+        cx.notify();
     }
 
     pub(crate) fn path(&self) -> Option<&Path> {
@@ -267,6 +311,7 @@ impl Buffer {
         let was_modified = self.doc.is_modified();
         let format_before = self.doc.format();
         self.doc.apply(&transaction, selection_before, grouping);
+        self.marks.map(&transaction, self.doc.text());
         cx.emit(BufferEvent::Edited {
             transaction,
             origin,
@@ -323,6 +368,7 @@ impl Buffer {
         origin: Option<EntityId>,
         cx: &mut Context<Self>,
     ) {
+        self.marks.map(&transaction, self.doc.text());
         cx.emit(BufferEvent::Edited {
             transaction,
             origin,
