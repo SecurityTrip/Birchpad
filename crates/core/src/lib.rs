@@ -10,6 +10,7 @@ mod format;
 mod history;
 mod line_ending;
 pub mod motion;
+pub mod search;
 mod selection;
 mod transaction;
 

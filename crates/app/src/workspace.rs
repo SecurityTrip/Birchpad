@@ -20,6 +20,7 @@ use crate::app_state::AppState;
 use crate::buffer::{Buffer, BufferEvent};
 use crate::commands::{CommandRegistry, Handler, RunCommand};
 use crate::editor::EditorView;
+use crate::find::FindBar;
 use crate::menus::{self, MenuState};
 use crate::pane::{Pane, PaneEvent};
 
@@ -44,16 +45,7 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
         drop(window.prompt(PromptLevel::Info, "Birchpad", Some(&detail), &["OK"], cx));
         Ok(())
     });
-    for id in [
-        "search.find",
-        "search.replace",
-        "search.find-next",
-        "search.find-previous",
-        "search.go-to",
-        "help.check-updates",
-    ] {
-        registry.pending(id);
-    }
+    registry.pending("help.check-updates");
     registry.workspace("view.word-wrap", |this, (), _, cx| {
         let current = crate::editor::ViewSettings::read(cx).word_wrap;
         AppState::update_state(cx, |state, _| state.word_wrap = Some(!current));
@@ -80,6 +72,7 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
     }
     crate::encoding_ui::register_commands(registry);
     crate::file_ops::register_commands(registry);
+    crate::find::register_commands(registry);
 }
 
 /// Shows an error to the user without interrupting them.
@@ -97,6 +90,7 @@ pub(crate) struct Workspace {
     panes: Vec<Entity<Pane>>,
     active_pane: usize,
     menu_bar: Option<Entity<AppMenuBar>>,
+    pub(crate) find_bar: Entity<FindBar>,
     title: String,
     buffer_subscriptions: HashMap<EntityId, Subscription>,
     _subscriptions: Vec<Subscription>,
@@ -106,14 +100,17 @@ impl Workspace {
     pub(crate) fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
         let pane = cx.new(|_| Pane::new());
         let subscription = cx.subscribe_in(&pane, window, Self::on_pane_event);
+        let find_bar = cx.new(|cx| FindBar::new(window, cx));
+        let find_events = cx.subscribe_in(&find_bar, window, Self::on_find_bar_event);
         let mut this = Self {
             focus_handle: cx.focus_handle(),
             panes: vec![pane],
             active_pane: 0,
             menu_bar: None,
+            find_bar,
             title: String::new(),
             buffer_subscriptions: HashMap::new(),
-            _subscriptions: vec![subscription],
+            _subscriptions: vec![subscription, find_events],
         };
         this.refresh_menus(cx);
         // The window's close button: ask about unsaved changes first.
@@ -510,6 +507,9 @@ impl Render for Workspace {
                     .min_h(px(0.))
                     .child(self.active_pane().clone()),
             )
+            .when(self.find_bar.read(cx).visible, |this| {
+                this.child(self.find_bar.clone())
+            })
             .child(self.status_bar(cx))
     }
 }

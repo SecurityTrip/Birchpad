@@ -12,6 +12,7 @@ mod commands;
 mod editor;
 mod encoding_ui;
 mod file_ops;
+mod find;
 mod menus;
 mod pane;
 mod path_dialog;

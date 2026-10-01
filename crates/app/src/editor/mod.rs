@@ -469,6 +469,33 @@ impl EditorView {
         self.request_autoscroll(cx);
     }
 
+    /// Selects `range` (a search match) and scrolls it into view.
+    pub(crate) fn select_range(&mut self, range: ByteRange<usize>, cx: &mut Context<Self>) {
+        self.selection = Selection::single(Range::new(range.start, range.end));
+        self.goal_column = None;
+        self.last_edit = LastEdit::None;
+        self.request_autoscroll(cx);
+    }
+
+    /// Puts a single caret at `pos` and scrolls to it (Go To).
+    pub(crate) fn go_to(&mut self, pos: usize, cx: &mut Context<Self>) {
+        self.select_range(pos..pos, cx);
+    }
+
+    /// Applies an edit made on behalf of the user by a command (Replace All) as one undo step.
+    /// Returns false if the document is read-only.
+    pub(crate) fn apply_command_edit(
+        &mut self,
+        transaction: Transaction,
+        cx: &mut Context<Self>,
+    ) -> bool {
+        if !self.is_editable(cx) {
+            return false;
+        }
+        self.apply(transaction, LastEdit::None, cx);
+        true
+    }
+
     fn select_all(&mut self, cx: &mut Context<Self>) {
         self.selection = Selection::single(Range::new(0, self.text(cx).len()));
         self.last_edit = LastEdit::None;

@@ -104,6 +104,7 @@ pub const COMMANDS: &[CommandSpec] = &[
     workspace("search.find-next", "Find Next"),
     workspace("search.find-previous", "Find Previous"),
     workspace("search.go-to", "Go To..."),
+    workspace("search.close", "Close Find Panel"),
     // View
     workspace("view.word-wrap", "Word Wrap"),
     workspace("view.zoom-in", "Zoom In"),

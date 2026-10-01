@@ -72,6 +72,11 @@ command = "search.find-previous"
 keys = "secondary-g"
 command = "search.go-to"
 
+[[binding]]
+keys = "escape"
+command = "search.close"
+context = "FindBar"
+
 # --- View ---------------------------------------------------------------------------------------
 
 # Windows reports the keypad +, - and 0 as "+", "-" and "0"; Linux as "add", "subtract" and "0".
