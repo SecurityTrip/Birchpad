@@ -641,7 +641,7 @@ mod tests {
     use gpui_kit::{TestAppContext, VisualTestContext};
 
     use super::*;
-    use crate::workspace::tests::{active_text, open_workspace, secondary};
+    use crate::workspace::tests::{active_text, document_start, open_workspace, secondary};
 
     fn search_for(
         workspace: &Entity<Workspace>,
@@ -673,7 +673,7 @@ mod tests {
     fn f3_finds_next_and_wraps(cx: &mut TestAppContext) {
         let (workspace, cx) = open_workspace(cx);
         cx.simulate_input("cat Cat category cat");
-        cx.simulate_keystrokes(&secondary("home"));
+        cx.simulate_keystrokes(document_start());
         let options = FindOptions {
             whole_word: true,
             ..FindOptions::default()

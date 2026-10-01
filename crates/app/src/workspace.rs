@@ -536,6 +536,16 @@ pub(crate) mod tests {
         format!("{modifier}-{key}")
     }
 
+    /// The keystroke that moves the caret to the start of the document on this platform:
+    /// Ctrl+Home on Windows and Linux, Cmd+Up on macOS (Cmd+Home does nothing there).
+    pub(crate) fn document_start() -> &'static str {
+        if cfg!(target_os = "macos") {
+            "cmd-up"
+        } else {
+            "ctrl-home"
+        }
+    }
+
     pub(crate) fn open_workspace(
         cx: &mut TestAppContext,
     ) -> (Entity<Workspace>, &mut VisualTestContext) {

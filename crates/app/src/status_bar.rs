@@ -227,7 +227,7 @@ mod tests {
 
     use super::*;
     use crate::workspace::Workspace;
-    use crate::workspace::tests::{open_workspace, secondary};
+    use crate::workspace::tests::{document_start, open_workspace};
 
     fn sections(workspace: &Entity<Workspace>, cx: &mut VisualTestContext) -> [String; 6] {
         workspace.update(cx, |workspace, cx| {
@@ -248,7 +248,7 @@ mod tests {
         assert_eq!((encoding.as_str(), mode.as_str()), ("UTF-8", "INS"));
 
         // The column counts the tab to its stop; the selection counts characters and lines.
-        cx.simulate_keystrokes(&format!("{} end", secondary("home")));
+        cx.simulate_keystrokes(&format!("{} end", document_start()));
         let [_, position, _, _, _, _] = sections(&workspace, cx);
         assert_eq!(position, "Ln : 1    Col : 8    Pos : 8");
         cx.simulate_keystrokes("shift-down insert");

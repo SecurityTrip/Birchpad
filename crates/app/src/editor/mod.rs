@@ -1110,7 +1110,7 @@ mod tests {
 
     use super::*;
     use crate::workspace::Workspace;
-    use crate::workspace::tests::{active_text, open_workspace, secondary};
+    use crate::workspace::tests::{active_text, document_start, open_workspace};
 
     /// Ctrl (Option on macOS) with an arrow or Backspace/Delete: by words.
     fn word(key: &str) -> String {
@@ -1135,7 +1135,7 @@ mod tests {
 
     fn set_text(text: &str, cx: &mut VisualTestContext) {
         cx.simulate_input(text);
-        cx.simulate_keystrokes(&secondary("home"));
+        cx.simulate_keystrokes(document_start());
     }
 
     #[gpui_kit::test]
