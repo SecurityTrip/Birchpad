@@ -237,7 +237,7 @@ mod tests {
 
     use super::*;
     use crate::workspace::Workspace;
-    use crate::workspace::tests::{document_start, open_workspace};
+    use crate::workspace::tests::{block, document_start, open_workspace};
 
     /// Folds: 0..4 (level 1), 1..3 (level 2), 5..7 (level 1).
     const SAMPLE: &str = "fn a() {\n    if x {\n        y();\n    }\n}\nfn b() {\n    z();\n}\n";
@@ -403,7 +403,7 @@ mod tests {
         let (workspace, cx) = open_sample(cx);
         // Collapse `fn a`, then extend a rectangle down from its header: it skips the
         // hidden lines and the fold stays collapsed.
-        cx.simulate_keystrokes("ctrl-alt-f alt-shift-down");
+        cx.simulate_keystrokes(&format!("ctrl-alt-f {}", block("down")));
         assert_eq!(hidden(&workspace, cx), [1..5]);
         let view = view(&workspace, cx);
         let lines: Vec<usize> = view.read_with(cx, |view, cx| {

@@ -747,7 +747,10 @@ mod gpui_tests {
 
     use super::*;
     use crate::workspace::Workspace;
-    use crate::workspace::tests::{active_text, document_start, open_workspace, secondary};
+    use crate::workspace::tests::{
+        active_text, begin_end_column, block, column_editor, document_start, open_workspace,
+        secondary,
+    };
 
     fn view(workspace: &Entity<Workspace>, cx: &mut VisualTestContext) -> Entity<EditorView> {
         workspace.read_with(cx, |workspace, cx| workspace.active_view(cx).unwrap())
@@ -841,7 +844,11 @@ mod gpui_tests {
     fn keys_extend_a_rectangle_and_typing_fills_virtual_space(cx: &mut TestAppContext) {
         let (workspace, cx) = open_workspace(cx);
         set_text("abcd\n\nab", cx);
-        cx.simulate_keystrokes("right right right alt-shift-down alt-shift-down");
+        cx.simulate_keystrokes(&format!(
+            "right right right {} {}",
+            block("down"),
+            block("down")
+        ));
         assert_eq!(
             ranges(&workspace, cx),
             [
@@ -861,7 +868,12 @@ mod gpui_tests {
 
         // Right goes on into virtual space, Left comes back; Up shrinks the rectangle.
         cx.simulate_keystrokes(document_start());
-        cx.simulate_keystrokes("end alt-shift-right alt-shift-right alt-shift-down");
+        cx.simulate_keystrokes(&format!(
+            "end {} {} {}",
+            block("right"),
+            block("right"),
+            block("down")
+        ));
         assert_eq!(
             ranges(&workspace, cx),
             [
@@ -869,14 +881,14 @@ mod gpui_tests {
                 Range::new(5, 5).with_virtual(4, 6),
             ]
         );
-        cx.simulate_keystrokes("alt-shift-left alt-shift-up");
+        cx.simulate_keystrokes(&format!("{} {}", block("left"), block("up")));
         assert_eq!(
             ranges(&workspace, cx),
             [Range::new(4, 4).with_virtual(0, 1)]
         );
 
         // Esc leaves column mode with a caret at the caret corner.
-        cx.simulate_keystrokes("alt-shift-down escape");
+        cx.simulate_keystrokes(&format!("{} escape", block("down")));
         assert_eq!(ranges(&workspace, cx), [Range::point(5)]);
         assert!(in_block(&workspace, cx).is_none());
     }
@@ -885,7 +897,7 @@ mod gpui_tests {
     fn backspace_in_virtual_space_moves_the_carets(cx: &mut TestAppContext) {
         let (workspace, cx) = open_workspace(cx);
         set_text("ab\nabcd", cx);
-        cx.simulate_keystrokes("down end alt-shift-up");
+        cx.simulate_keystrokes(&format!("down end {}", block("up")));
         assert_eq!(
             ranges(&workspace, cx),
             [Range::virtual_point(2, 2), Range::point(7)]
@@ -905,7 +917,12 @@ mod gpui_tests {
     fn copying_and_pasting_a_rectangle(cx: &mut TestAppContext) {
         let (workspace, cx) = open_workspace(cx);
         set_text("ab12\ncd34\nef", cx);
-        cx.simulate_keystrokes("right right alt-shift-down alt-shift-right alt-shift-right");
+        cx.simulate_keystrokes(&format!(
+            "right right {} {} {}",
+            block("down"),
+            block("right"),
+            block("right")
+        ));
         cx.simulate_keystrokes(&secondary("c"));
         let eol = LineEnding::native().as_str();
         let clipboard = cx.read_from_clipboard().unwrap();
@@ -933,14 +950,19 @@ mod gpui_tests {
 
         // Over a rectangle of the same size: replaces it.
         cx.simulate_keystrokes(document_start());
-        cx.simulate_keystrokes("alt-shift-down alt-shift-right alt-shift-right");
+        cx.simulate_keystrokes(&format!(
+            "{} {} {}",
+            block("down"),
+            block("right"),
+            block("right")
+        ));
         cx.simulate_keystrokes(&secondary("v"));
         assert_eq!(active_text(&workspace, cx), "1212\n3434\nef");
 
         // Text copied as a stream pastes into every line of a rectangle.
         cx.write_to_clipboard(ClipboardItem::new_string("-".to_owned()));
         cx.simulate_keystrokes(document_start());
-        cx.simulate_keystrokes("alt-shift-down alt-shift-down");
+        cx.simulate_keystrokes(&format!("{} {}", block("down"), block("down")));
         cx.simulate_keystrokes(&secondary("v"));
         assert_eq!(active_text(&workspace, cx), "-1212\n-3434\n-ef");
     }
@@ -1015,7 +1037,11 @@ mod gpui_tests {
         assert_eq!(ranges(&workspace, cx), [Range::new(1, 11)]);
 
         // Right first collapses the selection to its end (line 2, column 1).
-        cx.simulate_keystrokes("right alt-shift-b right right up alt-shift-b");
+        cx.simulate_keystrokes(&format!(
+            "right {} right right up {}",
+            begin_end_column(),
+            begin_end_column()
+        ));
         assert_eq!(
             ranges(&workspace, cx),
             [Range::new(6, 8), Range::new(11, 13)]
@@ -1033,7 +1059,13 @@ mod gpui_tests {
         set_text("name,age\nbob,30\namy,04\ncat,15", cx);
         // The age column of the three records.
         cx.simulate_keystrokes("down right right right right");
-        cx.simulate_keystrokes("alt-shift-down alt-shift-down alt-shift-right alt-shift-right");
+        cx.simulate_keystrokes(&format!(
+            "{} {} {} {}",
+            block("down"),
+            block("down"),
+            block("right"),
+            block("right")
+        ));
         let sort = Invocation::with_args("edit.sort-lines", json!({ "by": "integer" }));
         run(&workspace, sort, cx);
         let eol = LineEnding::native().as_str();
@@ -1074,8 +1106,8 @@ mod gpui_tests {
         cx.simulate_keystrokes(&secondary("z"));
         assert_eq!(active_text(&workspace, cx), original, "one undo step");
 
-        // Alt+C opens the dialog.
-        cx.simulate_keystrokes("alt-c");
+        // Alt+C (Cmd+Alt+C on macOS) opens the dialog.
+        cx.simulate_keystrokes(column_editor());
         let open = cx.update(|window, cx| {
             use gpui_kit::component::WindowExt as _;
             window.has_active_dialog(cx)
@@ -1087,7 +1119,7 @@ mod gpui_tests {
     fn column_insert_into_a_rectangle_and_carets(cx: &mut TestAppContext) {
         let (workspace, cx) = open_workspace(cx);
         set_text("a\nbbb\nc", cx);
-        cx.simulate_keystrokes("right alt-shift-down alt-shift-down");
+        cx.simulate_keystrokes(&format!("right {} {}", block("down"), block("down")));
         let insert = Invocation::with_args(
             "edit.column-insert",
             json!({ "initial": 9, "leading": "zeros", "format": "dec" }),
@@ -1105,7 +1137,7 @@ mod gpui_tests {
         use gpui_kit::EntityInputHandler as _;
         let (workspace, cx) = open_workspace(cx);
         set_text("a\nb", cx);
-        cx.simulate_keystrokes("end alt-shift-down");
+        cx.simulate_keystrokes(&format!("end {}", block("down")));
         let view = view(&workspace, cx);
         cx.update(|window, cx| {
             view.update(cx, |view, cx| {

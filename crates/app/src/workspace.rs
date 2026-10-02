@@ -592,6 +592,35 @@ pub(crate) mod tests {
         }
     }
 
+    /// The keystroke that extends a rectangular selection towards `key`: Alt+Shift+<key> on
+    /// Windows and Linux, Cmd+Alt+Shift+<key> on macOS.
+    pub(crate) fn block(key: &str) -> String {
+        if cfg!(target_os = "macos") {
+            format!("cmd-alt-shift-{key}")
+        } else {
+            format!("alt-shift-{key}")
+        }
+    }
+
+    /// Column-mode Begin/End Select: Alt+Shift+B on Windows and Linux, Cmd+Alt+Shift+B on
+    /// macOS.
+    pub(crate) fn begin_end_column() -> &'static str {
+        if cfg!(target_os = "macos") {
+            "cmd-alt-shift-b"
+        } else {
+            "alt-shift-b"
+        }
+    }
+
+    /// The Column Editor: Alt+C on Windows and Linux, Cmd+Alt+C on macOS.
+    pub(crate) fn column_editor() -> &'static str {
+        if cfg!(target_os = "macos") {
+            "cmd-alt-c"
+        } else {
+            "alt-c"
+        }
+    }
+
     pub(crate) fn open_workspace(
         cx: &mut TestAppContext,
     ) -> (Entity<Workspace>, &mut VisualTestContext) {
