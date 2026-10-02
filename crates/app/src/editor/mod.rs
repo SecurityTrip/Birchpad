@@ -7,6 +7,7 @@
 mod element;
 mod folding;
 mod layout;
+mod operations;
 pub(crate) mod theme;
 
 use std::ops::Range as ByteRange;
@@ -99,6 +100,7 @@ struct ConvertEolArgs {
 
 pub(crate) fn register_commands(registry: &mut CommandRegistry) {
     folding::register_commands(registry);
+    operations::register_commands(registry);
     for (cursor, select, motion) in MOTIONS {
         registry.editor(cursor, move |this, (), _, cx| {
             this.move_carets(motion, false, cx);

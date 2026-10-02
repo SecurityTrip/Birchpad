@@ -60,8 +60,13 @@ What Phase 1 left for later is marked *(from Phase 1)* in the phases below.
       collapsed folds ([ADR 0012](adr/0012-folding.md))
 - Multi-editing, column selection (Alt+drag, Alt+Shift+arrows), Column Editor
 - Smart highlighting, Mark with 5 styles, bookmarks and bookmarked-line operations
-- Line operations: duplicate, move, sort, remove duplicates/empty lines, join/split, trim,
-  case conversion, comment toggling, tab/space conversion
+- [x] Line operations: duplicate, delete, move, insert blank line, join, split; sort
+      (lexicographic, ignoring case, as integers, as decimals with comma or dot, by length;
+      ascending and descending), reverse, randomize; remove duplicate, consecutive duplicate
+      and empty lines; trim, EOL to space, tab/space conversion; case conversion (upper,
+      lower, proper, sentence, invert, random); line and block comments by the language's
+      tokens. All in `birchpad_core::ops`, one undo step each, with Notepad++'s keys
+- Sorting by the columns of a rectangular selection (with column editing below)
 - Show whitespace and line endings, indentation guides, edge column
 - Split view, clone document to the other view, synchronized scrolling
 - Sessions and periodic backup of unsaved changes (`-nosession` already accepted); they also

@@ -125,6 +125,19 @@ pub fn main_menu() -> Vec<Menu> {
         ],
     );
 
+    let case = |to: &str, label: &str| {
+        MenuItem::command_with("edit.convert-case", json!({ "to": to }), label)
+    };
+    let sort = |by: &str, descending: bool, label: &str| {
+        MenuItem::command_with(
+            "edit.sort-lines",
+            json!({ "by": by, "descending": descending }),
+            label,
+        )
+    };
+    let trim = |which: &str, label: &str| {
+        MenuItem::command_with("edit.trim", json!({ "which": which }), label)
+    };
     let eol = |eol: &str, label: &str| {
         MenuItem::command_with("edit.convert-eol", json!({ "eol": eol }), label)
     };
@@ -140,6 +153,140 @@ pub fn main_menu() -> Vec<Menu> {
             cmd("edit.delete"),
             cmd("edit.select-all"),
             Separator,
+            Submenu(Menu::new(
+                "Comment/Uncomment",
+                vec![
+                    cmd("edit.toggle-comment"),
+                    cmd("edit.comment-lines"),
+                    cmd("edit.uncomment-lines"),
+                    cmd("edit.block-comment"),
+                ],
+            )),
+            Submenu(Menu::new(
+                "Convert Case to",
+                vec![
+                    case("upper", "UPPERCASE"),
+                    case("lower", "lowercase"),
+                    case("proper", "Proper Case"),
+                    case("proper-blend", "Proper Case (blend)"),
+                    case("sentence", "Sentence case"),
+                    case("sentence-blend", "Sentence case (blend)"),
+                    case("invert", "iNVERT cASE"),
+                    case("random", "ranDOm CasE"),
+                ],
+            )),
+            Submenu(Menu::new(
+                "Line Operations",
+                vec![
+                    cmd("edit.duplicate-line"),
+                    cmd("edit.delete-line"),
+                    cmd("edit.move-line-up"),
+                    cmd("edit.move-line-down"),
+                    cmd("edit.insert-line-above"),
+                    cmd("edit.insert-line-below"),
+                    Separator,
+                    cmd("edit.join-lines"),
+                    cmd("edit.split-lines"),
+                    Separator,
+                    MenuItem::command_with(
+                        "edit.remove-duplicate-lines",
+                        json!({ "consecutive": false }),
+                        "Remove Duplicate Lines",
+                    ),
+                    MenuItem::command_with(
+                        "edit.remove-duplicate-lines",
+                        json!({ "consecutive": true }),
+                        "Remove Consecutive Duplicate Lines",
+                    ),
+                    MenuItem::command_with(
+                        "edit.remove-empty-lines",
+                        json!({ "blank": false }),
+                        "Remove Empty Lines",
+                    ),
+                    MenuItem::command_with(
+                        "edit.remove-empty-lines",
+                        json!({ "blank": true }),
+                        "Remove Empty Lines (Containing Blank characters)",
+                    ),
+                    Separator,
+                    sort(
+                        "lexicographic",
+                        false,
+                        "Sort Lines Lexicographically Ascending",
+                    ),
+                    sort(
+                        "lexicographic",
+                        true,
+                        "Sort Lines Lexicographically Descending",
+                    ),
+                    sort(
+                        "ignore-case",
+                        false,
+                        "Sort Lines Lex. Ascending Ignoring Case",
+                    ),
+                    sort(
+                        "ignore-case",
+                        true,
+                        "Sort Lines Lex. Descending Ignoring Case",
+                    ),
+                    sort("integer", false, "Sort Lines As Integers Ascending"),
+                    sort("integer", true, "Sort Lines As Integers Descending"),
+                    sort(
+                        "decimal-comma",
+                        false,
+                        "Sort Lines As Decimals (Comma) Ascending",
+                    ),
+                    sort(
+                        "decimal-comma",
+                        true,
+                        "Sort Lines As Decimals (Comma) Descending",
+                    ),
+                    sort(
+                        "decimal-dot",
+                        false,
+                        "Sort Lines As Decimals (Dot) Ascending",
+                    ),
+                    sort(
+                        "decimal-dot",
+                        true,
+                        "Sort Lines As Decimals (Dot) Descending",
+                    ),
+                    sort("length", false, "Sort Lines By Length Ascending"),
+                    sort("length", true, "Sort Lines By Length Descending"),
+                    cmd("edit.reverse-lines"),
+                    cmd("edit.shuffle-lines"),
+                ],
+            )),
+            Submenu(Menu::new(
+                "Blank Operations",
+                vec![
+                    trim("trailing", "Trim Trailing Space"),
+                    trim("leading", "Trim Leading Space"),
+                    trim("both", "Trim Leading and Trailing Space"),
+                    MenuItem::command_with(
+                        "edit.eol-to-space",
+                        json!({ "trim": false }),
+                        "EOL to Space",
+                    ),
+                    MenuItem::command_with(
+                        "edit.eol-to-space",
+                        json!({ "trim": true }),
+                        "Trim both and EOL to Space",
+                    ),
+                    Separator,
+                    cmd("edit.tabs-to-spaces"),
+                    MenuItem::command_with(
+                        "edit.spaces-to-tabs",
+                        json!({ "leading": false }),
+                        "Space to TAB (All)",
+                    ),
+                    MenuItem::command_with(
+                        "edit.spaces-to-tabs",
+                        json!({ "leading": true }),
+                        "Space to TAB (Leading)",
+                    ),
+                ],
+            )),
             Submenu(Menu::new(
                 "EOL Conversion",
                 vec![

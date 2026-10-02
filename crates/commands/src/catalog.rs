@@ -70,6 +70,39 @@ pub const COMMANDS: &[CommandSpec] = &[
     editor("edit.toggle-overwrite", "Toggle Insert/Overwrite"),
     // { "eol": "crlf" | "lf" | "cr" }
     editor("edit.convert-eol", "EOL Conversion"),
+    // Line Operations
+    editor("edit.duplicate-line", "Duplicate Current Line"),
+    editor("edit.delete-line", "Delete Current Line"),
+    editor("edit.move-line-up", "Move Up Current Line"),
+    editor("edit.move-line-down", "Move Down Current Line"),
+    editor("edit.insert-line-above", "Insert Blank Line Above Current"),
+    editor("edit.insert-line-below", "Insert Blank Line Below Current"),
+    editor("edit.join-lines", "Join Lines"),
+    editor("edit.split-lines", "Split Lines"),
+    // { "by": "lexicographic" | "ignore-case" | "integer" | "decimal-comma" | "decimal-dot"
+    //   | "length", "descending": false }
+    editor("edit.sort-lines", "Sort Lines"),
+    editor("edit.reverse-lines", "Reverse Line Order"),
+    editor("edit.shuffle-lines", "Randomize Line Order"),
+    // { "consecutive": false }
+    editor("edit.remove-duplicate-lines", "Remove Duplicate Lines"),
+    // { "blank": false } - with true, also lines of only spaces and tabs
+    editor("edit.remove-empty-lines", "Remove Empty Lines"),
+    // Blank Operations; { "which": "trailing" | "leading" | "both" }
+    editor("edit.trim", "Trim"),
+    // { "trim": false }
+    editor("edit.eol-to-space", "EOL to Space"),
+    editor("edit.tabs-to-spaces", "TAB to Space"),
+    // { "leading": false }
+    editor("edit.spaces-to-tabs", "Space to TAB"),
+    // { "to": "upper" | "lower" | "proper" | "proper-blend" | "sentence" | "sentence-blend"
+    //   | "invert" | "random" }
+    editor("edit.convert-case", "Convert Case"),
+    // Comment/Uncomment
+    editor("edit.toggle-comment", "Toggle Single Line Comment"),
+    editor("edit.comment-lines", "Single Line Comment"),
+    editor("edit.uncomment-lines", "Single Line Uncomment"),
+    editor("edit.block-comment", "Block Comment"),
     // Caret movement; every `cursor.*` has a `select.*` twin that extends the selection.
     editor("cursor.left", "Move Left"),
     editor("cursor.right", "Move Right"),

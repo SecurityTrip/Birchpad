@@ -301,4 +301,51 @@ proptest! {
         birchpad_core::map_ranges(&mut mapped, &changes);
         prop_assert_eq!(mapped, expected);
     }
+
+    #[test]
+    fn moving_lines_up_then_down_restores_the_text(
+        lines in prop::collection::vec("[a-c ]{0,4}", 2..8),
+        caret_line in any::<prop::sample::Index>(),
+    ) {
+        use birchpad_core::ops::move_lines;
+        use birchpad_core::LineEnding;
+        let doc = lines.join("\n");
+        let rope = Rope::from_str(&doc);
+        let line = 1 + caret_line.index(lines.len() - 1);
+        let caret = rope.line_to_byte_idx(line, birchpad_core::LINE_TYPE);
+        let selection = Selection::point(caret);
+        let up = move_lines(&rope, &selection, true, LineEnding::Lf).unwrap();
+        let mut moved = rope.clone();
+        up.changes().apply(&mut moved);
+        let after = up.selection().unwrap().clone();
+        let down = move_lines(&moved, &after, false, LineEnding::Lf).unwrap();
+        down.changes().apply(&mut moved);
+        prop_assert_eq!(moved.to_string(), doc);
+        prop_assert_eq!(down.selection().unwrap().primary(), Range::point(caret));
+    }
+
+    #[test]
+    fn sorting_permutes_and_reversing_twice_restores(
+        lines in prop::collection::vec("[a-cA-C]{0,3}", 1..10),
+    ) {
+        use birchpad_core::ops::{SortKey, reverse_lines, sort_lines};
+        use birchpad_core::LineEnding;
+        let doc = lines.join("\n");
+        let rope = Rope::from_str(&doc);
+        let selection = Selection::point(0);
+        let apply = |rope: &Rope, transaction: Option<Transaction>| {
+            let mut rope = rope.clone();
+            if let Some(transaction) = transaction {
+                transaction.changes().apply(&mut rope);
+            }
+            rope
+        };
+        let sorted = apply(&rope, sort_lines(&rope, &selection, SortKey::Lexicographic, false, LineEnding::Lf).unwrap());
+        let mut expected = lines.clone();
+        expected.sort();
+        prop_assert_eq!(sorted.to_string(), expected.join("\n"));
+        let reversed = apply(&rope, reverse_lines(&rope, &selection, LineEnding::Lf));
+        let twice = apply(&reversed, reverse_lines(&reversed, &selection, LineEnding::Lf));
+        prop_assert_eq!(twice.to_string(), doc);
+    }
 }

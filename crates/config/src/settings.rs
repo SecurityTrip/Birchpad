@@ -28,6 +28,8 @@ pub struct EditorSettings {
     pub fold_margin: bool,
     /// What Enter does with indentation.
     pub auto_indent: AutoIndent,
+    /// The edge column: where Split Lines breaks lines (and, later, where the edge is drawn).
+    pub edge_column: u16,
 }
 
 /// Notepad++'s auto-indent modes.
@@ -54,6 +56,7 @@ impl Default for EditorSettings {
             bookmark_margin: true,
             fold_margin: true,
             auto_indent: AutoIndent::default(),
+            edge_column: 80,
         }
     }
 }

@@ -577,3 +577,141 @@ keys = "cmd-shift-down"
 command = "select.document-end"
 context = "Editor"
 platforms = ["macos"]
+
+# --- Line operations, case, comments (Notepad++'s keys) ----------------------------------------
+
+[[binding]]
+keys = "secondary-d"
+command = "edit.duplicate-line"
+context = "Editor"
+
+[[binding]]
+keys = "secondary-shift-l"
+command = "edit.delete-line"
+context = "Editor"
+
+[[binding]]
+keys = "ctrl-shift-up"
+command = "edit.move-line-up"
+context = "Editor"
+platforms = ["windows", "linux"]
+
+[[binding]]
+keys = "ctrl-shift-down"
+command = "edit.move-line-down"
+context = "Editor"
+platforms = ["windows", "linux"]
+
+[[binding]]
+keys = "alt-up"
+command = "edit.move-line-up"
+context = "Editor"
+platforms = ["macos"]
+
+[[binding]]
+keys = "alt-down"
+command = "edit.move-line-down"
+context = "Editor"
+platforms = ["macos"]
+
+[[binding]]
+keys = "ctrl-alt-enter"
+command = "edit.insert-line-above"
+context = "Editor"
+
+[[binding]]
+keys = "ctrl-alt-shift-enter"
+command = "edit.insert-line-below"
+context = "Editor"
+
+[[binding]]
+keys = "secondary-j"
+command = "edit.join-lines"
+context = "Editor"
+
+[[binding]]
+keys = "secondary-i"
+command = "edit.split-lines"
+context = "Editor"
+
+[[binding]]
+keys = "secondary-shift-u"
+command = "edit.convert-case"
+args = { to = "upper" }
+context = "Editor"
+
+[[binding]]
+keys = "secondary-u"
+command = "edit.convert-case"
+args = { to = "lower" }
+context = "Editor"
+
+[[binding]]
+keys = "alt-u"
+command = "edit.convert-case"
+args = { to = "proper" }
+context = "Editor"
+
+[[binding]]
+keys = "alt-shift-u"
+command = "edit.convert-case"
+args = { to = "proper-blend" }
+context = "Editor"
+
+[[binding]]
+keys = "ctrl-alt-u"
+command = "edit.convert-case"
+args = { to = "sentence" }
+context = "Editor"
+
+[[binding]]
+keys = "ctrl-alt-shift-u"
+command = "edit.convert-case"
+args = { to = "sentence-blend" }
+context = "Editor"
+
+[[binding]]
+keys = "ctrl-alt-i"
+command = "edit.convert-case"
+args = { to = "invert" }
+context = "Editor"
+
+[[binding]]
+keys = "ctrl-alt-r"
+command = "edit.convert-case"
+args = { to = "random" }
+context = "Editor"
+
+[[binding]]
+keys = "ctrl-q"
+command = "edit.toggle-comment"
+context = "Editor"
+platforms = ["windows", "linux"]
+
+[[binding]]
+keys = "cmd-/"
+command = "edit.toggle-comment"
+context = "Editor"
+platforms = ["macos"]
+
+[[binding]]
+keys = "secondary-k"
+command = "edit.comment-lines"
+context = "Editor"
+
+[[binding]]
+keys = "secondary-shift-k"
+command = "edit.uncomment-lines"
+context = "Editor"
+
+[[binding]]
+keys = "ctrl-shift-q"
+command = "edit.block-comment"
+context = "Editor"
+platforms = ["windows", "linux"]
+
+[[binding]]
+keys = "cmd-alt-/"
+command = "edit.block-comment"
+context = "Editor"
+platforms = ["macos"]
