@@ -8,7 +8,7 @@
 //!   -multiInst    start a separate instance instead of handing files to a running one
 //!   -nosession    do not restore or save a session
 //!   -ro           open the files read-only
-//!   -l<language>  language for syntax highlighting (accepted, ignored until phase 2)
+//!   -l<language>  language for syntax highlighting (`-lcpp`, `-lpython`, `-lnormal`)
 //!   --            everything after is a file name, even if it starts with "-"
 //! ```
 //!
@@ -132,7 +132,7 @@ impl CommandLine {
         } else if lower.starts_with("-p") && !lower.starts_with("-pluginmessage=") {
             number("-p", &mut self.position, &mut self.warnings);
         } else if lower.starts_with("-l") && !lower.starts_with("-loadingtime") {
-            // The language, for syntax highlighting in phase 2.
+            // The language for syntax highlighting.
             self.language = Some(arg[2..].to_owned());
         } else if IGNORED_PREFIXES
             .iter()

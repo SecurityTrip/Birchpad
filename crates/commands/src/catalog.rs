@@ -70,6 +70,62 @@ pub const COMMANDS: &[CommandSpec] = &[
     editor("edit.toggle-overwrite", "Toggle Insert/Overwrite"),
     // { "eol": "crlf" | "lf" | "cr" }
     editor("edit.convert-eol", "EOL Conversion"),
+    // Esc: back to one caret (the primary selection), or out of a rectangular selection
+    editor("edit.cancel-selection", "Cancel Multiple Selection"),
+    editor("edit.begin-end-select", "Begin/End Select"),
+    editor(
+        "edit.begin-end-select-column",
+        "Begin/End Select in Column Mode",
+    ),
+    // Multi-select; { "match-case": false, "whole-word": false }
+    editor("edit.multi-select-all", "Multi-select All"),
+    editor("edit.multi-select-next", "Multi-select Next"),
+    editor(
+        "edit.multi-select-undo",
+        "Undo the Latest Added Multi-Select",
+    ),
+    editor(
+        "edit.multi-select-skip",
+        "Skip Current & Go to Next Multi-select",
+    ),
+    editor("edit.column-editor", "Column Editor..."),
+    // { "text": "..." } or { "initial": 1, "step": 1, "repeat": 1,
+    //   "leading": "none" | "zeros" | "spaces", "format": "dec" | "hex" | "oct" | "bin",
+    //   "uppercase": true }
+    editor("edit.column-insert", "Insert in Column"),
+    // Line Operations
+    editor("edit.duplicate-line", "Duplicate Current Line"),
+    editor("edit.delete-line", "Delete Current Line"),
+    editor("edit.move-line-up", "Move Up Current Line"),
+    editor("edit.move-line-down", "Move Down Current Line"),
+    editor("edit.insert-line-above", "Insert Blank Line Above Current"),
+    editor("edit.insert-line-below", "Insert Blank Line Below Current"),
+    editor("edit.join-lines", "Join Lines"),
+    editor("edit.split-lines", "Split Lines"),
+    // { "by": "lexicographic" | "ignore-case" | "integer" | "decimal-comma" | "decimal-dot"
+    //   | "length", "descending": false }
+    editor("edit.sort-lines", "Sort Lines"),
+    editor("edit.reverse-lines", "Reverse Line Order"),
+    editor("edit.shuffle-lines", "Randomize Line Order"),
+    // { "consecutive": false }
+    editor("edit.remove-duplicate-lines", "Remove Duplicate Lines"),
+    // { "blank": false } - with true, also lines of only spaces and tabs
+    editor("edit.remove-empty-lines", "Remove Empty Lines"),
+    // Blank Operations; { "which": "trailing" | "leading" | "both" }
+    editor("edit.trim", "Trim"),
+    // { "trim": false }
+    editor("edit.eol-to-space", "EOL to Space"),
+    editor("edit.tabs-to-spaces", "TAB to Space"),
+    // { "leading": false }
+    editor("edit.spaces-to-tabs", "Space to TAB"),
+    // { "to": "upper" | "lower" | "proper" | "proper-blend" | "sentence" | "sentence-blend"
+    //   | "invert" | "random" }
+    editor("edit.convert-case", "Convert Case"),
+    // Comment/Uncomment
+    editor("edit.toggle-comment", "Toggle Single Line Comment"),
+    editor("edit.comment-lines", "Single Line Comment"),
+    editor("edit.uncomment-lines", "Single Line Uncomment"),
+    editor("edit.block-comment", "Block Comment"),
     // Caret movement; every `cursor.*` has a `select.*` twin that extends the selection.
     editor("cursor.left", "Move Left"),
     editor("cursor.right", "Move Right"),
@@ -98,15 +154,63 @@ pub const COMMANDS: &[CommandSpec] = &[
         "Extend Selection to Document Start",
     ),
     editor("select.document-end", "Extend Selection to Document End"),
+    // Rectangular (column) selection
+    editor("select.block-left", "Extend Column Selection Left"),
+    editor("select.block-right", "Extend Column Selection Right"),
+    editor("select.block-up", "Extend Column Selection Up"),
+    editor("select.block-down", "Extend Column Selection Down"),
+    editor("select.block-home", "Extend Column Selection to Line Start"),
+    editor("select.block-end", "Extend Column Selection to Line End"),
+    editor("select.block-page-up", "Extend Column Selection Page Up"),
+    editor(
+        "select.block-page-down",
+        "Extend Column Selection Page Down",
+    ),
     // Search
     workspace("search.find", "Find..."),
     workspace("search.replace", "Replace..."),
     workspace("search.find-next", "Find Next"),
     workspace("search.find-previous", "Find Previous"),
     workspace("search.go-to", "Go To..."),
+    editor("search.go-to-matching-brace", "Go to Matching Brace"),
+    editor(
+        "search.select-to-matching-brace",
+        "Select All In-between {} [] or ()",
+    ),
     workspace("search.close", "Close Find Panel"),
+    // Token styles (Search > Style All Occurrences of Token and below); { "style": 1..5 }
+    editor("mark.style-all", "Style All Occurrences of Token"),
+    editor("mark.style-one", "Style One Token"),
+    editor("mark.clear", "Clear Style"),
+    editor("mark.clear-all", "Clear all Styles"),
+    // { "style": 1..5 }, or no arguments for any style
+    editor("mark.jump-up", "Jump Up"),
+    editor("mark.jump-down", "Jump Down"),
+    // { "style": 1..5 }, or no arguments for all styles
+    editor("mark.copy-styled-text", "Copy Styled Text"),
+    // Search > Bookmark
+    editor("bookmark.toggle", "Toggle Bookmark"),
+    editor("bookmark.next", "Next Bookmark"),
+    editor("bookmark.previous", "Previous Bookmark"),
+    editor("bookmark.clear-all", "Clear All Bookmarks"),
+    editor("bookmark.cut-lines", "Cut Bookmarked Lines"),
+    editor("bookmark.copy-lines", "Copy Bookmarked Lines"),
+    editor(
+        "bookmark.paste-to-lines",
+        "Paste to (Replace) Bookmarked Lines",
+    ),
+    editor("bookmark.remove-lines", "Remove Bookmarked Lines"),
+    editor("bookmark.remove-unmarked-lines", "Remove Unmarked Lines"),
+    editor("bookmark.inverse", "Inverse Bookmark"),
     // View
     workspace("view.word-wrap", "Word Wrap"),
+    editor("view.fold-all", "Fold All"),
+    editor("view.unfold-all", "Unfold All"),
+    editor("view.fold-current", "Collapse Current Level"),
+    editor("view.unfold-current", "Uncollapse Current Level"),
+    // { "level": 1..8 }
+    editor("view.fold-level", "Collapse Level"),
+    editor("view.unfold-level", "Uncollapse Level"),
     workspace("view.zoom-in", "Zoom In"),
     workspace("view.zoom-out", "Zoom Out"),
     workspace("view.zoom-reset", "Restore Default Zoom"),
@@ -115,6 +219,8 @@ pub const COMMANDS: &[CommandSpec] = &[
     // Encoding; { "encoding": "utf-8" | "utf-8-bom" | "utf-16le-bom" | "ansi" | "windows-1251" | ... }
     workspace("encoding.encode-in", "Encode in"),
     workspace("encoding.convert-to", "Convert to"),
+    // Language; { "language": "rust" | "cpp" | ... | "text" }
+    workspace("language.set", "Language"),
     // Help
     workspace("help.check-updates", "Check for Updates..."),
     workspace("help.about", "About Birchpad"),

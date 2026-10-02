@@ -4,17 +4,24 @@
 //! selection through the changes the others make. Layout in cells (tab stops, word wrap, rows)
 //! comes from `birchpad-view`; [`element::EditorElement`] turns it into pixels and paints it.
 
+mod column_editor;
 mod element;
+mod folding;
 mod layout;
+mod marks;
+mod multi;
+mod operations;
+mod smart_highlight;
+pub(crate) mod theme;
 
 use std::ops::Range as ByteRange;
 use std::time::Duration;
 
 use birchpad_core::motion::{self, line_of, line_range, line_range_with_break};
 use birchpad_core::{
-    Edit, LineEnding, Range, RevisionId, Rope, Selection, Transaction, UndoGrouping,
+    Edit, LineEnding, LineMarkers, Range, RevisionId, Rope, Selection, Transaction, UndoGrouping,
 };
-use birchpad_view::{DisplayMap, LayoutConfig, tab_advance};
+use birchpad_view::{Block, BlockPoint, DisplayMap, LayoutConfig, tab_advance};
 use gpui_kit::{
     App, Bounds, ClipboardItem, Context, Entity, EntityInputHandler, FocusHandle, Focusable,
     MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, Pixels, Point, ScrollWheelEvent,
@@ -23,6 +30,7 @@ use gpui_kit::{
 use serde::Deserialize;
 
 use birchpad_cli::CaretTarget;
+use birchpad_config::AutoIndent;
 
 use crate::app_state::AppState;
 use crate::buffer::{Buffer, BufferEvent, ReadOnly};
@@ -95,6 +103,10 @@ struct ConvertEolArgs {
 }
 
 pub(crate) fn register_commands(registry: &mut CommandRegistry) {
+    folding::register_commands(registry);
+    marks::register_commands(registry);
+    multi::register_commands(registry);
+    operations::register_commands(registry);
     for (cursor, select, motion) in MOTIONS {
         registry.editor(cursor, move |this, (), _, cx| {
             this.move_carets(motion, false, cx);
@@ -114,7 +126,7 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
         Ok(())
     });
     registry.editor("edit.copy", |this, (), _, cx| {
-        this.copy(cx);
+        let _ = this.copy(cx);
         Ok(())
     });
     registry.editor("edit.cut", |this, (), _, cx| {
@@ -146,8 +158,15 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
         Ok(())
     });
     registry.editor("edit.newline", |this, (), _, cx| {
-        let line_ending = this.buffer.read(cx).doc().line_ending();
-        this.insert(line_ending.as_str(), LastEdit::Typing, cx);
+        this.newline(cx);
+        Ok(())
+    });
+    registry.editor("search.go-to-matching-brace", |this, (), _, cx| {
+        this.go_to_matching_brace(false, cx);
+        Ok(())
+    });
+    registry.editor("search.select-to-matching-brace", |this, (), _, cx| {
+        this.go_to_matching_brace(true, cx);
         Ok(())
     });
     registry.editor("edit.tab", |this, (), _, cx| {
@@ -199,6 +218,10 @@ enum Drag {
         granularity: Granularity,
         origin: ByteRange<usize>,
     },
+    /// Selecting a rectangle (Alt+drag) from `anchor`.
+    Block {
+        anchor: BlockPoint,
+    },
     /// Dragging a scrollbar thumb; `grab` is where in the thumb it was grabbed.
     VerticalThumb {
         grab: Pixels,
@@ -215,6 +238,9 @@ pub(crate) struct ViewSettings {
     pub(crate) insert_spaces: bool,
     pub(crate) word_wrap: bool,
     pub(crate) font_size: Pixels,
+    pub(crate) line_numbers: bool,
+    pub(crate) bookmark_margin: bool,
+    pub(crate) fold_margin: bool,
 }
 
 impl ViewSettings {
@@ -227,6 +253,9 @@ impl ViewSettings {
             insert_spaces: editor.insert_spaces,
             word_wrap: app.state.word_wrap.unwrap_or(editor.word_wrap),
             font_size: px(BASE_FONT_SIZE + zoom as f32),
+            line_numbers: editor.line_numbers,
+            bookmark_margin: editor.bookmark_margin,
+            fold_margin: editor.fold_margin,
         }
     }
 }
@@ -267,6 +296,20 @@ pub(crate) struct EditorView {
     blink: Task<()>,
     /// Geometry of the last frame, for mouse and IME hit testing.
     layout: Option<Layout>,
+    highlight_cache: Option<layout::HighlightCache>,
+    /// Occurrences of the selected word around the visible text.
+    smart_highlight: Option<smart_highlight::SmartHighlight>,
+    /// Headers of this view's collapsed folds.
+    collapsed: LineMarkers,
+    /// The buffer's folds in lines.
+    fold_cache: Option<folding::FoldCache>,
+    /// The rectangular selection, valid while `selection` is still the one it made.
+    block: Option<multi::BlockState>,
+    /// The order in which Multi-select added ranges, valid while `selection` is still the one
+    /// they make.
+    multi_order: Option<(Vec<Range>, Selection)>,
+    /// Begin/End Select: where the first invocation put the start, and in which mode.
+    begin_select: Option<multi::BeginSelect>,
     _subscriptions: Vec<Subscription>,
 }
 
@@ -284,7 +327,14 @@ impl EditorView {
                 if *origin != Some(cx.entity_id()) {
                     let text = buffer.read(cx).doc().text().clone();
                     this.display.edit(&text, transaction.changes());
-                    this.selection = this.selection.map(transaction.changes());
+                    this.collapsed.map(transaction.changes(), &text);
+                    this.follow_folds(transaction.changes(), cx);
+                    this.sync_hidden(cx);
+                    this.selection = this
+                        .selection
+                        .map(transaction.changes())
+                        .clip_virtual(&text);
+                    this.map_begin_select(transaction.changes());
                     this.marked = None;
                 }
                 cx.notify();
@@ -292,7 +342,13 @@ impl EditorView {
             BufferEvent::Reloaded => {
                 let text = buffer.read(cx).doc().text().clone();
                 this.display.reset(&text);
+                this.collapsed.clear();
+                this.fold_cache = None;
+                // A new document starts its revisions over.
+                this.smart_highlight = None;
+                this.sync_hidden(cx);
                 this.selection = Selection::point(0);
+                this.begin_select = None;
                 this.marked = None;
                 this.goal_column = None;
                 this.last_edit = LastEdit::None;
@@ -304,7 +360,14 @@ impl EditorView {
                 }
                 cx.notify();
             }
-            BufferEvent::StateChanged | BufferEvent::LoadFailed(_) => cx.notify(),
+            BufferEvent::SyntaxChanged => {
+                // New folds from the reparse: drop collapsed headers that no longer fold.
+                this.prune_collapsed(cx);
+                cx.notify();
+            }
+            BufferEvent::StateChanged | BufferEvent::MarksChanged | BufferEvent::LoadFailed(_) => {
+                cx.notify()
+            }
         });
         let focus_handle = cx.focus_handle();
         let text = buffer.read(cx).doc().text().clone();
@@ -336,6 +399,13 @@ impl EditorView {
             focused: false,
             blink: Task::ready(()),
             layout: None,
+            highlight_cache: None,
+            smart_highlight: None,
+            collapsed: LineMarkers::new(),
+            fold_cache: None,
+            block: None,
+            multi_order: None,
+            begin_select: None,
             _subscriptions: vec![events],
         }
     }
@@ -396,7 +466,9 @@ impl EditorView {
         self.request_autoscroll(cx);
     }
 
+    /// Brings the primary caret into view on the next frame, expanding folds that hide carets.
     fn request_autoscroll(&mut self, cx: &mut Context<Self>) {
+        self.reveal_carets(cx);
         self.autoscroll = true;
         self.pause_blink(cx);
         cx.notify();
@@ -439,6 +511,11 @@ impl EditorView {
             self.selection = Selection::point(self.selection.primary().head);
         }
         let single = self.selection.ranges().len() == 1;
+        let forward = matches!(motion, Motion::Right | Motion::WordRight);
+        let horizontal = matches!(
+            motion,
+            Motion::Left | Motion::Right | Motion::WordLeft | Motion::WordRight
+        );
         let display = &mut self.display;
         self.selection = self.selection.transform(|range| {
             let head = match (motion, vertical) {
@@ -467,6 +544,17 @@ impl EditorView {
                 Range::point(head)
             }
         });
+        // Moving left or right into a collapsed fold steps over it.
+        if horizontal {
+            self.selection = self.selection.transform(|range| {
+                let head = self.skip_hidden(&text, range.head, forward);
+                if extend {
+                    Range::new(range.anchor, head)
+                } else {
+                    Range::point(head)
+                }
+            });
+        }
         // PageUp/PageDown scroll the view by the same amount, as in Notepad++.
         if let Some(rows) = vertical
             && rows.abs() > 1
@@ -563,6 +651,7 @@ impl EditorView {
             Some(selection) => selection.clone(),
             None => before.map(transaction.changes()),
         };
+        self.map_begin_select(transaction.changes());
         let changes = transaction.changes().clone();
         let origin = Some(cx.entity_id());
         self.buffer.update(cx, |buffer, cx| {
@@ -570,20 +659,30 @@ impl EditorView {
         });
         let text = self.text(cx).clone();
         self.display.edit(&text, &changes);
-        self.selection = selection;
+        self.collapsed.map(&changes, &text);
+        self.follow_folds(&changes, cx);
+        self.sync_hidden(cx);
+        self.selection = selection.clip_virtual(&text);
         self.last_edit = kind;
         self.goal_column = None;
         self.request_autoscroll(cx);
     }
 
-    /// Replaces every selection range with `text`.
+    /// Replaces every selection range with `text`. In a rectangular selection, every line gets `text`, and the rectangle stays as a caret
+    /// on each line unless `text` breaks lines.
     pub(crate) fn insert(&mut self, text: &str, kind: LastEdit, cx: &mut Context<Self>) {
         if !self.is_editable(cx) {
             return;
         }
+        let block = self.active_block();
         let transaction = Transaction::replace_selections(self.text(cx), &self.selection, text)
             .expect("the selection always lies on character boundaries of the document");
         self.apply(transaction, kind, cx);
+        if let Some(block) = block
+            && !text.contains(['\r', '\n'])
+        {
+            self.keep_thin_block(block, cx);
+        }
     }
 
     /// Text typed by the user. In overwrite mode each typed character replaces the next one,
@@ -604,10 +703,104 @@ impl EditorView {
                     }
                     to = motion::next_boundary(&text, to);
                 }
+                if to == range.head {
+                    return range;
+                }
                 Range::new(range.head, to)
             });
         }
         self.insert(typed, LastEdit::Typing, cx);
+    }
+
+    /// Enter: a line break, indented as `editor.auto-indent` says.
+    fn newline(&mut self, cx: &mut Context<Self>) {
+        if !self.is_editable(cx) {
+            return;
+        }
+        let buffer = self.buffer.read(cx);
+        let text = buffer.doc().text().clone();
+        let eol = buffer.doc().line_ending().as_str();
+        let python = buffer
+            .language()
+            .is_some_and(|language| language.id == "python");
+        let mode = AppState::global(cx).settings.editor.auto_indent;
+        let settings = ViewSettings::read(cx);
+        let unit = if settings.insert_spaces {
+            " ".repeat(settings.tab_width)
+        } else {
+            "\t".to_owned()
+        };
+        let mut edits = Vec::new();
+        let mut carets = Vec::new();
+        let mut shift: isize = 0;
+        for range in self.selection.ranges() {
+            let (from, to) = (range.from(), range.to());
+            let line = line_of(&text, from);
+            let line_start = line_range(&text, line).start;
+            let indent = match mode {
+                AutoIndent::Off => String::new(),
+                _ => {
+                    let end = motion::indent_end(&text, line).min(from);
+                    text.slice(line_start..end).to_string()
+                }
+            };
+            let mut inserted = format!("{eol}{indent}");
+            let mut caret = inserted.len();
+            if mode == AutoIndent::Advanced {
+                let prefix = text.slice(line_start..from);
+                let before = prefix
+                    .chars_at(prefix.len())
+                    .reversed()
+                    .find(|c| !c.is_whitespace());
+                let opens =
+                    matches!(before, Some('{' | '[' | '(')) || (python && before == Some(':'));
+                if opens {
+                    let inner = format!("{eol}{indent}{unit}");
+                    let after = text.slice(to..).chars().next();
+                    let closes = matches!(
+                        (before, after),
+                        (Some('{'), Some('}')) | (Some('['), Some(']')) | (Some('('), Some(')'))
+                    );
+                    caret = inner.len();
+                    // Enter between a pair of brackets: the closing one goes on its own line.
+                    inserted = if closes {
+                        format!("{inner}{eol}{indent}")
+                    } else {
+                        inner
+                    };
+                }
+            }
+            let start = (from as isize + shift) as usize;
+            carets.push(Range::point(start + caret));
+            shift += inserted.len() as isize - (to - from) as isize;
+            edits.push(Edit::replace(from..to, inserted));
+        }
+        let selection = Selection::new(carets, self.selection.primary_index());
+        let transaction = Transaction::from_edits(&text, edits)
+            .expect("the selection lies on character boundaries")
+            .with_selection(selection);
+        self.apply(transaction, LastEdit::Typing, cx);
+    }
+
+    /// Ctrl+B: to the bracket matching the one at the caret; with `select`, selects both
+    /// brackets and everything between them (Ctrl+Alt+B), as in Notepad++.
+    fn go_to_matching_brace(&mut self, select: bool, cx: &mut Context<Self>) {
+        let buffer = self.buffer.read(cx);
+        let text = buffer.doc().text();
+        let head = self.selection.primary().head;
+        let Some(found) = birchpad_syntax::matching_bracket(text, buffer.syntax(), head) else {
+            return;
+        };
+        let Some(partner) = found.partner else {
+            return;
+        };
+        if select {
+            let from = found.bracket.start.min(partner.start);
+            let to = found.bracket.end.max(partner.end);
+            self.select_range(from..to, cx);
+        } else {
+            self.go_to(partner.start, cx);
+        }
     }
 
     /// Tab: a tab character, or spaces up to the next tab stop with `editor.insert-spaces`.
@@ -623,27 +816,40 @@ impl EditorView {
         let text = self.text(cx).clone();
         let display = &mut self.display;
         let transaction = Transaction::replace_selections_with(&text, &self.selection, |range| {
-            let column = display.column(&text, range.from());
+            // In virtual space, from the column past the line end.
+            let column = display.column(&text, range.from()) + range.from_virtual();
             " ".repeat(tab_advance(column, settings.tab_width))
         })
         .expect("the selection lies on character boundaries");
         self.apply(transaction, LastEdit::Typing, cx);
     }
 
-    /// Replaces one range (used by input methods) and leaves a single caret after it.
+    /// Replaces one range (used by input methods, which only work at the primary caret) and
+    /// puts the primary caret after it; the other carets follow the edit.
     fn replace_range(&mut self, range: ByteRange<usize>, text: &str, cx: &mut Context<Self>) {
-        let caret = Selection::point(range.start + text.len());
-        let Ok(transaction) = Transaction::from_edits(self.text(cx), [Edit::replace(range, text)])
+        let caret = Range::point(range.start + text.len());
+        let Ok(transaction) =
+            Transaction::from_edits(self.text(cx), [Edit::replace(range.clone(), text)])
         else {
             return;
         };
-        self.apply(transaction.with_selection(caret), LastEdit::Typing, cx);
+        // The primary range, wherever mapping puts it, becomes the caret after the new text.
+        let mapped = self.selection.map(transaction.changes());
+        let primary = mapped.primary_index();
+        let mut ranges = mapped.ranges().to_vec();
+        ranges[primary] = caret;
+        let selection = Selection::new(ranges, primary);
+        self.apply(transaction.with_selection(selection), LastEdit::Typing, cx);
     }
 
     /// Deletes every selection; empty ones first extend to `target(head)` (the previous
     /// character, the next word, ...).
     fn delete_with(&mut self, cx: &mut Context<Self>, target: fn(&Rope, usize) -> usize) {
         if !self.is_editable(cx) {
+            return;
+        }
+        if self.active_block().is_some() {
+            self.delete_in_block(cx, target);
             return;
         }
         let text = self.text(cx).clone();
@@ -680,10 +886,15 @@ impl EditorView {
     fn restore_from_history(&mut self, transaction: &Transaction, cx: &mut Context<Self>) {
         let text = self.text(cx).clone();
         self.display.edit(&text, transaction.changes());
+        self.collapsed.map(transaction.changes(), &text);
+        self.follow_folds(transaction.changes(), cx);
+        self.sync_hidden(cx);
         self.selection = match transaction.selection() {
             Some(selection) => selection.clone(),
             None => self.selection.map(transaction.changes()),
-        };
+        }
+        .clip_virtual(&text);
+        self.map_begin_select(transaction.changes());
         self.last_edit = LastEdit::None;
         self.marked = None;
         self.request_autoscroll(cx);
@@ -700,22 +911,37 @@ impl EditorView {
         (!parts.is_empty()).then(|| parts.join(doc.line_ending().as_str()))
     }
 
-    fn copy(&mut self, cx: &mut Context<Self>) {
+    /// Copies the selection; a rectangle goes to the clipboard as its rows, each ended by a
+    /// line break, marked as rectangular for pasting it back as a rectangle.
+    fn copy(&mut self, cx: &mut Context<Self>) -> bool {
+        if self.active_block().is_some() {
+            let item = self.block_clipboard_item(cx);
+            cx.write_to_clipboard(item);
+            return true;
+        }
         if let Some(text) = self.selected_text(cx) {
             cx.write_to_clipboard(ClipboardItem::new_string(text));
+            return true;
         }
+        false
     }
 
     fn cut(&mut self, cx: &mut Context<Self>) {
-        if let Some(text) = self.selected_text(cx) {
-            cx.write_to_clipboard(ClipboardItem::new_string(text));
+        if self.copy(cx) {
             self.insert("", LastEdit::None, cx);
         }
     }
 
     fn paste(&mut self, cx: &mut Context<Self>) {
-        if let Some(text) = cx.read_from_clipboard().and_then(|item| item.text()) {
-            self.insert(&text, LastEdit::None, cx);
+        let Some(item) = cx.read_from_clipboard() else {
+            return;
+        };
+        let Some(text) = item.text() else {
+            return;
+        };
+        match multi::rectangle_rows(&item, &text) {
+            Some(rows) => self.paste_rectangle(&rows, cx),
+            None => self.insert(&text, LastEdit::None, cx),
         }
     }
 
@@ -795,15 +1021,58 @@ impl EditorView {
             self.drag_scrollbar(event.position, cx);
             return;
         }
+        if let Some(margin) = layout.margins.folding
+            && margin.contains(&event.position)
+        {
+            // A click on a fold point toggles it.
+            let header = layout
+                .row_at_y(event.position.y)
+                .filter(|row| row.row.index_in_line == 0)
+                .map(|row| row.row.line);
+            if let Some(line) = header {
+                self.toggle_fold(line, cx);
+            }
+            return;
+        }
+        if let Some(margin) = layout.margins.symbols
+            && margin.contains(&event.position)
+        {
+            // A click in the symbol margin toggles the bookmark, as in Notepad++.
+            if let Some(line) = layout.row_at_y(event.position.y).map(|row| row.row.line) {
+                self.buffer.update(cx, |buffer, cx| {
+                    buffer.update_marks(cx, |marks, text| {
+                        marks.bookmarks.toggle(text, line);
+                    });
+                });
+            }
+            return;
+        }
+        // In the line number margin, clicking and dragging selects whole lines.
+        let in_line_numbers = layout
+            .margins
+            .line_numbers
+            .is_some_and(|margin| margin.contains(&event.position));
         let text = self.text(cx).clone();
         let Some(pos) = self.position_for_point(event.position, cx) else {
             return;
         };
         let granularity = match event.click_count {
+            _ if in_line_numbers => Granularity::Line,
             0 | 1 => Granularity::Char,
             2 => Granularity::Word,
             _ => Granularity::Line,
         };
+        if event.modifiers.alt
+            && !event.modifiers.shift
+            && !event.modifiers.secondary()
+            && granularity == Granularity::Char
+            && let Some(anchor) = self.block_point_for_point(event.position, cx)
+        {
+            // Alt+drag selects a rectangle.
+            self.set_block(Block::new(anchor, anchor), cx);
+            self.drag = Some(Drag::Block { anchor });
+            return;
+        }
         let unit = Self::unit_at(&text, pos, granularity);
         self.selection = if event.modifiers.shift {
             self.with_primary(Range::new(self.selection.primary().anchor, pos))
@@ -830,6 +1099,22 @@ impl EditorView {
             self.drag = None;
             return;
         }
+        // Dragging past the top or bottom scrolls.
+        if matches!(drag, Drag::Select { .. } | Drag::Block { .. })
+            && let Some(layout) = &self.layout
+        {
+            if event.position.y < layout.text_bounds.top() {
+                self.scroll_top = (self.scroll_top - 1.).max(0.);
+            } else if event.position.y > layout.text_bounds.bottom() {
+                self.scroll_top += 1.;
+            }
+        }
+        if let Drag::Block { anchor } = drag {
+            if let Some(head) = self.block_point_for_point(event.position, cx) {
+                self.set_block(Block::new(anchor, head), cx);
+            }
+            return;
+        }
         let Drag::Select {
             granularity,
             origin,
@@ -838,14 +1123,6 @@ impl EditorView {
             self.drag_scrollbar(event.position, cx);
             return;
         };
-        // Dragging past the top or bottom scrolls.
-        if let Some(layout) = &self.layout {
-            if event.position.y < layout.text_bounds.top() {
-                self.scroll_top = (self.scroll_top - 1.).max(0.);
-            } else if event.position.y > layout.text_bounds.bottom() {
-                self.scroll_top += 1.;
-            }
-        }
         let text = self.text(cx).clone();
         let Some(pos) = self.position_for_point(event.position, cx) else {
             return;
@@ -904,6 +1181,13 @@ impl EditorView {
         let layout = self.layout.as_ref()?;
         let text = self.buffer.read(cx).doc().text();
         layout.position_for_point(point, text, &mut self.display)
+    }
+
+    /// The rectangle corner under a window point: past the end of a line, in virtual space.
+    fn block_point_for_point(&mut self, point: Point<Pixels>, cx: &App) -> Option<BlockPoint> {
+        let layout = self.layout.as_ref()?;
+        let text = self.buffer.read(cx).doc().text();
+        layout.block_point_for_point(point, text, &mut self.display)
     }
 }
 
@@ -1052,7 +1336,7 @@ impl EntityInputHandler for EditorView {
         if let Some(selected) = new_selected_range_utf16 {
             let anchor = target.start + utf16_to_byte_offset(new_text, selected.start);
             let head = target.start + utf16_to_byte_offset(new_text, selected.end);
-            self.selection = Selection::single(Range::new(anchor, head));
+            self.selection = self.with_primary(Range::new(anchor, head));
         }
     }
 
@@ -1106,11 +1390,11 @@ fn utf16_to_byte_offset(text: &str, utf16: usize) -> usize {
 
 #[cfg(test)]
 mod tests {
-    use gpui_kit::{TestAppContext, VisualTestContext};
+    use gpui_kit::{Modifiers, TestAppContext, VisualTestContext};
 
     use super::*;
     use crate::workspace::Workspace;
-    use crate::workspace::tests::{active_text, open_workspace, secondary};
+    use crate::workspace::tests::{active_text, document_start, open_workspace};
 
     /// Ctrl (Option on macOS) with an arrow or Backspace/Delete: by words.
     fn word(key: &str) -> String {
@@ -1135,7 +1419,7 @@ mod tests {
 
     fn set_text(text: &str, cx: &mut VisualTestContext) {
         cx.simulate_input(text);
-        cx.simulate_keystrokes(&secondary("home"));
+        cx.simulate_keystrokes(document_start());
     }
 
     #[gpui_kit::test]
@@ -1218,5 +1502,59 @@ mod tests {
         assert_eq!(primary(&workspace, cx), Range::point(13), "column 4 again");
         cx.simulate_keystrokes("shift-up shift-up");
         assert_eq!(primary(&workspace, cx), Range::new(13, 4));
+    }
+
+    fn bookmarks(workspace: &Entity<Workspace>, cx: &mut VisualTestContext) -> Vec<usize> {
+        workspace.read_with(cx, |workspace, cx| {
+            let buffer = workspace.active_view(cx).unwrap().read(cx).buffer.read(cx);
+            buffer.marks().bookmarks.lines(buffer.doc().text())
+        })
+    }
+
+    /// Window points in the middle of `row` (a visible row index) in the symbol margin and in
+    /// the line number margin, from the last frame's layout.
+    fn margin_points(
+        workspace: &Entity<Workspace>,
+        row: usize,
+        cx: &mut VisualTestContext,
+    ) -> (Point<Pixels>, Point<Pixels>) {
+        workspace.read_with(cx, |workspace, cx| {
+            let view = workspace.active_view(cx).unwrap();
+            let layout = view.read(cx).layout.as_ref().expect("a frame was drawn");
+            let y = layout.rows[row].y + layout.metrics.line_height / 2.;
+            let center = |bounds: Bounds<Pixels>| point(bounds.left() + bounds.size.width / 2., y);
+            (
+                center(layout.margins.symbols.expect("symbol margin")),
+                center(layout.margins.line_numbers.expect("line number margin")),
+            )
+        })
+    }
+
+    #[gpui_kit::test]
+    fn margin_clicks_toggle_bookmarks_and_select_lines(cx: &mut TestAppContext) {
+        let (workspace, cx) = open_workspace(cx);
+        cx.simulate_input(
+            "one
+two
+three",
+        );
+        let (symbol, _) = margin_points(&workspace, 1, cx);
+        cx.simulate_click(symbol, Modifiers::none());
+        assert_eq!(bookmarks(&workspace, cx), [1]);
+
+        // A line inserted above moves the bookmark down with its line.
+        cx.simulate_keystrokes(document_start());
+        cx.simulate_input(
+            "zero
+",
+        );
+        assert_eq!(bookmarks(&workspace, cx), [2]);
+        let (symbol, number) = margin_points(&workspace, 2, cx);
+        cx.simulate_click(symbol, Modifiers::none());
+        assert!(bookmarks(&workspace, cx).is_empty());
+
+        // A click on a line number selects the line with its line break.
+        cx.simulate_click(number, Modifiers::none());
+        assert_eq!(primary(&workspace, cx), Range::new(9, 13));
     }
 }

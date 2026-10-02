@@ -11,7 +11,7 @@ use std::rc::Rc;
 use anyhow::Result;
 use birchpad_commands::{Invocation, Keymap, Layer, Platform, Scope};
 use gpui_kit::{
-    Action, App, Context, DummyKeyboardMapper, Global, KeyBinding, KeyBindingContextPredicate,
+    Action, App, Context, Global, KeyBinding, KeyBindingContextPredicate, PlatformKeyboardMapper,
     Window,
 };
 use serde::de::DeserializeOwned;
@@ -158,16 +158,38 @@ pub(crate) fn init(user_keymap: Option<&str>, cx: &mut App) -> Keymap {
     for diagnostic in keymap.diagnostics() {
         eprintln!("keymap: {diagnostic}");
     }
-    cx.bind_keys(key_bindings(&keymap));
+    let mapper = cx.keyboard_mapper().clone();
+    let shifted_symbols = Platform::current() == Platform::Linux;
+    cx.bind_keys(key_bindings(&keymap, mapper.as_ref(), shifted_symbols));
     keymap
 }
 
 /// Turns the effective bindings of a keymap into GPUI key bindings.
-pub(crate) fn key_bindings(keymap: &Keymap) -> Vec<KeyBinding> {
+///
+/// Keys go through the platform's keyboard mapper: Windows reports Shift with a digit or
+/// punctuation key as the character it types on the current layout (Alt+Shift+0 arrives as
+/// `alt-)` on a US or Russian layout), so `alt-shift-0` in a keymap has to become that too.
+/// Linux reports such keys the same way but GPUI has no mapper there: with `shifted_symbols`,
+/// those bindings get a second binding spelled the way Linux reports them (on a US layout).
+/// It comes first, so menus keep showing the binding as written.
+pub(crate) fn key_bindings(
+    keymap: &Keymap,
+    mapper: &dyn PlatformKeyboardMapper,
+    shifted_symbols: bool,
+) -> Vec<KeyBinding> {
     keymap
         .bindings()
         .iter()
-        .filter_map(|binding| {
+        .flat_map(|binding| {
+            let shifted = shifted_symbols
+                .then(|| binding.shifted_symbol_keys())
+                .flatten();
+            shifted
+                .into_iter()
+                .chain([binding.keys_string()])
+                .map(move |keys| (binding, keys))
+        })
+        .filter_map(|(binding, keys)| {
             let context = match binding
                 .context
                 .as_deref()
@@ -181,14 +203,14 @@ pub(crate) fn key_bindings(keymap: &Keymap) -> Vec<KeyBinding> {
                 }
             };
             KeyBinding::load(
-                &binding.keys_string(),
+                &keys,
                 Box::new(RunCommand(binding.invocation.clone())),
                 context,
                 false,
                 None,
-                &DummyKeyboardMapper,
+                mapper,
             )
-            .inspect_err(|error| eprintln!("keymap: {}: {error}", binding.keys_string()))
+            .inspect_err(|error| eprintln!("keymap: {keys}: {error}"))
             .ok()
         })
         .collect()
@@ -218,7 +240,24 @@ mod tests {
     fn default_keymap_converts_to_gpui_bindings() {
         for platform in [Platform::Windows, Platform::Linux, Platform::MacOs] {
             let keymap = Keymap::with_defaults(platform);
-            assert_eq!(key_bindings(&keymap).len(), keymap.bindings().len());
+            let mapper = gpui_kit::DummyKeyboardMapper;
+            assert_eq!(
+                key_bindings(&keymap, &mapper, false).len(),
+                keymap.bindings().len()
+            );
         }
+        // On Linux, Alt+Shift+0 (Unfold All) and Ctrl+Alt+Shift+N (Clear Style) also get the
+        // spelling X11 and Wayland report.
+        let keymap = Keymap::with_defaults(Platform::Linux);
+        let shifted = keymap
+            .bindings()
+            .iter()
+            .filter(|binding| binding.shifted_symbol_keys().is_some())
+            .count();
+        assert!(shifted >= 15, "{shifted}");
+        assert_eq!(
+            key_bindings(&keymap, &gpui_kit::DummyKeyboardMapper, true).len(),
+            keymap.bindings().len() + shifted
+        );
     }
 }

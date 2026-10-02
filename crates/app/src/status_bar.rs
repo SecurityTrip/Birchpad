@@ -30,12 +30,15 @@ pub(crate) struct StatusInfo {
     pub(crate) selected_lines: usize,
     pub(crate) format: Format,
     pub(crate) overwrite: bool,
+    /// The language's description ("Rust file"), or `None` for normal text.
+    pub(crate) language: Option<&'static str>,
 }
 
 impl StatusInfo {
     pub(crate) fn of(view: &mut EditorView, cx: &App) -> Self {
         let text = view.text(cx).clone();
-        let head = view.selection.primary().head;
+        let primary = view.selection.primary();
+        let head = primary.head;
         let (mut selected_chars, mut selected_lines) = (0, 0);
         for range in view.selection.iter().filter(|range| !range.is_empty()) {
             selected_chars +=
@@ -46,12 +49,18 @@ impl StatusInfo {
             length: text.len(),
             lines: line_count(&text),
             line: line_of(&text, head) + 1,
-            column: view.column_of(head, cx) + 1,
+            // In virtual space (a rectangle past the end of the line) the column goes on.
+            column: view.column_of(head, cx) + primary.head_virtual + 1,
             pos: head + 1,
             selected_chars,
             selected_lines,
             format: view.buffer.read(cx).doc().format(),
             overwrite: view.overwrite,
+            language: view
+                .buffer
+                .read(cx)
+                .language()
+                .map(|language| language.description),
         }
     }
 
@@ -104,11 +113,16 @@ pub(crate) fn render<V: 'static>(
         .border_t_1()
         .border_color(rgb(0xd0d7de))
         .bg(rgb(0xf6f8fa))
-        .text_size(px(12.))
-        .child(div().px_3().flex_1().child("Normal text file"));
+        .text_size(px(12.));
     let Some(info) = info else {
-        return bar;
+        return bar.child(div().px_3().flex_1().child("Normal text file"));
     };
+    bar = bar.child(
+        div()
+            .px_3()
+            .flex_1()
+            .child(info.language.unwrap_or("Normal text file")),
+    );
     let [length, position, selection, eol, encoding, mode] = info.sections();
     let format = info.format;
     bar = bar
@@ -215,7 +229,8 @@ fn add_items(
                     });
                 }
             }
-            MenuItem::Placeholder(Placeholder::RecentFiles) => {}
+            // The status bar's menus show line endings and encodings only.
+            MenuItem::Placeholder(Placeholder::RecentFiles | Placeholder::Languages) => {}
         }
     }
     menu
@@ -227,7 +242,7 @@ mod tests {
 
     use super::*;
     use crate::workspace::Workspace;
-    use crate::workspace::tests::{open_workspace, secondary};
+    use crate::workspace::tests::{document_start, open_workspace};
 
     fn sections(workspace: &Entity<Workspace>, cx: &mut VisualTestContext) -> [String; 6] {
         workspace.update(cx, |workspace, cx| {
@@ -248,7 +263,7 @@ mod tests {
         assert_eq!((encoding.as_str(), mode.as_str()), ("UTF-8", "INS"));
 
         // The column counts the tab to its stop; the selection counts characters and lines.
-        cx.simulate_keystrokes(&format!("{} end", secondary("home")));
+        cx.simulate_keystrokes(&format!("{} end", document_start()));
         let [_, position, _, _, _, _] = sections(&workspace, cx);
         assert_eq!(position, "Ln : 1    Col : 8    Pos : 8");
         cx.simulate_keystrokes("shift-down insert");

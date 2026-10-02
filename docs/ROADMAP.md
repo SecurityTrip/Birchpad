@@ -45,12 +45,37 @@ What Phase 1 left for later is marked *(from Phase 1)* in the phases below.
 
 ## Phase 2: Notepad++-level editor
 
-- Syntax highlighting with tree-sitter for ~20 popular languages, auto-indent, brace matching
-- Folding; margins for line numbers, bookmarks and folding
-- Multi-editing, column selection (Alt+drag, Alt+Shift+arrows), Column Editor
-- Smart highlighting, Mark with 5 styles, bookmarks and bookmarked-line operations
-- Line operations: duplicate, move, sort, remove duplicates/empty lines, join/split, trim,
-  case conversion, comment toggling, tab/space conversion
+- [x] Decorations that follow edits (ranges like Scintilla's indicators, line markers like its
+      markers); margins for line numbers, bookmarks and folding; clicking the symbol margin
+      toggles a bookmark, the line number margin selects lines
+      ([ADR 0010](adr/0010-decorations-markers-and-margins.md))
+- [x] Syntax highlighting with tree-sitter for 27 languages, incremental and in the
+      background; language detection by name, extension, `#!` line and first line; Language
+      menu and `-l`; Large File Restriction (`files.large-file-limit-mb`); brace matching with
+      Ctrl+B / Ctrl+Alt+B; basic and advanced auto-indent
+      ([ADR 0011](adr/0011-syntax-highlighting.md))
+- Language injections (scripts in HTML, code blocks and inline formatting in Markdown)
+- [x] Folding from the syntax tree (indentation for plain text); Fold All, Unfold All,
+      collapse levels 1–8, current level, fold boxes in the margin; carets step over or expand
+      collapsed folds ([ADR 0012](adr/0012-folding.md))
+- [x] Multi-editing and column selection: rectangles with Alt+drag and Alt+Shift+arrows that
+      reach into virtual space; typing, deleting, copying and pasting a rectangle; Multi-select
+      Next and All, Undo the Latest Added, Skip Current; Esc back to one caret; Begin/End
+      Select in both modes; Column Editor with text or numbers (dec, hex, oct, bin; leading
+      zeros or spaces) as one undo step ([ADR 0013](adr/0013-multi-editing-and-columns.md))
+- [x] Smart highlighting of the selected word in the visible text (settings as in Notepad++,
+      off over the large file limit); Style All Occurrences of Token and Style One Token with
+      5 styles, Clear Style, Jump Up/Down, Copy Styled Text; bookmarks (Ctrl+F2, F2,
+      Shift+F2) and Cut/Copy/Paste to/Remove bookmarked lines, Remove Unmarked Lines,
+      Inverse Bookmark, each one undo step; shifted-digit key bindings on Linux
+      ([ADR 0014](adr/0014-smart-highlighting-token-styles-and-bookmarks.md))
+- [x] Line operations: duplicate, delete, move, insert blank line, join, split; sort
+      (lexicographic, ignoring case, as integers, as decimals with comma or dot, by length;
+      ascending and descending), reverse, randomize; remove duplicate, consecutive duplicate
+      and empty lines; trim, EOL to space, tab/space conversion; case conversion (upper,
+      lower, proper, sentence, invert, random); line and block comments by the language's
+      tokens. All in `birchpad_core::ops`, one undo step each, with Notepad++'s keys
+- [x] Sorting by the columns of a rectangular selection
 - Show whitespace and line endings, indentation guides, edge column
 - Split view, clone document to the other view, synchronized scrolling
 - Sessions and periodic backup of unsaved changes (`-nosession` already accepted); they also
@@ -63,8 +88,9 @@ What Phase 1 left for later is marked *(from Phase 1)* in the phases below.
 - "Edit anyway" for files that do not decode cleanly; they open read-only with a Reopen with
   Encoding choice for now *(from Phase 1)*
 - Keyboard access to the menu bar on Windows and Linux (Alt, mnemonics) *(from Phase 1)*
-- Columns count terminal-style cells (East Asian wide characters take two) where Notepad++
-  counts characters; decide together with column editing *(from Phase 1)*
+- [x] Columns count terminal-style cells (East Asian wide characters take two) where
+      Notepad++ counts characters: kept for rectangles, the Column Editor and the status bar
+      ([ADR 0013](adr/0013-multi-editing-and-columns.md)) *(from Phase 1)*
 - Verify IME input (Windows TSF, macOS, IBus/Fcitx) on real systems; Phase 1 tested text
   input through GPUI's input handler but not with a real IME *(from Phase 1)*
 - Tests that saving preserves Windows ACLs and alternate data streams *(from Phase 1)*

@@ -338,6 +338,20 @@ impl ChangeSet {
         new + pos.saturating_sub(old)
     }
 
+    /// A cursor that maps many positions in non-decreasing order, each in amortized O(1).
+    /// Mapping all decorations of a document through a Replace All with thousands of edits
+    /// stays linear instead of quadratic.
+    pub fn mapper(&self, assoc: Assoc) -> PosMapper<'_> {
+        PosMapper {
+            ops: &self.ops,
+            assoc,
+            index: 0,
+            old: 0,
+            new: 0,
+            last: 0,
+        }
+    }
+
     fn empty() -> Self {
         Self {
             ops: Vec::new(),
@@ -384,6 +398,56 @@ impl ChangeSet {
             [.., Operation::Delete(_)] => self.ops.insert(len - 1, Operation::Insert(text)),
             _ => self.ops.push(Operation::Insert(text)),
         }
+    }
+}
+
+/// Maps positions through a [`ChangeSet`] like [`ChangeSet::map_pos`], for positions given in
+/// non-decreasing order. Created by [`ChangeSet::mapper`].
+#[derive(Debug, Clone)]
+pub struct PosMapper<'a> {
+    ops: &'a [Operation],
+    assoc: Assoc,
+    /// The operation the last position fell into, and where it starts in the old and new text.
+    index: usize,
+    old: usize,
+    new: usize,
+    last: usize,
+}
+
+impl PosMapper<'_> {
+    /// Maps `pos`.
+    ///
+    /// # Panics
+    ///
+    /// In debug builds, if `pos` is smaller than the previous position.
+    pub fn map(&mut self, pos: usize) -> usize {
+        debug_assert!(pos >= self.last, "positions must not decrease");
+        self.last = pos;
+        while let Some(op) = self.ops.get(self.index) {
+            match op {
+                Operation::Retain(n) => {
+                    if pos < self.old + n {
+                        return self.new + (pos - self.old);
+                    }
+                    self.old += n;
+                    self.new += n;
+                }
+                Operation::Delete(n) => {
+                    if pos < self.old + n {
+                        return self.new;
+                    }
+                    self.old += n;
+                }
+                Operation::Insert(s) => {
+                    if pos == self.old && self.assoc == Assoc::Before {
+                        return self.new;
+                    }
+                    self.new += s.len();
+                }
+            }
+            self.index += 1;
+        }
+        self.new + pos.saturating_sub(self.old)
     }
 }
 

@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 #[serde(default, rename_all = "kebab-case")]
 pub struct Settings {
     pub editor: EditorSettings,
+    pub highlighting: HighlightingSettings,
     pub files: FileSettings,
     pub session: SessionSettings,
     pub updates: UpdateSettings,
@@ -21,6 +22,29 @@ pub struct EditorSettings {
     pub tab_width: u8,
     pub insert_spaces: bool,
     pub word_wrap: bool,
+    /// Margins left of the text, as in Notepad++'s Preferences > Margins: line numbers, the
+    /// symbol margin (bookmarks) and the folding margin.
+    pub line_numbers: bool,
+    pub bookmark_margin: bool,
+    pub fold_margin: bool,
+    /// What Enter does with indentation.
+    pub auto_indent: AutoIndent,
+    /// The edge column: where Split Lines breaks lines (and, later, where the edge is drawn).
+    pub edge_column: u16,
+}
+
+/// Notepad++'s auto-indent modes.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum AutoIndent {
+    /// A new line starts at column 1.
+    Off,
+    /// A new line gets the indentation of the line above.
+    Basic,
+    /// Like basic, and one level more after an opening bracket (or a colon in Python); Enter
+    /// between a pair of braces puts the closing one on its own line.
+    #[default]
+    Advanced,
 }
 
 impl Default for EditorSettings {
@@ -29,6 +53,60 @@ impl Default for EditorSettings {
             tab_width: 4,
             insert_spaces: false,
             word_wrap: false,
+            line_numbers: true,
+            bookmark_margin: true,
+            fold_margin: true,
+            auto_indent: AutoIndent::default(),
+            edge_column: 80,
+        }
+    }
+}
+
+/// Notepad++'s Preferences > Highlighting.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, rename_all = "kebab-case")]
+pub struct HighlightingSettings {
+    /// Highlighting every occurrence of the selected word in the visible text.
+    pub smart: SmartHighlighting,
+    /// How Search > Style All Occurrences of Token matches the token.
+    pub token_style: TokenMatching,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, rename_all = "kebab-case")]
+pub struct SmartHighlighting {
+    pub enabled: bool,
+    pub match_case: bool,
+    /// Highlight only when a whole word is selected, and only whole-word occurrences of it.
+    /// Off: any selection on one line is highlighted wherever it occurs.
+    pub whole_word: bool,
+    /// Take match case and whole word from the find panel instead.
+    pub use_find_options: bool,
+}
+
+impl Default for SmartHighlighting {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            match_case: false,
+            whole_word: true,
+            use_find_options: false,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, rename_all = "kebab-case")]
+pub struct TokenMatching {
+    pub match_case: bool,
+    pub whole_word: bool,
+}
+
+impl Default for TokenMatching {
+    fn default() -> Self {
+        Self {
+            match_case: false,
+            whole_word: true,
         }
     }
 }
@@ -43,6 +121,9 @@ pub struct FileSettings {
     /// elsewhere.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub ansi_encoding: Option<String>,
+    /// Like Notepad++'s Large File Restriction: files larger than this many megabytes open
+    /// without syntax highlighting, brace matching, smart highlighting and folding.
+    pub large_file_limit_mb: u32,
 }
 
 impl Default for FileSettings {
@@ -50,6 +131,7 @@ impl Default for FileSettings {
         Self {
             recent_limit: 10,
             ansi_encoding: None,
+            large_file_limit_mb: 20,
         }
     }
 }

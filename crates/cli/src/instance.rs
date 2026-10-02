@@ -98,7 +98,7 @@ pub fn start(address: &Address, command_line: &CommandLine) -> Instance {
     match hand_off(address, command_line) {
         Ok(()) => return Instance::Secondary,
         // Nobody listens: become the primary instance.
-        Err(error) if is_unoccupied(&error) => {}
+        Err(error) if is_unoccupied(address, &error) => {}
         // Somebody listens but does not answer (hung, or busy with a broken client): do not
         // take its socket away, just run separately.
         Err(error) => return Instance::Standalone(error),
@@ -132,11 +132,25 @@ pub fn start(address: &Address, command_line: &CommandLine) -> Instance {
 }
 
 /// Whether a failed connection means that no instance listens at the address.
-fn is_unoccupied(error: &io::Error) -> bool {
-    matches!(
+fn is_unoccupied(address: &Address, error: &io::Error) -> bool {
+    if matches!(
         error.kind(),
         io::ErrorKind::NotFound | io::ErrorKind::ConnectionRefused
-    )
+    ) {
+        return true;
+    }
+    // Nobody can listen behind a file that is not a socket. Linux reports connecting to one as
+    // "connection refused", macOS and the BSDs as ENOTSOCK, which has no `ErrorKind`.
+    #[cfg(unix)]
+    if let Address::File(path) = address {
+        use std::os::unix::fs::FileTypeExt as _;
+        if let Ok(metadata) = std::fs::symlink_metadata(path) {
+            return !metadata.file_type().is_socket();
+        }
+    }
+    #[cfg(not(unix))]
+    let _ = address;
+    false
 }
 
 /// Sends the command line and waits for the running instance to confirm it.
@@ -253,7 +267,22 @@ mod tests {
     fn a_stale_socket_file_is_replaced() {
         let dir = tempfile::tempdir().unwrap();
         let address = address(dir.path());
-        // A socket file nobody listens on, as a crash leaves behind.
+        // A socket nobody listens on any more, as a crash leaves behind: the listener is gone,
+        // the socket file stays.
+        drop(std::os::unix::net::UnixListener::bind(dir.path().join("test.sock")).unwrap());
+        assert!(dir.path().join("test.sock").exists());
+        assert!(matches!(
+            start(&address, &CommandLine::default()),
+            Instance::Primary(_)
+        ));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_file_in_place_of_the_socket_is_replaced() {
+        let dir = tempfile::tempdir().unwrap();
+        let address = address(dir.path());
+        // Not a socket at all (macOS reports connecting to it differently from Linux).
         std::fs::write(dir.path().join("test.sock"), b"").unwrap();
         assert!(matches!(
             start(&address, &CommandLine::default()),

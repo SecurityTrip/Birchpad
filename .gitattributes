@@ -9,6 +9,8 @@
 # Test fixtures must stay byte-for-byte as committed: an editor is tested
 # on exact encodings, BOMs and line endings.
 **/tests/fixtures/** -text -diff
+# Highlight samples are snapshot-tested byte for byte, whatever their extension.
+**/tests/samples/** -text
 
 *.png binary
 *.ico binary

@@ -51,6 +51,10 @@ impl Transaction {
 
     /// Replaces every range of `selection` with its own text (e.g. a different number of spaces
     /// per caret to reach the next tab stop) and leaves a caret after each.
+    ///
+    /// A range that starts in virtual space gets that space filled with spaces before its text,
+    /// as typing past the end of a line in a rectangular selection does. Deleting (an empty
+    /// replacement) leaves the caret where the range started, virtual space included.
     pub fn replace_selections_with(
         text: &Rope,
         selection: &Selection,
@@ -58,7 +62,13 @@ impl Transaction {
     ) -> Result<Self, InvalidEdit> {
         let replacements: Vec<(Range, String)> = selection
             .iter()
-            .map(|&range| (range, replacement(range)))
+            .map(|&range| {
+                let mut inserted = replacement(range);
+                if !inserted.is_empty() && range.from_virtual() > 0 {
+                    inserted.insert_str(0, &" ".repeat(range.from_virtual()));
+                }
+                (range, inserted)
+            })
             .collect();
         let edits = replacements
             .iter()
@@ -71,7 +81,11 @@ impl Transaction {
             let start = range.from() + added - removed;
             added += inserted.len();
             removed += range.len();
-            Range::point(start + inserted.len())
+            if inserted.is_empty() {
+                Range::virtual_point(start, range.from_virtual())
+            } else {
+                Range::point(start + inserted.len())
+            }
         });
         let selection = Selection::new(carets, selection.primary_index());
 
@@ -135,6 +149,42 @@ mod tests {
         assert_eq!(
             transaction.selection().unwrap().ranges(),
             [Range::point(2), Range::point(8)]
+        );
+    }
+
+    #[test]
+    fn typing_in_virtual_space_fills_it_with_spaces() {
+        let mut text = Rope::from_str("abcd\nx\n");
+        // A rectangle from column 2 to 3: "c" on the first line, virtual space on the second
+        // (whose end is at byte 6), and an empty line in virtual space.
+        let selection = Selection::new(
+            [
+                Range::new(2, 3),
+                Range::new(6, 6).with_virtual(1, 2),
+                Range::new(7, 7).with_virtual(2, 3),
+            ],
+            0,
+        );
+        let typed = Transaction::replace_selections(&text, &selection, "Z").unwrap();
+        let mut typed_text = text.clone();
+        typed.changes().apply(&mut typed_text);
+        assert_eq!(typed_text, "abZd\nx Z\n  Z");
+        assert_eq!(
+            typed.selection().unwrap().ranges(),
+            [Range::point(3), Range::point(8), Range::point(12)]
+        );
+
+        // Deleting keeps the carets at the left edge, in virtual space where it was.
+        let deleted = Transaction::replace_selections(&text, &selection, "").unwrap();
+        deleted.changes().apply(&mut text);
+        assert_eq!(text, "abd\nx\n");
+        assert_eq!(
+            deleted.selection().unwrap().ranges(),
+            [
+                Range::point(2),
+                Range::virtual_point(5, 1),
+                Range::virtual_point(6, 2)
+            ]
         );
     }
 

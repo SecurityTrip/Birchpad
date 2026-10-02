@@ -1,0 +1,39 @@
+---
+source: crates/syntax/tests/highlights.rs
+expression: render(&path)
+---
+language: css
+comment                  /* Page styles */
+tag                      body
+operator                 >
+punctuation.delimiter    .
+property                 content
+punctuation.bracket      {
+property                 color
+punctuation.delimiter    :
+punctuation.delimiter    #
+string.special           1f2328
+punctuation.delimiter    ;
+property                 margin
+punctuation.delimiter    :
+number                   0
+keyword                  !important
+punctuation.delimiter    ;
+punctuation.bracket      }
+keyword                  @media
+punctuation.bracket      (
+property                 max-width
+punctuation.delimiter    :
+number                   600
+type                     px
+punctuation.bracket      )
+punctuation.bracket      {
+tag                      body
+punctuation.bracket      {
+property                 font-size
+punctuation.delimiter    :
+number                   14
+type                     px
+punctuation.delimiter    ;
+punctuation.bracket      }
+punctuation.bracket      }

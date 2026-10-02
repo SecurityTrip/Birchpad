@@ -66,10 +66,29 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
             Ok(())
         });
     }
+    registry.workspace("language.set", |this, args: LanguageArgs, _, cx| {
+        let language = match args.language.as_str() {
+            "text" | "normal" => None,
+            id => Some(
+                birchpad_syntax::by_id(id)
+                    .ok_or_else(|| anyhow::anyhow!("unknown language {id}"))?,
+            ),
+        };
+        if let Some(view) = this.active_view(cx) {
+            let buffer = view.read(cx).buffer.clone();
+            buffer.update(cx, |buffer, cx| buffer.set_language(language, cx));
+        }
+        Ok(())
+    });
     crate::encoding_ui::register_commands(registry);
     crate::file_ops::register_commands(registry);
     crate::find::register_commands(registry);
     crate::help::register_commands(registry);
+}
+
+#[derive(serde::Deserialize)]
+struct LanguageArgs {
+    language: String,
 }
 
 /// Shows an error to the user without interrupting them.
@@ -223,10 +242,26 @@ impl Workspace {
             self.open_document(doc, window, cx);
         }
         let target = command_line.caret_target();
+        // `-l<language>`, with Notepad++'s names; `-lnormal` is plain text.
+        let language = command_line.language.as_deref().and_then(|id| match id {
+            "normal" | "text" => Some(None),
+            "javascript.js" => Some(birchpad_syntax::by_id("javascript")),
+            id => match birchpad_syntax::by_id(id) {
+                Some(language) => Some(Some(language)),
+                None => {
+                    report_warning(format!("Unknown language -l{id}"), window, cx);
+                    None
+                }
+            },
+        });
         for path in &command_line.files {
             let view = self.open_path_with(path, command_line.read_only, window, cx);
             if let Some(target) = target {
                 view.update(cx, |view, cx| view.set_caret_target(target, cx));
+            }
+            if let Some(language) = language {
+                let buffer = view.read(cx).buffer.clone();
+                buffer.update(cx, |buffer, cx| buffer.set_language(language, cx));
             }
         }
     }
@@ -337,7 +372,8 @@ impl Workspace {
                 self.refresh_menus(cx);
                 cx.notify();
             }
-            BufferEvent::Edited { .. } => {}
+            BufferEvent::Edited { .. } | BufferEvent::MarksChanged | BufferEvent::SyntaxChanged => {
+            }
         }
     }
 
@@ -425,11 +461,21 @@ impl Workspace {
         let format = self
             .active_view(cx)
             .map(|view| view.read(cx).buffer.read(cx).doc().format());
+        let language = self.active_view(cx).map(|view| {
+            view.read(cx)
+                .buffer
+                .read(cx)
+                .language()
+                .map_or("text", |l| l.id)
+        });
         let ansi = AppState::global(cx).ansi;
         let word_wrap = crate::editor::ViewSettings::read(cx).word_wrap;
         let checked = |invocation: &Invocation| {
             if invocation.command == "view.word-wrap" {
                 return word_wrap;
+            }
+            if invocation.command == "language.set" {
+                return invocation.args.get("language").and_then(|id| id.as_str()) == language;
             }
             let Some(format) = format else {
                 return false;
@@ -534,6 +580,45 @@ pub(crate) mod tests {
             "ctrl"
         };
         format!("{modifier}-{key}")
+    }
+
+    /// The keystroke that moves the caret to the start of the document on this platform:
+    /// Ctrl+Home on Windows and Linux, Cmd+Up on macOS (Cmd+Home does nothing there).
+    pub(crate) fn document_start() -> &'static str {
+        if cfg!(target_os = "macos") {
+            "cmd-up"
+        } else {
+            "ctrl-home"
+        }
+    }
+
+    /// The keystroke that extends a rectangular selection towards `key`: Alt+Shift+<key> on
+    /// Windows and Linux, Cmd+Alt+Shift+<key> on macOS.
+    pub(crate) fn block(key: &str) -> String {
+        if cfg!(target_os = "macos") {
+            format!("cmd-alt-shift-{key}")
+        } else {
+            format!("alt-shift-{key}")
+        }
+    }
+
+    /// Column-mode Begin/End Select: Alt+Shift+B on Windows and Linux, Cmd+Alt+Shift+B on
+    /// macOS.
+    pub(crate) fn begin_end_column() -> &'static str {
+        if cfg!(target_os = "macos") {
+            "cmd-alt-shift-b"
+        } else {
+            "alt-shift-b"
+        }
+    }
+
+    /// The Column Editor: Alt+C on Windows and Linux, Cmd+Alt+C on macOS.
+    pub(crate) fn column_editor() -> &'static str {
+        if cfg!(target_os = "macos") {
+            "cmd-alt-c"
+        } else {
+            "alt-c"
+        }
     }
 
     pub(crate) fn open_workspace(

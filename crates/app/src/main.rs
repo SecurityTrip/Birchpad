@@ -19,6 +19,8 @@ mod encoding_ui;
 mod file_ops;
 mod find;
 mod help;
+#[cfg(test)]
+mod language_tests;
 mod menus;
 mod pane;
 mod path_dialog;

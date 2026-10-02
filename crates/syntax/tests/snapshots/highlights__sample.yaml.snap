@@ -1,0 +1,27 @@
+---
+source: crates/syntax/tests/highlights.rs
+expression: render(&path)
+---
+language: yaml
+comment                  # Workflow
+property                 name
+punctuation.delimiter    :
+string                   CI
+property                 on
+punctuation.delimiter    :
+property                 push
+punctuation.delimiter    :
+property                 branches
+punctuation.delimiter    :
+punctuation.bracket      [
+string                   main
+punctuation.bracket      ]
+property                 jobs
+punctuation.delimiter    :
+property                 test
+punctuation.delimiter    :
+punctuation.bracket      {
+property                 runs-on
+punctuation.delimiter    :
+string                   ubuntu-latest
+punctuation.bracket      }

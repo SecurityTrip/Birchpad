@@ -10,7 +10,7 @@ use std::ops::Range;
 use memchr::memmem;
 use ropey::Rope;
 
-use crate::motion::{CharClass, char_class};
+use crate::motion::{CharClass, char_class, next_boundary, word_at};
 
 /// How the pattern is interpreted. Only `Normal` exists for now.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
@@ -150,10 +150,150 @@ impl Searcher {
         matches
     }
 
+    /// Every match inside `range`, in order, not overlapping.
+    pub fn find_all_in(&self, text: &Rope, range: Range<usize>) -> Vec<Range<usize>> {
+        let mut scan = Scan::new(range);
+        scan.run(self, text, || false);
+        scan.into_matches()
+    }
+
     /// Whether `range` of `text` is a match (to decide what "Replace" replaces).
     pub fn is_match(&self, text: &Rope, range: Range<usize>) -> bool {
         self.find_in(text, range.clone()) == Some(range)
     }
+
+    /// The longest a match can be, in bytes. Case folding may change a character's length
+    /// (the Kelvin sign is three bytes, `k` one), so a folded match may be longer than its
+    /// pattern.
+    fn max_match_len(&self) -> usize {
+        match &self.matcher {
+            Matcher::Exact { needle } => needle.len(),
+            Matcher::Folded { needle } => needle.len() * 4,
+        }
+    }
+}
+
+/// Bytes a [`Scan`] searches between two checks of its caller's budget.
+pub const SCAN_STEP: usize = 64 * 1024;
+
+/// A search for every match in a range that can stop and resume, so that a caller with a
+/// time budget (smart highlighting on the UI thread) can spread it over several frames.
+///
+/// The result is the same as searching the range in one go: non-overlapping matches, each
+/// found as early as possible.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Scan {
+    range: Range<usize>,
+    /// Where the next step starts.
+    next: usize,
+    step: usize,
+    matches: Vec<Range<usize>>,
+}
+
+impl Scan {
+    /// A scan of `range`, whose ends lie on character boundaries.
+    pub fn new(range: Range<usize>) -> Self {
+        Self::with_step(range, SCAN_STEP)
+    }
+
+    /// A scan that searches `step` bytes between checks of the budget.
+    pub fn with_step(range: Range<usize>, step: usize) -> Self {
+        Self {
+            next: range.start,
+            range,
+            step: step.max(1),
+            matches: Vec::new(),
+        }
+    }
+
+    pub fn range(&self) -> Range<usize> {
+        self.range.clone()
+    }
+
+    pub fn is_done(&self) -> bool {
+        self.next >= self.range.end
+    }
+
+    /// The matches found so far.
+    pub fn matches(&self) -> &[Range<usize>] {
+        &self.matches
+    }
+
+    pub fn into_matches(self) -> Vec<Range<usize>> {
+        self.matches
+    }
+
+    /// Searches until the range is done or `stop` returns true; `stop` is asked after every
+    /// step, so each call makes progress. Returns whether the range is done.
+    pub fn run(
+        &mut self,
+        searcher: &Searcher,
+        text: &Rope,
+        mut stop: impl FnMut() -> bool,
+    ) -> bool {
+        while !self.is_done() {
+            self.step(searcher, text);
+            if stop() {
+                break;
+            }
+        }
+        self.is_done()
+    }
+
+    /// Finds the matches that start in the next `step` bytes.
+    fn step(&mut self, searcher: &Searcher, text: &Rope) {
+        let end = self.range.end;
+        let limit = text.ceil_char_boundary((self.next + self.step).min(end));
+        // Far enough to see a whole match that starts just before `limit`.
+        let window_end =
+            text.ceil_char_boundary(limit.saturating_add(searcher.max_match_len()).min(end));
+        let mut from = self.next;
+        while from < limit {
+            match searcher.find_in(text, from..window_end) {
+                Some(found) if found.start < limit => {
+                    from = if found.is_empty() {
+                        next_boundary(text, found.end)
+                    } else {
+                        found.end
+                    };
+                    self.matches.push(found);
+                }
+                _ => break,
+            }
+        }
+        self.next = from.max(limit);
+    }
+}
+
+/// What smart highlighting looks for when `selection` is selected: the selected text if it
+/// is on one line and, with `whole_word`, exactly one word, as in Notepad++.
+pub fn smart_highlight_token(
+    text: &Rope,
+    selection: Range<usize>,
+    whole_word: bool,
+) -> Option<Range<usize>> {
+    if selection.is_empty() {
+        return None;
+    }
+    let mut chars = text.slice(selection.clone()).chars();
+    if whole_word {
+        let all_word = chars.all(is_word);
+        (all_word && is_whole_word(text, &selection)).then_some(selection)
+    } else {
+        let one_line = !chars.any(|ch| ch == '\n' || ch == '\r');
+        one_line.then_some(selection)
+    }
+}
+
+/// The token of Search > Style All Occurrences of Token: the selection, or the word at the
+/// caret when nothing is selected.
+pub fn token_at(text: &Rope, selection: Range<usize>) -> Option<Range<usize>> {
+    if !selection.is_empty() {
+        return Some(selection);
+    }
+    let word = word_at(text, selection.start);
+    let is_word_run = text.slice(word.clone()).chars().next().is_some_and(is_word);
+    is_word_run.then_some(word)
 }
 
 /// Simple case folding: the first character of the lowercase mapping. Good for the scripts
@@ -321,5 +461,55 @@ mod tests {
         let s = searcher("abc", true, false);
         assert!(s.is_match(&text, 4..7));
         assert!(!s.is_match(&text, 3..7));
+    }
+
+    #[test]
+    fn a_scan_in_small_steps_finds_what_one_search_finds() {
+        let text = Rope::from_str(&"one two one, ONE.  one".repeat(50));
+        let s = searcher("one", false, true);
+        let whole = s.find_all_in(&text, 3..text.len() - 2);
+        assert_eq!(whole.first(), Some(&(8..11)));
+        for step in [1, 2, 5, 64] {
+            let mut scan = Scan::with_step(3..text.len() - 2, step);
+            let mut steps = 0;
+            while !scan.run(&s, &text, || true) {
+                steps += 1;
+            }
+            assert!(steps > 0 || step == 64);
+            assert_eq!(scan.matches(), whole.as_slice(), "step {step}");
+        }
+    }
+
+    #[test]
+    fn smart_highlighting_wants_a_word_or_one_line() {
+        let text = Rope::from_str("foo bar_1 baz\nqux");
+        assert_eq!(smart_highlight_token(&text, 4..9, true), Some(4..9));
+        assert_eq!(
+            smart_highlight_token(&text, 4..7, true),
+            None,
+            "part of a word"
+        );
+        assert_eq!(smart_highlight_token(&text, 0..7, true), None, "two words");
+        assert_eq!(smart_highlight_token(&text, 4..7, false), Some(4..7));
+        assert_eq!(smart_highlight_token(&text, 0..7, false), Some(0..7));
+        assert_eq!(
+            smart_highlight_token(&text, 10..15, false),
+            None,
+            "two lines"
+        );
+        assert_eq!(smart_highlight_token(&text, 4..4, false), None);
+    }
+
+    #[test]
+    fn the_token_is_the_selection_or_the_word_at_the_caret() {
+        let text = Rope::from_str("foo bar, baz");
+        assert_eq!(token_at(&text, 1..6), Some(1..6));
+        assert_eq!(token_at(&text, 5..5), Some(4..7));
+        assert_eq!(token_at(&text, 7..7), Some(4..7), "right after a word");
+        assert_eq!(
+            token_at(&text, 8..8),
+            None,
+            "between punctuation and a space"
+        );
     }
 }

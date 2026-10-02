@@ -224,4 +224,19 @@ mod tests {
         assert!(!resolved.is_locked("updates.mode"));
         assert_eq!(resolved.diagnostics.len(), 1);
     }
+
+    #[test]
+    fn highlighting_settings_nest_two_levels() {
+        let resolved = resolve(Sources {
+            user: table(
+                "highlighting.smart.enabled = false\nhighlighting.token-style.match-case = true",
+            ),
+            ..Sources::default()
+        });
+        let highlighting = &resolved.settings.highlighting;
+        assert!(!highlighting.smart.enabled);
+        assert!(highlighting.smart.whole_word, "defaults stay");
+        assert!(highlighting.token_style.match_case);
+        assert!(resolved.diagnostics.is_empty());
+    }
 }

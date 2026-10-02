@@ -73,9 +73,213 @@ keys = "secondary-g"
 command = "search.go-to"
 
 [[binding]]
+keys = "secondary-b"
+command = "search.go-to-matching-brace"
+context = "Editor"
+
+[[binding]]
+keys = "secondary-alt-b"
+command = "search.select-to-matching-brace"
+context = "Editor"
+
+[[binding]]
 keys = "escape"
 command = "search.close"
 context = "FindBar"
+
+# Token styles, as in Notepad++: Ctrl+Alt+N styles every occurrence of the token with style N,
+# Ctrl+Alt+Shift+N clears it, Ctrl+N and Ctrl+Shift+N jump to its next and previous occurrence.
+# macOS takes Cmd+Shift+3/4/5 for screenshots, so jumping up is Cmd+Ctrl+N there.
+
+[[binding]]
+keys = "secondary-alt-1"
+command = "mark.style-all"
+args = { style = 1 }
+context = "Editor"
+
+[[binding]]
+keys = "secondary-alt-2"
+command = "mark.style-all"
+args = { style = 2 }
+context = "Editor"
+
+[[binding]]
+keys = "secondary-alt-3"
+command = "mark.style-all"
+args = { style = 3 }
+context = "Editor"
+
+[[binding]]
+keys = "secondary-alt-4"
+command = "mark.style-all"
+args = { style = 4 }
+context = "Editor"
+
+[[binding]]
+keys = "secondary-alt-5"
+command = "mark.style-all"
+args = { style = 5 }
+context = "Editor"
+
+[[binding]]
+keys = "secondary-alt-shift-1"
+command = "mark.clear"
+args = { style = 1 }
+context = "Editor"
+
+[[binding]]
+keys = "secondary-alt-shift-2"
+command = "mark.clear"
+args = { style = 2 }
+context = "Editor"
+
+[[binding]]
+keys = "secondary-alt-shift-3"
+command = "mark.clear"
+args = { style = 3 }
+context = "Editor"
+
+[[binding]]
+keys = "secondary-alt-shift-4"
+command = "mark.clear"
+args = { style = 4 }
+context = "Editor"
+
+[[binding]]
+keys = "secondary-alt-shift-5"
+command = "mark.clear"
+args = { style = 5 }
+context = "Editor"
+
+[[binding]]
+keys = "secondary-alt-shift-0"
+command = "mark.clear-all"
+context = "Editor"
+
+[[binding]]
+keys = "secondary-1"
+command = "mark.jump-down"
+args = { style = 1 }
+context = "Editor"
+
+[[binding]]
+keys = "secondary-2"
+command = "mark.jump-down"
+args = { style = 2 }
+context = "Editor"
+
+[[binding]]
+keys = "secondary-3"
+command = "mark.jump-down"
+args = { style = 3 }
+context = "Editor"
+
+[[binding]]
+keys = "secondary-4"
+command = "mark.jump-down"
+args = { style = 4 }
+context = "Editor"
+
+[[binding]]
+keys = "secondary-5"
+command = "mark.jump-down"
+args = { style = 5 }
+context = "Editor"
+
+[[binding]]
+keys = "ctrl-shift-1"
+command = "mark.jump-up"
+args = { style = 1 }
+context = "Editor"
+platforms = ["windows", "linux"]
+
+[[binding]]
+keys = "cmd-ctrl-1"
+command = "mark.jump-up"
+args = { style = 1 }
+context = "Editor"
+platforms = ["macos"]
+
+[[binding]]
+keys = "ctrl-shift-2"
+command = "mark.jump-up"
+args = { style = 2 }
+context = "Editor"
+platforms = ["windows", "linux"]
+
+[[binding]]
+keys = "cmd-ctrl-2"
+command = "mark.jump-up"
+args = { style = 2 }
+context = "Editor"
+platforms = ["macos"]
+
+[[binding]]
+keys = "ctrl-shift-3"
+command = "mark.jump-up"
+args = { style = 3 }
+context = "Editor"
+platforms = ["windows", "linux"]
+
+[[binding]]
+keys = "cmd-ctrl-3"
+command = "mark.jump-up"
+args = { style = 3 }
+context = "Editor"
+platforms = ["macos"]
+
+[[binding]]
+keys = "ctrl-shift-4"
+command = "mark.jump-up"
+args = { style = 4 }
+context = "Editor"
+platforms = ["windows", "linux"]
+
+[[binding]]
+keys = "cmd-ctrl-4"
+command = "mark.jump-up"
+args = { style = 4 }
+context = "Editor"
+platforms = ["macos"]
+
+[[binding]]
+keys = "ctrl-shift-5"
+command = "mark.jump-up"
+args = { style = 5 }
+context = "Editor"
+platforms = ["windows", "linux"]
+
+[[binding]]
+keys = "cmd-ctrl-5"
+command = "mark.jump-up"
+args = { style = 5 }
+context = "Editor"
+platforms = ["macos"]
+
+
+# Bookmarks. Ctrl+F2 moves the focus to the menu bar on macOS, so toggling is Cmd+F2 there.
+
+[[binding]]
+keys = "ctrl-f2"
+command = "bookmark.toggle"
+context = "Editor"
+platforms = ["windows", "linux"]
+
+[[binding]]
+keys = "cmd-f2"
+command = "bookmark.toggle"
+context = "Editor"
+platforms = ["macos"]
+
+[[binding]]
+keys = "f2"
+command = "bookmark.next"
+context = "Editor"
+
+[[binding]]
+keys = "shift-f2"
+command = "bookmark.previous"
+context = "Editor"
 
 # --- View ---------------------------------------------------------------------------------------
 
@@ -124,6 +328,124 @@ command = "view.previous-tab"
 [[binding]]
 keys = "ctrl-shift-tab"
 command = "view.previous-tab"
+
+# Folding, as in Notepad++.
+
+[[binding]]
+keys = "alt-0"
+command = "view.fold-all"
+context = "Editor"
+
+[[binding]]
+keys = "alt-shift-0"
+command = "view.unfold-all"
+context = "Editor"
+
+[[binding]]
+keys = "ctrl-alt-f"
+command = "view.fold-current"
+context = "Editor"
+
+[[binding]]
+keys = "ctrl-alt-shift-f"
+command = "view.unfold-current"
+context = "Editor"
+
+[[binding]]
+keys = "alt-1"
+command = "view.fold-level"
+args = { level = 1 }
+context = "Editor"
+
+[[binding]]
+keys = "alt-shift-1"
+command = "view.unfold-level"
+args = { level = 1 }
+context = "Editor"
+
+[[binding]]
+keys = "alt-2"
+command = "view.fold-level"
+args = { level = 2 }
+context = "Editor"
+
+[[binding]]
+keys = "alt-shift-2"
+command = "view.unfold-level"
+args = { level = 2 }
+context = "Editor"
+
+[[binding]]
+keys = "alt-3"
+command = "view.fold-level"
+args = { level = 3 }
+context = "Editor"
+
+[[binding]]
+keys = "alt-shift-3"
+command = "view.unfold-level"
+args = { level = 3 }
+context = "Editor"
+
+[[binding]]
+keys = "alt-4"
+command = "view.fold-level"
+args = { level = 4 }
+context = "Editor"
+
+[[binding]]
+keys = "alt-shift-4"
+command = "view.unfold-level"
+args = { level = 4 }
+context = "Editor"
+
+[[binding]]
+keys = "alt-5"
+command = "view.fold-level"
+args = { level = 5 }
+context = "Editor"
+
+[[binding]]
+keys = "alt-shift-5"
+command = "view.unfold-level"
+args = { level = 5 }
+context = "Editor"
+
+[[binding]]
+keys = "alt-6"
+command = "view.fold-level"
+args = { level = 6 }
+context = "Editor"
+
+[[binding]]
+keys = "alt-shift-6"
+command = "view.unfold-level"
+args = { level = 6 }
+context = "Editor"
+
+[[binding]]
+keys = "alt-7"
+command = "view.fold-level"
+args = { level = 7 }
+context = "Editor"
+
+[[binding]]
+keys = "alt-shift-7"
+command = "view.unfold-level"
+args = { level = 7 }
+context = "Editor"
+
+[[binding]]
+keys = "alt-8"
+command = "view.fold-level"
+args = { level = 8 }
+context = "Editor"
+
+[[binding]]
+keys = "alt-shift-8"
+command = "view.unfold-level"
+args = { level = 8 }
+context = "Editor"
 
 # --- Edit ---------------------------------------------------------------------------------------
 
@@ -244,6 +566,49 @@ keys = "insert"
 command = "edit.toggle-overwrite"
 context = "Editor"
 
+[[binding]]
+keys = "escape"
+command = "edit.cancel-selection"
+context = "Editor"
+
+[[binding]]
+keys = "secondary-shift-b"
+command = "edit.begin-end-select"
+context = "Editor"
+
+[[binding]]
+keys = "alt-shift-b"
+command = "edit.begin-end-select-column"
+context = "Editor"
+platforms = ["windows", "linux"]
+
+# Option+Shift+B and Option+C type characters on macOS.
+[[binding]]
+keys = "cmd-alt-shift-b"
+command = "edit.begin-end-select-column"
+context = "Editor"
+platforms = ["macos"]
+
+[[binding]]
+keys = "alt-c"
+command = "edit.column-editor"
+context = "Editor"
+platforms = ["windows", "linux"]
+
+[[binding]]
+keys = "cmd-alt-c"
+command = "edit.column-editor"
+context = "Editor"
+platforms = ["macos"]
+
+# Notepad++ has no default keys for Multi-select All/Next, Undo the Latest Added Multi-Select
+# and Skip Current; bind them in keymap.toml, e.g.
+#   [[binding]]
+#   keys = "ctrl-e"
+#   command = "edit.multi-select-next"
+#   args = { match-case = true }
+#   context = "Editor"
+
 # --- Caret movement -----------------------------------------------------------------------------
 
 [[binding]]
@@ -325,6 +690,106 @@ context = "Editor"
 keys = "shift-pagedown"
 command = "select.page-down"
 context = "Editor"
+
+# Rectangular selection: Alt+Shift with arrows, Home, End, Page Up and Page Down, as in
+# Notepad++. On macOS Option+Shift+Left/Right select by word, so the rectangle takes
+# Cmd+Option+Shift.
+
+[[binding]]
+keys = "alt-shift-left"
+command = "select.block-left"
+context = "Editor"
+platforms = ["windows", "linux"]
+
+[[binding]]
+keys = "cmd-alt-shift-left"
+command = "select.block-left"
+context = "Editor"
+platforms = ["macos"]
+
+[[binding]]
+keys = "alt-shift-right"
+command = "select.block-right"
+context = "Editor"
+platforms = ["windows", "linux"]
+
+[[binding]]
+keys = "cmd-alt-shift-right"
+command = "select.block-right"
+context = "Editor"
+platforms = ["macos"]
+
+[[binding]]
+keys = "alt-shift-up"
+command = "select.block-up"
+context = "Editor"
+platforms = ["windows", "linux"]
+
+[[binding]]
+keys = "cmd-alt-shift-up"
+command = "select.block-up"
+context = "Editor"
+platforms = ["macos"]
+
+[[binding]]
+keys = "alt-shift-down"
+command = "select.block-down"
+context = "Editor"
+platforms = ["windows", "linux"]
+
+[[binding]]
+keys = "cmd-alt-shift-down"
+command = "select.block-down"
+context = "Editor"
+platforms = ["macos"]
+
+[[binding]]
+keys = "alt-shift-home"
+command = "select.block-home"
+context = "Editor"
+platforms = ["windows", "linux"]
+
+[[binding]]
+keys = "cmd-alt-shift-home"
+command = "select.block-home"
+context = "Editor"
+platforms = ["macos"]
+
+[[binding]]
+keys = "alt-shift-end"
+command = "select.block-end"
+context = "Editor"
+platforms = ["windows", "linux"]
+
+[[binding]]
+keys = "cmd-alt-shift-end"
+command = "select.block-end"
+context = "Editor"
+platforms = ["macos"]
+
+[[binding]]
+keys = "alt-shift-pageup"
+command = "select.block-page-up"
+context = "Editor"
+platforms = ["windows", "linux"]
+
+[[binding]]
+keys = "cmd-alt-shift-pageup"
+command = "select.block-page-up"
+context = "Editor"
+platforms = ["macos"]
+
+[[binding]]
+keys = "alt-shift-pagedown"
+command = "select.block-page-down"
+context = "Editor"
+platforms = ["windows", "linux"]
+
+[[binding]]
+keys = "cmd-alt-shift-pagedown"
+command = "select.block-page-down"
+context = "Editor"
+platforms = ["macos"]
 
 # Windows and Linux: Ctrl moves by word, Ctrl+Home/End to the ends of the document.
 
@@ -447,5 +912,143 @@ platforms = ["macos"]
 [[binding]]
 keys = "cmd-shift-down"
 command = "select.document-end"
+context = "Editor"
+platforms = ["macos"]
+
+# --- Line operations, case, comments (Notepad++'s keys) ----------------------------------------
+
+[[binding]]
+keys = "secondary-d"
+command = "edit.duplicate-line"
+context = "Editor"
+
+[[binding]]
+keys = "secondary-shift-l"
+command = "edit.delete-line"
+context = "Editor"
+
+[[binding]]
+keys = "ctrl-shift-up"
+command = "edit.move-line-up"
+context = "Editor"
+platforms = ["windows", "linux"]
+
+[[binding]]
+keys = "ctrl-shift-down"
+command = "edit.move-line-down"
+context = "Editor"
+platforms = ["windows", "linux"]
+
+[[binding]]
+keys = "alt-up"
+command = "edit.move-line-up"
+context = "Editor"
+platforms = ["macos"]
+
+[[binding]]
+keys = "alt-down"
+command = "edit.move-line-down"
+context = "Editor"
+platforms = ["macos"]
+
+[[binding]]
+keys = "ctrl-alt-enter"
+command = "edit.insert-line-above"
+context = "Editor"
+
+[[binding]]
+keys = "ctrl-alt-shift-enter"
+command = "edit.insert-line-below"
+context = "Editor"
+
+[[binding]]
+keys = "secondary-j"
+command = "edit.join-lines"
+context = "Editor"
+
+[[binding]]
+keys = "secondary-i"
+command = "edit.split-lines"
+context = "Editor"
+
+[[binding]]
+keys = "secondary-shift-u"
+command = "edit.convert-case"
+args = { to = "upper" }
+context = "Editor"
+
+[[binding]]
+keys = "secondary-u"
+command = "edit.convert-case"
+args = { to = "lower" }
+context = "Editor"
+
+[[binding]]
+keys = "alt-u"
+command = "edit.convert-case"
+args = { to = "proper" }
+context = "Editor"
+
+[[binding]]
+keys = "alt-shift-u"
+command = "edit.convert-case"
+args = { to = "proper-blend" }
+context = "Editor"
+
+[[binding]]
+keys = "ctrl-alt-u"
+command = "edit.convert-case"
+args = { to = "sentence" }
+context = "Editor"
+
+[[binding]]
+keys = "ctrl-alt-shift-u"
+command = "edit.convert-case"
+args = { to = "sentence-blend" }
+context = "Editor"
+
+[[binding]]
+keys = "ctrl-alt-i"
+command = "edit.convert-case"
+args = { to = "invert" }
+context = "Editor"
+
+[[binding]]
+keys = "ctrl-alt-r"
+command = "edit.convert-case"
+args = { to = "random" }
+context = "Editor"
+
+[[binding]]
+keys = "ctrl-q"
+command = "edit.toggle-comment"
+context = "Editor"
+platforms = ["windows", "linux"]
+
+[[binding]]
+keys = "cmd-/"
+command = "edit.toggle-comment"
+context = "Editor"
+platforms = ["macos"]
+
+[[binding]]
+keys = "secondary-k"
+command = "edit.comment-lines"
+context = "Editor"
+
+[[binding]]
+keys = "secondary-shift-k"
+command = "edit.uncomment-lines"
+context = "Editor"
+
+[[binding]]
+keys = "ctrl-shift-q"
+command = "edit.block-comment"
+context = "Editor"
+platforms = ["windows", "linux"]
+
+[[binding]]
+keys = "cmd-alt-/"
+command = "edit.block-comment"
 context = "Editor"
 platforms = ["macos"]

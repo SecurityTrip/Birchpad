@@ -59,6 +59,13 @@ pub(crate) struct FindOptions {
     pub(crate) backward: bool,
 }
 
+/// The find panel's options, for smart highlighting with
+/// `highlighting.smart.use-find-options`.
+#[derive(Debug, Clone, Copy, Default)]
+pub(crate) struct ActiveFindOptions(pub(crate) FindOptions);
+
+impl gpui_kit::Global for ActiveFindOptions {}
+
 impl Default for FindOptions {
     fn default() -> Self {
         Self {
@@ -187,7 +194,10 @@ impl FindBar {
             .on_click(move |checked, _, cx| {
                 this.update(cx, |this, cx| {
                     set(&mut this.options, *checked);
+                    cx.set_global(ActiveFindOptions(this.options));
                     cx.notify();
+                    // Smart highlighting may follow these options.
+                    cx.refresh_windows();
                 })
                 .ok();
             })
@@ -641,7 +651,7 @@ mod tests {
     use gpui_kit::{TestAppContext, VisualTestContext};
 
     use super::*;
-    use crate::workspace::tests::{active_text, open_workspace, secondary};
+    use crate::workspace::tests::{active_text, document_start, open_workspace, secondary};
 
     fn search_for(
         workspace: &Entity<Workspace>,
@@ -673,7 +683,7 @@ mod tests {
     fn f3_finds_next_and_wraps(cx: &mut TestAppContext) {
         let (workspace, cx) = open_workspace(cx);
         cx.simulate_input("cat Cat category cat");
-        cx.simulate_keystrokes(&secondary("home"));
+        cx.simulate_keystrokes(document_start());
         let options = FindOptions {
             whole_word: true,
             ..FindOptions::default()

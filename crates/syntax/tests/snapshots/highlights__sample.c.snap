@@ -1,0 +1,29 @@
+---
+source: crates/syntax/tests/highlights.rs
+expression: render(&path)
+---
+language: c
+keyword                  #include
+string                   <stdio.h>
+comment                  /* Entry point. */
+type                     int
+function                 main
+type                     int
+variable                 argc
+type                     char
+operator                 **
+variable                 argv
+keyword                  const
+type                     char
+operator                 *
+variable                 name
+operator                 =
+string                   "world"
+punctuation.delimiter    ;
+function                 printf
+string                   "Hello, %s!\n"
+variable                 name
+punctuation.delimiter    ;
+keyword                  return
+number                   0
+punctuation.delimiter    ;

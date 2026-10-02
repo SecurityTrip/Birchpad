@@ -2,8 +2,9 @@
 //!
 //! Without word wrap every line is one row. With word wrap a line takes as many rows as it needs
 //! at the current width; the map keeps a row count per line and prefix sums over them, so that
-//! row ↔ line conversions are O(log n). Folding (phase 2) slots into the same structure: a folded
-//! line simply has zero rows.
+//! row ↔ line conversions are O(log n). Lines hidden by collapsed folds have no rows: without
+//! word wrap, rows skip them through prefix sums over the hidden ranges; with it, they count
+//! zero rows in the prefix sums.
 
 use std::collections::HashMap;
 use std::ops::Range;
@@ -90,6 +91,10 @@ pub struct DisplayMap {
     valid_prefix: usize,
     wraps: HashMap<usize, Arc<Vec<(usize, usize)>>>,
     columns: HashMap<usize, Arc<ColumnIndex>>,
+    /// Lines hidden by collapsed folds: sorted, disjoint.
+    hidden: Vec<Range<usize>>,
+    /// `hidden_before[i]` is the number of lines hidden by `hidden[..i]`.
+    hidden_before: Vec<usize>,
 }
 
 impl DisplayMap {
@@ -187,6 +192,88 @@ impl DisplayMap {
         &self.rows_per_line
     }
 
+    /// Hides `ranges` of lines (sorted, disjoint), as collapsed folds do.
+    pub fn set_hidden(&mut self, ranges: Vec<Range<usize>>) {
+        if ranges == self.hidden {
+            return;
+        }
+        let first_change = self
+            .hidden
+            .iter()
+            .zip(&ranges)
+            .position(|(old, new)| old != new)
+            .unwrap_or_else(|| self.hidden.len().min(ranges.len()));
+        let changed_line = [self.hidden.get(first_change), ranges.get(first_change)]
+            .into_iter()
+            .flatten()
+            .map(|range| range.start)
+            .min()
+            .unwrap_or(0);
+        self.hidden = ranges;
+        self.hidden_before = std::iter::once(0)
+            .chain(self.hidden.iter().scan(0, |total, range| {
+                *total += range.len();
+                Some(*total)
+            }))
+            .collect();
+        self.valid_prefix = self.valid_prefix.min(changed_line);
+    }
+
+    pub fn hidden(&self) -> &[Range<usize>] {
+        &self.hidden
+    }
+
+    /// The hidden range containing `line`, if it is hidden.
+    fn hidden_range(&self, line: usize) -> Option<&Range<usize>> {
+        let index = self.hidden.partition_point(|range| range.end <= line);
+        self.hidden.get(index).filter(|range| range.start <= line)
+    }
+
+    pub fn is_hidden(&self, line: usize) -> bool {
+        self.hidden_range(line).is_some()
+    }
+
+    /// `line`, or the visible line above it if it is hidden (the fold's header).
+    pub fn visible_line(&self, line: usize) -> usize {
+        self.hidden_range(line)
+            .map_or(line, |range| range.start.saturating_sub(1))
+    }
+
+    /// Hidden lines before `line` (which is visible), without word wrap.
+    fn hidden_lines_before(&self, line: usize) -> usize {
+        let index = self.hidden.partition_point(|range| range.start < line);
+        self.hidden_before.get(index).copied().unwrap_or(0)
+    }
+
+    /// Lines hidden in a text of `lines` lines (ranges past its end are ignored).
+    fn hidden_total(&self, lines: usize) -> usize {
+        self.hidden
+            .iter()
+            .map(|range| range.end.min(lines).saturating_sub(range.start))
+            .sum()
+    }
+
+    /// The line shown in unwrapped row `row`.
+    fn line_of_unwrapped_row(&self, row: usize) -> usize {
+        let count = self.partition_hidden(row);
+        row + self.hidden_before.get(count).copied().unwrap_or(0)
+    }
+
+    /// Number of hidden ranges that start at or before the line shown in row `row`.
+    fn partition_hidden(&self, row: usize) -> usize {
+        let (mut low, mut high) = (0, self.hidden.len());
+        while low < high {
+            let middle = (low + high) / 2;
+            // Visible lines before this range starts.
+            if self.hidden[middle].start - self.hidden_before[middle] <= row {
+                low = middle + 1;
+            } else {
+                high = middle;
+            }
+        }
+        low
+    }
+
     fn ensure_prefix(&mut self, upto: usize) {
         if self.rows_before.len() != self.rows_per_line.len() + 1 {
             self.rows_before.resize(self.rows_per_line.len() + 1, 0);
@@ -195,7 +282,12 @@ impl DisplayMap {
         let upto = upto.min(self.rows_per_line.len());
         while self.valid_prefix < upto {
             let i = self.valid_prefix;
-            self.rows_before[i + 1] = self.rows_before[i] + self.rows_per_line[i] as usize;
+            let rows = if self.is_hidden(i) {
+                0
+            } else {
+                self.rows_per_line[i] as usize
+            };
+            self.rows_before[i + 1] = self.rows_before[i] + rows;
             self.valid_prefix += 1;
         }
     }
@@ -206,16 +298,19 @@ impl DisplayMap {
             self.ensure_prefix(lines);
             self.rows_before[lines]
         } else {
-            line_count(text)
+            let lines = line_count(text);
+            lines - self.hidden_total(lines)
         }
     }
 
+    /// The first row of `line`; for a hidden line, of the visible line above it.
     pub fn first_row_of_line(&mut self, line: usize) -> usize {
+        let line = self.visible_line(line);
         if self.is_wrapping() {
             self.ensure_prefix(line);
             self.rows_before[line.min(self.rows_per_line.len())]
         } else {
-            line
+            line - self.hidden_lines_before(line)
         }
     }
 
@@ -251,7 +346,8 @@ impl DisplayMap {
     /// The row with index `row` (clamped to the last row).
     pub fn row(&mut self, text: &Rope, row: usize) -> Row {
         if !self.is_wrapping() {
-            let line = row.min(line_count(text) - 1);
+            let row = row.min(self.row_count(text).saturating_sub(1));
+            let line = self.line_of_unwrapped_row(row).min(line_count(text) - 1);
             return self.make_row(text, line, 0);
         }
         let lines = self.rows_per_line.len();
@@ -269,8 +365,16 @@ impl DisplayMap {
 
     /// The row index and row containing `pos`. A position where a wrapped line breaks belongs
     /// to the row that starts there.
+    /// A position in a hidden line belongs to the last row of the fold's header.
     pub fn row_of(&mut self, text: &Rope, pos: usize) -> (usize, Row) {
         let line = line_of(text, pos);
+        let visible = self.visible_line(line);
+        let pos = if visible == line {
+            pos
+        } else {
+            line_range(text, visible).end
+        };
+        let line = visible;
         let starts = self.row_starts(text, line);
         let index = starts
             .partition_point(|&(start, _)| start <= pos)
@@ -319,6 +423,36 @@ impl DisplayMap {
         }
     }
 
+    /// The position at `column` of `line`, ignoring word wrap, and the virtual space past the
+    /// line's end if the line is shorter. A column inside a character rounds to the nearer
+    /// side of it, as clicking there does.
+    pub fn pos_at_line_column(
+        &mut self,
+        text: &Rope,
+        line: usize,
+        column: usize,
+    ) -> (usize, usize) {
+        let range = line_range(text, line);
+        let (from, from_column) = if range.len() > LONG_LINE {
+            self.column_index(text, line).before_column(column)
+        } else {
+            (range.start, 0)
+        };
+        let (pos, reached) = pos_at_column(
+            text,
+            from..range.end,
+            from_column,
+            column,
+            self.config.tab_width,
+        );
+        let virtual_cells = if pos == range.end {
+            column.saturating_sub(reached)
+        } else {
+            0
+        };
+        (pos, virtual_cells)
+    }
+
     fn column_index(&mut self, text: &Rope, line: usize) -> Arc<ColumnIndex> {
         let tab_width = self.config.tab_width;
         self.columns
@@ -352,7 +486,7 @@ impl DisplayMap {
 }
 
 /// The part of the new text that `changes` touched: from the first to the end of the last edit.
-fn changed_range(changes: &ChangeSet) -> Option<Range<usize>> {
+pub(crate) fn changed_range(changes: &ChangeSet) -> Option<Range<usize>> {
     let mut new_pos = 0;
     let mut range: Option<Range<usize>> = None;
     for op in changes.ops() {
