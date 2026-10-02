@@ -4,9 +4,11 @@
 //! selection through the changes the others make. Layout in cells (tab stops, word wrap, rows)
 //! comes from `birchpad-view`; [`element::EditorElement`] turns it into pixels and paints it.
 
+mod column_editor;
 mod element;
 mod folding;
 mod layout;
+mod multi;
 mod operations;
 pub(crate) mod theme;
 
@@ -17,7 +19,7 @@ use birchpad_core::motion::{self, line_of, line_range, line_range_with_break};
 use birchpad_core::{
     Edit, LineEnding, LineMarkers, Range, RevisionId, Rope, Selection, Transaction, UndoGrouping,
 };
-use birchpad_view::{DisplayMap, LayoutConfig, tab_advance};
+use birchpad_view::{Block, BlockPoint, DisplayMap, LayoutConfig, tab_advance};
 use gpui_kit::{
     App, Bounds, ClipboardItem, Context, Entity, EntityInputHandler, FocusHandle, Focusable,
     MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, Pixels, Point, ScrollWheelEvent,
@@ -100,6 +102,7 @@ struct ConvertEolArgs {
 
 pub(crate) fn register_commands(registry: &mut CommandRegistry) {
     folding::register_commands(registry);
+    multi::register_commands(registry);
     operations::register_commands(registry);
     for (cursor, select, motion) in MOTIONS {
         registry.editor(cursor, move |this, (), _, cx| {
@@ -120,7 +123,7 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
         Ok(())
     });
     registry.editor("edit.copy", |this, (), _, cx| {
-        this.copy(cx);
+        let _ = this.copy(cx);
         Ok(())
     });
     registry.editor("edit.cut", |this, (), _, cx| {
@@ -212,6 +215,10 @@ enum Drag {
         granularity: Granularity,
         origin: ByteRange<usize>,
     },
+    /// Selecting a rectangle (Alt+drag) from `anchor`.
+    Block {
+        anchor: BlockPoint,
+    },
     /// Dragging a scrollbar thumb; `grab` is where in the thumb it was grabbed.
     VerticalThumb {
         grab: Pixels,
@@ -291,6 +298,13 @@ pub(crate) struct EditorView {
     collapsed: LineMarkers,
     /// The buffer's folds in lines.
     fold_cache: Option<folding::FoldCache>,
+    /// The rectangular selection, valid while `selection` is still the one it made.
+    block: Option<multi::BlockState>,
+    /// The order in which Multi-select added ranges, valid while `selection` is still the one
+    /// they make.
+    multi_order: Option<(Vec<Range>, Selection)>,
+    /// Begin/End Select: where the first invocation put the start, and in which mode.
+    begin_select: Option<multi::BeginSelect>,
     _subscriptions: Vec<Subscription>,
 }
 
@@ -311,7 +325,11 @@ impl EditorView {
                     this.collapsed.map(transaction.changes(), &text);
                     this.follow_folds(transaction.changes(), cx);
                     this.sync_hidden(cx);
-                    this.selection = this.selection.map(transaction.changes());
+                    this.selection = this
+                        .selection
+                        .map(transaction.changes())
+                        .clip_virtual(&text);
+                    this.map_begin_select(transaction.changes());
                     this.marked = None;
                 }
                 cx.notify();
@@ -323,6 +341,7 @@ impl EditorView {
                 this.fold_cache = None;
                 this.sync_hidden(cx);
                 this.selection = Selection::point(0);
+                this.begin_select = None;
                 this.marked = None;
                 this.goal_column = None;
                 this.last_edit = LastEdit::None;
@@ -376,6 +395,9 @@ impl EditorView {
             highlight_cache: None,
             collapsed: LineMarkers::new(),
             fold_cache: None,
+            block: None,
+            multi_order: None,
+            begin_select: None,
             _subscriptions: vec![events],
         }
     }
@@ -621,6 +643,7 @@ impl EditorView {
             Some(selection) => selection.clone(),
             None => before.map(transaction.changes()),
         };
+        self.map_begin_select(transaction.changes());
         let changes = transaction.changes().clone();
         let origin = Some(cx.entity_id());
         self.buffer.update(cx, |buffer, cx| {
@@ -631,20 +654,27 @@ impl EditorView {
         self.collapsed.map(&changes, &text);
         self.follow_folds(&changes, cx);
         self.sync_hidden(cx);
-        self.selection = selection;
+        self.selection = selection.clip_virtual(&text);
         self.last_edit = kind;
         self.goal_column = None;
         self.request_autoscroll(cx);
     }
 
-    /// Replaces every selection range with `text`.
+    /// Replaces every selection range with `text`. In a rectangular selection, every line gets `text`, and the rectangle stays as a caret
+    /// on each line unless `text` breaks lines.
     pub(crate) fn insert(&mut self, text: &str, kind: LastEdit, cx: &mut Context<Self>) {
         if !self.is_editable(cx) {
             return;
         }
+        let block = self.active_block();
         let transaction = Transaction::replace_selections(self.text(cx), &self.selection, text)
             .expect("the selection always lies on character boundaries of the document");
         self.apply(transaction, kind, cx);
+        if let Some(block) = block
+            && !text.contains(['\r', '\n'])
+        {
+            self.keep_thin_block(block, cx);
+        }
     }
 
     /// Text typed by the user. In overwrite mode each typed character replaces the next one,
@@ -664,6 +694,9 @@ impl EditorView {
                         break;
                     }
                     to = motion::next_boundary(&text, to);
+                }
+                if to == range.head {
+                    return range;
                 }
                 Range::new(range.head, to)
             });
@@ -775,27 +808,40 @@ impl EditorView {
         let text = self.text(cx).clone();
         let display = &mut self.display;
         let transaction = Transaction::replace_selections_with(&text, &self.selection, |range| {
-            let column = display.column(&text, range.from());
+            // In virtual space, from the column past the line end.
+            let column = display.column(&text, range.from()) + range.from_virtual();
             " ".repeat(tab_advance(column, settings.tab_width))
         })
         .expect("the selection lies on character boundaries");
         self.apply(transaction, LastEdit::Typing, cx);
     }
 
-    /// Replaces one range (used by input methods) and leaves a single caret after it.
+    /// Replaces one range (used by input methods, which only work at the primary caret) and
+    /// puts the primary caret after it; the other carets follow the edit.
     fn replace_range(&mut self, range: ByteRange<usize>, text: &str, cx: &mut Context<Self>) {
-        let caret = Selection::point(range.start + text.len());
-        let Ok(transaction) = Transaction::from_edits(self.text(cx), [Edit::replace(range, text)])
+        let caret = Range::point(range.start + text.len());
+        let Ok(transaction) =
+            Transaction::from_edits(self.text(cx), [Edit::replace(range.clone(), text)])
         else {
             return;
         };
-        self.apply(transaction.with_selection(caret), LastEdit::Typing, cx);
+        // The primary range, wherever mapping puts it, becomes the caret after the new text.
+        let mapped = self.selection.map(transaction.changes());
+        let primary = mapped.primary_index();
+        let mut ranges = mapped.ranges().to_vec();
+        ranges[primary] = caret;
+        let selection = Selection::new(ranges, primary);
+        self.apply(transaction.with_selection(selection), LastEdit::Typing, cx);
     }
 
     /// Deletes every selection; empty ones first extend to `target(head)` (the previous
     /// character, the next word, ...).
     fn delete_with(&mut self, cx: &mut Context<Self>, target: fn(&Rope, usize) -> usize) {
         if !self.is_editable(cx) {
+            return;
+        }
+        if self.active_block().is_some() {
+            self.delete_in_block(cx, target);
             return;
         }
         let text = self.text(cx).clone();
@@ -838,7 +884,9 @@ impl EditorView {
         self.selection = match transaction.selection() {
             Some(selection) => selection.clone(),
             None => self.selection.map(transaction.changes()),
-        };
+        }
+        .clip_virtual(&text);
+        self.map_begin_select(transaction.changes());
         self.last_edit = LastEdit::None;
         self.marked = None;
         self.request_autoscroll(cx);
@@ -855,22 +903,37 @@ impl EditorView {
         (!parts.is_empty()).then(|| parts.join(doc.line_ending().as_str()))
     }
 
-    fn copy(&mut self, cx: &mut Context<Self>) {
+    /// Copies the selection; a rectangle goes to the clipboard as its rows, each ended by a
+    /// line break, marked as rectangular for pasting it back as a rectangle.
+    fn copy(&mut self, cx: &mut Context<Self>) -> bool {
+        if self.active_block().is_some() {
+            let item = self.block_clipboard_item(cx);
+            cx.write_to_clipboard(item);
+            return true;
+        }
         if let Some(text) = self.selected_text(cx) {
             cx.write_to_clipboard(ClipboardItem::new_string(text));
+            return true;
         }
+        false
     }
 
     fn cut(&mut self, cx: &mut Context<Self>) {
-        if let Some(text) = self.selected_text(cx) {
-            cx.write_to_clipboard(ClipboardItem::new_string(text));
+        if self.copy(cx) {
             self.insert("", LastEdit::None, cx);
         }
     }
 
     fn paste(&mut self, cx: &mut Context<Self>) {
-        if let Some(text) = cx.read_from_clipboard().and_then(|item| item.text()) {
-            self.insert(&text, LastEdit::None, cx);
+        let Some(item) = cx.read_from_clipboard() else {
+            return;
+        };
+        let Some(text) = item.text() else {
+            return;
+        };
+        match multi::rectangle_rows(&item, &text) {
+            Some(rows) => self.paste_rectangle(&rows, cx),
+            None => self.insert(&text, LastEdit::None, cx),
         }
     }
 
@@ -991,6 +1054,17 @@ impl EditorView {
             2 => Granularity::Word,
             _ => Granularity::Line,
         };
+        if event.modifiers.alt
+            && !event.modifiers.shift
+            && !event.modifiers.secondary()
+            && granularity == Granularity::Char
+            && let Some(anchor) = self.block_point_for_point(event.position, cx)
+        {
+            // Alt+drag selects a rectangle.
+            self.set_block(Block::new(anchor, anchor), cx);
+            self.drag = Some(Drag::Block { anchor });
+            return;
+        }
         let unit = Self::unit_at(&text, pos, granularity);
         self.selection = if event.modifiers.shift {
             self.with_primary(Range::new(self.selection.primary().anchor, pos))
@@ -1017,6 +1091,22 @@ impl EditorView {
             self.drag = None;
             return;
         }
+        // Dragging past the top or bottom scrolls.
+        if matches!(drag, Drag::Select { .. } | Drag::Block { .. })
+            && let Some(layout) = &self.layout
+        {
+            if event.position.y < layout.text_bounds.top() {
+                self.scroll_top = (self.scroll_top - 1.).max(0.);
+            } else if event.position.y > layout.text_bounds.bottom() {
+                self.scroll_top += 1.;
+            }
+        }
+        if let Drag::Block { anchor } = drag {
+            if let Some(head) = self.block_point_for_point(event.position, cx) {
+                self.set_block(Block::new(anchor, head), cx);
+            }
+            return;
+        }
         let Drag::Select {
             granularity,
             origin,
@@ -1025,14 +1115,6 @@ impl EditorView {
             self.drag_scrollbar(event.position, cx);
             return;
         };
-        // Dragging past the top or bottom scrolls.
-        if let Some(layout) = &self.layout {
-            if event.position.y < layout.text_bounds.top() {
-                self.scroll_top = (self.scroll_top - 1.).max(0.);
-            } else if event.position.y > layout.text_bounds.bottom() {
-                self.scroll_top += 1.;
-            }
-        }
         let text = self.text(cx).clone();
         let Some(pos) = self.position_for_point(event.position, cx) else {
             return;
@@ -1091,6 +1173,13 @@ impl EditorView {
         let layout = self.layout.as_ref()?;
         let text = self.buffer.read(cx).doc().text();
         layout.position_for_point(point, text, &mut self.display)
+    }
+
+    /// The rectangle corner under a window point: past the end of a line, in virtual space.
+    fn block_point_for_point(&mut self, point: Point<Pixels>, cx: &App) -> Option<BlockPoint> {
+        let layout = self.layout.as_ref()?;
+        let text = self.buffer.read(cx).doc().text();
+        layout.block_point_for_point(point, text, &mut self.display)
     }
 }
 
@@ -1239,7 +1328,7 @@ impl EntityInputHandler for EditorView {
         if let Some(selected) = new_selected_range_utf16 {
             let anchor = target.start + utf16_to_byte_offset(new_text, selected.start);
             let head = target.start + utf16_to_byte_offset(new_text, selected.end);
-            self.selection = Selection::single(Range::new(anchor, head));
+            self.selection = self.with_primary(Range::new(anchor, head));
         }
     }
 

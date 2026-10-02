@@ -70,6 +70,29 @@ pub const COMMANDS: &[CommandSpec] = &[
     editor("edit.toggle-overwrite", "Toggle Insert/Overwrite"),
     // { "eol": "crlf" | "lf" | "cr" }
     editor("edit.convert-eol", "EOL Conversion"),
+    // Esc: back to one caret (the primary selection), or out of a rectangular selection
+    editor("edit.cancel-selection", "Cancel Multiple Selection"),
+    editor("edit.begin-end-select", "Begin/End Select"),
+    editor(
+        "edit.begin-end-select-column",
+        "Begin/End Select in Column Mode",
+    ),
+    // Multi-select; { "match-case": false, "whole-word": false }
+    editor("edit.multi-select-all", "Multi-select All"),
+    editor("edit.multi-select-next", "Multi-select Next"),
+    editor(
+        "edit.multi-select-undo",
+        "Undo the Latest Added Multi-Select",
+    ),
+    editor(
+        "edit.multi-select-skip",
+        "Skip Current & Go to Next Multi-select",
+    ),
+    editor("edit.column-editor", "Column Editor..."),
+    // { "text": "..." } or { "initial": 1, "step": 1, "repeat": 1,
+    //   "leading": "none" | "zeros" | "spaces", "format": "dec" | "hex" | "oct" | "bin",
+    //   "uppercase": true }
+    editor("edit.column-insert", "Insert in Column"),
     // Line Operations
     editor("edit.duplicate-line", "Duplicate Current Line"),
     editor("edit.delete-line", "Delete Current Line"),
@@ -131,6 +154,18 @@ pub const COMMANDS: &[CommandSpec] = &[
         "Extend Selection to Document Start",
     ),
     editor("select.document-end", "Extend Selection to Document End"),
+    // Rectangular (column) selection
+    editor("select.block-left", "Extend Column Selection Left"),
+    editor("select.block-right", "Extend Column Selection Right"),
+    editor("select.block-up", "Extend Column Selection Up"),
+    editor("select.block-down", "Extend Column Selection Down"),
+    editor("select.block-home", "Extend Column Selection to Line Start"),
+    editor("select.block-end", "Extend Column Selection to Line End"),
+    editor("select.block-page-up", "Extend Column Selection Page Up"),
+    editor(
+        "select.block-page-down",
+        "Extend Column Selection Page Down",
+    ),
     // Search
     workspace("search.find", "Find..."),
     workspace("search.replace", "Replace..."),

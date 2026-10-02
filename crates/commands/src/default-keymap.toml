@@ -372,6 +372,49 @@ keys = "insert"
 command = "edit.toggle-overwrite"
 context = "Editor"
 
+[[binding]]
+keys = "escape"
+command = "edit.cancel-selection"
+context = "Editor"
+
+[[binding]]
+keys = "secondary-shift-b"
+command = "edit.begin-end-select"
+context = "Editor"
+
+[[binding]]
+keys = "alt-shift-b"
+command = "edit.begin-end-select-column"
+context = "Editor"
+platforms = ["windows", "linux"]
+
+# Option+Shift+B and Option+C type characters on macOS.
+[[binding]]
+keys = "cmd-alt-shift-b"
+command = "edit.begin-end-select-column"
+context = "Editor"
+platforms = ["macos"]
+
+[[binding]]
+keys = "alt-c"
+command = "edit.column-editor"
+context = "Editor"
+platforms = ["windows", "linux"]
+
+[[binding]]
+keys = "cmd-alt-c"
+command = "edit.column-editor"
+context = "Editor"
+platforms = ["macos"]
+
+# Notepad++ has no default keys for Multi-select All/Next, Undo the Latest Added Multi-Select
+# and Skip Current; bind them in keymap.toml, e.g.
+#   [[binding]]
+#   keys = "ctrl-e"
+#   command = "edit.multi-select-next"
+#   args = { match-case = true }
+#   context = "Editor"
+
 # --- Caret movement -----------------------------------------------------------------------------
 
 [[binding]]
@@ -453,6 +496,106 @@ context = "Editor"
 keys = "shift-pagedown"
 command = "select.page-down"
 context = "Editor"
+
+# Rectangular selection: Alt+Shift with arrows, Home, End, Page Up and Page Down, as in
+# Notepad++. On macOS Option+Shift+Left/Right select by word, so the rectangle takes
+# Cmd+Option+Shift.
+
+[[binding]]
+keys = "alt-shift-left"
+command = "select.block-left"
+context = "Editor"
+platforms = ["windows", "linux"]
+
+[[binding]]
+keys = "cmd-alt-shift-left"
+command = "select.block-left"
+context = "Editor"
+platforms = ["macos"]
+
+[[binding]]
+keys = "alt-shift-right"
+command = "select.block-right"
+context = "Editor"
+platforms = ["windows", "linux"]
+
+[[binding]]
+keys = "cmd-alt-shift-right"
+command = "select.block-right"
+context = "Editor"
+platforms = ["macos"]
+
+[[binding]]
+keys = "alt-shift-up"
+command = "select.block-up"
+context = "Editor"
+platforms = ["windows", "linux"]
+
+[[binding]]
+keys = "cmd-alt-shift-up"
+command = "select.block-up"
+context = "Editor"
+platforms = ["macos"]
+
+[[binding]]
+keys = "alt-shift-down"
+command = "select.block-down"
+context = "Editor"
+platforms = ["windows", "linux"]
+
+[[binding]]
+keys = "cmd-alt-shift-down"
+command = "select.block-down"
+context = "Editor"
+platforms = ["macos"]
+
+[[binding]]
+keys = "alt-shift-home"
+command = "select.block-home"
+context = "Editor"
+platforms = ["windows", "linux"]
+
+[[binding]]
+keys = "cmd-alt-shift-home"
+command = "select.block-home"
+context = "Editor"
+platforms = ["macos"]
+
+[[binding]]
+keys = "alt-shift-end"
+command = "select.block-end"
+context = "Editor"
+platforms = ["windows", "linux"]
+
+[[binding]]
+keys = "cmd-alt-shift-end"
+command = "select.block-end"
+context = "Editor"
+platforms = ["macos"]
+
+[[binding]]
+keys = "alt-shift-pageup"
+command = "select.block-page-up"
+context = "Editor"
+platforms = ["windows", "linux"]
+
+[[binding]]
+keys = "cmd-alt-shift-pageup"
+command = "select.block-page-up"
+context = "Editor"
+platforms = ["macos"]
+
+[[binding]]
+keys = "alt-shift-pagedown"
+command = "select.block-page-down"
+context = "Editor"
+platforms = ["windows", "linux"]
+
+[[binding]]
+keys = "cmd-alt-shift-pagedown"
+command = "select.block-page-down"
+context = "Editor"
+platforms = ["macos"]
 
 # Windows and Linux: Ctrl moves by word, Ctrl+Home/End to the ends of the document.
 

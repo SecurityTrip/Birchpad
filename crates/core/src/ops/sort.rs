@@ -7,6 +7,7 @@ use ropey::Rope;
 
 use super::{line_texts, replace_block, target_lines};
 use crate::line_ending::LineEnding;
+use crate::motion::{line_of, line_range};
 use crate::selection::Selection;
 use crate::transaction::Transaction;
 
@@ -46,23 +47,83 @@ pub fn sort_lines(
     eol: LineEnding,
 ) -> Result<Option<Transaction>, SortError> {
     let lines = target_lines(text, selection);
+    let contents = line_texts(text, lines.clone());
+    let keys = contents.clone();
+    sort_with_keys(text, selection, lines, contents, keys, key, descending, eol)
+}
+
+/// Sorts whole lines by the text of a rectangular selection's columns, as Notepad++ does when
+/// a column selection is active: `block` has one range per line (lines it skips, such as
+/// hidden ones, sort by an empty key). With a zero-width rectangle, each key runs from the
+/// caret to the end of its line.
+pub fn sort_lines_by_columns(
+    text: &Rope,
+    block: &Selection,
+    key: SortKey,
+    descending: bool,
+    eol: LineEnding,
+) -> Result<Option<Transaction>, SortError> {
+    let (Some(first), Some(last)) = (block.ranges().first(), block.ranges().last()) else {
+        return Ok(None);
+    };
+    let lines = line_of(text, first.from())..line_of(text, last.to()) + 1;
+    let thin = block.iter().all(|range| range.from() == range.to());
+    let mut keys = vec![String::new(); lines.len()];
+    for range in block.iter() {
+        let line = line_of(text, range.from());
+        let end = if thin {
+            line_range(text, line).end
+        } else {
+            range.to()
+        };
+        keys[line - lines.start] = text.slice(range.from()..end).to_string();
+    }
+    let contents = line_texts(text, lines.clone());
+    sort_with_keys(text, block, lines, contents, keys, key, descending, eol)
+}
+
+/// Reorders `contents` (the lines `lines`) by `keys`, stably.
+#[expect(
+    clippy::too_many_arguments,
+    reason = "the two public entry points differ only in how they get the keys"
+)]
+fn sort_with_keys(
+    text: &Rope,
+    selection: &Selection,
+    lines: std::ops::Range<usize>,
+    contents: Vec<String>,
+    keys: Vec<String>,
+    key: SortKey,
+    descending: bool,
+    eol: LineEnding,
+) -> Result<Option<Transaction>, SortError> {
     let first = lines.start;
-    let mut entries: Vec<(usize, String)> = line_texts(text, lines.clone())
-        .into_iter()
-        .enumerate()
-        .collect();
-    let compare: fn(&String, &String) -> Ordering = match key {
-        SortKey::Lexicographic => |a, b| a.cmp(b),
-        SortKey::IgnoreCase => |a, b| a.to_lowercase().cmp(&b.to_lowercase()),
-        SortKey::Length => |a, b| a.chars().count().cmp(&b.chars().count()),
+    let mut order: Vec<usize> = (0..contents.len()).collect();
+    let direction = |ordering: Ordering| {
+        if descending {
+            ordering.reverse()
+        } else {
+            ordering
+        }
+    };
+    match key {
+        SortKey::Lexicographic => order.sort_by(|&a, &b| direction(keys[a].cmp(&keys[b]))),
+        SortKey::IgnoreCase => {
+            let folded: Vec<String> = keys.iter().map(|key| key.to_lowercase()).collect();
+            order.sort_by(|&a, &b| direction(folded[a].cmp(&folded[b])));
+        }
+        SortKey::Length => {
+            let lengths: Vec<usize> = keys.iter().map(|key| key.chars().count()).collect();
+            order.sort_by(|&a, &b| direction(lengths[a].cmp(&lengths[b])));
+        }
         SortKey::Integer | SortKey::DecimalComma | SortKey::DecimalDot => {
             let separator = match key {
                 SortKey::DecimalComma => Some(','),
                 SortKey::DecimalDot => Some('.'),
                 _ => None,
             };
-            let mut numbers = Vec::with_capacity(entries.len());
-            for (index, content) in &entries {
+            let mut numbers = Vec::with_capacity(keys.len());
+            for (index, content) in keys.iter().enumerate() {
                 match parse_number(content, separator) {
                     Some(number) => numbers.push(number),
                     None => {
@@ -72,29 +133,10 @@ pub fn sort_lines(
                     }
                 }
             }
-            // Sort indices by number, then rebuild.
-            let mut order: Vec<usize> = (0..entries.len()).collect();
-            order.sort_by(|&a, &b| {
-                let ordering = numbers[a].total_cmp(&numbers[b]);
-                if descending {
-                    ordering.reverse()
-                } else {
-                    ordering
-                }
-            });
-            let sorted: Vec<String> = order.into_iter().map(|i| entries[i].1.clone()).collect();
-            return Ok(replace_block(text, selection, lines, &sorted, eol));
+            order.sort_by(|&a, &b| direction(numbers[a].total_cmp(&numbers[b])));
         }
-    };
-    entries.sort_by(|a, b| {
-        let ordering = compare(&a.1, &b.1);
-        if descending {
-            ordering.reverse()
-        } else {
-            ordering
-        }
-    });
-    let sorted: Vec<String> = entries.into_iter().map(|(_, content)| content).collect();
+    }
+    let sorted: Vec<String> = order.into_iter().map(|i| contents[i].clone()).collect();
     Ok(replace_block(text, selection, lines, &sorted, eol))
 }
 
@@ -264,6 +306,27 @@ mod tests {
             sort_lines(&text, &selection, SortKey::Integer, false, LF).unwrap_err(),
             SortError { line: 2 }
         );
+    }
+
+    #[test]
+    fn sorts_by_the_columns_of_a_rectangle() {
+        use crate::selection::Range;
+        // name,age: sort by the age column (bytes 2..4 of every line but the header).
+        let (text, _) = parse("b,30,x\na,04,y\nc,15,z");
+        let block = Selection::new([Range::new(2, 4), Range::new(9, 11), Range::new(16, 18)], 2);
+        let sorted = sort_lines_by_columns(&text, &block, SortKey::Integer, false, LF).unwrap();
+        assert_eq!(
+            show(&text, &block, sorted),
+            "[a,04,y\nc,15,z\nb,30,x]",
+            "whole lines move"
+        );
+        // Equal keys keep their order; a zero-width rectangle keys to the line end.
+        let (text, _) = parse("1b\n2a\n3a");
+        let thin = Selection::new([Range::point(1), Range::point(4), Range::point(7)], 0);
+        let sorted = sort_lines_by_columns(&text, &thin, SortKey::Lexicographic, false, LF);
+        assert_eq!(show(&text, &thin, sorted.unwrap()), "|2a\n3a\n1b");
+        let error = sort_lines_by_columns(&text, &thin, SortKey::Integer, false, LF);
+        assert_eq!(error.unwrap_err(), SortError { line: 1 });
     }
 
     #[test]

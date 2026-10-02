@@ -348,4 +348,95 @@ proptest! {
         let twice = apply(&reversed, reverse_lines(&reversed, &selection, LineEnding::Lf));
         prop_assert_eq!(twice.to_string(), doc);
     }
+
+    #[test]
+    fn selection_with_virtual_space_stays_sorted_and_disjoint(
+        points in prop::collection::vec((0usize..30, 0usize..4, 0usize..30, 0usize..4), 1..8),
+        primary in any::<prop::sample::Index>(),
+    ) {
+        let ranges: Vec<Range> = points
+            .iter()
+            .map(|&(a, av, h, hv)| Range::new(a, h).with_virtual(av, hv))
+            .collect();
+        let primary_range = ranges[primary.index(ranges.len())];
+        let selection = Selection::new(ranges, primary.index(points.len()));
+
+        // The byte invariants of ranges without virtual space still hold...
+        for pair in selection.ranges().windows(2) {
+            prop_assert!(pair[0].to() <= pair[1].from() && pair[0].from() < pair[1].from());
+            // ...and virtual space never makes neighbours overlap.
+            prop_assert!(
+                (pair[0].to(), pair[0].to_virtual()) <= (pair[1].from(), pair[1].from_virtual())
+            );
+        }
+        let primary = selection.primary();
+        prop_assert!(
+            (primary.from(), primary.from_virtual())
+                <= (primary_range.from(), primary_range.from_virtual())
+        );
+        prop_assert!(
+            (primary_range.to(), primary_range.to_virtual()) <= (primary.to(), primary.to_virtual())
+        );
+    }
+
+    #[test]
+    fn typing_into_virtual_space_matches_padding_by_hand(
+        lines in prop::collection::vec("[a-c]{0,4}", 1..6),
+        column in 0usize..7,
+        typed in "[xy]{0,2}",
+    ) {
+        // A zero-width rectangle at `column` over every line: the caret is inside a line or
+        // past its end in virtual space.
+        let doc = lines.join("\n");
+        let rope = Rope::from_str(&doc);
+        let mut start = 0;
+        let mut carets = Vec::new();
+        for line in &lines {
+            let caret = if column <= line.len() {
+                Range::point(start + column)
+            } else {
+                Range::virtual_point(start + line.len(), column - line.len())
+            };
+            carets.push(caret);
+            start += line.len() + 1;
+        }
+        let selection = Selection::new(carets, 0);
+        let transaction = Transaction::replace_selections(&rope, &selection, &typed).unwrap();
+        let result = apply(&rope, transaction.changes());
+
+        let expected: Vec<String> = lines
+            .iter()
+            .map(|line| {
+                if typed.is_empty() {
+                    line.clone()
+                } else if column <= line.len() {
+                    format!("{}{typed}{}", &line[..column], &line[column..])
+                } else {
+                    format!("{line}{}{typed}", " ".repeat(column - line.len()))
+                }
+            })
+            .collect();
+        prop_assert_eq!(result.to_string(), expected.join("\n"));
+        // Every caret ends up after the typed text, in virtual space only if nothing was typed.
+        let after = transaction.selection().unwrap();
+        let mut start = 0;
+        for (range, line) in after.iter().zip(&expected) {
+            let column_after = if typed.is_empty() {
+                (range.head - start) + range.head_virtual
+            } else {
+                prop_assert_eq!(range.head_virtual, 0);
+                range.head - start
+            };
+            prop_assert_eq!(column_after, column + typed.len());
+            start += line.len() + 1;
+        }
+        // Mapping the old carets through the change and clipping leaves virtual space only
+        // at line ends.
+        for range in selection.map(transaction.changes()).clip_virtual(&result).iter() {
+            if range.head_virtual > 0 {
+                let line = birchpad_core::motion::line_of(&result, range.head);
+                prop_assert_eq!(birchpad_core::motion::line_range(&result, line).end, range.head);
+            }
+        }
+    }
 }

@@ -8,7 +8,7 @@ use std::ops::Range as ByteRange;
 
 use birchpad_core::Rope;
 use birchpad_core::motion::line_count;
-use birchpad_view::{DisplayMap, DisplayText, LayoutConfig, Row};
+use birchpad_view::{BlockPoint, DisplayMap, DisplayText, LayoutConfig, Row};
 use gpui_kit::{
     App, AppContext as _, Bounds, Context, Font, FontStyle, FontWeight, Hsla, Pixels, Point,
     ShapedLine, TextRun, UnderlineStyle, Window, font, point, px, rgb, size,
@@ -230,7 +230,8 @@ impl EditorView {
 
         let total_rows = self.display.row_count(&text);
         let full_rows = ((text_bounds.size.height / line_height).floor() as usize).max(1);
-        let primary = self.selection.primary().head;
+        let primary_range = self.selection.primary();
+        let primary = primary_range.head;
 
         if self.autoscroll {
             let (caret_row, row) = self.display.row_of(&text, primary);
@@ -242,7 +243,8 @@ impl EditorView {
             }
             if wrap_width.is_none() {
                 // Columns are a good enough estimate of x for keeping the caret in view.
-                let column = self.display.column(&text, primary) - row.start_column;
+                let column = self.display.column(&text, primary) + primary_range.head_virtual
+                    - row.start_column;
                 let caret_x = cell * column as f32;
                 let margin = cell * CARET_MARGIN_COLUMNS;
                 let visible = text_bounds.size.width - TEXT_PADDING * 2.;
@@ -555,6 +557,23 @@ impl EditorView {
         })
     }
 
+    /// x of `pos` plus `virtual_cells` past it; virtual space only counts at the end of a line.
+    fn x_with_virtual(
+        &mut self,
+        layout: &Layout,
+        row: &VisibleRow,
+        pos: usize,
+        virtual_cells: usize,
+        text: &Rope,
+    ) -> Pixels {
+        let x = self.x_in_row(layout, row, pos, text);
+        if virtual_cells > 0 && row.row.last_in_line && pos == row.row.range.end {
+            x + layout.metrics.cell * virtual_cells as f32
+        } else {
+            x
+        }
+    }
+
     /// The document bytes shown in this frame.
     fn visible_range(layout: &Layout) -> ByteRange<usize> {
         match (layout.rows.first(), layout.rows.last()) {
@@ -733,24 +752,34 @@ impl EditorView {
     fn selection_bounds(&mut self, layout: &Layout, text: &Rope) -> Vec<Bounds<Pixels>> {
         let mut quads = Vec::new();
         let line_height = layout.metrics.line_height;
+        let visible = Self::visible_range(layout);
         for range in self.selection.ranges().to_vec() {
-            if range.is_empty() {
+            if range.is_empty() || range.to() < visible.start || range.from() > visible.end {
                 continue;
             }
             for row in &layout.rows {
-                let from = range.from().max(row.row.range.start);
-                let to = range.to().min(row.row.range.end);
+                if range.to() < row.row.range.start || range.from() > row.row.range.end {
+                    continue;
+                }
                 let selects_break = row.row.last_in_line
                     && range.from() <= row.row.range.end
                     && range.to() > row.row.range.end;
-                if from > to || (from == to && !selects_break) {
-                    continue;
-                }
-                let left = self.x_in_row(layout, row, from, text);
-                let mut right = self.x_in_row(layout, row, to, text);
+                let left = if range.from() < row.row.range.start {
+                    self.x_in_row(layout, row, row.row.range.start, text)
+                } else {
+                    self.x_with_virtual(layout, row, range.from(), range.from_virtual(), text)
+                };
+                let mut right = if range.to() > row.row.range.end {
+                    self.x_in_row(layout, row, row.row.range.end, text)
+                } else {
+                    self.x_with_virtual(layout, row, range.to(), range.to_virtual(), text)
+                };
                 if selects_break {
                     // A selected line break shows as half a cell after the text.
                     right += layout.metrics.cell * 0.5;
+                }
+                if right <= left {
+                    continue;
                 }
                 quads.push(Bounds::from_corners(
                     point(left, row.y),
@@ -764,7 +793,15 @@ impl EditorView {
     fn caret_bounds(&mut self, layout: &Layout, text: &Rope) -> Vec<Bounds<Pixels>> {
         let mut carets = Vec::new();
         let line_height = layout.metrics.line_height;
+        let (Some(first), Some(last)) = (layout.rows.first(), layout.rows.last()) else {
+            return carets;
+        };
+        let visible = first.row.range.start..=last.row.range.end;
         for range in self.selection.ranges().to_vec() {
+            // Thousands of carets: only look for rows of the visible ones.
+            if !visible.contains(&range.head) {
+                continue;
+            }
             let Some(row) = layout
                 .rows
                 .iter()
@@ -772,7 +809,7 @@ impl EditorView {
             else {
                 continue;
             };
-            let x = self.x_in_row(layout, row, range.head, text);
+            let x = self.x_with_virtual(layout, row, range.head, range.head_virtual, text);
             carets.push(if self.overwrite {
                 // Overwrite mode: a bar under the character that will be replaced.
                 Bounds::new(
@@ -827,6 +864,31 @@ impl Layout {
         } else {
             Some(pos.clamp(row.row.range.start, row.row.range.end))
         }
+    }
+
+    /// The rectangle corner under a window point: the line and column of the nearest
+    /// character boundary, or past the end of a line, the column under the point.
+    pub(super) fn block_point_for_point(
+        &self,
+        point: Point<Pixels>,
+        text: &Rope,
+        display: &mut DisplayMap,
+    ) -> Option<BlockPoint> {
+        let row = self
+            .rows
+            .iter()
+            .find(|row| point.y < row.y + self.metrics.line_height)
+            .or_else(|| self.rows.last())?;
+        let pos = self.position_for_point(point, text, display)?;
+        let column = display.column(text, pos);
+        let mut virtual_cells = 0;
+        if row.row.last_in_line && pos == row.row.range.end {
+            let end_x = row.x_for(pos).unwrap_or_else(|| {
+                self.column_zero + self.metrics.cell * (column - row.row.start_column) as f32
+            });
+            virtual_cells = ((point.x - end_x) / self.metrics.cell).round().max(0.) as usize;
+        }
+        Some(BlockPoint::new(row.row.line, column + virtual_cells))
     }
 
     /// Screen bounds of a range (for input method candidate windows).

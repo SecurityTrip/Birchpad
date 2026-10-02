@@ -1,7 +1,9 @@
 //! Property tests: incremental layout equals a fresh layout; positions and columns agree.
 
 use birchpad_core::{ChangeSet, Edit, Rope};
-use birchpad_view::{DisplayMap, DisplayText, LayoutConfig, column_after, row_count, wrap_line};
+use birchpad_view::{
+    Block, BlockPoint, DisplayMap, DisplayText, LayoutConfig, column_after, row_count, wrap_line,
+};
 use proptest::prelude::*;
 
 fn text() -> impl Strategy<Value = String> {
@@ -166,6 +168,64 @@ proptest! {
             let start = rope.line_to_byte_idx(line, birchpad_core::LINE_TYPE);
             let (_, row) = map.row_of(&rope, start);
             prop_assert_eq!(row.line, map.visible_line(line));
+        }
+    }
+
+    #[test]
+    fn block_ranges_stay_on_their_lines_at_the_edges(
+        doc in text(),
+        corners in (any::<usize>(), 0usize..12, any::<usize>(), 0usize..12),
+        hidden in prop::option::of((any::<usize>(), 0usize..3)),
+    ) {
+        use birchpad_core::motion::{line_count, line_of, line_range};
+        let rope = Rope::from_str(&doc);
+        let lines = line_count(&rope);
+        let mut map = DisplayMap::new(&rope, LayoutConfig::default());
+        let (anchor_line, anchor_column, head_line, head_column) = corners;
+        let block = Block::new(
+            BlockPoint::new(anchor_line % lines, anchor_column),
+            BlockPoint::new(head_line % lines, head_column),
+        );
+        if let Some((start, len)) = hidden {
+            let start = 1 + start % lines;
+            let end = (start + len).min(lines);
+            if start < end {
+                map.set_hidden(std::iter::once(start..end).collect());
+            }
+        }
+        let selection = block.selection(&rope, &mut map);
+        let expected_lines: Vec<usize> = block
+            .lines()
+            .filter(|&line| !map.is_hidden(line) || line == block.head.line)
+            .collect();
+        prop_assert_eq!(selection.ranges().len(), expected_lines.len());
+        prop_assert_eq!(line_of(&rope, selection.primary().head), block.head.line);
+        for (range, &line) in selection.iter().zip(&expected_lines) {
+            let bounds = line_range(&rope, line);
+            prop_assert!(bounds.start <= range.from() && range.to() <= bounds.end);
+            if !range.is_empty() {
+                prop_assert_eq!(range.is_backward(), block.head.column < block.anchor.column);
+            }
+            for (pos, virtual_cells, edge) in [
+                (range.from(), range.from_virtual(), block.left()),
+                (range.to(), range.to_virtual(), block.right()),
+            ] {
+                // Virtual space only past the line end, and then exactly up to the edge.
+                let column = map.column(&rope, pos);
+                if virtual_cells > 0 {
+                    prop_assert_eq!(pos, bounds.end);
+                    prop_assert_eq!(column + virtual_cells, edge);
+                } else if pos < bounds.end {
+                    // Inside the text, the edge rounds to a character boundary next to it.
+                    let next = birchpad_core::motion::next_boundary(&rope, pos);
+                    let next_column = map.column(&rope, next);
+                    let previous = birchpad_core::motion::prev_boundary(&rope, pos).max(bounds.start);
+                    let previous_column = map.column(&rope, previous);
+                    prop_assert!(previous_column <= edge && edge <= next_column);
+                } else {
+                    prop_assert!(column >= edge || pos == bounds.end);
+                }
+            }
         }
     }
 }

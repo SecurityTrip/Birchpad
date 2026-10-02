@@ -37,7 +37,8 @@ pub(crate) struct StatusInfo {
 impl StatusInfo {
     pub(crate) fn of(view: &mut EditorView, cx: &App) -> Self {
         let text = view.text(cx).clone();
-        let head = view.selection.primary().head;
+        let primary = view.selection.primary();
+        let head = primary.head;
         let (mut selected_chars, mut selected_lines) = (0, 0);
         for range in view.selection.iter().filter(|range| !range.is_empty()) {
             selected_chars +=
@@ -48,7 +49,8 @@ impl StatusInfo {
             length: text.len(),
             lines: line_count(&text),
             line: line_of(&text, head) + 1,
-            column: view.column_of(head, cx) + 1,
+            // In virtual space (a rectangle past the end of the line) the column goes on.
+            column: view.column_of(head, cx) + primary.head_virtual + 1,
             pos: head + 1,
             selected_chars,
             selected_lines,

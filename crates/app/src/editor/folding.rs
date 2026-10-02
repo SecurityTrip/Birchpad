@@ -397,4 +397,37 @@ mod tests {
             assert_eq!(shifted.folds, recomputed);
         });
     }
+
+    #[gpui_kit::test]
+    fn rectangles_and_multi_selections_stay_out_of_collapsed_folds(cx: &mut TestAppContext) {
+        let (workspace, cx) = open_sample(cx);
+        // Collapse `fn a`, then extend a rectangle down from its header: it skips the
+        // hidden lines and the fold stays collapsed.
+        cx.simulate_keystrokes("ctrl-alt-f alt-shift-down");
+        assert_eq!(hidden(&workspace, cx), [1..5]);
+        let view = view(&workspace, cx);
+        let lines: Vec<usize> = view.read_with(cx, |view, cx| {
+            let text = view.text(cx);
+            view.selection
+                .iter()
+                .map(|range| line_of(text, range.head))
+                .collect()
+        });
+        assert_eq!(lines, [0, 5]);
+        cx.simulate_input("  ");
+        cx.run_until_parked();
+        let text = view.read_with(cx, |view, cx| view.text(cx).to_string());
+        assert!(text.starts_with("  fn a() {\n    if x {"), "{text}");
+        assert!(text.contains("\n  fn b()"), "{text}");
+        assert_eq!(hidden(&workspace, cx), [1..5], "hidden lines untouched");
+
+        // Multi-select All finds matches inside the fold: the fold opens. (The indentation
+        // of `z();`, which the hidden lines have too.)
+        cx.simulate_keystrokes("escape down home shift-home");
+        run(&workspace, Invocation::new("edit.multi-select-all"), cx);
+        cx.run_until_parked();
+        let selected = view.read_with(cx, |view, _| view.selection.ranges().len());
+        assert!(selected > 1);
+        assert!(hidden(&workspace, cx).is_empty());
+    }
 }

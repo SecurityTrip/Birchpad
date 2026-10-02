@@ -58,7 +58,11 @@ What Phase 1 left for later is marked *(from Phase 1)* in the phases below.
 - [x] Folding from the syntax tree (indentation for plain text); Fold All, Unfold All,
       collapse levels 1–8, current level, fold boxes in the margin; carets step over or expand
       collapsed folds ([ADR 0012](adr/0012-folding.md))
-- Multi-editing, column selection (Alt+drag, Alt+Shift+arrows), Column Editor
+- [x] Multi-editing and column selection: rectangles with Alt+drag and Alt+Shift+arrows that
+      reach into virtual space; typing, deleting, copying and pasting a rectangle; Multi-select
+      Next and All, Undo the Latest Added, Skip Current; Esc back to one caret; Begin/End
+      Select in both modes; Column Editor with text or numbers (dec, hex, oct, bin; leading
+      zeros or spaces) as one undo step ([ADR 0013](adr/0013-multi-editing-and-columns.md))
 - Smart highlighting, Mark with 5 styles, bookmarks and bookmarked-line operations
 - [x] Line operations: duplicate, delete, move, insert blank line, join, split; sort
       (lexicographic, ignoring case, as integers, as decimals with comma or dot, by length;
@@ -66,7 +70,7 @@ What Phase 1 left for later is marked *(from Phase 1)* in the phases below.
       and empty lines; trim, EOL to space, tab/space conversion; case conversion (upper,
       lower, proper, sentence, invert, random); line and block comments by the language's
       tokens. All in `birchpad_core::ops`, one undo step each, with Notepad++'s keys
-- Sorting by the columns of a rectangular selection (with column editing below)
+- [x] Sorting by the columns of a rectangular selection
 - Show whitespace and line endings, indentation guides, edge column
 - Split view, clone document to the other view, synchronized scrolling
 - Sessions and periodic backup of unsaved changes (`-nosession` already accepted); they also
@@ -79,8 +83,9 @@ What Phase 1 left for later is marked *(from Phase 1)* in the phases below.
 - "Edit anyway" for files that do not decode cleanly; they open read-only with a Reopen with
   Encoding choice for now *(from Phase 1)*
 - Keyboard access to the menu bar on Windows and Linux (Alt, mnemonics) *(from Phase 1)*
-- Columns count terminal-style cells (East Asian wide characters take two) where Notepad++
-  counts characters; decide together with column editing *(from Phase 1)*
+- [x] Columns count terminal-style cells (East Asian wide characters take two) where
+      Notepad++ counts characters: kept for rectangles, the Column Editor and the status bar
+      ([ADR 0013](adr/0013-multi-editing-and-columns.md)) *(from Phase 1)*
 - Verify IME input (Windows TSF, macOS, IBus/Fcitx) on real systems; Phase 1 tested text
   input through GPUI's input handler but not with a real IME *(from Phase 1)*
 - Tests that saving preserves Windows ACLs and alternate data streams *(from Phase 1)*

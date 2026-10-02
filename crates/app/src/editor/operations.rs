@@ -134,6 +134,10 @@ pub(super) fn register_commands(registry: &mut CommandRegistry) {
             SortBy::DecimalDot => SortKey::DecimalDot,
             SortBy::Length => SortKey::Length,
         };
+        // With a rectangle, lines sort by the text in its columns.
+        if this.sort_by_block(key, args.descending, cx)? {
+            return Ok(());
+        }
         this.try_op(cx, |text, selection, eol| {
             Ok(ops::sort_lines(text, selection, key, args.descending, eol)?)
         })

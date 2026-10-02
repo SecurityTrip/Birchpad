@@ -141,6 +141,24 @@ pub fn main_menu() -> Vec<Menu> {
     let eol = |eol: &str, label: &str| {
         MenuItem::command_with("edit.convert-eol", json!({ "eol": eol }), label)
     };
+    // The four variants of Notepad++'s Multi-select All and Multi-select Next.
+    let multi_select = |command: &str| {
+        [
+            (false, false, "Ignore Case & Whole Word"),
+            (true, false, "Match Case Only"),
+            (false, true, "Match Whole Word Only"),
+            (true, true, "Match Case & Whole Word"),
+        ]
+        .into_iter()
+        .map(|(match_case, whole_word, label)| {
+            MenuItem::command_with(
+                command,
+                json!({ "match-case": match_case, "whole-word": whole_word }),
+                label,
+            )
+        })
+        .collect::<Vec<_>>()
+    };
     let edit = Menu::new(
         "Edit",
         vec![
@@ -152,6 +170,8 @@ pub fn main_menu() -> Vec<Menu> {
             cmd("edit.paste"),
             cmd("edit.delete"),
             cmd("edit.select-all"),
+            cmd("edit.begin-end-select"),
+            cmd("edit.begin-end-select-column"),
             Separator,
             Submenu(Menu::new(
                 "Comment/Uncomment",
@@ -295,6 +315,19 @@ pub fn main_menu() -> Vec<Menu> {
                     eol("cr", "Macintosh (CR)"),
                 ],
             )),
+            Separator,
+            Submenu(Menu::new(
+                "Multi-select All",
+                multi_select("edit.multi-select-all"),
+            )),
+            Submenu(Menu::new(
+                "Multi-select Next",
+                multi_select("edit.multi-select-next"),
+            )),
+            cmd("edit.multi-select-undo"),
+            cmd("edit.multi-select-skip"),
+            Separator,
+            cmd("edit.column-editor"),
         ],
     );
 

@@ -423,6 +423,36 @@ impl DisplayMap {
         }
     }
 
+    /// The position at `column` of `line`, ignoring word wrap, and the virtual space past the
+    /// line's end if the line is shorter. A column inside a character rounds to the nearer
+    /// side of it, as clicking there does.
+    pub fn pos_at_line_column(
+        &mut self,
+        text: &Rope,
+        line: usize,
+        column: usize,
+    ) -> (usize, usize) {
+        let range = line_range(text, line);
+        let (from, from_column) = if range.len() > LONG_LINE {
+            self.column_index(text, line).before_column(column)
+        } else {
+            (range.start, 0)
+        };
+        let (pos, reached) = pos_at_column(
+            text,
+            from..range.end,
+            from_column,
+            column,
+            self.config.tab_width,
+        );
+        let virtual_cells = if pos == range.end {
+            column.saturating_sub(reached)
+        } else {
+            0
+        };
+        (pos, virtual_cells)
+    }
+
     fn column_index(&mut self, text: &Rope, line: usize) -> Arc<ColumnIndex> {
         let tab_width = self.config.tab_width;
         self.columns
