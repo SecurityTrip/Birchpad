@@ -7,10 +7,14 @@
 
 mod cells;
 mod display_map;
+mod folding;
 mod wrap;
 
 pub use cells::{
     DisplayText, cells_at, char_cells, column_after, control_picture, pos_at_column, tab_advance,
 };
 pub use display_map::{DisplayMap, LayoutConfig, Row};
+pub use folding::{
+    Fold, fold_at, folds_from_ranges, hidden_lines, innermost_containing, shift_folds,
+};
 pub use wrap::{row_count, wrap_line};

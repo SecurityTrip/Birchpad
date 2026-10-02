@@ -112,4 +112,60 @@ proptest! {
             prop_assert_eq!(cells, column_after(&rope, 0, 0, rope.len(), 4));
         }
     }
+
+    #[test]
+    fn hidden_lines_have_no_rows(
+        doc in text(),
+        width in prop::option::of(1usize..12),
+        cuts in prop::collection::vec((any::<usize>(), any::<usize>()), 0..5),
+    ) {
+        let rope = Rope::from_str(&doc);
+        let lines = birchpad_core::motion::line_count(&rope);
+        let mut map = DisplayMap::new(&rope, LayoutConfig { tab_width: 4, wrap_width: width });
+        // Hidden ranges like collapsed folds produce: never line 0 (a header is above),
+        // sorted and disjoint.
+        let mut hidden: Vec<std::ops::Range<usize>> = Vec::new();
+        let mut points: Vec<(usize, usize)> = cuts
+            .into_iter()
+            .map(|(a, b)| {
+                let a = 1 + a % lines.max(1);
+                let b = 1 + b % lines.max(1);
+                (a.min(b), a.max(b))
+            })
+            .filter(|&(a, b)| a < b && b <= lines)
+            .collect();
+        points.sort_unstable();
+        for (start, end) in points {
+            if hidden.last().is_none_or(|last| start > last.end) {
+                hidden.push(start..end);
+            }
+        }
+        map.set_hidden(hidden.clone());
+        let is_hidden = |line: usize| hidden.iter().any(|range| range.contains(&line));
+
+        let expected: usize = (0..lines)
+            .filter(|&line| !is_hidden(line))
+            .map(|line| match width {
+                Some(width) => wrap_line(&rope, birchpad_core::motion::line_range(&rope, line), width, 4).len(),
+                None => 1,
+            })
+            .sum();
+        let rows = map.row_count(&rope);
+        prop_assert_eq!(rows, expected);
+
+        let mut previous: Option<(usize, usize)> = None;
+        for index in 0..rows {
+            let row = map.row(&rope, index);
+            prop_assert!(!is_hidden(row.line), "row {} shows hidden line {}", index, row.line);
+            let key = (row.line, row.index_in_line);
+            prop_assert!(previous.is_none_or(|p| p < key), "rows go forward");
+            previous = Some(key);
+            prop_assert_eq!(map.row_of(&rope, row.range.start).0, index);
+        }
+        for line in 0..lines {
+            let start = rope.line_to_byte_idx(line, birchpad_core::LINE_TYPE);
+            let (_, row) = map.row_of(&rope, start);
+            prop_assert_eq!(row.line, map.visible_line(line));
+        }
+    }
 }

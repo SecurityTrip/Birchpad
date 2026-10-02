@@ -165,10 +165,24 @@ pub fn main_menu() -> Vec<Menu> {
         ],
     );
 
+    let level = |command: &str| {
+        (1..=8)
+            .map(|level| {
+                MenuItem::command_with(command, json!({ "level": level }), &level.to_string())
+            })
+            .collect::<Vec<_>>()
+    };
     let view = Menu::new(
         "View",
         vec![
             cmd("view.word-wrap"),
+            Separator,
+            cmd("view.fold-all"),
+            cmd("view.unfold-all"),
+            cmd("view.fold-current"),
+            cmd("view.unfold-current"),
+            Submenu(Menu::new("Collapse Level", level("view.fold-level"))),
+            Submenu(Menu::new("Uncollapse Level", level("view.unfold-level"))),
             Separator,
             Submenu(Menu::new(
                 "Zoom",

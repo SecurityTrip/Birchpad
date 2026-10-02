@@ -33,6 +33,12 @@ pub(crate) const GUTTER_BACKGROUND: u32 = 0xf6f8fa;
 pub(crate) const GUTTER_TEXT: u32 = 0x8c959f;
 /// A thin line between the margins and the text.
 pub(crate) const GUTTER_BORDER: u32 = 0xe4e7eb;
+/// The border and sign of fold boxes.
+pub(crate) const FOLD_MARK: u32 = 0x6e7781;
+/// The lines of expanded folds in the folding margin.
+pub(crate) const FOLD_LINE: u32 = 0xc4c9cf;
+/// The line under a collapsed fold's header.
+pub(crate) const FOLD_UNDERLINE: u32 = 0x9aa1a9;
 
 /// How highlighted text looks.
 #[derive(Debug, Clone, Copy, PartialEq)]

@@ -267,4 +267,38 @@ proptest! {
         expected.dedup();
         prop_assert_eq!(markers.lines(&rope), expected);
     }
+
+    #[test]
+    fn nested_ranges_map_like_their_endpoints(
+        doc in text(),
+        raw in raw_edits(),
+        pairs in prop::collection::vec((any::<usize>(), any::<usize>()), 0..8),
+    ) {
+        let rope = Rope::from_str(&doc);
+        let boundaries: Vec<usize> =
+            doc.char_indices().map(|(i, _)| i).chain([doc.len()]).collect();
+        // Arbitrary, possibly nested or overlapping ranges, sorted by start.
+        let mut ranges: Vec<std::ops::Range<usize>> = pairs
+            .into_iter()
+            .map(|(a, b)| {
+                let a = boundaries[a % boundaries.len()];
+                let b = boundaries[b % boundaries.len()];
+                a.min(b)..a.max(b)
+            })
+            .filter(|range| !range.is_empty())
+            .collect();
+        ranges.sort_by_key(|range| range.start);
+        let changes = ChangeSet::from_edits(&rope, edits_for(&doc, raw)).unwrap();
+        let expected: Vec<std::ops::Range<usize>> = ranges
+            .iter()
+            .map(|range| {
+                let start = changes.map_pos(range.start, Assoc::After);
+                start..changes.map_pos(range.end, Assoc::Before).max(start)
+            })
+            .filter(|range| !range.is_empty())
+            .collect();
+        let mut mapped = ranges.clone();
+        birchpad_core::map_ranges(&mut mapped, &changes);
+        prop_assert_eq!(mapped, expected);
+    }
 }

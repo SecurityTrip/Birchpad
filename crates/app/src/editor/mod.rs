@@ -5,6 +5,7 @@
 //! comes from `birchpad-view`; [`element::EditorElement`] turns it into pixels and paints it.
 
 mod element;
+mod folding;
 mod layout;
 pub(crate) mod theme;
 
@@ -13,7 +14,7 @@ use std::time::Duration;
 
 use birchpad_core::motion::{self, line_of, line_range, line_range_with_break};
 use birchpad_core::{
-    Edit, LineEnding, Range, RevisionId, Rope, Selection, Transaction, UndoGrouping,
+    Edit, LineEnding, LineMarkers, Range, RevisionId, Rope, Selection, Transaction, UndoGrouping,
 };
 use birchpad_view::{DisplayMap, LayoutConfig, tab_advance};
 use gpui_kit::{
@@ -97,6 +98,7 @@ struct ConvertEolArgs {
 }
 
 pub(crate) fn register_commands(registry: &mut CommandRegistry) {
+    folding::register_commands(registry);
     for (cursor, select, motion) in MOTIONS {
         registry.editor(cursor, move |this, (), _, cx| {
             this.move_carets(motion, false, cx);
@@ -283,6 +285,10 @@ pub(crate) struct EditorView {
     /// Geometry of the last frame, for mouse and IME hit testing.
     layout: Option<Layout>,
     highlight_cache: Option<layout::HighlightCache>,
+    /// Headers of this view's collapsed folds.
+    collapsed: LineMarkers,
+    /// The buffer's folds in lines.
+    fold_cache: Option<folding::FoldCache>,
     _subscriptions: Vec<Subscription>,
 }
 
@@ -300,6 +306,9 @@ impl EditorView {
                 if *origin != Some(cx.entity_id()) {
                     let text = buffer.read(cx).doc().text().clone();
                     this.display.edit(&text, transaction.changes());
+                    this.collapsed.map(transaction.changes(), &text);
+                    this.follow_folds(transaction.changes(), cx);
+                    this.sync_hidden(cx);
                     this.selection = this.selection.map(transaction.changes());
                     this.marked = None;
                 }
@@ -308,6 +317,9 @@ impl EditorView {
             BufferEvent::Reloaded => {
                 let text = buffer.read(cx).doc().text().clone();
                 this.display.reset(&text);
+                this.collapsed.clear();
+                this.fold_cache = None;
+                this.sync_hidden(cx);
                 this.selection = Selection::point(0);
                 this.marked = None;
                 this.goal_column = None;
@@ -320,10 +332,14 @@ impl EditorView {
                 }
                 cx.notify();
             }
-            BufferEvent::StateChanged
-            | BufferEvent::MarksChanged
-            | BufferEvent::SyntaxChanged
-            | BufferEvent::LoadFailed(_) => cx.notify(),
+            BufferEvent::SyntaxChanged => {
+                // New folds from the reparse: drop collapsed headers that no longer fold.
+                this.prune_collapsed(cx);
+                cx.notify();
+            }
+            BufferEvent::StateChanged | BufferEvent::MarksChanged | BufferEvent::LoadFailed(_) => {
+                cx.notify()
+            }
         });
         let focus_handle = cx.focus_handle();
         let text = buffer.read(cx).doc().text().clone();
@@ -356,6 +372,8 @@ impl EditorView {
             blink: Task::ready(()),
             layout: None,
             highlight_cache: None,
+            collapsed: LineMarkers::new(),
+            fold_cache: None,
             _subscriptions: vec![events],
         }
     }
@@ -416,7 +434,9 @@ impl EditorView {
         self.request_autoscroll(cx);
     }
 
+    /// Brings the primary caret into view on the next frame, expanding folds that hide carets.
     fn request_autoscroll(&mut self, cx: &mut Context<Self>) {
+        self.reveal_carets(cx);
         self.autoscroll = true;
         self.pause_blink(cx);
         cx.notify();
@@ -459,6 +479,11 @@ impl EditorView {
             self.selection = Selection::point(self.selection.primary().head);
         }
         let single = self.selection.ranges().len() == 1;
+        let forward = matches!(motion, Motion::Right | Motion::WordRight);
+        let horizontal = matches!(
+            motion,
+            Motion::Left | Motion::Right | Motion::WordLeft | Motion::WordRight
+        );
         let display = &mut self.display;
         self.selection = self.selection.transform(|range| {
             let head = match (motion, vertical) {
@@ -487,6 +512,17 @@ impl EditorView {
                 Range::point(head)
             }
         });
+        // Moving left or right into a collapsed fold steps over it.
+        if horizontal {
+            self.selection = self.selection.transform(|range| {
+                let head = self.skip_hidden(&text, range.head, forward);
+                if extend {
+                    Range::new(range.anchor, head)
+                } else {
+                    Range::point(head)
+                }
+            });
+        }
         // PageUp/PageDown scroll the view by the same amount, as in Notepad++.
         if let Some(rows) = vertical
             && rows.abs() > 1
@@ -590,6 +626,9 @@ impl EditorView {
         });
         let text = self.text(cx).clone();
         self.display.edit(&text, &changes);
+        self.collapsed.map(&changes, &text);
+        self.follow_folds(&changes, cx);
+        self.sync_hidden(cx);
         self.selection = selection;
         self.last_edit = kind;
         self.goal_column = None;
@@ -791,6 +830,9 @@ impl EditorView {
     fn restore_from_history(&mut self, transaction: &Transaction, cx: &mut Context<Self>) {
         let text = self.text(cx).clone();
         self.display.edit(&text, transaction.changes());
+        self.collapsed.map(transaction.changes(), &text);
+        self.follow_folds(transaction.changes(), cx);
+        self.sync_hidden(cx);
         self.selection = match transaction.selection() {
             Some(selection) => selection.clone(),
             None => self.selection.map(transaction.changes()),
@@ -906,6 +948,19 @@ impl EditorView {
             self.drag_scrollbar(event.position, cx);
             return;
         }
+        if let Some(margin) = layout.margins.folding
+            && margin.contains(&event.position)
+        {
+            // A click on a fold point toggles it.
+            let header = layout
+                .row_at_y(event.position.y)
+                .filter(|row| row.row.index_in_line == 0)
+                .map(|row| row.row.line);
+            if let Some(line) = header {
+                self.toggle_fold(line, cx);
+            }
+            return;
+        }
         if let Some(margin) = layout.margins.symbols
             && margin.contains(&event.position)
         {
@@ -917,13 +972,6 @@ impl EditorView {
                     });
                 });
             }
-            return;
-        }
-        if layout
-            .margins
-            .folding
-            .is_some_and(|margin| margin.contains(&event.position))
-        {
             return;
         }
         // In the line number margin, clicking and dragging selects whole lines.

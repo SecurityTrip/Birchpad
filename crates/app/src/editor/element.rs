@@ -125,6 +125,12 @@ impl Element for EditorElement {
                     fill(*symbol, rgb(theme::BOOKMARK)).corner_radii(symbol.size.width / 2.),
                 );
             }
+            for line in &layout.fold_lines {
+                window.paint_quad(fill(*line, rgb(theme::FOLD_LINE)));
+            }
+            for (fold_box, collapsed) in &layout.fold_boxes {
+                paint_fold_box(*fold_box, *collapsed, window);
+            }
         });
         window.with_content_mask(
             Some(ContentMask {
@@ -152,6 +158,9 @@ impl Element for EditorElement {
                         }
                     }
                 }
+                for underline in &layout.fold_underlines {
+                    window.paint_quad(fill(*underline, rgb(theme::FOLD_UNDERLINE)));
+                }
                 for selection in &layout.selections {
                     window.paint_quad(fill(*selection, rgba(SELECTION)));
                 }
@@ -177,5 +186,31 @@ impl Element for EditorElement {
         }
 
         self.view.update(cx, |view, _| view.layout = Some(layout));
+    }
+}
+
+/// A fold box: a square with a minus (expanded) or a plus (collapsed), as Notepad++ draws them.
+fn paint_fold_box(bounds: Bounds<Pixels>, collapsed: bool, window: &mut Window) {
+    let mark = rgb(theme::FOLD_MARK);
+    window.paint_quad(fill(bounds, rgb(0xffffff)));
+    window.paint_quad(outline(bounds, mark, gpui_kit::BorderStyle::Solid));
+    let inset = (bounds.size.width / 4.).round().max(px(2.));
+    let middle_y = (bounds.top() + bounds.size.height / 2.).floor();
+    let middle_x = (bounds.left() + bounds.size.width / 2.).floor();
+    window.paint_quad(fill(
+        Bounds::from_corners(
+            point(bounds.left() + inset, middle_y),
+            point(bounds.right() - inset, middle_y + px(1.)),
+        ),
+        mark,
+    ));
+    if collapsed {
+        window.paint_quad(fill(
+            Bounds::from_corners(
+                point(middle_x, bounds.top() + inset),
+                point(middle_x + px(1.), bounds.bottom() - inset),
+            ),
+            mark,
+        ));
     }
 }

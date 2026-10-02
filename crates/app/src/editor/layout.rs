@@ -165,6 +165,12 @@ pub(super) struct Layout {
     pub(super) line_numbers: Vec<(Point<Pixels>, ShapedLine)>,
     /// Bookmark symbols in the symbol margin.
     pub(super) bookmarks: Vec<Bounds<Pixels>>,
+    /// Fold boxes in the folding margin, and whether each fold is collapsed.
+    pub(super) fold_boxes: Vec<(Bounds<Pixels>, bool)>,
+    /// The lines of expanded folds in the folding margin.
+    pub(super) fold_lines: Vec<Bounds<Pixels>>,
+    /// A line under each collapsed fold's header, across the text.
+    pub(super) fold_underlines: Vec<Bounds<Pixels>>,
     /// Decoration ranges (token styles, matches) drawn behind or around the text.
     pub(super) decorations: Vec<(Bounds<Pixels>, Paint)>,
     pub(super) selections: Vec<Bounds<Pixels>>,
@@ -212,6 +218,7 @@ impl EditorView {
             },
             cx,
         );
+        self.sync_hidden(cx);
         let wrap_width = self.display.config().wrap_width;
         let show_horizontal = wrap_width.is_none() && self.scroll_width > text_bounds.size.width;
         if show_horizontal {
@@ -332,6 +339,9 @@ impl EditorView {
             rows,
             line_numbers,
             bookmarks: Vec::new(),
+            fold_boxes: Vec::new(),
+            fold_lines: Vec::new(),
+            fold_underlines: Vec::new(),
             decorations: Vec::new(),
             selections: Vec::new(),
             carets: Vec::new(),
@@ -341,6 +351,7 @@ impl EditorView {
             full_rows,
         };
         layout.bookmarks = self.bookmark_symbols(&layout, &text, cx);
+        self.fold_marks(&mut layout, &text);
         layout.decorations = self.decoration_bounds(&layout, &text, cx);
         layout.selections = self.selection_bounds(&layout, &text);
         layout.carets = self.caret_bounds(&layout, &text);
@@ -601,6 +612,96 @@ impl EditorView {
                 Bounds::new(origin, size(side, side))
             })
             .collect()
+    }
+
+    /// Fold boxes, the lines of expanded folds, and underlines of collapsed headers, for the
+    /// visible rows.
+    fn fold_marks(&self, layout: &mut Layout, text: &Rope) {
+        let Some(margin) = layout.margins.folding else {
+            return;
+        };
+        let (Some(first), Some(last)) = (layout.rows.first(), layout.rows.last()) else {
+            return;
+        };
+        let (first_line, last_line) = (first.row.line, last.row.line);
+        let folds = self
+            .fold_cache
+            .as_ref()
+            .map_or(&[][..], |cache| cache.folds.as_slice());
+        let collapsed = self.collapsed.lines_in(text, first_line..last_line + 1);
+        // For each visible row: inside an expanded fold that goes on below it, and whether an
+        // expanded fold ends on it.
+        let rows = &layout.rows;
+        let mut continues = vec![false; rows.len()];
+        let mut ends = vec![false; rows.len()];
+        let candidates = folds.partition_point(|fold| fold.header <= last_line);
+        for fold in folds[..candidates]
+            .iter()
+            .filter(|fold| fold.last >= first_line)
+        {
+            if collapsed.contains(&fold.header) {
+                continue;
+            }
+            for (index, row) in rows.iter().enumerate() {
+                let line = row.row.line;
+                if line <= fold.header || line > fold.last {
+                    continue;
+                }
+                if line == fold.last && row.row.last_in_line {
+                    ends[index] = true;
+                } else {
+                    continues[index] = true;
+                }
+            }
+        }
+
+        let line_height = layout.metrics.line_height;
+        let center = (margin.left() + margin.size.width / 2.).round();
+        let side = (margin.size.width.min(line_height) * 0.6).round();
+        let thin = px(1.);
+        let vertical = |top: Pixels, bottom: Pixels| {
+            Bounds::from_corners(point(center, top), point(center + thin, bottom))
+        };
+        for (index, row) in rows.iter().enumerate() {
+            let (top, bottom) = (row.y, row.y + line_height);
+            let middle = (top + line_height / 2.).round();
+            let header =
+                row.row.index_in_line == 0 && birchpad_view::fold_at(folds, row.row.line).is_some();
+            if header {
+                let is_collapsed = collapsed.contains(&row.row.line);
+                let fold_box = Bounds::new(
+                    point(center - (side / 2.).floor(), middle - (side / 2.).floor()),
+                    size(side, side),
+                );
+                if continues[index] || ends[index] {
+                    layout.fold_lines.push(vertical(top, fold_box.top()));
+                }
+                if continues[index] || !is_collapsed {
+                    layout.fold_lines.push(vertical(fold_box.bottom(), bottom));
+                }
+                layout.fold_boxes.push((fold_box, is_collapsed));
+                if is_collapsed {
+                    let text_bounds = layout.text_bounds;
+                    layout.fold_underlines.push(Bounds::new(
+                        point(text_bounds.left(), bottom - thin),
+                        size(text_bounds.size.width, thin),
+                    ));
+                }
+                continue;
+            }
+            if continues[index] {
+                layout.fold_lines.push(vertical(top, bottom));
+            } else if ends[index] {
+                layout.fold_lines.push(vertical(top, middle));
+            }
+            if ends[index] {
+                let right = margin.right() - (margin.size.width - side) / 2.;
+                layout.fold_lines.push(Bounds::from_corners(
+                    point(center, middle),
+                    point(right, middle + thin),
+                ));
+            }
+        }
     }
 
     fn decoration_bounds(

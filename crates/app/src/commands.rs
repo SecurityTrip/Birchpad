@@ -11,7 +11,7 @@ use std::rc::Rc;
 use anyhow::Result;
 use birchpad_commands::{Invocation, Keymap, Layer, Platform, Scope};
 use gpui_kit::{
-    Action, App, Context, DummyKeyboardMapper, Global, KeyBinding, KeyBindingContextPredicate,
+    Action, App, Context, Global, KeyBinding, KeyBindingContextPredicate, PlatformKeyboardMapper,
     Window,
 };
 use serde::de::DeserializeOwned;
@@ -158,12 +158,20 @@ pub(crate) fn init(user_keymap: Option<&str>, cx: &mut App) -> Keymap {
     for diagnostic in keymap.diagnostics() {
         eprintln!("keymap: {diagnostic}");
     }
-    cx.bind_keys(key_bindings(&keymap));
+    let mapper = cx.keyboard_mapper().clone();
+    cx.bind_keys(key_bindings(&keymap, mapper.as_ref()));
     keymap
 }
 
 /// Turns the effective bindings of a keymap into GPUI key bindings.
-pub(crate) fn key_bindings(keymap: &Keymap) -> Vec<KeyBinding> {
+///
+/// Keys go through the platform's keyboard mapper: Windows reports Shift with a digit or
+/// punctuation key as the character it types on the current layout (Alt+Shift+0 arrives as
+/// `alt-)` on a US or Russian layout), so `alt-shift-0` in a keymap has to become that too.
+pub(crate) fn key_bindings(
+    keymap: &Keymap,
+    mapper: &dyn PlatformKeyboardMapper,
+) -> Vec<KeyBinding> {
     keymap
         .bindings()
         .iter()
@@ -186,7 +194,7 @@ pub(crate) fn key_bindings(keymap: &Keymap) -> Vec<KeyBinding> {
                 context,
                 false,
                 None,
-                &DummyKeyboardMapper,
+                mapper,
             )
             .inspect_err(|error| eprintln!("keymap: {}: {error}", binding.keys_string()))
             .ok()
@@ -218,7 +226,11 @@ mod tests {
     fn default_keymap_converts_to_gpui_bindings() {
         for platform in [Platform::Windows, Platform::Linux, Platform::MacOs] {
             let keymap = Keymap::with_defaults(platform);
-            assert_eq!(key_bindings(&keymap).len(), keymap.bindings().len());
+            let mapper = gpui_kit::DummyKeyboardMapper;
+            assert_eq!(
+                key_bindings(&keymap, &mapper).len(),
+                keymap.bindings().len()
+            );
         }
     }
 }

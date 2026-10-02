@@ -155,6 +155,31 @@ impl<T: Clone> RangeSet<T> {
     }
 }
 
+/// Maps ranges that may nest (fold points), sorted by start, through `changes` with the
+/// semantics of [`RangeSet::map`]: text inserted inside a range extends it, text inserted at an
+/// edge does not, and ranges whose text was deleted disappear. Stays sorted by start.
+pub fn map_ranges(ranges: &mut Vec<Range<usize>>, changes: &ChangeSet) {
+    if changes.is_identity() || ranges.is_empty() {
+        return;
+    }
+    // Ends are not sorted when ranges nest: map them in sorted order through one mapper.
+    let mut by_end: Vec<usize> = (0..ranges.len()).collect();
+    by_end.sort_by_key(|&index| ranges[index].end);
+    let mut ends = changes.mapper(Assoc::Before);
+    let mapped_ends: Vec<(usize, usize)> = by_end
+        .into_iter()
+        .map(|index| (index, ends.map(ranges[index].end)))
+        .collect();
+    let mut starts = changes.mapper(Assoc::After);
+    for range in ranges.iter_mut() {
+        range.start = starts.map(range.start);
+    }
+    for (index, end) in mapped_ends {
+        ranges[index].end = end.max(ranges[index].start);
+    }
+    ranges.retain(|range| !range.is_empty());
+}
+
 /// Lines with a marker (bookmarks), tracked through edits.
 ///
 /// Each marker is a position on its line, so it moves with the line's text: typing at the

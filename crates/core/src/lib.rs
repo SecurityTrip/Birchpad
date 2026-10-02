@@ -16,7 +16,7 @@ mod selection;
 mod transaction;
 
 pub use change::{Assoc, ChangeSet, Edit, InvalidEdit, Operation, PosMapper};
-pub use decoration::{LineMarkers, RangeSet};
+pub use decoration::{LineMarkers, RangeSet, map_ranges};
 pub use document::Document;
 pub use format::{Encoding, Format};
 pub use history::{History, RevisionId, UndoGrouping};

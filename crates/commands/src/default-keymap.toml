@@ -135,6 +135,124 @@ command = "view.previous-tab"
 keys = "ctrl-shift-tab"
 command = "view.previous-tab"
 
+# Folding, as in Notepad++.
+
+[[binding]]
+keys = "alt-0"
+command = "view.fold-all"
+context = "Editor"
+
+[[binding]]
+keys = "alt-shift-0"
+command = "view.unfold-all"
+context = "Editor"
+
+[[binding]]
+keys = "ctrl-alt-f"
+command = "view.fold-current"
+context = "Editor"
+
+[[binding]]
+keys = "ctrl-alt-shift-f"
+command = "view.unfold-current"
+context = "Editor"
+
+[[binding]]
+keys = "alt-1"
+command = "view.fold-level"
+args = { level = 1 }
+context = "Editor"
+
+[[binding]]
+keys = "alt-shift-1"
+command = "view.unfold-level"
+args = { level = 1 }
+context = "Editor"
+
+[[binding]]
+keys = "alt-2"
+command = "view.fold-level"
+args = { level = 2 }
+context = "Editor"
+
+[[binding]]
+keys = "alt-shift-2"
+command = "view.unfold-level"
+args = { level = 2 }
+context = "Editor"
+
+[[binding]]
+keys = "alt-3"
+command = "view.fold-level"
+args = { level = 3 }
+context = "Editor"
+
+[[binding]]
+keys = "alt-shift-3"
+command = "view.unfold-level"
+args = { level = 3 }
+context = "Editor"
+
+[[binding]]
+keys = "alt-4"
+command = "view.fold-level"
+args = { level = 4 }
+context = "Editor"
+
+[[binding]]
+keys = "alt-shift-4"
+command = "view.unfold-level"
+args = { level = 4 }
+context = "Editor"
+
+[[binding]]
+keys = "alt-5"
+command = "view.fold-level"
+args = { level = 5 }
+context = "Editor"
+
+[[binding]]
+keys = "alt-shift-5"
+command = "view.unfold-level"
+args = { level = 5 }
+context = "Editor"
+
+[[binding]]
+keys = "alt-6"
+command = "view.fold-level"
+args = { level = 6 }
+context = "Editor"
+
+[[binding]]
+keys = "alt-shift-6"
+command = "view.unfold-level"
+args = { level = 6 }
+context = "Editor"
+
+[[binding]]
+keys = "alt-7"
+command = "view.fold-level"
+args = { level = 7 }
+context = "Editor"
+
+[[binding]]
+keys = "alt-shift-7"
+command = "view.unfold-level"
+args = { level = 7 }
+context = "Editor"
+
+[[binding]]
+keys = "alt-8"
+command = "view.fold-level"
+args = { level = 8 }
+context = "Editor"
+
+[[binding]]
+keys = "alt-shift-8"
+command = "view.unfold-level"
+args = { level = 8 }
+context = "Editor"
+
 # --- Edit ---------------------------------------------------------------------------------------
 
 [[binding]]

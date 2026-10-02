@@ -55,7 +55,9 @@ What Phase 1 left for later is marked *(from Phase 1)* in the phases below.
       Ctrl+B / Ctrl+Alt+B; basic and advanced auto-indent
       ([ADR 0011](adr/0011-syntax-highlighting.md))
 - Language injections (scripts in HTML, code blocks and inline formatting in Markdown)
-- Folding
+- [x] Folding from the syntax tree (indentation for plain text); Fold All, Unfold All,
+      collapse levels 1–8, current level, fold boxes in the margin; carets step over or expand
+      collapsed folds ([ADR 0012](adr/0012-folding.md))
 - Multi-editing, column selection (Alt+drag, Alt+Shift+arrows), Column Editor
 - Smart highlighting, Mark with 5 styles, bookmarks and bookmarked-line operations
 - Line operations: duplicate, move, sort, remove duplicates/empty lines, join/split, trim,

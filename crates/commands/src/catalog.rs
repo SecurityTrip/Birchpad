@@ -112,6 +112,13 @@ pub const COMMANDS: &[CommandSpec] = &[
     workspace("search.close", "Close Find Panel"),
     // View
     workspace("view.word-wrap", "Word Wrap"),
+    editor("view.fold-all", "Fold All"),
+    editor("view.unfold-all", "Unfold All"),
+    editor("view.fold-current", "Collapse Current Level"),
+    editor("view.unfold-current", "Uncollapse Current Level"),
+    // { "level": 1..8 }
+    editor("view.fold-level", "Collapse Level"),
+    editor("view.unfold-level", "Uncollapse Level"),
     workspace("view.zoom-in", "Zoom In"),
     workspace("view.zoom-out", "Zoom Out"),
     workspace("view.zoom-reset", "Restore Default Zoom"),
