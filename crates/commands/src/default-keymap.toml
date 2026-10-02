@@ -87,6 +87,200 @@ keys = "escape"
 command = "search.close"
 context = "FindBar"
 
+# Token styles, as in Notepad++: Ctrl+Alt+N styles every occurrence of the token with style N,
+# Ctrl+Alt+Shift+N clears it, Ctrl+N and Ctrl+Shift+N jump to its next and previous occurrence.
+# macOS takes Cmd+Shift+3/4/5 for screenshots, so jumping up is Cmd+Ctrl+N there.
+
+[[binding]]
+keys = "secondary-alt-1"
+command = "mark.style-all"
+args = { style = 1 }
+context = "Editor"
+
+[[binding]]
+keys = "secondary-alt-2"
+command = "mark.style-all"
+args = { style = 2 }
+context = "Editor"
+
+[[binding]]
+keys = "secondary-alt-3"
+command = "mark.style-all"
+args = { style = 3 }
+context = "Editor"
+
+[[binding]]
+keys = "secondary-alt-4"
+command = "mark.style-all"
+args = { style = 4 }
+context = "Editor"
+
+[[binding]]
+keys = "secondary-alt-5"
+command = "mark.style-all"
+args = { style = 5 }
+context = "Editor"
+
+[[binding]]
+keys = "secondary-alt-shift-1"
+command = "mark.clear"
+args = { style = 1 }
+context = "Editor"
+
+[[binding]]
+keys = "secondary-alt-shift-2"
+command = "mark.clear"
+args = { style = 2 }
+context = "Editor"
+
+[[binding]]
+keys = "secondary-alt-shift-3"
+command = "mark.clear"
+args = { style = 3 }
+context = "Editor"
+
+[[binding]]
+keys = "secondary-alt-shift-4"
+command = "mark.clear"
+args = { style = 4 }
+context = "Editor"
+
+[[binding]]
+keys = "secondary-alt-shift-5"
+command = "mark.clear"
+args = { style = 5 }
+context = "Editor"
+
+[[binding]]
+keys = "secondary-alt-shift-0"
+command = "mark.clear-all"
+context = "Editor"
+
+[[binding]]
+keys = "secondary-1"
+command = "mark.jump-down"
+args = { style = 1 }
+context = "Editor"
+
+[[binding]]
+keys = "secondary-2"
+command = "mark.jump-down"
+args = { style = 2 }
+context = "Editor"
+
+[[binding]]
+keys = "secondary-3"
+command = "mark.jump-down"
+args = { style = 3 }
+context = "Editor"
+
+[[binding]]
+keys = "secondary-4"
+command = "mark.jump-down"
+args = { style = 4 }
+context = "Editor"
+
+[[binding]]
+keys = "secondary-5"
+command = "mark.jump-down"
+args = { style = 5 }
+context = "Editor"
+
+[[binding]]
+keys = "ctrl-shift-1"
+command = "mark.jump-up"
+args = { style = 1 }
+context = "Editor"
+platforms = ["windows", "linux"]
+
+[[binding]]
+keys = "cmd-ctrl-1"
+command = "mark.jump-up"
+args = { style = 1 }
+context = "Editor"
+platforms = ["macos"]
+
+[[binding]]
+keys = "ctrl-shift-2"
+command = "mark.jump-up"
+args = { style = 2 }
+context = "Editor"
+platforms = ["windows", "linux"]
+
+[[binding]]
+keys = "cmd-ctrl-2"
+command = "mark.jump-up"
+args = { style = 2 }
+context = "Editor"
+platforms = ["macos"]
+
+[[binding]]
+keys = "ctrl-shift-3"
+command = "mark.jump-up"
+args = { style = 3 }
+context = "Editor"
+platforms = ["windows", "linux"]
+
+[[binding]]
+keys = "cmd-ctrl-3"
+command = "mark.jump-up"
+args = { style = 3 }
+context = "Editor"
+platforms = ["macos"]
+
+[[binding]]
+keys = "ctrl-shift-4"
+command = "mark.jump-up"
+args = { style = 4 }
+context = "Editor"
+platforms = ["windows", "linux"]
+
+[[binding]]
+keys = "cmd-ctrl-4"
+command = "mark.jump-up"
+args = { style = 4 }
+context = "Editor"
+platforms = ["macos"]
+
+[[binding]]
+keys = "ctrl-shift-5"
+command = "mark.jump-up"
+args = { style = 5 }
+context = "Editor"
+platforms = ["windows", "linux"]
+
+[[binding]]
+keys = "cmd-ctrl-5"
+command = "mark.jump-up"
+args = { style = 5 }
+context = "Editor"
+platforms = ["macos"]
+
+
+# Bookmarks. Ctrl+F2 moves the focus to the menu bar on macOS, so toggling is Cmd+F2 there.
+
+[[binding]]
+keys = "ctrl-f2"
+command = "bookmark.toggle"
+context = "Editor"
+platforms = ["windows", "linux"]
+
+[[binding]]
+keys = "cmd-f2"
+command = "bookmark.toggle"
+context = "Editor"
+platforms = ["macos"]
+
+[[binding]]
+keys = "f2"
+command = "bookmark.next"
+context = "Editor"
+
+[[binding]]
+keys = "shift-f2"
+command = "bookmark.previous"
+context = "Editor"
+
 # --- View ---------------------------------------------------------------------------------------
 
 # Windows reports the keypad +, - and 0 as "+", "-" and "0"; Linux as "add", "subtract" and "0".

@@ -59,6 +59,13 @@ pub(crate) struct FindOptions {
     pub(crate) backward: bool,
 }
 
+/// The find panel's options, for smart highlighting with
+/// `highlighting.smart.use-find-options`.
+#[derive(Debug, Clone, Copy, Default)]
+pub(crate) struct ActiveFindOptions(pub(crate) FindOptions);
+
+impl gpui_kit::Global for ActiveFindOptions {}
+
 impl Default for FindOptions {
     fn default() -> Self {
         Self {
@@ -187,7 +194,10 @@ impl FindBar {
             .on_click(move |checked, _, cx| {
                 this.update(cx, |this, cx| {
                     set(&mut this.options, *checked);
+                    cx.set_global(ActiveFindOptions(this.options));
                     cx.notify();
+                    // Smart highlighting may follow these options.
+                    cx.refresh_windows();
                 })
                 .ok();
             })

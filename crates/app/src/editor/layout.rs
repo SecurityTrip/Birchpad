@@ -99,7 +99,7 @@ impl VisibleRow {
         self.display.doc_start() <= pos && pos <= self.display.doc_end()
     }
 
-    fn x_for(&self, pos: usize) -> Option<Pixels> {
+    pub(super) fn x_for(&self, pos: usize) -> Option<Pixels> {
         self.covers(pos)
             .then(|| self.x + self.shaped.x_for_index(self.display.to_display(pos)))
     }
@@ -312,7 +312,12 @@ impl EditorView {
             }
             pending.push((row, y, x, display));
         }
-        let styles = self.frame_styles(&pending, &text, cx);
+        let shown = shown_ranges(&pending);
+        if self.update_smart_highlight(&shown, &text, cx) {
+            // Searching continues in the next frame.
+            window.request_animation_frame();
+        }
+        let styles = self.frame_styles(&shown, &text, cx);
         let mut rows = Vec::with_capacity(pending.len());
         for (row, y, x, display) in pending {
             let shaped = self.shape_row(&display, &metrics, &styles, window);
@@ -416,13 +421,9 @@ impl EditorView {
         });
     }
 
-    /// Highlights and bracket styles for the text shown in this frame.
-    fn frame_styles(
-        &mut self,
-        rows: &[(birchpad_view::Row, Pixels, Pixels, DisplayText)],
-        text: &Rope,
-        cx: &App,
-    ) -> FrameStyles {
+    /// Highlights and bracket styles for the text shown in this frame (`ranges`, from
+    /// [`shown_ranges`]).
+    fn frame_styles(&mut self, ranges: &[ByteRange<usize>], text: &Rope, cx: &App) -> FrameStyles {
         let buffer = self.buffer.read(cx);
         let mut styles = FrameStyles::default();
         if let Some(found) =
@@ -440,17 +441,6 @@ impl EditorView {
             self.highlight_cache = None;
             return styles;
         };
-        // The shown parts of the rows, merged where they are close.
-        let mut ranges: Vec<ByteRange<usize>> = Vec::new();
-        for (_, _, _, display) in rows {
-            let shown = display.doc_start()..display.doc_end();
-            match ranges.last_mut() {
-                Some(last) if shown.start <= last.end + QUERY_GAP => {
-                    last.end = last.end.max(shown.end);
-                }
-                _ => ranges.push(shown),
-            }
-        }
         let language = syntax.language().id;
         let version = syntax.version();
         let cached = self.highlight_cache.as_ref().is_some_and(|cache| {
@@ -458,7 +448,7 @@ impl EditorView {
         });
         if !cached {
             let mut spans = Vec::new();
-            for range in &ranges {
+            for range in ranges {
                 for (span, highlight) in syntax.highlights(text, range.clone()) {
                     if let Some(style) = theme::syntax_style(highlight) {
                         spans.push((span, style));
@@ -468,7 +458,7 @@ impl EditorView {
             self.highlight_cache = Some(HighlightCache {
                 language,
                 version,
-                ranges,
+                ranges: ranges.to_vec(),
                 spans,
             });
         }
@@ -731,6 +721,15 @@ impl EditorView {
     ) -> Vec<(Bounds<Pixels>, Paint)> {
         let visible = Self::visible_range(layout);
         let mut ranges = Vec::new();
+        if let Some(smart) = &self.smart_highlight {
+            let paint = Paint::Fill(gpui_kit::rgba(theme::SMART_HIGHLIGHT));
+            ranges.extend(
+                smart
+                    .matches
+                    .overlapping(visible.clone())
+                    .map(|(range, _)| (range, paint)),
+            );
+        }
         let marks = self.buffer.read(cx).marks();
         for (index, style) in marks.styles.iter().enumerate() {
             let paint = theme::mark_style(index);
@@ -904,6 +903,22 @@ impl Layout {
             point(end.max(start), row.y + self.metrics.line_height),
         ))
     }
+}
+
+/// The parts of the text shown by `rows`, merged where they are close: what highlighting and
+/// smart highlighting look at.
+fn shown_ranges(rows: &[(Row, Pixels, Pixels, DisplayText)]) -> Vec<ByteRange<usize>> {
+    let mut ranges: Vec<ByteRange<usize>> = Vec::new();
+    for (_, _, _, display) in rows {
+        let shown = display.doc_start()..display.doc_end();
+        match ranges.last_mut() {
+            Some(last) if shown.start <= last.end + QUERY_GAP => {
+                last.end = last.end.max(shown.end);
+            }
+            _ => ranges.push(shown),
+        }
+    }
+    ranges
 }
 
 fn metrics(settings: &ViewSettings, window: &mut Window) -> Metrics {

@@ -178,6 +178,30 @@ pub const COMMANDS: &[CommandSpec] = &[
         "Select All In-between {} [] or ()",
     ),
     workspace("search.close", "Close Find Panel"),
+    // Token styles (Search > Style All Occurrences of Token and below); { "style": 1..5 }
+    editor("mark.style-all", "Style All Occurrences of Token"),
+    editor("mark.style-one", "Style One Token"),
+    editor("mark.clear", "Clear Style"),
+    editor("mark.clear-all", "Clear all Styles"),
+    // { "style": 1..5 }, or no arguments for any style
+    editor("mark.jump-up", "Jump Up"),
+    editor("mark.jump-down", "Jump Down"),
+    // { "style": 1..5 }, or no arguments for all styles
+    editor("mark.copy-styled-text", "Copy Styled Text"),
+    // Search > Bookmark
+    editor("bookmark.toggle", "Toggle Bookmark"),
+    editor("bookmark.next", "Next Bookmark"),
+    editor("bookmark.previous", "Previous Bookmark"),
+    editor("bookmark.clear-all", "Clear All Bookmarks"),
+    editor("bookmark.cut-lines", "Cut Bookmarked Lines"),
+    editor("bookmark.copy-lines", "Copy Bookmarked Lines"),
+    editor(
+        "bookmark.paste-to-lines",
+        "Paste to (Replace) Bookmarked Lines",
+    ),
+    editor("bookmark.remove-lines", "Remove Bookmarked Lines"),
+    editor("bookmark.remove-unmarked-lines", "Remove Unmarked Lines"),
+    editor("bookmark.inverse", "Inverse Bookmark"),
     // View
     workspace("view.word-wrap", "Word Wrap"),
     editor("view.fold-all", "Fold All"),

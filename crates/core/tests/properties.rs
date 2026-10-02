@@ -439,4 +439,114 @@ proptest! {
             }
         }
     }
+
+    #[test]
+    fn a_scan_in_steps_matches_a_naive_search_of_the_range(
+        hay in prop::collection::vec(prop::sample::select(vec!["ab", "a", "b", "Ж", "ж", " ", "x"]), 0..200),
+        needle in prop::collection::vec(prop::sample::select(vec!["a", "b", "ж", "Ж"]), 1..4),
+        match_case: bool,
+        whole_word: bool,
+        cut in (any::<usize>(), any::<usize>()),
+        step in 1usize..40,
+    ) {
+        use birchpad_core::search::Scan;
+        let hay = hay.concat();
+        let needle = needle.concat();
+        let rope = Rope::from_str(&hay);
+        let boundaries: Vec<usize> = hay.char_indices().map(|(i, _)| i).chain([hay.len()]).collect();
+        let (a, b) = (boundaries[cut.0 % boundaries.len()], boundaries[cut.1 % boundaries.len()]);
+        let range = a.min(b)..a.max(b);
+        let searcher = Searcher::new(&Query { pattern: needle.clone(), match_case, whole_word, ..Query::default() }).unwrap();
+        // Naive: repeated searches from the end of the previous match.
+        let mut expected = Vec::new();
+        let mut from = range.start;
+        while let Some(found) = searcher.find_in(&rope, from..range.end) {
+            from = found.end;
+            expected.push(found);
+        }
+        prop_assert_eq!(searcher.find_all_in(&rope, range.clone()), expected.clone());
+        let mut scan = Scan::with_step(range, step);
+        while !scan.run(&searcher, &rope, || true) {}
+        prop_assert_eq!(scan.into_matches(), expected);
+    }
+
+    #[test]
+    fn bookmarked_line_operations_keep_or_replace_exactly_those_lines(
+        doc in text(),
+        picks in prop::collection::vec(any::<usize>(), 0..8),
+        with in "[a-c\n]{0,4}",
+    ) {
+        use birchpad_core::motion::{line_range, line_range_with_break};
+        use birchpad_core::ops::{other_lines, remove_lines, remove_other_lines, replace_lines};
+        // A lone CR that ends up before an LF would merge with it into one line break.
+        prop_assume!(!doc.replace("\r\n", "").contains('\r'));
+        let rope = Rope::from_str(&doc);
+        let count = line_count(&rope);
+        let mut marked: Vec<usize> = picks.iter().map(|p| p % count).collect();
+        marked.sort_unstable();
+        marked.dedup();
+        let apply = |transaction: Option<Transaction>| {
+            let mut rope = rope.clone();
+            if let Some(transaction) = transaction {
+                transaction.changes().apply(&mut rope);
+            }
+            rope
+        };
+        let contents = |rope: &Rope| -> Vec<String> {
+            (0..line_count(rope)).map(|l| rope.slice(line_range(rope, l)).to_string()).collect()
+        };
+        let original = contents(&rope);
+        let unmarked = other_lines(count, &marked);
+        prop_assert_eq!(other_lines(count, &unmarked), marked.clone());
+
+        // Removing lines leaves exactly the others (or one empty line).
+        let kept = |lines: &[usize]| -> Vec<String> {
+            let kept: Vec<String> = lines.iter().map(|&l| original[l].clone()).collect();
+            if kept.is_empty() { vec![String::new()] } else { kept }
+        };
+        prop_assert_eq!(contents(&apply(remove_lines(&rope, &marked))), kept(&unmarked));
+        prop_assert_eq!(contents(&apply(remove_other_lines(&rope, &marked))), kept(&marked));
+
+        // Pasting replaces the contents of the marked lines and keeps every line break.
+        let mut expected = String::new();
+        for line in 0..count {
+            let content = line_range(&rope, line);
+            let whole = line_range_with_break(&rope, line);
+            if marked.contains(&line) {
+                expected.push_str(&with);
+            } else {
+                expected.push_str(&rope.slice(content.clone()).to_string());
+            }
+            expected.push_str(&rope.slice(content.end..whole.end).to_string());
+        }
+        prop_assert_eq!(apply(replace_lines(&rope, &marked, &with)).to_string(), expected);
+    }
+
+    #[test]
+    fn insert_all_matches_inserting_one_by_one(
+        old in prop::collection::vec((0usize..60, 1usize..8), 0..10),
+        new in prop::collection::vec((0usize..60, 1usize..8), 0..10),
+    ) {
+        let mut set = RangeSet::new();
+        for (start, len) in old {
+            set.insert(start..start + len, 1u8);
+        }
+        // Make the new ranges sorted and disjoint.
+        let mut new: Vec<std::ops::Range<usize>> = new.into_iter().map(|(s, l)| s..s + l).collect();
+        new.sort_by_key(|r| r.start);
+        let mut end = 0;
+        new.retain(|r| {
+            let keep = r.start >= end;
+            if keep {
+                end = r.end;
+            }
+            keep
+        });
+        let mut expected = set.clone();
+        for range in new.clone() {
+            expected.insert(range, 2);
+        }
+        set.insert_all(new, 2);
+        prop_assert_eq!(set, expected);
+    }
 }

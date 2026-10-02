@@ -8,8 +8,10 @@ mod column_editor;
 mod element;
 mod folding;
 mod layout;
+mod marks;
 mod multi;
 mod operations;
+mod smart_highlight;
 pub(crate) mod theme;
 
 use std::ops::Range as ByteRange;
@@ -102,6 +104,7 @@ struct ConvertEolArgs {
 
 pub(crate) fn register_commands(registry: &mut CommandRegistry) {
     folding::register_commands(registry);
+    marks::register_commands(registry);
     multi::register_commands(registry);
     operations::register_commands(registry);
     for (cursor, select, motion) in MOTIONS {
@@ -294,6 +297,8 @@ pub(crate) struct EditorView {
     /// Geometry of the last frame, for mouse and IME hit testing.
     layout: Option<Layout>,
     highlight_cache: Option<layout::HighlightCache>,
+    /// Occurrences of the selected word around the visible text.
+    smart_highlight: Option<smart_highlight::SmartHighlight>,
     /// Headers of this view's collapsed folds.
     collapsed: LineMarkers,
     /// The buffer's folds in lines.
@@ -339,6 +344,8 @@ impl EditorView {
                 this.display.reset(&text);
                 this.collapsed.clear();
                 this.fold_cache = None;
+                // A new document starts its revisions over.
+                this.smart_highlight = None;
                 this.sync_hidden(cx);
                 this.selection = Selection::point(0);
                 this.begin_select = None;
@@ -393,6 +400,7 @@ impl EditorView {
             blink: Task::ready(()),
             layout: None,
             highlight_cache: None,
+            smart_highlight: None,
             collapsed: LineMarkers::new(),
             fold_cache: None,
             block: None,

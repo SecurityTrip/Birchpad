@@ -94,6 +94,46 @@ impl<T: Clone> RangeSet<T> {
         self.ranges.insert(index, (range, value));
     }
 
+    /// Sets `value` over each of `ranges` (sorted by start, disjoint), like calling
+    /// [`insert`](Self::insert) for each, in one pass: Style All Occurrences of Token may mark
+    /// tens of thousands of matches.
+    ///
+    /// # Panics
+    ///
+    /// If the ranges are unsorted or overlap.
+    pub fn insert_all(&mut self, ranges: impl IntoIterator<Item = Range<usize>>, value: T) {
+        let new: Vec<Range<usize>> = ranges.into_iter().filter(|r| !r.is_empty()).collect();
+        assert!(
+            new.windows(2).all(|w| w[0].end <= w[1].start),
+            "ranges must be sorted and disjoint"
+        );
+        if new.is_empty() {
+            return;
+        }
+        let old = std::mem::take(&mut self.ranges);
+        let mut out = Vec::with_capacity(old.len() + new.len());
+        let mut new = new.into_iter().peekable();
+        // Old ranges are cut where new ranges cover them; `covered` is the end of the last new
+        // range emitted.
+        let mut covered = 0;
+        for (mut range, old_value) in old {
+            range.start = range.start.max(covered);
+            while let Some(next) = new.next_if(|next| next.start < range.end) {
+                if next.start > range.start {
+                    out.push((range.start..next.start, old_value.clone()));
+                }
+                range.start = range.start.max(next.end);
+                covered = next.end;
+                out.push((next, value.clone()));
+            }
+            if !range.is_empty() {
+                out.push((range, old_value));
+            }
+        }
+        out.extend(new.map(|range| (range, value.clone())));
+        self.ranges = out;
+    }
+
     /// Clears `range`, trimming or splitting the ranges it covers.
     pub fn remove(&mut self, range: Range<usize>) {
         if !range.is_empty() {
@@ -136,6 +176,25 @@ impl<T: Clone> RangeSet<T> {
             .map(|i| (self.ranges[i].0.clone(), &self.ranges[i].1))
     }
 
+    /// Search > Jump Down: the first range that starts after `pos`, wrapping around to the
+    /// first range. A range the caret is in (or at the start of) is skipped, as Notepad++
+    /// skips the token at the caret.
+    pub fn next_after(&self, pos: usize) -> Option<Range<usize>> {
+        let index = self.ranges.partition_point(|(r, _)| r.start <= pos);
+        self.ranges
+            .get(index)
+            .or(self.ranges.first())
+            .map(|(r, _)| r.clone())
+    }
+
+    /// Search > Jump Up: the last range that ends at or before `pos`, wrapping around to the
+    /// last range.
+    pub fn previous_before(&self, pos: usize) -> Option<Range<usize>> {
+        self.previous_to(pos)
+            .map(|(r, _)| r)
+            .or_else(|| self.ranges.last().map(|(r, _)| r.clone()))
+    }
+
     /// Follows an edit. Text inserted inside a range extends it; text inserted at either edge
     /// does not, as with Scintilla's indicators. Ranges whose text was deleted disappear.
     pub fn map(&mut self, changes: &ChangeSet) {
@@ -153,6 +212,37 @@ impl<T: Clone> RangeSet<T> {
         }
         self.ranges.retain(|(range, _)| !range.is_empty());
     }
+}
+
+/// Jump Down over several sets (Search > Jump Down > Any Style): the nearest range that starts
+/// after `pos` in any of them, wrapping around to the first one.
+pub fn next_in_any<T: Clone>(sets: &[&RangeSet<T>], pos: usize) -> Option<Range<usize>> {
+    let after = sets
+        .iter()
+        .filter_map(|set| {
+            let index = set.ranges.partition_point(|(r, _)| r.start <= pos);
+            set.ranges.get(index).map(|(r, _)| r.clone())
+        })
+        .min_by_key(|r| (r.start, r.end));
+    after.or_else(|| {
+        sets.iter()
+            .filter_map(|set| set.ranges.first().map(|(r, _)| r.clone()))
+            .min_by_key(|r| (r.start, r.end))
+    })
+}
+
+/// Jump Up over several sets: the nearest range that ends at or before `pos` in any of them,
+/// wrapping around to the last one.
+pub fn previous_in_any<T: Clone>(sets: &[&RangeSet<T>], pos: usize) -> Option<Range<usize>> {
+    let before = sets
+        .iter()
+        .filter_map(|set| set.previous_to(pos).map(|(r, _)| r))
+        .max_by_key(|r| (r.end, r.start));
+    before.or_else(|| {
+        sets.iter()
+            .filter_map(|set| set.ranges.last().map(|(r, _)| r.clone()))
+            .max_by_key(|r| (r.end, r.start))
+    })
 }
 
 /// Maps ranges that may nest (fold points), sorted by start, through `changes` with the
@@ -234,6 +324,18 @@ impl LineMarkers {
             .take_while(|&&pos| pos < end)
             .map(|&pos| line_of(text, pos))
             .collect()
+    }
+
+    /// Replaces the markers with one on each of `lines` (Inverse Bookmark).
+    pub fn set_lines(&mut self, text: &Rope, lines: impl IntoIterator<Item = usize>) {
+        let count = line_count(text);
+        self.positions = lines
+            .into_iter()
+            .filter(|&line| line < count)
+            .map(|line| line_start(text, line))
+            .collect();
+        self.positions.sort_unstable();
+        self.positions.dedup();
     }
 
     pub fn contains(&self, text: &Rope, line: usize) -> bool {
@@ -355,6 +457,34 @@ mod tests {
     }
 
     #[test]
+    fn insert_all_is_like_inserting_one_by_one() {
+        let mut set = RangeSet::from_sorted([(0..4, 1), (6..8, 1), (9..20, 1)]);
+        let mut expected = set.clone();
+        let new = [1..2, 3..7, 8..9, 10..12, 15..25, 30..31];
+        for range in new.clone() {
+            expected.insert(range, 2);
+        }
+        set.insert_all(new, 2);
+        assert_eq!(set, expected);
+        assert_eq!(
+            ranges(&set),
+            [
+                (0..1, 1),
+                (1..2, 2),
+                (2..3, 1),
+                (3..7, 2),
+                (7..8, 1),
+                (8..9, 2),
+                (9..10, 1),
+                (10..12, 2),
+                (12..15, 1),
+                (15..25, 2),
+                (30..31, 2)
+            ]
+        );
+    }
+
+    #[test]
     fn queries() {
         let set = RangeSet::from_sorted([(2..4, 1), (6..9, 2), (9..10, 3)]);
         assert_eq!(set.at(3), Some(&1));
@@ -366,6 +496,28 @@ mod tests {
         assert_eq!(set.next_from(10), None);
         assert_eq!(set.previous_to(6).map(|(r, _)| r), Some(2..4));
         assert_eq!(set.previous_to(2), None);
+    }
+
+    #[test]
+    fn jumps_skip_the_range_at_the_caret_and_wrap() {
+        let set = RangeSet::from_sorted([(2..4, ()), (6..9, ()), (9..10, ())]);
+        assert_eq!(set.next_after(0), Some(2..4));
+        assert_eq!(set.next_after(2), Some(6..9), "at the start of a range");
+        assert_eq!(set.next_after(3), Some(6..9), "inside a range");
+        assert_eq!(set.next_after(9), Some(2..4), "wraps to the first");
+        assert_eq!(set.previous_before(6), Some(2..4));
+        assert_eq!(set.previous_before(7), Some(2..4), "inside a range");
+        assert_eq!(set.previous_before(10), Some(9..10));
+        assert_eq!(set.previous_before(3), Some(9..10), "wraps to the last");
+        assert_eq!(RangeSet::<()>::new().next_after(0), None);
+
+        let other = RangeSet::from_sorted([(0..1, ()), (4..5, ())]);
+        let sets = [&set, &other];
+        assert_eq!(next_in_any(&sets, 2), Some(4..5));
+        assert_eq!(next_in_any(&sets, 4), Some(6..9));
+        assert_eq!(next_in_any(&sets, 9), Some(0..1));
+        assert_eq!(previous_in_any(&sets, 6), Some(4..5));
+        assert_eq!(previous_in_any(&sets, 0), Some(9..10));
     }
 
     #[test]
@@ -423,5 +575,7 @@ mod tests {
         assert_eq!(markers.previous_before(&text, 2), Some(1));
         assert_eq!(markers.lines_in(&text, 2..5), [3]);
         assert_eq!(markers.lines_in(&text, 0..2), [1]);
+        markers.set_lines(&text, [4, 0, 4, 9]);
+        assert_eq!(markers.lines(&text), [0, 4]);
     }
 }

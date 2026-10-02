@@ -62,6 +62,23 @@ pub(crate) struct DocumentMarks {
 }
 
 impl DocumentMarks {
+    /// Bookmarks the line where each of `ranges` starts. This is the "Bookmark line" option of
+    /// Notepad++'s Mark dialog, which comes with the Find dialog in phase 3 and calls this
+    /// with the matches of Mark All (through `Buffer::update_marks`).
+    #[cfg_attr(
+        not(test),
+        expect(dead_code, reason = "the Mark dialog comes in phase 3")
+    )]
+    pub(crate) fn bookmark_lines_of(&mut self, text: &Rope, ranges: &[ByteRange<usize>]) {
+        let mut lines = self.bookmarks.lines(text);
+        lines.extend(
+            ranges
+                .iter()
+                .map(|range| birchpad_core::motion::line_of(text, range.start)),
+        );
+        self.bookmarks.set_lines(text, lines);
+    }
+
     fn map(&mut self, transaction: &Transaction, text: &Rope) {
         let changes = transaction.changes();
         self.bookmarks.map(changes, text);
@@ -619,5 +636,19 @@ impl Buffer {
         });
         cx.emit(BufferEvent::StateChanged);
         cx.notify();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn mark_all_can_bookmark_the_lines_of_its_matches() {
+        let text = Rope::from_str("a\nb b\nc\nb");
+        let mut marks = DocumentMarks::default();
+        marks.bookmarks.add(&text, 0);
+        marks.bookmark_lines_of(&text, &[2..3, 4..5, 8..9]);
+        assert_eq!(marks.bookmarks.lines(&text), [0, 1, 3]);
     }
 }

@@ -27,6 +27,9 @@ pub(crate) fn mark_style(index: usize) -> Paint {
     Paint::Fill(rgba(MARK_STYLES[index]))
 }
 
+/// Smart highlighting: Notepad++'s translucent green.
+pub(crate) const SMART_HIGHLIGHT: u32 = 0x00ff0064;
+
 /// The bookmark symbol in the symbol margin.
 pub(crate) const BOOKMARK: u32 = 0x2f6fde;
 pub(crate) const GUTTER_BACKGROUND: u32 = 0xf6f8fa;

@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 #[serde(default, rename_all = "kebab-case")]
 pub struct Settings {
     pub editor: EditorSettings,
+    pub highlighting: HighlightingSettings,
     pub files: FileSettings,
     pub session: SessionSettings,
     pub updates: UpdateSettings,
@@ -57,6 +58,55 @@ impl Default for EditorSettings {
             fold_margin: true,
             auto_indent: AutoIndent::default(),
             edge_column: 80,
+        }
+    }
+}
+
+/// Notepad++'s Preferences > Highlighting.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, rename_all = "kebab-case")]
+pub struct HighlightingSettings {
+    /// Highlighting every occurrence of the selected word in the visible text.
+    pub smart: SmartHighlighting,
+    /// How Search > Style All Occurrences of Token matches the token.
+    pub token_style: TokenMatching,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, rename_all = "kebab-case")]
+pub struct SmartHighlighting {
+    pub enabled: bool,
+    pub match_case: bool,
+    /// Highlight only when a whole word is selected, and only whole-word occurrences of it.
+    /// Off: any selection on one line is highlighted wherever it occurs.
+    pub whole_word: bool,
+    /// Take match case and whole word from the find panel instead.
+    pub use_find_options: bool,
+}
+
+impl Default for SmartHighlighting {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            match_case: false,
+            whole_word: true,
+            use_find_options: false,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, rename_all = "kebab-case")]
+pub struct TokenMatching {
+    pub match_case: bool,
+    pub whole_word: bool,
+}
+
+impl Default for TokenMatching {
+    fn default() -> Self {
+        Self {
+            match_case: false,
+            whole_word: true,
         }
     }
 }

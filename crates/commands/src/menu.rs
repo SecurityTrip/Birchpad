@@ -331,6 +331,38 @@ pub fn main_menu() -> Vec<Menu> {
         ],
     );
 
+    const ORDINALS: [&str; 5] = ["1st", "2nd", "3rd", "4th", "5th"];
+    let styles = |command: &str, label: &dyn Fn(&str) -> String| {
+        ORDINALS
+            .iter()
+            .enumerate()
+            .map(|(index, ordinal)| {
+                MenuItem::command_with(command, json!({ "style": index + 1 }), &label(ordinal))
+            })
+            .collect::<Vec<_>>()
+    };
+    let using = |ordinal: &str| format!("Using {ordinal} Style");
+    let plain = |ordinal: &str| format!("{ordinal} Style");
+    let mut clear = styles("mark.clear", &|ordinal| format!("Clear {ordinal} Style"));
+    clear.push(cmd("mark.clear-all"));
+    let mut jump_up = styles("mark.jump-up", &plain);
+    jump_up.push(MenuItem::command_with(
+        "mark.jump-up",
+        json!({}),
+        "Any Style",
+    ));
+    let mut jump_down = styles("mark.jump-down", &plain);
+    jump_down.push(MenuItem::command_with(
+        "mark.jump-down",
+        json!({}),
+        "Any Style",
+    ));
+    let mut copy_styled = styles("mark.copy-styled-text", &plain);
+    copy_styled.push(MenuItem::command_with(
+        "mark.copy-styled-text",
+        json!({}),
+        "All Styles",
+    ));
     let search = Menu::new(
         "Search",
         vec![
@@ -342,6 +374,35 @@ pub fn main_menu() -> Vec<Menu> {
             cmd("search.go-to"),
             cmd("search.go-to-matching-brace"),
             cmd("search.select-to-matching-brace"),
+            Separator,
+            Submenu(Menu::new(
+                "Style All Occurrences of Token",
+                styles("mark.style-all", &using),
+            )),
+            Submenu(Menu::new(
+                "Style One Token",
+                styles("mark.style-one", &using),
+            )),
+            Submenu(Menu::new("Clear Style", clear)),
+            Submenu(Menu::new("Jump Up", jump_up)),
+            Submenu(Menu::new("Jump Down", jump_down)),
+            Submenu(Menu::new("Copy Styled Text", copy_styled)),
+            Separator,
+            Submenu(Menu::new(
+                "Bookmark",
+                vec![
+                    cmd("bookmark.toggle"),
+                    cmd("bookmark.next"),
+                    cmd("bookmark.previous"),
+                    cmd("bookmark.clear-all"),
+                    cmd("bookmark.cut-lines"),
+                    cmd("bookmark.copy-lines"),
+                    cmd("bookmark.paste-to-lines"),
+                    cmd("bookmark.remove-lines"),
+                    cmd("bookmark.remove-unmarked-lines"),
+                    cmd("bookmark.inverse"),
+                ],
+            )),
         ],
     );
 

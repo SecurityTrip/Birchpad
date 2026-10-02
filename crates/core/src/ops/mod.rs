@@ -8,6 +8,7 @@ mod case;
 mod column;
 mod comment;
 mod lines;
+mod marks;
 mod multi;
 mod sort;
 
@@ -26,6 +27,9 @@ pub use case::{Case, convert_case};
 pub use column::{Base, Leading, NumberSequence, format_number, insert_rows, parse_number};
 pub use comment::{CommentTokens, block_comment, comment_lines, toggle_comment, uncomment_lines};
 pub use lines::{delete_lines, duplicate, insert_blank_line, join_lines, move_lines, split_lines};
+pub use marks::{
+    copy_lines, copy_ranges, other_lines, remove_lines, remove_other_lines, replace_lines,
+};
 pub use multi::{MatchOptions, select_all, select_next, skip_to_next};
 pub use sort::{
     SortError, SortKey, remove_duplicate_lines, remove_empty_lines, reverse_lines, shuffle_lines,

@@ -63,7 +63,12 @@ What Phase 1 left for later is marked *(from Phase 1)* in the phases below.
       Next and All, Undo the Latest Added, Skip Current; Esc back to one caret; Begin/End
       Select in both modes; Column Editor with text or numbers (dec, hex, oct, bin; leading
       zeros or spaces) as one undo step ([ADR 0013](adr/0013-multi-editing-and-columns.md))
-- Smart highlighting, Mark with 5 styles, bookmarks and bookmarked-line operations
+- [x] Smart highlighting of the selected word in the visible text (settings as in Notepad++,
+      off over the large file limit); Style All Occurrences of Token and Style One Token with
+      5 styles, Clear Style, Jump Up/Down, Copy Styled Text; bookmarks (Ctrl+F2, F2,
+      Shift+F2) and Cut/Copy/Paste to/Remove bookmarked lines, Remove Unmarked Lines,
+      Inverse Bookmark, each one undo step; shifted-digit key bindings on Linux
+      ([ADR 0014](adr/0014-smart-highlighting-token-styles-and-bookmarks.md))
 - [x] Line operations: duplicate, delete, move, insert blank line, join, split; sort
       (lexicographic, ignoring case, as integers, as decimals with comma or dot, by length;
       ascending and descending), reverse, randomize; remove duplicate, consecutive duplicate
