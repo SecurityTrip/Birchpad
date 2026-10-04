@@ -239,4 +239,24 @@ mod tests {
         assert!(highlighting.token_style.match_case);
         assert!(resolved.diagnostics.is_empty());
     }
+
+    #[test]
+    fn edge_and_current_line_settings() {
+        use crate::settings::{CurrentLine, Edge};
+        let resolved = resolve(Sources {
+            user: table(
+                "editor.edge = 'line'\neditor.edge-columns = [80, 120]\n\
+                 editor.current-line = 'frame'\neditor.edge-column = 72",
+            ),
+            ..Sources::default()
+        });
+        let editor = &resolved.settings.editor;
+        assert_eq!(editor.edge, Edge::Line);
+        assert_eq!(editor.edge_columns, [80, 120]);
+        assert_eq!(editor.current_line, CurrentLine::Frame);
+        assert!(editor.indent_guides, "on by default, as in Notepad++");
+        assert!(!editor.show_whitespace && !editor.show_eol && !editor.wrap_symbol);
+        // The edge-column of earlier versions is ignored like any unknown key.
+        assert!(resolved.diagnostics.is_empty());
+    }
 }

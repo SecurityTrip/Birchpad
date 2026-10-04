@@ -12,6 +12,7 @@ mod marks;
 mod multi;
 mod operations;
 mod smart_highlight;
+mod symbols;
 pub(crate) mod theme;
 
 use std::ops::Range as ByteRange;
@@ -30,7 +31,7 @@ use gpui_kit::{
 use serde::Deserialize;
 
 use birchpad_cli::CaretTarget;
-use birchpad_config::AutoIndent;
+use birchpad_config::{AutoIndent, CurrentLine, Edge};
 
 use crate::app_state::AppState;
 use crate::buffer::{Buffer, BufferEvent, ReadOnly};
@@ -232,7 +233,7 @@ enum Drag {
 }
 
 /// The view-related settings, read from the application state on every frame.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub(crate) struct ViewSettings {
     pub(crate) tab_width: usize,
     pub(crate) insert_spaces: bool,
@@ -241,6 +242,15 @@ pub(crate) struct ViewSettings {
     pub(crate) line_numbers: bool,
     pub(crate) bookmark_margin: bool,
     pub(crate) fold_margin: bool,
+    /// View > Show Symbol.
+    pub(crate) show_whitespace: bool,
+    pub(crate) show_eol: bool,
+    pub(crate) indent_guides: bool,
+    pub(crate) wrap_symbol: bool,
+    pub(crate) current_line: CurrentLine,
+    pub(crate) current_line_frame_width: Pixels,
+    pub(crate) edge: Edge,
+    pub(crate) edge_columns: Vec<usize>,
 }
 
 impl ViewSettings {
@@ -256,6 +266,31 @@ impl ViewSettings {
             line_numbers: editor.line_numbers,
             bookmark_margin: editor.bookmark_margin,
             fold_margin: editor.fold_margin,
+            show_whitespace: app.state.show_whitespace.unwrap_or(editor.show_whitespace),
+            show_eol: app.state.show_eol.unwrap_or(editor.show_eol),
+            indent_guides: app.state.indent_guides.unwrap_or(editor.indent_guides),
+            wrap_symbol: app.state.wrap_symbol.unwrap_or(editor.wrap_symbol),
+            current_line: editor.current_line,
+            current_line_frame_width: px(f32::from(editor.current_line_frame_width.clamp(1, 6))),
+            edge: if editor.edge_columns.is_empty() {
+                Edge::Off
+            } else {
+                editor.edge
+            },
+            edge_columns: editor
+                .edge_columns
+                .iter()
+                .map(|&c| usize::from(c))
+                .collect(),
+        }
+    }
+
+    /// The column where Split Lines breaks lines: the first edge column while the edge is
+    /// shown, as in Notepad++.
+    pub(crate) fn split_column(&self) -> Option<usize> {
+        match self.edge {
+            Edge::Off => None,
+            Edge::Line | Edge::Background => self.edge_columns.first().copied(),
         }
     }
 }
@@ -460,7 +495,7 @@ impl EditorView {
         });
     }
 
-    /// Zoom or word wrap changed: keep the caret in view after the relayout.
+    /// Zoom, word wrap or Show Symbol changed: keep the caret in view after the relayout.
     pub(crate) fn settings_changed(&mut self, cx: &mut Context<Self>) {
         self.scroll_width = px(0.);
         self.request_autoscroll(cx);
@@ -479,6 +514,11 @@ impl EditorView {
         self.layout.as_ref().map_or(30, |layout| {
             layout.full_rows.saturating_sub(1).max(1) as isize
         })
+    }
+
+    /// Columns that fit across the text, as of the last frame.
+    fn visible_columns(&self) -> Option<usize> {
+        self.layout.as_ref().map(Layout::text_columns)
     }
 
     // --- Moving carets -------------------------------------------------------------------------

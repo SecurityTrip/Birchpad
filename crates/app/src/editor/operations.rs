@@ -8,7 +8,6 @@ use gpui_kit::Context;
 use serde::Deserialize;
 
 use super::{EditorView, LastEdit, ViewSettings};
-use crate::app_state::AppState;
 use crate::commands::CommandRegistry;
 
 #[derive(Deserialize)]
@@ -119,7 +118,11 @@ pub(super) fn register_commands(registry: &mut CommandRegistry) {
         Ok(())
     });
     registry.editor("edit.split-lines", |this, (), _, cx| {
-        let width = usize::from(AppState::global(cx).settings.editor.edge_column);
+        // At the edge while it is shown, else at the width of the view, as in Notepad++.
+        let width = ViewSettings::read(cx)
+            .split_column()
+            .or_else(|| this.visible_columns())
+            .unwrap_or(80);
         this.run_op(cx, |text, selection, eol| {
             ops::split_lines(text, selection, width, eol)
         });

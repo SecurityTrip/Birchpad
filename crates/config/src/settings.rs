@@ -29,8 +29,46 @@ pub struct EditorSettings {
     pub fold_margin: bool,
     /// What Enter does with indentation.
     pub auto_indent: AutoIndent,
-    /// The edge column: where Split Lines breaks lines (and, later, where the edge is drawn).
-    pub edge_column: u16,
+    /// View > Show Symbol as Birchpad starts; the menu toggles them (remembered in
+    /// `state.toml`, like word wrap).
+    pub show_whitespace: bool,
+    pub show_eol: bool,
+    pub indent_guides: bool,
+    pub wrap_symbol: bool,
+    /// How the line of the caret stands out.
+    pub current_line: CurrentLine,
+    /// Width of the frame around the current line in pixels (1 to 6), as in Notepad++.
+    pub current_line_frame_width: u8,
+    /// The vertical edge, as in Notepad++'s Preferences > Margins/Border/Edge.
+    pub edge: Edge,
+    /// Columns of the edge: a line at each in line mode, the first one in background mode.
+    /// Split Lines breaks lines at the first one while the edge is shown, else at the width of
+    /// the view.
+    pub edge_columns: Vec<u16>,
+}
+
+/// Notepad++'s current line indicator.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum CurrentLine {
+    Off,
+    /// A background across the whole line.
+    #[default]
+    Background,
+    /// A frame around the line.
+    Frame,
+}
+
+/// Notepad++'s vertical edge modes.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum Edge {
+    #[default]
+    Off,
+    /// A vertical line at each edge column.
+    Line,
+    /// Text past the first edge column gets the edge color as its background.
+    Background,
 }
 
 /// Notepad++'s auto-indent modes.
@@ -57,7 +95,14 @@ impl Default for EditorSettings {
             bookmark_margin: true,
             fold_margin: true,
             auto_indent: AutoIndent::default(),
-            edge_column: 80,
+            show_whitespace: false,
+            show_eol: false,
+            indent_guides: true,
+            wrap_symbol: false,
+            current_line: CurrentLine::default(),
+            current_line_frame_width: 1,
+            edge: Edge::default(),
+            edge_columns: vec![80],
         }
     }
 }

@@ -413,18 +413,21 @@ pub fn main_menu() -> Vec<Menu> {
             })
             .collect::<Vec<_>>()
     };
+    // In Notepad++'s order.
     let view = Menu::new(
         "View",
         vec![
-            cmd("view.word-wrap"),
-            Separator,
-            cmd("view.fold-all"),
-            cmd("view.unfold-all"),
-            cmd("view.fold-current"),
-            cmd("view.unfold-current"),
-            Submenu(Menu::new("Collapse Level", level("view.fold-level"))),
-            Submenu(Menu::new("Uncollapse Level", level("view.unfold-level"))),
-            Separator,
+            Submenu(Menu::new(
+                "Show Symbol",
+                vec![
+                    cmd("view.show-whitespace"),
+                    cmd("view.show-eol"),
+                    cmd("view.show-all-characters"),
+                    Separator,
+                    cmd("view.indent-guides"),
+                    cmd("view.wrap-symbol"),
+                ],
+            )),
             Submenu(Menu::new(
                 "Zoom",
                 vec![
@@ -437,6 +440,14 @@ pub fn main_menu() -> Vec<Menu> {
                 "Tab",
                 vec![cmd("view.next-tab"), cmd("view.previous-tab")],
             )),
+            cmd("view.word-wrap"),
+            Separator,
+            cmd("view.fold-all"),
+            cmd("view.unfold-all"),
+            cmd("view.fold-current"),
+            cmd("view.unfold-current"),
+            Submenu(Menu::new("Collapse Level", level("view.fold-level"))),
+            Submenu(Menu::new("Uncollapse Level", level("view.unfold-level"))),
         ],
     );
 

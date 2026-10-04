@@ -203,6 +203,11 @@ pub const COMMANDS: &[CommandSpec] = &[
     editor("bookmark.remove-unmarked-lines", "Remove Unmarked Lines"),
     editor("bookmark.inverse", "Inverse Bookmark"),
     // View
+    workspace("view.show-whitespace", "Show Space and Tab"),
+    workspace("view.show-eol", "Show End of Line"),
+    workspace("view.show-all-characters", "Show All Characters"),
+    workspace("view.indent-guides", "Show Indent Guide"),
+    workspace("view.wrap-symbol", "Show Wrap Symbol"),
     workspace("view.word-wrap", "Word Wrap"),
     editor("view.fold-all", "Fold All"),
     editor("view.unfold-all", "Unfold All"),

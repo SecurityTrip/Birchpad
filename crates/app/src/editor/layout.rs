@@ -14,6 +14,7 @@ use gpui_kit::{
     ShapedLine, TextRun, UnderlineStyle, Window, font, point, px, rgb, size,
 };
 
+use super::symbols::Symbols;
 use super::theme::{self, Paint, TextStyle};
 use super::{EditorView, ViewSettings};
 
@@ -177,6 +178,8 @@ pub(super) struct Layout {
     pub(super) carets: Vec<Bounds<Pixels>>,
     pub(super) vertical_bar: Option<Scrollbar>,
     pub(super) horizontal_bar: Option<Scrollbar>,
+    /// Show Symbol, the edge and the current line.
+    pub(super) symbols: Symbols,
     pub(super) total_rows: usize,
     /// Rows that fit completely.
     pub(super) full_rows: usize,
@@ -208,7 +211,11 @@ impl EditorView {
 
         let wrap_width = settings.word_wrap.then(|| {
             let usable = text_bounds.size.width - TEXT_PADDING * 2.;
-            ((usable / cell).floor() as usize).max(8)
+            // The wrap symbol takes the last column.
+            let symbol = usize::from(settings.wrap_symbol);
+            ((usable / cell).floor() as usize)
+                .saturating_sub(symbol)
+                .max(8)
         });
         self.update_display_config(
             &text,
@@ -354,6 +361,7 @@ impl EditorView {
             carets: Vec::new(),
             vertical_bar: None,
             horizontal_bar: None,
+            symbols: Symbols::default(),
             total_rows,
             full_rows,
         };
@@ -362,6 +370,7 @@ impl EditorView {
         layout.decorations = self.decoration_bounds(&layout, &text, cx);
         layout.selections = self.selection_bounds(&layout, &text);
         layout.carets = self.caret_bounds(&layout, &text);
+        self.layout_symbols(&mut layout, &text, &settings, window);
         layout.vertical_bar = vertical_scrollbar(bounds, &layout, self.scroll_top);
         if show_horizontal {
             layout.horizontal_bar = Some(horizontal_scrollbar(
@@ -540,7 +549,13 @@ impl EditorView {
 
     /// x of `pos` in `row`, from the shaped text or, outside the shaped part of a long row, from
     /// its column.
-    fn x_in_row(&mut self, layout: &Layout, row: &VisibleRow, pos: usize, text: &Rope) -> Pixels {
+    pub(super) fn x_in_row(
+        &mut self,
+        layout: &Layout,
+        row: &VisibleRow,
+        pos: usize,
+        text: &Rope,
+    ) -> Pixels {
         row.x_for(pos).unwrap_or_else(|| {
             let column = self.display.column(text, pos) - row.row.start_column;
             layout.column_zero + layout.metrics.cell * column as f32
@@ -824,6 +839,12 @@ impl EditorView {
 }
 
 impl Layout {
+    /// Columns that fit across the text area.
+    pub(super) fn text_columns(&self) -> usize {
+        let usable = self.text_bounds.size.width - TEXT_PADDING * 2.;
+        ((usable / self.metrics.cell).floor() as usize).max(1)
+    }
+
     /// The visible row at window y, if any.
     pub(super) fn row_at_y(&self, y: Pixels) -> Option<&VisibleRow> {
         self.rows

@@ -7,6 +7,7 @@ use std::path::Path;
 use anyhow::Result;
 use birchpad_cli::CommandLine;
 use birchpad_commands::Invocation;
+use birchpad_config::UserState;
 use birchpad_core::Document;
 use gpui_kit::component::WindowExt as _;
 use gpui_kit::component::button::Button;
@@ -21,7 +22,7 @@ use gpui_kit::{
 use crate::app_state::AppState;
 use crate::buffer::{Buffer, BufferEvent};
 use crate::commands::{CommandRegistry, Handler, RunCommand};
-use crate::editor::EditorView;
+use crate::editor::{EditorView, ViewSettings};
 use crate::find::FindBar;
 use crate::menus::{self, MenuState};
 use crate::pane::{Pane, PaneEvent};
@@ -42,9 +43,21 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
             .update(cx, |pane, cx| pane.cycle(-1, window, cx));
         Ok(())
     });
-    registry.workspace("view.word-wrap", |this, (), _, cx| {
-        let current = crate::editor::ViewSettings::read(cx).word_wrap;
-        AppState::update_state(cx, |state, _| state.word_wrap = Some(!current));
+    for &(id, read, write) in VIEW_SWITCHES {
+        registry.workspace(id, move |this, (), _, cx| {
+            let on = !read(&ViewSettings::read(cx));
+            AppState::update_state(cx, |state, _| write(state, on));
+            this.refresh_views(cx);
+            Ok(())
+        });
+    }
+    // Checked when both are shown; turns both on, or both off if they are.
+    registry.workspace("view.show-all-characters", |this, (), _, cx| {
+        let on = !all_characters(&ViewSettings::read(cx));
+        AppState::update_state(cx, |state, _| {
+            state.show_whitespace = Some(on);
+            state.show_eol = Some(on);
+        });
         this.refresh_views(cx);
         Ok(())
     });
@@ -84,6 +97,45 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
     crate::file_ops::register_commands(registry);
     crate::find::register_commands(registry);
     crate::help::register_commands(registry);
+}
+
+/// View menu switches kept in `state.toml`: command, current value, how to remember a new one.
+type ViewSwitch = (
+    &'static str,
+    fn(&ViewSettings) -> bool,
+    fn(&mut UserState, bool),
+);
+
+const VIEW_SWITCHES: &[ViewSwitch] = &[
+    (
+        "view.word-wrap",
+        |view| view.word_wrap,
+        |state, on| state.word_wrap = Some(on),
+    ),
+    (
+        "view.show-whitespace",
+        |view| view.show_whitespace,
+        |state, on| state.show_whitespace = Some(on),
+    ),
+    (
+        "view.show-eol",
+        |view| view.show_eol,
+        |state, on| state.show_eol = Some(on),
+    ),
+    (
+        "view.indent-guides",
+        |view| view.indent_guides,
+        |state, on| state.indent_guides = Some(on),
+    ),
+    (
+        "view.wrap-symbol",
+        |view| view.wrap_symbol,
+        |state, on| state.wrap_symbol = Some(on),
+    ),
+];
+
+fn all_characters(view: &ViewSettings) -> bool {
+    view.show_whitespace && view.show_eol
 }
 
 #[derive(serde::Deserialize)]
@@ -447,7 +499,7 @@ impl Workspace {
         }
     }
 
-    /// Redraws every editor after a view setting (zoom, word wrap) changed.
+    /// Redraws every editor after a view setting (zoom, word wrap, Show Symbol) changed.
     fn refresh_views(&mut self, cx: &mut Context<Self>) {
         for view in self.all_views(cx) {
             view.update(cx, |view, cx| view.settings_changed(cx));
@@ -469,10 +521,16 @@ impl Workspace {
                 .map_or("text", |l| l.id)
         });
         let ansi = AppState::global(cx).ansi;
-        let word_wrap = crate::editor::ViewSettings::read(cx).word_wrap;
+        let view = ViewSettings::read(cx);
         let checked = |invocation: &Invocation| {
-            if invocation.command == "view.word-wrap" {
-                return word_wrap;
+            if let Some((_, read, _)) = VIEW_SWITCHES
+                .iter()
+                .find(|(id, _, _)| *id == invocation.command)
+            {
+                return read(&view);
+            }
+            if invocation.command == "view.show-all-characters" {
+                return all_characters(&view);
             }
             if invocation.command == "language.set" {
                 return invocation.args.get("language").and_then(|id| id.as_str()) == language;

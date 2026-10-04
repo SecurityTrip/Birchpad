@@ -43,6 +43,19 @@ pub(crate) const FOLD_LINE: u32 = 0xc4c9cf;
 /// The line under a collapsed fold's header.
 pub(crate) const FOLD_UNDERLINE: u32 = 0x9aa1a9;
 
+/// View > Show Symbol: dots for spaces, arrows for tabs and the wrap symbol, in Notepad++'s
+/// orange ("White space symbol").
+pub(crate) const WHITESPACE: u32 = 0xffb56a;
+/// View > Show End of Line: the boxes and their labels.
+pub(crate) const EOL_BOX: u32 = 0xdadada;
+pub(crate) const EOL_TEXT: u32 = 0x57606a;
+/// Indentation guides ("Indent guideline style").
+pub(crate) const INDENT_GUIDE: u32 = 0xc0c0c0;
+/// The vertical edge, as a line or a background ("Edge colour").
+pub(crate) const EDGE: u32 = 0x80ffff;
+/// The current line's background or frame ("Current line background colour").
+pub(crate) const CURRENT_LINE: u32 = 0xe8e8ff;
+
 /// How highlighted text looks.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) struct TextStyle {

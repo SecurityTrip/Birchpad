@@ -22,6 +22,15 @@ pub struct UserState {
     /// View > Word Wrap as last toggled; unset means `editor.word-wrap` from the settings.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub word_wrap: Option<bool>,
+    /// View > Show Symbol as last toggled; unset means the `editor.*` setting of the same name.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub show_whitespace: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub show_eol: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub indent_guides: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub wrap_symbol: Option<bool>,
 }
 
 impl UserState {

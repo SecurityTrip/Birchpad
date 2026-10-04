@@ -169,6 +169,29 @@ impl DisplayText {
         }
         (self.doc_start as isize + offset as isize - delta) as usize
     }
+
+    /// The characters of the range in order: document position, character and display range.
+    /// One pass, unlike calling [`Self::to_display`] for each.
+    pub fn chars<'a>(
+        &'a self,
+        text: &'a Rope,
+    ) -> impl Iterator<Item = (usize, char, Range<usize>)> + 'a {
+        let mut substitutions = self.substitutions.iter().peekable();
+        let mut pos = self.doc_start;
+        let mut offset = 0;
+        text.slice(self.doc_start..self.doc_end())
+            .chars()
+            .map(move |ch| {
+                let start = pos;
+                pos += ch.len_utf8();
+                let display = match substitutions.next_if(|(doc, _)| doc.start == start) {
+                    Some((_, display)) => display.clone(),
+                    None => offset..offset + ch.len_utf8(),
+                };
+                offset = display.end;
+                (start, ch, display)
+            })
+    }
 }
 
 #[cfg(test)]
@@ -205,6 +228,26 @@ mod tests {
         assert_eq!(display.to_doc(4), 2);
         assert_eq!(display.to_doc(12), 7);
         assert_eq!(display.doc_end(), 7);
+    }
+
+    #[test]
+    fn display_text_characters_in_one_pass() {
+        let text = Rope::from_str("xa\tж\0b");
+        let display = DisplayText::new(&text, 1..text.len(), 1, 4);
+        let chars: Vec<_> = display.chars(&text).collect();
+        assert_eq!(
+            chars,
+            [
+                (1, 'a', 0..1),
+                (2, '\t', 1..3),
+                (3, 'ж', 3..5),
+                (5, '\0', 5..8),
+                (6, 'b', 8..9)
+            ]
+        );
+        for (pos, _, range) in chars {
+            assert_eq!(display.to_display(pos), range.start);
+        }
     }
 
     #[test]

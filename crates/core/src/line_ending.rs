@@ -48,6 +48,25 @@ impl LineEnding {
         }
         None
     }
+
+    /// The line break that starts at byte `pos`, if any (what View > Show End of Line labels).
+    pub fn at(text: &Rope, pos: usize) -> Option<Self> {
+        match text.get_byte(pos)? {
+            b'\n' => Some(Self::Lf),
+            b'\r' if text.get_byte(pos + 1) == Some(b'\n') => Some(Self::CrLf),
+            b'\r' => Some(Self::Cr),
+            _ => None,
+        }
+    }
+
+    /// How View > Show End of Line labels the line break.
+    pub const fn label(self) -> &'static str {
+        match self {
+            Self::CrLf => "CRLF",
+            Self::Lf => "LF",
+            Self::Cr => "CR",
+        }
+    }
 }
 
 /// Edits that turn every line break of `text` (CRLF, LF or CR) into `target`.
@@ -113,6 +132,17 @@ mod tests {
         );
         assert_eq!(convert(mixed, LineEnding::Cr), "a\rb\rc\rd\r\re\r");
         assert!(convert_line_breaks(&Rope::from_str("x\ny\n"), LineEnding::Lf).is_empty());
+    }
+
+    #[test]
+    fn line_break_at_a_position() {
+        let text = Rope::from_str("a\r\nb\nc\rd");
+        assert_eq!(LineEnding::at(&text, 0), None);
+        assert_eq!(LineEnding::at(&text, 1), Some(LineEnding::CrLf));
+        assert_eq!(LineEnding::at(&text, 4), Some(LineEnding::Lf));
+        assert_eq!(LineEnding::at(&text, 6), Some(LineEnding::Cr));
+        assert_eq!(LineEnding::at(&text, 8), None, "end of text");
+        assert_eq!(LineEnding::CrLf.label(), "CRLF");
     }
 
     #[test]

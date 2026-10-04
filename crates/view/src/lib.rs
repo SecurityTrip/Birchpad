@@ -9,6 +9,7 @@ mod block;
 mod cells;
 mod display_map;
 mod folding;
+mod guides;
 mod wrap;
 
 pub use block::{Block, BlockPoint};
@@ -19,4 +20,5 @@ pub use display_map::{DisplayMap, LayoutConfig, Row};
 pub use folding::{
     Fold, fold_at, folds_from_ranges, hidden_lines, innermost_containing, shift_folds,
 };
+pub use guides::{indent_guides, indentation};
 pub use wrap::{row_count, wrap_line};

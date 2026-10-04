@@ -76,7 +76,10 @@ What Phase 1 left for later is marked *(from Phase 1)* in the phases below.
       lower, proper, sentence, invert, random); line and block comments by the language's
       tokens. All in `birchpad_core::ops`, one undo step each, with Notepad++'s keys
 - [x] Sorting by the columns of a rectangular selection
-- Show whitespace and line endings, indentation guides, edge column
+- [x] View > Show Symbol: spaces and tabs, line endings (CR, LF, CRLF), Show All Characters,
+      indentation guides, wrap symbol; the vertical edge (lines at several columns, or a
+      background past one); the current line as a background or a frame; Split Lines at the
+      edge or the view width ([ADR 0015](adr/0015-show-symbol-edge-and-current-line.md))
 - Split view, clone document to the other view, synchronized scrolling
 - Sessions and periodic backup of unsaved changes (`-nosession` already accepted); they also
   cover quitting from the macOS Dock, which bypasses the unsaved-changes prompt today

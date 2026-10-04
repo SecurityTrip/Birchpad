@@ -14,8 +14,8 @@ pub use layers::{Diagnostic, Layer, ResolvedSettings, Sources, resolve};
 pub use load::{ConfigPaths, PORTABLE_DATA_DIR, PORTABLE_MARKER, load, load_platform_settings};
 pub use policy::{POLICIES, PolicyDef, PolicyKind, REGISTRY_KEY};
 pub use settings::{
-    AutoIndent, DiagnosticsSettings, EditorSettings, FileSettings, HighlightingSettings,
-    NetworkSettings, PluginInstall, PluginSettings, SessionSettings, Settings, SmartHighlighting,
-    TokenMatching, UpdateChannel, UpdateMode, UpdateSettings,
+    AutoIndent, CurrentLine, DiagnosticsSettings, Edge, EditorSettings, FileSettings,
+    HighlightingSettings, NetworkSettings, PluginInstall, PluginSettings, SessionSettings,
+    Settings, SmartHighlighting, TokenMatching, UpdateChannel, UpdateMode, UpdateSettings,
 };
 pub use state::{MAX_RECENT_FILES, UserState};
