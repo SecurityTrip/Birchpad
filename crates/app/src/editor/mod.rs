@@ -24,9 +24,9 @@ use birchpad_core::{
 };
 use birchpad_view::{Block, BlockPoint, DisplayMap, LayoutConfig, tab_advance};
 use gpui_kit::{
-    App, Bounds, ClipboardItem, Context, Entity, EntityInputHandler, FocusHandle, Focusable,
-    MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, Pixels, Point, ScrollWheelEvent,
-    Subscription, Task, UTF16Selection, Window, div, point, prelude::*, px, rgb,
+    App, Bounds, ClipboardItem, Context, Entity, EntityInputHandler, EventEmitter, FocusHandle,
+    Focusable, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, Pixels, Point,
+    ScrollWheelEvent, Subscription, Task, UTF16Selection, Window, div, point, prelude::*, px, rgb,
 };
 use serde::Deserialize;
 
@@ -302,6 +302,22 @@ struct WrapJob {
     _task: Task<()>,
 }
 
+/// What a view tells the workspace.
+pub(crate) enum EditorEvent {
+    /// The view scrolled by this many rows and pixels since the last frame (for synchronized
+    /// scrolling).
+    Scrolled { rows: f64, x: Pixels },
+}
+
+/// Where a view is in its buffer: what Clone to Other View copies.
+#[derive(Debug, Clone)]
+pub(crate) struct ViewState {
+    selection: Selection,
+    scroll_top: f64,
+    scroll_left: Pixels,
+    collapsed: LineMarkers,
+}
+
 pub(crate) struct EditorView {
     pub(crate) focus_handle: FocusHandle,
     pub(crate) buffer: Entity<Buffer>,
@@ -345,8 +361,14 @@ pub(crate) struct EditorView {
     multi_order: Option<(Vec<Range>, Selection)>,
     /// Begin/End Select: where the first invocation put the start, and in which mode.
     begin_select: Option<multi::BeginSelect>,
+    /// The scroll position of the last frame, to report scrolling.
+    last_scroll: Option<(f64, Pixels)>,
+    /// The current scroll came from the other view: do not report it back.
+    synced_scroll: bool,
     _subscriptions: Vec<Subscription>,
 }
+
+impl EventEmitter<EditorEvent> for EditorView {}
 
 impl EditorView {
     pub(crate) fn new(
@@ -441,7 +463,64 @@ impl EditorView {
             block: None,
             multi_order: None,
             begin_select: None,
+            last_scroll: None,
+            synced_scroll: false,
             _subscriptions: vec![events],
+        }
+    }
+
+    pub(crate) fn view_state(&self) -> ViewState {
+        ViewState {
+            selection: self.selection.clone(),
+            scroll_top: self.scroll_top,
+            scroll_left: self.scroll_left,
+            collapsed: self.collapsed.clone(),
+        }
+    }
+
+    /// Puts the view where `state` says, as another view of the same text was.
+    pub(crate) fn restore(&mut self, state: ViewState, cx: &mut Context<Self>) {
+        self.selection = state.selection;
+        self.scroll_top = state.scroll_top;
+        self.scroll_left = state.scroll_left;
+        self.collapsed = state.collapsed;
+        self.autoscroll = false;
+        cx.notify();
+    }
+
+    /// Where the text was drawn in the last frame.
+    #[cfg(test)]
+    pub(crate) fn bounds(&self) -> Option<Bounds<Pixels>> {
+        self.layout.as_ref().map(|layout| layout.text_bounds)
+    }
+
+    /// The first visible row and the horizontal scroll offset.
+    #[cfg(test)]
+    pub(crate) fn scroll_position(&self) -> (f64, Pixels) {
+        (self.scroll_top, self.scroll_left)
+    }
+
+    /// Scrolls along with the other view (synchronized scrolling).
+    pub(crate) fn scroll_by(&mut self, rows: f64, x: Pixels, cx: &mut Context<Self>) {
+        self.scroll_top = (self.scroll_top + rows).max(0.);
+        self.scroll_left = (self.scroll_left + x).max(px(0.));
+        self.synced_scroll = true;
+        cx.notify();
+    }
+
+    /// Reports how far the view scrolled since the last frame, unless the scroll came from the
+    /// other view.
+    fn report_scroll(&mut self, cx: &mut Context<Self>) {
+        let position = (self.scroll_top, self.scroll_left);
+        let synced = std::mem::take(&mut self.synced_scroll);
+        if let Some(last) = self.last_scroll.replace(position)
+            && last != position
+            && !synced
+        {
+            cx.emit(EditorEvent::Scrolled {
+                rows: position.0 - last.0,
+                x: position.1 - last.1,
+            });
         }
     }
 

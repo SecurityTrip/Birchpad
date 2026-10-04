@@ -18,4 +18,4 @@ pub use settings::{
     HighlightingSettings, NetworkSettings, PluginInstall, PluginSettings, SessionSettings,
     Settings, SmartHighlighting, TokenMatching, UpdateChannel, UpdateMode, UpdateSettings,
 };
-pub use state::{MAX_RECENT_FILES, UserState};
+pub use state::{MAX_RECENT_FILES, SplitOrientation, UserState};

@@ -326,6 +326,10 @@ keys = "ctrl-pageup"
 command = "view.previous-tab"
 
 [[binding]]
+keys = "f8"
+command = "view.focus-other-view"
+
+[[binding]]
 keys = "ctrl-shift-tab"
 command = "view.previous-tab"
 

@@ -24,6 +24,8 @@ mod language_tests;
 mod menus;
 mod pane;
 mod path_dialog;
+#[cfg(test)]
+mod split_tests;
 mod status_bar;
 mod workspace;
 

@@ -31,6 +31,28 @@ pub struct UserState {
     pub indent_guides: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub wrap_symbol: Option<bool>,
+    /// How split view places the two views, as last rotated.
+    pub split: SplitOrientation,
+}
+
+/// How split view places its two views.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum SplitOrientation {
+    /// Side by side, Notepad++'s default.
+    #[default]
+    SideBySide,
+    /// One above the other.
+    Stacked,
+}
+
+impl SplitOrientation {
+    pub fn rotated(self) -> Self {
+        match self {
+            Self::SideBySide => Self::Stacked,
+            Self::Stacked => Self::SideBySide,
+        }
+    }
 }
 
 impl UserState {

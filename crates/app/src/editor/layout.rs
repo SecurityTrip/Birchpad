@@ -380,6 +380,7 @@ impl EditorView {
             ));
         }
         self.layout = Some(layout);
+        self.report_scroll(cx);
     }
 
     /// Applies a new tab width or wrap width. Large documents are rewrapped in the background;

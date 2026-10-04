@@ -209,6 +209,18 @@ pub const COMMANDS: &[CommandSpec] = &[
     workspace("view.indent-guides", "Show Indent Guide"),
     workspace("view.wrap-symbol", "Show Wrap Symbol"),
     workspace("view.word-wrap", "Word Wrap"),
+    workspace("view.move-to-other-view", "Move to Other View"),
+    workspace("view.clone-to-other-view", "Clone to Other View"),
+    workspace("view.focus-other-view", "Focus on Another View"),
+    workspace("view.rotate-split", "Rotate Split View"),
+    workspace(
+        "view.sync-vertical-scroll",
+        "Synchronize Vertical Scrolling",
+    ),
+    workspace(
+        "view.sync-horizontal-scroll",
+        "Synchronize Horizontal Scrolling",
+    ),
     editor("view.fold-all", "Fold All"),
     editor("view.unfold-all", "Unfold All"),
     editor("view.fold-current", "Collapse Current Level"),

@@ -80,7 +80,10 @@ What Phase 1 left for later is marked *(from Phase 1)* in the phases below.
       indentation guides, wrap symbol; the vertical edge (lines at several columns, or a
       background past one); the current line as a background or a frame; Split Lines at the
       edge or the view width ([ADR 0015](adr/0015-show-symbol-edge-and-current-line.md))
-- Split view, clone document to the other view, synchronized scrolling
+- [x] Split view: main and second views side by side or stacked (Rotate Split View), a
+      draggable divider; Move and Clone to Other View, one buffer in two independent views;
+      tabs dragged between and within views; Focus on Another View (F8); synchronized vertical
+      and horizontal scrolling ([ADR 0016](adr/0016-split-view.md))
 - Sessions and periodic backup of unsaved changes (`-nosession` already accepted); they also
   cover quitting from the macOS Dock, which bypasses the unsaved-changes prompt today
   *(from Phase 1)*

@@ -93,6 +93,12 @@ impl EditorView {
         }
     }
 
+    /// Headers of the collapsed folds.
+    #[cfg(test)]
+    pub(crate) fn collapsed_lines(&self, cx: &App) -> Vec<usize> {
+        self.collapsed.lines(self.text(cx))
+    }
+
     pub(super) fn is_collapsed(&self, line: usize, cx: &App) -> bool {
         self.collapsed.contains(self.text(cx), line)
     }

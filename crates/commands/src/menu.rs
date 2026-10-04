@@ -437,10 +437,19 @@ pub fn main_menu() -> Vec<Menu> {
                 ],
             )),
             Submenu(Menu::new(
+                "Move/Clone Current Document",
+                vec![
+                    cmd("view.move-to-other-view"),
+                    cmd("view.clone-to-other-view"),
+                ],
+            )),
+            Submenu(Menu::new(
                 "Tab",
                 vec![cmd("view.next-tab"), cmd("view.previous-tab")],
             )),
             cmd("view.word-wrap"),
+            cmd("view.focus-other-view"),
+            cmd("view.rotate-split"),
             Separator,
             cmd("view.fold-all"),
             cmd("view.unfold-all"),
@@ -448,6 +457,9 @@ pub fn main_menu() -> Vec<Menu> {
             cmd("view.unfold-current"),
             Submenu(Menu::new("Collapse Level", level("view.fold-level"))),
             Submenu(Menu::new("Uncollapse Level", level("view.unfold-level"))),
+            Separator,
+            cmd("view.sync-vertical-scroll"),
+            cmd("view.sync-horizontal-scroll"),
         ],
     );
 
