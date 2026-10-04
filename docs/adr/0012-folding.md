@@ -40,9 +40,10 @@
 Windows reports Shift with a digit or punctuation key as the character it types on the
 current layout (Alt+Shift+0 arrives as `alt-)` on a US or Russian layout), so a binding
 written `alt-shift-0` never matched. Key bindings are now built with the platform's keyboard
-mapper, which turns them into what the current layout produces. Bindings are built once at
-startup: switching to a layout whose shifted digits differ (German, French) needs a restart for
-Alt+Shift+N; rebuilding them on a layout change would also drop gpui-component's own bindings.
+mapper, which turns them into what the current layout produces. Shifted digits differ between
+layouts (Shift+2 is `@` on a US layout and `"` on a Russian one), so the bindings are rebuilt
+when the layout changes: Birchpad's own `RunCommand` bindings are replaced where they were, and
+gpui-component's bindings stay as they are.
 
 ## Consequences
 

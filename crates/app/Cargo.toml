@@ -26,6 +26,8 @@ serde_json.workspace = true
 
 [dev-dependencies]
 gpui-kit = { version = "0.7", features = ["test-support"] }
+# The map type of GPUI's keyboard mapper trait, for a test mapper.
+rustc-hash = "2"
 tempfile = "3"
 
 [lints]

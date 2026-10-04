@@ -604,6 +604,7 @@ dependencies = [
  "birchpad-view",
  "futures",
  "gpui-kit",
+ "rustc-hash 2.1.3",
  "semver",
  "serde",
  "serde_json",

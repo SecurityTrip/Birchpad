@@ -161,7 +161,35 @@ pub(crate) fn init(user_keymap: Option<&str>, cx: &mut App) -> Keymap {
     let mapper = cx.keyboard_mapper().clone();
     let shifted_symbols = Platform::current() == Platform::Linux;
     cx.bind_keys(key_bindings(&keymap, mapper.as_ref(), shifted_symbols));
+    // Shift with a digit types a different character on each layout (Shift+2 is `@` on a US
+    // layout and `"` on a Russian one), so the bindings are rebuilt for the new layout.
+    let bound = keymap.clone();
+    cx.on_keyboard_layout_change(move |cx| {
+        let mapper = cx.keyboard_mapper().clone();
+        let bindings = key_bindings(&bound, mapper.as_ref(), shifted_symbols);
+        replace_command_bindings(bindings, cx);
+    })
+    .detach();
     keymap
+}
+
+/// Replaces the bindings of [`RunCommand`] with `bindings`. Every other binding (text inputs
+/// and dialogs of the component library) stays, in the same order.
+fn replace_command_bindings(bindings: Vec<KeyBinding>, cx: &mut App) {
+    let current: Vec<KeyBinding> = cx.key_bindings().borrow().bindings().cloned().collect();
+    let mut bindings = Some(bindings);
+    let mut all = Vec::with_capacity(current.len());
+    for binding in current {
+        if binding.action().as_any().is::<RunCommand>() {
+            // Ours are bound together: the new ones go where the first one was.
+            all.extend(bindings.take().into_iter().flatten());
+        } else {
+            all.push(binding);
+        }
+    }
+    all.extend(bindings.into_iter().flatten());
+    cx.clear_key_bindings();
+    cx.bind_keys(all);
 }
 
 /// Turns the effective bindings of a keymap into GPUI key bindings.
@@ -228,7 +256,27 @@ fn unregistered(registry: &CommandRegistry) -> Vec<&'static str> {
 
 #[cfg(test)]
 mod tests {
+    use gpui_kit::{KeybindingKeystroke, Keystroke, TestAppContext};
+
     use super::*;
+    use crate::workspace::tests::open_workspace;
+
+    /// A layout where Shift+2 types `"`, as on a Russian keyboard.
+    struct QuoteOnShift2;
+
+    impl PlatformKeyboardMapper for QuoteOnShift2 {
+        fn map_key_equivalent(&self, mut keystroke: Keystroke, _: bool) -> KeybindingKeystroke {
+            if keystroke.modifiers.shift && keystroke.key == "2" {
+                keystroke.modifiers.shift = false;
+                keystroke.key = "\"".into();
+            }
+            KeybindingKeystroke::from_keystroke(keystroke)
+        }
+
+        fn get_key_equivalents(&self) -> Option<&rustc_hash::FxHashMap<char, char>> {
+            None
+        }
+    }
 
     #[test]
     fn every_catalog_command_has_a_handler() {
@@ -258,6 +306,44 @@ mod tests {
         assert_eq!(
             key_bindings(&keymap, &gpui_kit::DummyKeyboardMapper, true).len(),
             keymap.bindings().len() + shifted
+        );
+    }
+
+    #[gpui_kit::test]
+    fn bindings_follow_the_keyboard_layout(cx: &mut TestAppContext) {
+        let (_, cx) = open_workspace(cx);
+        let clear_style_2 = RunCommand(Invocation::with_args(
+            "mark.clear",
+            serde_json::json!({ "style": 2 }),
+        ));
+        let keys = |cx: &mut gpui_kit::VisualTestContext| {
+            cx.update(|_, cx| {
+                let keymap = cx.key_bindings();
+                let keymap = keymap.borrow();
+                let ours = keymap
+                    .bindings()
+                    .filter(|binding| binding.action().as_any().is::<RunCommand>())
+                    .count();
+                let keys: Vec<String> = keymap
+                    .bindings_for_action(&clear_style_2)
+                    .map(|binding| binding.keystrokes()[0].key().to_owned())
+                    .collect();
+                (keymap.bindings().len(), ours, keys)
+            })
+        };
+        let (all, ours, before) = keys(cx);
+        assert_eq!(before, ["2"]);
+
+        cx.update(|_, cx| {
+            let keymap = Keymap::with_defaults(Platform::current());
+            replace_command_bindings(key_bindings(&keymap, &QuoteOnShift2, false), cx);
+        });
+        let (all_after, ours_after, after) = keys(cx);
+        assert_eq!(after, ["\""], "the key Shift+2 types on the new layout");
+        assert_eq!(
+            (all_after, ours_after),
+            (all, ours),
+            "the other bindings are kept"
         );
     }
 }
