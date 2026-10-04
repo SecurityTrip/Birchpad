@@ -463,6 +463,8 @@ pub fn main_menu() -> Vec<Menu> {
             Separator,
             cmd("view.sync-vertical-scroll"),
             cmd("view.sync-horizontal-scroll"),
+            Separator,
+            cmd("view.monitoring"),
         ],
     );
 

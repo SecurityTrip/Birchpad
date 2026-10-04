@@ -169,6 +169,14 @@ pub struct FileSettings {
     /// Like Notepad++'s Large File Restriction: files larger than this many megabytes open
     /// without syntax highlighting, brace matching, smart highlighting and folding.
     pub large_file_limit_mb: u32,
+    /// Notepad++'s File Status Auto-Detection: which open files are watched for changes made
+    /// by other programs.
+    pub change_detection: ChangeDetection,
+    /// Reload a changed file that has no unsaved changes without asking ("Update silently").
+    pub reload_silently: bool,
+    /// After reloading, go to the end of the document ("Scroll to the last line after
+    /// update").
+    pub reload_scrolls_to_end: bool,
 }
 
 impl Default for FileSettings {
@@ -177,8 +185,23 @@ impl Default for FileSettings {
             recent_limit: 10,
             ansi_encoding: None,
             large_file_limit_mb: 20,
+            change_detection: ChangeDetection::default(),
+            reload_silently: false,
+            reload_scrolls_to_end: false,
         }
     }
+}
+
+/// Which open files are watched for changes made by other programs.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum ChangeDetection {
+    /// Every open file.
+    #[default]
+    All,
+    /// The document of the active tab only.
+    Current,
+    Off,
 }
 
 /// Notepad++'s Preferences > Backup.

@@ -23,6 +23,7 @@ use gpui_kit::{
 use crate::app_state::AppState;
 use crate::buffer::{Buffer, BufferEvent};
 use crate::commands::{CommandRegistry, Handler, RunCommand};
+use crate::disk::DiskState;
 use crate::editor::{EditorEvent, EditorView, ViewSettings};
 use crate::find::FindBar;
 use crate::menus::{self, MenuState};
@@ -130,6 +131,7 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
     crate::find::register_commands(registry);
     crate::help::register_commands(registry);
     crate::session::register_commands(registry);
+    crate::disk::register_commands(registry);
 }
 
 /// View menu switches kept in `state.toml`: command, current value, how to remember a new one.
@@ -210,6 +212,7 @@ pub(crate) struct Workspace {
     /// Focus and scroll events of each view.
     view_subscriptions: HashMap<EntityId, [Subscription; 2]>,
     pub(crate) session_state: SessionState,
+    pub(crate) disk_state: DiskState,
     _subscriptions: Vec<Subscription>,
 }
 
@@ -234,8 +237,16 @@ impl Workspace {
             buffer_subscriptions: HashMap::new(),
             view_subscriptions: HashMap::new(),
             session_state: SessionState::default(),
+            disk_state: DiskState::default(),
             _subscriptions: subscriptions,
         };
+        // Back in front: files may have changed meanwhile.
+        let activation = cx.observe_window_activation(window, |this, window, cx| {
+            if window.is_window_active() {
+                this.check_files(window, cx);
+            }
+        });
+        this._subscriptions.push(activation);
         this.refresh_menus(cx);
         // The window's close button: ask about unsaved changes first, unless they are backed
         // up, and save the session.
@@ -618,6 +629,7 @@ impl Workspace {
         let subscription = cx.subscribe_in(buffer, window, Self::on_buffer_event);
         self.buffer_subscriptions
             .insert(buffer.entity_id(), subscription);
+        self.sync_watches(cx);
     }
 
     fn on_buffer_event(
@@ -636,12 +648,16 @@ impl Workspace {
                     }
                 }
             }
-            BufferEvent::StateChanged | BufferEvent::Reloaded => {
+            BufferEvent::StateChanged | BufferEvent::Reloaded { .. } => {
+                // Save As may have moved the file to another folder.
+                self.sync_watches(cx);
                 self.refresh_menus(cx);
                 cx.notify();
             }
-            BufferEvent::Edited { .. } | BufferEvent::MarksChanged | BufferEvent::SyntaxChanged => {
-            }
+            BufferEvent::Edited { .. }
+            | BufferEvent::MarksChanged
+            | BufferEvent::SyntaxChanged
+            | BufferEvent::FollowEnd => {}
         }
     }
 
@@ -672,6 +688,7 @@ impl Workspace {
             .collect();
         self.buffer_subscriptions.retain(|id, _| live.contains(id));
         self.view_subscriptions.remove(&view.entity_id());
+        self.sync_watches(cx);
         if self.all_views(cx).is_empty() {
             // Like Notepad++, closing the last document leaves an empty "new 1".
             self.active_pane = 0;
@@ -746,6 +763,9 @@ impl Workspace {
         });
         let ansi = AppState::global(cx).ansi;
         let view = ViewSettings::read(cx);
+        let monitoring = self
+            .active_view(cx)
+            .is_some_and(|view| view.read(cx).buffer.read(cx).is_monitoring());
         let checked = |invocation: &Invocation| {
             if let Some((_, read, _)) = VIEW_SWITCHES
                 .iter()
@@ -755,6 +775,9 @@ impl Workspace {
             }
             if invocation.command == "view.show-all-characters" {
                 return all_characters(&view);
+            }
+            if invocation.command == "view.monitoring" {
+                return monitoring;
             }
             if invocation.command == "view.sync-vertical-scroll" {
                 return self.sync_vertical;

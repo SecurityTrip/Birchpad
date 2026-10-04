@@ -456,8 +456,21 @@ impl Workspace {
                     .then(|| free_number(document.untitled, numbers));
                 let doc = Document::with_format(text, format);
                 let (modified, read_only) = (document.modified, document.read_only);
+                // The file as it was when the changes were backed up; unknown (an imported
+                // session): as it is now, so that nothing is asked.
+                let disk = match (document.file_len, &path) {
+                    (Some(len), _) => Some(birchpad_io::DiskStamp {
+                        len,
+                        modified: document
+                            .file_modified
+                            .map(|nanos| std::time::UNIX_EPOCH + Duration::from_nanos(nanos)),
+                    }),
+                    (None, Some(path)) => birchpad_io::stamp(path).ok().flatten(),
+                    (None, None) => None,
+                };
                 cx.new(|cx| {
                     let mut buffer = Buffer::restored(path, untitled, doc, modified, read_only, cx);
+                    buffer.assume_disk(disk);
                     let revision = buffer.doc().revision();
                     buffer.backup = name.map(|name| Backup {
                         name,
@@ -522,6 +535,13 @@ fn document_of(buffer: &Buffer, backups: bool) -> Option<SessionDocument> {
             .map(|language| language.map_or("text", |language| language.id).to_owned()),
         read_only: buffer.requested_read_only(),
         bookmarks: buffer.bookmark_lines(),
+        file_len: buffer.disk().filter(|_| backups).map(|disk| disk.len),
+        file_modified: buffer
+            .disk()
+            .filter(|_| backups)
+            .and_then(|disk| disk.modified)
+            .and_then(|time| time.duration_since(std::time::UNIX_EPOCH).ok())
+            .and_then(|elapsed| u64::try_from(elapsed.as_nanos()).ok()),
     })
 }
 

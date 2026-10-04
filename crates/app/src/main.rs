@@ -14,6 +14,9 @@ mod app_state;
 mod banner;
 mod buffer;
 mod commands;
+mod disk;
+#[cfg(test)]
+mod disk_tests;
 mod editor;
 mod encoding_ui;
 mod file_ops;
@@ -109,6 +112,7 @@ fn main() {
                     workspace.open_command_line(&command_line, window, cx);
                     workspace.report_pending_recoveries(window, cx);
                     workspace.start_backups(cx);
+                    workspace.start_watching(window, cx);
                     workspace
                 })
             });

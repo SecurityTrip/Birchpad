@@ -55,6 +55,12 @@ pub struct SessionDocument {
     pub read_only: bool,
     /// Bookmarked lines.
     pub bookmarks: Vec<usize>,
+    /// With a backup of a file, the file's size and modification time (nanoseconds since
+    /// 1970) then: if it changed meanwhile, the user is asked about it.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub file_len: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub file_modified: Option<u64>,
 }
 
 /// The tabs of a view.

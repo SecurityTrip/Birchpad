@@ -23,6 +23,7 @@ gpui-kit = "0.7"
 semver = "1"
 serde.workspace = true
 serde_json.workspace = true
+notify = "7"
 
 [dev-dependencies]
 gpui-kit = { version = "0.7", features = ["test-support"] }

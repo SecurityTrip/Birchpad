@@ -90,7 +90,11 @@ What Phase 1 left for later is marked *(from Phase 1)* in the phases below.
       loses at most the backup interval; `session.*` settings, the `BackupUnsaved` policy,
       `-nosession`; File > Save Session... and Load Session..., `-openSession`, Notepad++
       `session.xml` import ([ADR 0017](adr/0017-sessions-and-backup.md))
-- External change detection and reload; tail -f monitoring
+- [x] Files changed by other programs: watched with `notify` and checked when the window comes
+      back; reload (silently or after asking) keeping carets, bookmarks and folds on their
+      lines; unsaved changes and deleted files asked about; all, current or no files
+      (`files.change-detection`); View > Monitoring (tail -f) reading only appended bytes
+      ([ADR 0018](adr/0018-file-changes-on-disk.md))
 - Nightly channel with automatic updates
 - Incremental column index for multi-megabyte lines: typing into a 10 MB line takes about
   70 ms per keystroke because the line's index is rebuilt *(from Phase 1)*

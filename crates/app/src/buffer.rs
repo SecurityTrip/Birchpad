@@ -7,10 +7,10 @@ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::time::{Duration, Instant};
 
 use birchpad_core::{
-    ChangeSet, Document, Encoding, Format, LineMarkers, RangeSet, RevisionId, Rope, Selection,
-    Transaction, UndoGrouping,
+    ChangeSet, Document, Edit, Encoding, Format, LineMarkers, RangeSet, RevisionId, Rope,
+    Selection, Transaction, UndoGrouping,
 };
-use birchpad_io::{DecodeProblem, LoadOptions, LoadedFile, ReadError};
+use birchpad_io::{DecodeProblem, DiskStamp, Head, LoadOptions, LoadedFile, ReadError};
 use birchpad_syntax::{Language, Syntax, Tree};
 use gpui_kit::{AppContext as _, Context, EntityId, EventEmitter, Task};
 
@@ -25,8 +25,12 @@ pub(crate) enum BufferEvent {
         transaction: Transaction,
         origin: Option<EntityId>,
     },
-    /// The whole document was replaced (loading finished, reinterpreted in another encoding).
-    Reloaded,
+    /// The whole document was replaced: loading finished, or the file was read again (it
+    /// changed on disk, or in another encoding). `previous` is the text before, if there was
+    /// one: views then keep their places on the same lines.
+    Reloaded { previous: Option<Rope> },
+    /// Views go to the end of the text (tail -f, "scroll to the last line after update").
+    FollowEnd,
     /// The modified flag, path, format or read-only state changed.
     StateChanged,
     /// Bookmarks or token styles changed without an edit.
@@ -42,6 +46,8 @@ pub(crate) enum BufferEvent {
 pub(crate) enum ReadOnly {
     /// The file is still being read.
     Loading,
+    /// View > Monitoring (tail -f): the document follows the file.
+    Monitoring,
     /// The text does not represent the file's bytes exactly.
     Decoding(DecodeProblem),
     /// The file has the read-only attribute or no write permission.
@@ -160,6 +166,18 @@ pub(crate) struct Buffer {
     /// Bookmarks to set once the file has been read (a restored session).
     pending_bookmarks: Option<Vec<usize>>,
     pub(crate) backup: Option<Backup>,
+    /// The file as last read or written; `None` while it does not exist.
+    disk: Option<DiskStamp>,
+    /// A fingerprint of the file's first bytes, to recognize appends (tail -f).
+    head: Option<Head>,
+    /// View > Monitoring (tail -f).
+    monitoring: bool,
+    /// Saves running: what they write is not a change made by another program.
+    saving: usize,
+    /// Views go to the end once the next load finishes.
+    follow_end: bool,
+    /// The document holds text read from the file: reading it again keeps the views' places.
+    loaded: bool,
     syntax: SyntaxState,
 }
 
@@ -179,6 +197,12 @@ impl Buffer {
             marks: DocumentMarks::default(),
             pending_bookmarks: None,
             backup: None,
+            disk: None,
+            head: None,
+            monitoring: false,
+            saving: 0,
+            follow_end: false,
+            loaded: false,
             syntax: SyntaxState::default(),
         }
     }
@@ -237,6 +261,12 @@ impl Buffer {
             marks: DocumentMarks::default(),
             pending_bookmarks: None,
             backup: None,
+            disk: None,
+            head: None,
+            monitoring: false,
+            saving: 0,
+            follow_end: false,
+            loaded: false,
             syntax: SyntaxState::default(),
         };
         buffer.load(options, None, cx);
@@ -309,15 +339,29 @@ impl Buffer {
         if let Some(loading) = self.loading.take() {
             loading.tasks.into_iter().for_each(Task::detach);
         }
+        // Read again: bookmarks stay on their lines, views keep their places.
+        let previous = self.loaded.then(|| self.doc.text().clone());
+        let bookmarks = previous
+            .as_ref()
+            .map(|text| self.marks.bookmarks.lines(text));
         match result {
             Ok(file) => {
                 self.problem = file.problem;
                 self.file_read_only = file.info.read_only;
+                self.disk = Some(file.info.stamp());
+                self.head = Some(file.head);
                 self.doc = Document::with_format(file.text, file.format);
                 self.marks = DocumentMarks::default();
+                if let Some(lines) = bookmarks {
+                    self.marks.bookmarks.set_lines(self.doc.text(), lines);
+                }
                 self.set_pending_bookmarks();
+                self.loaded = true;
                 self.detect_language(cx);
-                cx.emit(BufferEvent::Reloaded);
+                cx.emit(BufferEvent::Reloaded { previous });
+                if std::mem::take(&mut self.follow_end) {
+                    cx.emit(BufferEvent::FollowEnd);
+                }
             }
             Err(ReadError::NotFound(_)) => {
                 // Opening a path that does not exist yet: it is created on save, as in
@@ -327,11 +371,14 @@ impl Buffer {
                     format.encoding = encoding;
                 }
                 self.problem = None;
+                self.disk = None;
+                self.head = None;
                 self.doc = Document::with_format(Rope::new(), format);
                 self.marks = DocumentMarks::default();
                 self.set_pending_bookmarks();
+                self.loaded = true;
                 self.detect_language(cx);
-                cx.emit(BufferEvent::Reloaded);
+                cx.emit(BufferEvent::Reloaded { previous });
             }
             Err(error) => cx.emit(BufferEvent::LoadFailed(Arc::new(error))),
         }
@@ -614,8 +661,119 @@ impl Buffer {
         self.doc.is_modified()
     }
 
-    /// Records that `revision` of the document was written to `path` (a new path after Save As).
-    pub(crate) fn did_save(&mut self, path: PathBuf, revision: RevisionId, cx: &mut Context<Self>) {
+    /// A save starts: until it ends, changes of the file are its own.
+    pub(crate) fn begin_save(&mut self) {
+        self.saving += 1;
+    }
+
+    /// A save failed.
+    pub(crate) fn end_save(&mut self) {
+        self.saving = self.saving.saturating_sub(1);
+    }
+
+    pub(crate) fn is_saving(&self) -> bool {
+        self.saving > 0
+    }
+
+    /// The file as last read or written; `None` while it does not exist.
+    pub(crate) fn disk(&self) -> Option<DiskStamp> {
+        self.disk
+    }
+
+    pub(crate) fn head(&self) -> Option<Head> {
+        self.head
+    }
+
+    /// For text restored from a backup copy: how the file looked when the copy was made.
+    pub(crate) fn assume_disk(&mut self, disk: Option<DiskStamp>) {
+        self.disk = disk;
+    }
+
+    pub(crate) fn is_monitoring(&self) -> bool {
+        self.monitoring
+    }
+
+    /// View > Monitoring (tail -f): the document becomes read-only and follows the file.
+    pub(crate) fn set_monitoring(&mut self, monitoring: bool, cx: &mut Context<Self>) {
+        self.monitoring = monitoring;
+        if monitoring {
+            cx.emit(BufferEvent::FollowEnd);
+        }
+        cx.emit(BufferEvent::StateChanged);
+        cx.notify();
+    }
+
+    /// Reads the file again because another program changed it. Views keep their places;
+    /// with `follow_end`, they go to the end.
+    pub(crate) fn reload(&mut self, follow_end: bool, cx: &mut Context<Self>) {
+        self.follow_end = follow_end;
+        let options = AppState::global(cx).load_options(self.chosen_encoding);
+        self.load(options, None, cx);
+    }
+
+    /// Adds text that was appended to the file (tail -f). It is not an edit: the document
+    /// stays unmodified and has nothing to undo.
+    pub(crate) fn append_from_disk(
+        &mut self,
+        text: &str,
+        stamp: DiskStamp,
+        follow_end: bool,
+        cx: &mut Context<Self>,
+    ) {
+        self.disk = Some(stamp);
+        if !text.is_empty() {
+            let old_text = self.doc.text().clone();
+            let transaction =
+                Transaction::from_edits(&old_text, [Edit::insert(old_text.len(), text)])
+                    .expect("an insertion at the end");
+            let mut new_text = old_text.clone();
+            transaction.changes().apply(&mut new_text);
+            self.doc = Document::with_format(new_text, self.doc.format());
+            self.follow_edit(&old_text, &transaction, cx);
+            cx.emit(BufferEvent::Edited {
+                transaction,
+                origin: None,
+            });
+        }
+        if follow_end {
+            cx.emit(BufferEvent::FollowEnd);
+        }
+        cx.notify();
+    }
+
+    /// The file was deleted and the user keeps the document: saving creates it again.
+    pub(crate) fn keep_deleted(&mut self, cx: &mut Context<Self>) {
+        self.disk = None;
+        self.head = None;
+        self.doc.mark_unsaved();
+        cx.emit(BufferEvent::StateChanged);
+        cx.notify();
+    }
+
+    /// The file changed and the user keeps the document as it is: it differs from the file
+    /// now, and that change is not asked about again.
+    pub(crate) fn keep_changed(&mut self, stamp: Option<DiskStamp>, cx: &mut Context<Self>) {
+        self.disk = stamp;
+        self.head = None;
+        if !self.doc.is_modified() {
+            self.doc.mark_unsaved();
+        }
+        cx.emit(BufferEvent::StateChanged);
+        cx.notify();
+    }
+
+    /// Records that `revision` of the document was written to `path` (a new path after Save As),
+    /// which then looked like `disk`.
+    pub(crate) fn did_save(
+        &mut self,
+        path: PathBuf,
+        revision: RevisionId,
+        disk: Option<(DiskStamp, Head)>,
+        cx: &mut Context<Self>,
+    ) {
+        self.end_save();
+        self.disk = disk.map(|(stamp, _)| stamp);
+        self.head = disk.map(|(_, head)| head);
         if self.path.as_deref() != Some(&path) {
             self.path = Some(path);
             self.untitled = None;
@@ -645,6 +803,8 @@ impl Buffer {
             Some(ReadOnly::Loading)
         } else if let Some(problem) = self.problem {
             Some(ReadOnly::Decoding(problem))
+        } else if self.monitoring {
+            Some(ReadOnly::Monitoring)
         } else if self.file_read_only {
             Some(ReadOnly::File)
         } else if self.requested_read_only {

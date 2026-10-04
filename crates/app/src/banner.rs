@@ -55,6 +55,15 @@ pub(crate) fn read_only_requested() -> AnyElement {
         .into_any_element()
 }
 
+pub(crate) fn monitoring() -> AnyElement {
+    bar(0xddf4ff, 0x54aeff)
+        .child(
+            "Monitoring (tail -f): the document follows the file and cannot be edited. \
+             View > Monitoring stops it.",
+        )
+        .into_any_element()
+}
+
 pub(crate) fn read_only_file() -> AnyElement {
     bar(0xf6f8fa, 0xd0d7de)
         .child("This file is read-only. Use Save As to keep your changes in another file.")

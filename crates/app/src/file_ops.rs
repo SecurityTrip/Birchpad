@@ -339,16 +339,27 @@ async fn write_buffer(
     let recovery = cx.update(|_, cx| AppState::global(cx).recovery_dir())?;
     let target = path.clone();
     let encoded_text = text.clone();
+    buffer.update(cx, |buffer, _| buffer.begin_save());
     let written = cx
         .background_spawn(async move {
             let bytes = birchpad_io::encode(&encoded_text, format.encoding, format.bom)
                 .map_err(WriteFailure::Unencodable)?;
-            birchpad_io::save(&target, &bytes, recovery.as_deref()).map_err(WriteFailure::Save)
+            let written = birchpad_io::save(&target, &bytes, recovery.as_deref())
+                .map_err(WriteFailure::Save)?;
+            // What the file looks like now, so that this write is not taken for a change
+            // made by another program.
+            let stamp = birchpad_io::stamp(&written).ok().flatten();
+            Ok(stamp.map(|stamp| (stamp, birchpad_io::Head::of(&bytes))))
         })
         .await;
+    if written.is_err() {
+        buffer.update(cx, |buffer, _| buffer.end_save());
+    }
     match written {
-        Ok(_) => {
-            buffer.update(cx, |buffer, cx| buffer.did_save(path.clone(), revision, cx));
+        Ok(disk) => {
+            buffer.update(cx, |buffer, cx| {
+                buffer.did_save(path.clone(), revision, disk, cx);
+            });
             cx.update(|_, cx| AppState::remove_recent(&path, cx))?;
             workspace.update(cx, |workspace, cx| workspace.refresh_menus(cx))?;
             Ok(())

@@ -8,12 +8,14 @@
 
 mod decode;
 mod detect;
+mod disk;
 mod encode;
 mod encoding;
 mod file;
 
 pub use decode::{DecodeProblem, Decoded, bom_bytes, decode, sniff_bom};
 pub use detect::{DetectedBy, Detection, detect};
+pub use disk::{DiskStamp, HEAD_LEN, Head, decode_appended, read_from, stamp};
 pub use encode::{Unencodable, check_encodable, encode};
 pub use encoding::{
     CHARACTER_SETS, display_name, encoding_name, from_code_page, parse_encoding, system_ansi,

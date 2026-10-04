@@ -223,6 +223,7 @@ pub const COMMANDS: &[CommandSpec] = &[
         "view.sync-horizontal-scroll",
         "Synchronize Horizontal Scrolling",
     ),
+    workspace("view.monitoring", "Monitoring (tail -f)"),
     editor("view.fold-all", "Fold All"),
     editor("view.unfold-all", "Unfold All"),
     editor("view.fold-current", "Collapse Current Level"),

@@ -399,7 +399,17 @@ impl EditorView {
                 }
                 cx.notify();
             }
-            BufferEvent::Reloaded => {
+            BufferEvent::Reloaded {
+                previous: Some(previous),
+            } => {
+                this.follow_reload(previous, cx);
+            }
+            BufferEvent::FollowEnd => {
+                let end = buffer.read(cx).doc().text().len();
+                this.selection = Selection::point(end);
+                this.request_autoscroll(cx);
+            }
+            BufferEvent::Reloaded { previous: None } => {
                 let text = buffer.read(cx).doc().text().clone();
                 this.display.reset(&text);
                 this.collapsed.clear();
@@ -474,6 +484,38 @@ impl EditorView {
             synced_scroll: false,
             _subscriptions: vec![events],
         }
+    }
+
+    /// The file was read again: carets and selections stay at the same lines and columns,
+    /// collapsed folds on the same lines, the scroll position as it was, as far as the new
+    /// text has them.
+    fn follow_reload(&mut self, previous: &Rope, cx: &mut Context<Self>) {
+        let text = self.text(cx).clone();
+        let last_line = motion::line_count(&text) - 1;
+        let map = |pos: usize| {
+            let line = line_of(previous, pos);
+            let column = pos - line_range(previous, line).start;
+            let range = line_range(&text, line.min(last_line));
+            text.floor_char_boundary((range.start + column).min(range.end))
+        };
+        let ranges: Vec<Range> = self
+            .selection
+            .ranges()
+            .iter()
+            .map(|range| Range::new(map(range.anchor), map(range.head)))
+            .collect();
+        self.selection = Selection::new(ranges, self.selection.primary_index());
+        let collapsed = self.collapsed.lines(previous);
+        self.display.reset(&text);
+        self.collapsed.set_lines(&text, collapsed);
+        self.fold_cache = None;
+        self.smart_highlight = None;
+        self.sync_hidden(cx);
+        self.block = None;
+        self.multi_order = None;
+        self.begin_select = None;
+        self.marked = None;
+        cx.notify();
     }
 
     /// Where the view is, or will be once its file has been read.
@@ -1369,6 +1411,7 @@ impl Render for EditorView {
             }
             Some(ReadOnly::File) => Some(crate::banner::read_only_file()),
             Some(ReadOnly::Requested) => Some(crate::banner::read_only_requested()),
+            Some(ReadOnly::Monitoring) => Some(crate::banner::monitoring()),
             Some(ReadOnly::Loading) | None => None,
         };
         let loading = buffer.loading_progress();
