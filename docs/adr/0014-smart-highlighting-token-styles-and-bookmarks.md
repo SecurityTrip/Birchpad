@@ -108,4 +108,5 @@ slower case.
 - Highlight another view (Notepad++'s fifth smart highlighting option) waits for split view.
 - The Mark dialog with its own style, "Bookmark line" and "Find Style" jumps comes with the
   Find dialog in phase 3.
-- Bookmarks and styles are not saved; sessions (stage 9) will keep bookmarks.
+- Sessions keep bookmarks ([ADR 0017](0017-sessions-and-backup.md)); styles are not saved, as in
+  Notepad++.

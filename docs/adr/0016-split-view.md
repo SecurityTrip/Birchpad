@@ -22,8 +22,8 @@ and moves documents between them.
   - Move to Other View moves the tab, the same `EditorView` with its state, after the active
     tab of the other pane.
   - Clone to Other View adds a new view of the same buffer there. It starts where the original
-    is: same selection, scroll position and collapsed folds (`ViewState`; sessions will reuse
-    it).
+    is: same selection, scroll position and collapsed folds (`ViewState`, which sessions
+    save too).
   - A pane never shows a buffer twice. If the other pane already shows the document, its view
     is activated instead, and a moved tab closes.
   - Closing a view whose buffer another view still shows never asks to save. Only the last view
@@ -56,7 +56,7 @@ and moves documents between them.
 
 - Move to New Instance and Open in New Instance are not implemented. Neither is the tab context
   menu (Close, Move/Clone to Other View...) of Notepad++.
-- The tabs of both panes, the divider position and synchronization are not kept between runs.
-  Sessions (stage 9) will save the panes. Only the orientation is remembered now.
+- Sessions keep the tabs of both panes ([ADR 0017](0017-sessions-and-backup.md)); the
+  orientation is in `state.toml`. The divider position and synchronization are not kept.
 - GPUI reports focus changes only for the active window. Tests activate their window, as the
   user's window is active when they type.

@@ -6,13 +6,19 @@
 
 mod layers;
 mod load;
+mod notepad_session;
 mod policy;
+mod session;
 mod settings;
 mod state;
 
 pub use layers::{Diagnostic, Layer, ResolvedSettings, Sources, resolve};
 pub use load::{ConfigPaths, PORTABLE_DATA_DIR, PORTABLE_MARKER, load, load_platform_settings};
 pub use policy::{POLICIES, PolicyDef, PolicyKind, REGISTRY_KEY};
+pub use session::{
+    SESSION_VERSION, Session, SessionDocument, SessionError, SessionTab, SessionView,
+    create_private_dir, write_private,
+};
 pub use settings::{
     AutoIndent, CurrentLine, DiagnosticsSettings, Edge, EditorSettings, FileSettings,
     HighlightingSettings, NetworkSettings, PluginInstall, PluginSettings, SessionSettings,

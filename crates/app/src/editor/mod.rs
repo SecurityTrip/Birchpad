@@ -309,13 +309,14 @@ pub(crate) enum EditorEvent {
     Scrolled { rows: f64, x: Pixels },
 }
 
-/// Where a view is in its buffer: what Clone to Other View copies.
-#[derive(Debug, Clone)]
+/// Where a view is in its buffer: what Clone to Other View copies and sessions save.
+#[derive(Debug, Clone, PartialEq)]
 pub(crate) struct ViewState {
-    selection: Selection,
-    scroll_top: f64,
-    scroll_left: Pixels,
-    collapsed: LineMarkers,
+    pub(crate) selection: Selection,
+    pub(crate) scroll_top: f64,
+    pub(crate) scroll_left: Pixels,
+    /// First lines of the collapsed folds.
+    pub(crate) collapsed: Vec<usize>,
 }
 
 pub(crate) struct EditorView {
@@ -329,6 +330,8 @@ pub(crate) struct EditorView {
     wrap_job: Option<WrapJob>,
     /// Where to put the caret once the file has been read (`-n`, `-c`, `-p`).
     pending_caret: Option<CaretTarget>,
+    /// Where to put the view once the file has been read (a restored session).
+    pending_state: Option<ViewState>,
     /// First visible row; fractional while scrolling smoothly.
     scroll_top: f64,
     /// Horizontal scroll offset of the text.
@@ -412,6 +415,9 @@ impl EditorView {
                 this.scroll_top = 0.;
                 this.scroll_left = px(0.);
                 this.scroll_width = px(0.);
+                if let Some(state) = this.pending_state.take() {
+                    this.restore(state, cx);
+                }
                 if let Some(target) = this.pending_caret.take() {
                     this.place_caret(target, cx);
                 }
@@ -445,6 +451,7 @@ impl EditorView {
             display,
             wrap_job: None,
             pending_caret: None,
+            pending_state: None,
             scroll_top: 0.,
             scroll_left: px(0.),
             scroll_width: px(0.),
@@ -469,21 +476,47 @@ impl EditorView {
         }
     }
 
-    pub(crate) fn view_state(&self) -> ViewState {
+    /// Where the view is, or will be once its file has been read.
+    pub(crate) fn view_state(&self, cx: &App) -> ViewState {
+        if let Some(pending) = &self.pending_state {
+            return pending.clone();
+        }
         ViewState {
             selection: self.selection.clone(),
             scroll_top: self.scroll_top,
             scroll_left: self.scroll_left,
-            collapsed: self.collapsed.clone(),
+            collapsed: self.collapsed.lines(self.text(cx)),
         }
     }
 
-    /// Puts the view where `state` says, as another view of the same text was.
+    /// Puts the view where `state` says, now or, while the file is being read, once it has
+    /// been. Positions past the end of the text (the file changed meanwhile) move to the end.
     pub(crate) fn restore(&mut self, state: ViewState, cx: &mut Context<Self>) {
-        self.selection = state.selection;
-        self.scroll_top = state.scroll_top;
-        self.scroll_left = state.scroll_left;
-        self.collapsed = state.collapsed;
+        if self.buffer.read(cx).read_only() == Some(ReadOnly::Loading) {
+            self.pending_state = Some(state);
+            return;
+        }
+        let text = self.text(cx).clone();
+        let clamp = |pos: usize| {
+            let pos = text.floor_char_boundary(pos.min(text.len()));
+            // Not between the CR and the LF of a line break.
+            if pos > 0 && text.get_byte(pos - 1) == Some(b'\r') && text.get_byte(pos) == Some(b'\n')
+            {
+                pos - 1
+            } else {
+                pos
+            }
+        };
+        let ranges: Vec<Range> = state
+            .selection
+            .ranges()
+            .iter()
+            .map(|range| Range::new(clamp(range.anchor), clamp(range.head)))
+            .collect();
+        self.selection = Selection::new(ranges, state.selection.primary_index());
+        self.scroll_top = state.scroll_top.max(0.);
+        self.scroll_left = state.scroll_left.max(px(0.));
+        self.collapsed.set_lines(&text, state.collapsed);
         self.autoscroll = false;
         cx.notify();
     }

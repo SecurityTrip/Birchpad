@@ -51,6 +51,8 @@ pub const COMMANDS: &[CommandSpec] = &[
     workspace("file.close", "Close"),
     workspace("file.close-all", "Close All"),
     workspace("file.close-others", "Close All but This"),
+    workspace("file.load-session", "Load Session..."),
+    workspace("file.save-session", "Save Session..."),
     workspace("file.exit", "Exit"),
     // Edit
     editor("edit.undo", "Undo"),

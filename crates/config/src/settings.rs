@@ -181,17 +181,27 @@ impl Default for FileSettings {
     }
 }
 
+/// Notepad++'s Preferences > Backup.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default, rename_all = "kebab-case")]
 pub struct SessionSettings {
-    /// Periodically back up unsaved changes so they survive closing the app or a crash.
+    /// Reopen the documents of the last run, with their carets, folds and bookmarks
+    /// ("Remember current session for next launch").
+    pub remember: bool,
+    /// Keep unsaved changes, untitled documents included, in backup copies: quitting does not
+    /// ask about them and the next launch restores them; a crash loses at most the last
+    /// interval ("Enable session snapshot and periodic backup"). Needs `remember`.
     pub backup_unsaved: bool,
+    /// How often unsaved changes are backed up, in seconds.
+    pub backup_interval_seconds: u32,
 }
 
 impl Default for SessionSettings {
     fn default() -> Self {
         Self {
+            remember: true,
             backup_unsaved: true,
+            backup_interval_seconds: 7,
         }
     }
 }

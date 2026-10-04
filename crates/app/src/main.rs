@@ -24,6 +24,9 @@ mod language_tests;
 mod menus;
 mod pane;
 mod path_dialog;
+mod session;
+#[cfg(test)]
+mod session_tests;
 #[cfg(test)]
 mod split_tests;
 mod status_bar;
@@ -82,7 +85,9 @@ fn main() {
             let user_keymap = paths
                 .user_config_dir()
                 .and_then(|dir| std::fs::read_to_string(dir.join("keymap.toml")).ok());
-            cx.set_global(AppState::new(settings, paths));
+            let mut app_state = AppState::new(settings, paths);
+            app_state.no_session = command_line.no_session;
+            cx.set_global(app_state);
             help::Updates::install(help::Updates::http(), cx);
             commands::init(user_keymap.as_deref(), cx);
             cx.on_window_closed(|cx, _| {
@@ -100,9 +105,10 @@ fn main() {
             let opened = gpui_kit::open_window(options, cx, |window, cx| {
                 cx.new(|cx| {
                     let mut workspace = Workspace::new(window, cx);
-                    workspace.new_file(window, cx);
+                    workspace.restore_last_session(window, cx);
                     workspace.open_command_line(&command_line, window, cx);
                     workspace.report_pending_recoveries(window, cx);
+                    workspace.start_backups(cx);
                     workspace
                 })
             });
@@ -114,6 +120,16 @@ fn main() {
                     return;
                 }
             };
+            // Quitting from the macOS Dock, logging out: no chance to ask, but the session (with
+            // backups, the unsaved changes too) is saved.
+            let quitting = workspace.downgrade();
+            cx.on_app_quit(move |cx| {
+                quitting
+                    .update(cx, |workspace, cx| workspace.save_session_for_quit(cx))
+                    .ok();
+                async {}
+            })
+            .detach();
             if let Some(server) = server {
                 serve_later_launches(server, window, workspace, cx);
             }

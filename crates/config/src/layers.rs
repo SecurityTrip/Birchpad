@@ -241,6 +241,20 @@ mod tests {
     }
 
     #[test]
+    fn session_settings() {
+        let resolved = resolve(Sources {
+            user: table("session.backup-interval-seconds = 30"),
+            policy: table("session.backup-unsaved = false"),
+            ..Sources::default()
+        });
+        let session = &resolved.settings.session;
+        assert!(session.remember, "on by default, as in Notepad++");
+        assert!(!session.backup_unsaved);
+        assert_eq!(session.backup_interval_seconds, 30);
+        assert!(resolved.is_locked("session.backup-unsaved"));
+    }
+
+    #[test]
     fn edge_and_current_line_settings() {
         use crate::settings::{CurrentLine, Edge};
         let resolved = resolve(Sources {

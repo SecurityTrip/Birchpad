@@ -9,6 +9,7 @@ repository.workspace = true
 authors.workspace = true
 
 [dependencies]
+roxmltree = "0.21"
 serde.workspace = true
 thiserror.workspace = true
 toml.workspace = true

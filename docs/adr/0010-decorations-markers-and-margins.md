@@ -45,4 +45,4 @@ document, without costing more than the visible part of the text per frame.
   which is fine for thousands of marks. A document with hundreds of thousands of marks would
   need a tree of offsets instead of a sorted vector; that can replace `RangeSet`'s inside
   without changing its interface.
-- Decorations are not saved yet; sessions (stage 9) will persist bookmarks.
+- Sessions keep bookmarks ([ADR 0017](0017-sessions-and-backup.md)); token styles are not saved.

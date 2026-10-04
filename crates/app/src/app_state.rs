@@ -16,6 +16,16 @@ pub(crate) struct AppState {
     pub(crate) state: UserState,
     /// Settings fixed by administrator policy, as `(key, value)`, for Help > About.
     pub(crate) policies: Vec<(String, String)>,
+    /// `-nosession`: neither restore nor save the session.
+    pub(crate) no_session: bool,
+}
+
+/// Where the session is kept.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct SessionPaths {
+    pub(crate) file: PathBuf,
+    /// The folder of the backup copies of unsaved text.
+    pub(crate) backups: PathBuf,
 }
 
 impl Global for AppState {}
@@ -46,7 +56,27 @@ impl AppState {
             ansi,
             state,
             policies,
+            no_session: false,
         }
+    }
+
+    /// Where the session lives, if the documents of this run are remembered for the next one
+    /// (`session.remember`, not `-nosession`, and a data folder to keep it in).
+    pub(crate) fn session_paths(&self) -> Option<SessionPaths> {
+        if !self.settings.session.remember || self.no_session {
+            return None;
+        }
+        let data = self.paths.user_data.as_ref()?;
+        Some(SessionPaths {
+            file: data.join("session.toml"),
+            backups: data.join("backup"),
+        })
+    }
+
+    /// Whether unsaved changes are kept in backup copies instead of asking about them on
+    /// quitting (`session.backup-unsaved`, which needs a remembered session).
+    pub(crate) fn backs_up_unsaved(&self) -> bool {
+        self.settings.session.backup_unsaved && self.session_paths().is_some()
     }
 
     pub(crate) fn global(cx: &App) -> &Self {

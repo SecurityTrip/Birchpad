@@ -47,6 +47,6 @@ gpui-component's bindings stay as they are.
 
 ## Consequences
 
-- Fold state is not saved yet; sessions (stage 9) will keep it.
+- Sessions keep each view's collapsed folds ([ADR 0017](0017-sessions-and-backup.md)).
 - Consecutive line comments do not fold (they are separate nodes); Notepad++ does not fold
   them either.

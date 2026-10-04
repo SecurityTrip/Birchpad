@@ -7,6 +7,7 @@
 //!   -p<position>  go to position (0-based byte offset); wins over -n/-c
 //!   -multiInst    start a separate instance instead of handing files to a running one
 //!   -nosession    do not restore or save a session
+//!   -openSession  the files are sessions to open
 //!   -ro           open the files read-only
 //!   -l<language>  language for syntax highlighting (`-lcpp`, `-lpython`, `-lnormal`)
 //!   --            everything after is a file name, even if it starts with "-"
@@ -29,6 +30,9 @@ pub struct CommandLine {
     pub position: Option<usize>,
     pub multi_instance: bool,
     pub no_session: bool,
+    /// `-openSession`: the files are session files (Birchpad's or Notepad++'s) to open.
+    #[serde(default)]
+    pub open_session: bool,
     pub read_only: bool,
     pub language: Option<String>,
     /// `--generate N`: open N lines of generated text (for development and benchmarks).
@@ -72,7 +76,6 @@ const IGNORED_PREFIXES: &[&str] = &[
     "-titleadd=",
     "-udl=",
     "-pluginmessage=",
-    "-opensession",
 ];
 
 impl CommandLine {
@@ -110,6 +113,7 @@ impl CommandLine {
         match lower.as_str() {
             "-multiinst" => self.multi_instance = true,
             "-nosession" => self.no_session = true,
+            "-opensession" => self.open_session = true,
             "-ro" => self.read_only = true,
             flag if IGNORED_FLAGS.contains(&flag) => {}
             _ => self.prefixed_option(arg, &lower),
@@ -194,6 +198,10 @@ mod tests {
         assert!(line.multi_instance && line.no_session && line.read_only);
         assert_eq!(line.language.as_deref(), Some("cpp"));
         assert_eq!(line.files, [PathBuf::from("/work/f.txt")]);
+        assert!(!line.open_session);
+        let session = parse(&["-openSession", "work.xml"]);
+        assert!(session.open_session && session.warnings.is_empty());
+        assert_eq!(session.files, [PathBuf::from("/work/work.xml")]);
         assert_eq!(
             line.caret_target(),
             Some(CaretTarget::LineColumn {

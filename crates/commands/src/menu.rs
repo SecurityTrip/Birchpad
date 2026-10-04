@@ -121,6 +121,9 @@ pub fn main_menu() -> Vec<Menu> {
             cmd("file.close-all"),
             cmd("file.close-others"),
             Separator,
+            cmd("file.load-session"),
+            cmd("file.save-session"),
+            Separator,
             cmd("file.exit"),
         ],
     );

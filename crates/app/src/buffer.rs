@@ -109,6 +109,9 @@ struct SyntaxState {
     /// The version the folds were mapped from by the last edit, if that is how they changed:
     /// views can then shift their folds in lines instead of recomputing them.
     folds_mapped_from: Option<u64>,
+    /// A language was installed and its first parse has not finished: there are no folds yet,
+    /// but there will be.
+    folds_pending: bool,
 }
 
 /// A parse running in the background.
@@ -133,6 +136,15 @@ struct Loading {
     tasks: [Task<()>; 2],
 }
 
+/// The backup copy of a buffer's unsaved text (sessions, ADR 0017).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct Backup {
+    /// The file name in the backup folder.
+    pub(crate) name: String,
+    /// The revision the file holds; `None` until it is first written.
+    pub(crate) revision: Option<RevisionId>,
+}
+
 pub(crate) struct Buffer {
     doc: Document,
     path: Option<PathBuf>,
@@ -141,8 +153,13 @@ pub(crate) struct Buffer {
     problem: Option<DecodeProblem>,
     file_read_only: bool,
     requested_read_only: bool,
+    /// The encoding the file was read in on request (Encoding > Encode in), if any.
+    chosen_encoding: Option<Encoding>,
     loading: Option<Loading>,
     marks: DocumentMarks,
+    /// Bookmarks to set once the file has been read (a restored session).
+    pending_bookmarks: Option<Vec<usize>>,
+    pub(crate) backup: Option<Backup>,
     syntax: SyntaxState,
 }
 
@@ -157,10 +174,40 @@ impl Buffer {
             problem: None,
             file_read_only: false,
             requested_read_only: false,
+            chosen_encoding: None,
             loading: None,
             marks: DocumentMarks::default(),
+            pending_bookmarks: None,
+            backup: None,
             syntax: SyntaxState::default(),
         }
+    }
+
+    /// A buffer put back from a session with the text of a backup copy: unsaved changes of
+    /// `path`, or an untitled document.
+    pub(crate) fn restored(
+        path: Option<PathBuf>,
+        untitled: Option<usize>,
+        mut doc: Document,
+        modified: bool,
+        read_only: bool,
+        cx: &mut Context<Self>,
+    ) -> Self {
+        if modified {
+            doc.mark_unsaved();
+        }
+        let mut buffer = Self {
+            doc,
+            path,
+            untitled: untitled.or(Some(1)),
+            requested_read_only: read_only,
+            ..Self::untitled(1)
+        };
+        if buffer.path.is_some() {
+            buffer.untitled = None;
+        }
+        buffer.detect_language(cx);
+        buffer
     }
 
     /// An untitled buffer with existing text.
@@ -185,8 +232,11 @@ impl Buffer {
             problem: None,
             file_read_only: false,
             requested_read_only: read_only,
+            chosen_encoding: None,
             loading: None,
             marks: DocumentMarks::default(),
+            pending_bookmarks: None,
+            backup: None,
             syntax: SyntaxState::default(),
         };
         buffer.load(options, None, cx);
@@ -199,6 +249,7 @@ impl Buffer {
         let Some(path) = self.path.clone() else {
             return;
         };
+        self.chosen_encoding = options.encoding;
         let total = std::fs::metadata(&path).map_or(0, |metadata| metadata.len());
         let progress = Arc::new(AtomicU64::new(0));
         let reader_progress = progress.clone();
@@ -264,6 +315,7 @@ impl Buffer {
                 self.file_read_only = file.info.read_only;
                 self.doc = Document::with_format(file.text, file.format);
                 self.marks = DocumentMarks::default();
+                self.set_pending_bookmarks();
                 self.detect_language(cx);
                 cx.emit(BufferEvent::Reloaded);
             }
@@ -277,6 +329,7 @@ impl Buffer {
                 self.problem = None;
                 self.doc = Document::with_format(Rope::new(), format);
                 self.marks = DocumentMarks::default();
+                self.set_pending_bookmarks();
                 self.detect_language(cx);
                 cx.emit(BufferEvent::Reloaded);
             }
@@ -288,6 +341,48 @@ impl Buffer {
 
     pub(crate) fn doc(&self) -> &Document {
         &self.doc
+    }
+
+    /// Bookmarks `lines` now, or once the file has been read.
+    pub(crate) fn restore_bookmarks(&mut self, lines: Vec<usize>, cx: &mut Context<Self>) {
+        self.pending_bookmarks = Some(lines);
+        if self.loading.is_none() {
+            self.set_pending_bookmarks();
+            cx.emit(BufferEvent::MarksChanged);
+        }
+    }
+
+    fn set_pending_bookmarks(&mut self) {
+        if let Some(lines) = self.pending_bookmarks.take() {
+            self.marks.bookmarks.set_lines(self.doc.text(), lines);
+        }
+    }
+
+    /// Bookmarked lines, including those waiting for the file to be read.
+    pub(crate) fn bookmark_lines(&self) -> Vec<usize> {
+        match &self.pending_bookmarks {
+            Some(lines) => lines.clone(),
+            None => self.marks.bookmarks.lines(self.doc.text()),
+        }
+    }
+
+    /// The language chosen in the Language menu or with `-l`, if any.
+    pub(crate) fn chosen_language(&self) -> Option<Option<&'static Language>> {
+        self.syntax.chosen.then_some(self.syntax.language)
+    }
+
+    pub(crate) fn chosen_encoding(&self) -> Option<Encoding> {
+        self.chosen_encoding
+    }
+
+    /// Opened read-only on purpose (`-ro`).
+    pub(crate) fn requested_read_only(&self) -> bool {
+        self.requested_read_only
+    }
+
+    /// Whether the folds may still change on their own: a language's first parse is running.
+    pub(crate) fn folds_pending(&self) -> bool {
+        self.syntax.folds_pending
     }
 
     pub(crate) fn marks(&self) -> &DocumentMarks {
@@ -388,6 +483,7 @@ impl Buffer {
         // Until the first parse, a language has no folds; plain text folds by indentation.
         let folds = self.plain_folds(cx);
         self.set_folds(folds);
+        self.syntax.folds_pending = self.syntax.syntax.is_some();
         self.start_parse(cx);
         cx.emit(BufferEvent::SyntaxChanged);
         cx.emit(BufferEvent::StateChanged);
@@ -447,6 +543,7 @@ impl Buffer {
             return;
         };
         syntax.install(tree);
+        self.syntax.folds_pending = false;
         let since = parsing.since.take();
         if let Some(since) = &since {
             // The text changed while parsing: bring the new tree and folds up to date, and

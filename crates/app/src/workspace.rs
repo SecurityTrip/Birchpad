@@ -27,6 +27,7 @@ use crate::editor::{EditorEvent, EditorView, ViewSettings};
 use crate::find::FindBar;
 use crate::menus::{self, MenuState};
 use crate::pane::{Pane, PaneEvent};
+use crate::session::SessionState;
 use crate::status_bar::StatusInfo;
 
 pub(crate) fn register_commands(registry: &mut CommandRegistry) {
@@ -128,6 +129,7 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
     crate::file_ops::register_commands(registry);
     crate::find::register_commands(registry);
     crate::help::register_commands(registry);
+    crate::session::register_commands(registry);
 }
 
 /// View menu switches kept in `state.toml`: command, current value, how to remember a new one.
@@ -207,6 +209,7 @@ pub(crate) struct Workspace {
     buffer_subscriptions: HashMap<EntityId, Subscription>,
     /// Focus and scroll events of each view.
     view_subscriptions: HashMap<EntityId, [Subscription; 2]>,
+    pub(crate) session_state: SessionState,
     _subscriptions: Vec<Subscription>,
 }
 
@@ -230,28 +233,28 @@ impl Workspace {
             title: String::new(),
             buffer_subscriptions: HashMap::new(),
             view_subscriptions: HashMap::new(),
+            session_state: SessionState::default(),
             _subscriptions: subscriptions,
         };
         this.refresh_menus(cx);
-        // The window's close button: ask about unsaved changes first.
+        // The window's close button: ask about unsaved changes first, unless they are backed
+        // up, and save the session.
         let workspace = cx.entity().downgrade();
         window.on_window_should_close(cx, move |window, cx| {
             workspace
                 .update(cx, |workspace, cx| {
-                    if workspace.has_unsaved_changes(cx) {
-                        let views = workspace.all_views(cx);
-                        let closing = workspace.close_with_confirmation(views, window, cx);
-                        cx.spawn_in(window, async move |_, cx| {
-                            if closing.await {
-                                cx.update(|window, _| window.remove_window()).ok();
-                            }
-                        })
-                        .detach();
-                        false
-                    } else {
-                        workspace.remember_open_files(cx);
-                        true
+                    if workspace.can_quit_now(cx) {
+                        workspace.save_session_for_quit(cx);
+                        return true;
                     }
+                    let ready = workspace.prepare_to_quit(window, cx);
+                    cx.spawn_in(window, async move |_, cx| {
+                        if ready.await {
+                            cx.update(|window, _| window.remove_window()).ok();
+                        }
+                    })
+                    .detach();
+                    false
                 })
                 .unwrap_or(true)
         });
@@ -318,6 +321,15 @@ impl Workspace {
         &self.panes[self.active_pane]
     }
 
+    /// The main and the second view.
+    pub(crate) fn panes(&self) -> &[Entity<Pane>; 2] {
+        &self.panes
+    }
+
+    pub(crate) fn active_pane_index(&self) -> usize {
+        self.active_pane
+    }
+
     /// The pane showing `view`: 0 for the main view, 1 for the second.
     pub(crate) fn pane_of(&self, view: &Entity<EditorView>, cx: &App) -> Option<usize> {
         self.panes
@@ -334,7 +346,7 @@ impl Workspace {
 
     /// Follows the focus into a view (a click in the other pane makes it the active one) and its
     /// scrolling.
-    fn track_view(
+    pub(crate) fn track_view(
         &mut self,
         view: &Entity<EditorView>,
         window: &mut Window,
@@ -395,7 +407,7 @@ impl Workspace {
             return;
         }
         let item = if clone {
-            let state = view.read(cx).view_state();
+            let state = view.read(cx).view_state(cx);
             let copy = cx.new(|cx| {
                 let mut copy = EditorView::new(buffer, window, cx);
                 copy.restore(state, cx);
@@ -476,6 +488,14 @@ impl Workspace {
             let doc = Document::from_text(birchpad_core::Rope::from_str(&crate::generate(lines)));
             self.open_document(doc, window, cx);
         }
+        if command_line.open_session {
+            for path in &command_line.files {
+                if let Err(error) = self.load_session_file(path, window, cx) {
+                    report_error(&error, window, cx);
+                }
+            }
+            return;
+        }
         let target = command_line.caret_target();
         // `-l<language>`, with Notepad++'s names; `-lnormal` is plain text.
         let language = command_line.language.as_deref().and_then(|id| match id {
@@ -551,7 +571,7 @@ impl Workspace {
         }
     }
 
-    fn view_for_path(&self, path: &Path, cx: &App) -> Option<Entity<EditorView>> {
+    pub(crate) fn view_for_path(&self, path: &Path, cx: &App) -> Option<Entity<EditorView>> {
         self.all_views(cx)
             .into_iter()
             .find(|view| view.read(cx).buffer.read(cx).path() == Some(path))
@@ -579,15 +599,25 @@ impl Workspace {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> Entity<EditorView> {
-        let subscription = cx.subscribe_in(&buffer, window, Self::on_buffer_event);
-        self.buffer_subscriptions
-            .insert(buffer.entity_id(), subscription);
+        self.watch_buffer(&buffer, window, cx);
         let view = cx.new(|cx| EditorView::new(buffer, window, cx));
         self.track_view(&view, window, cx);
         self.active_pane()
             .update(cx, |pane, cx| pane.add(view.clone(), window, cx));
         cx.notify();
         view
+    }
+
+    /// Follows a buffer's events: loading failures, state shown in the menus.
+    pub(crate) fn watch_buffer(
+        &mut self,
+        buffer: &Entity<Buffer>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let subscription = cx.subscribe_in(buffer, window, Self::on_buffer_event);
+        self.buffer_subscriptions
+            .insert(buffer.entity_id(), subscription);
     }
 
     fn on_buffer_event(

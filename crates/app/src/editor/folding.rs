@@ -111,8 +111,12 @@ impl EditorView {
         self.display.set_hidden(hidden);
     }
 
-    /// Forgets collapsed headers that are no longer fold points (after a reparse).
+    /// Forgets collapsed headers that are no longer fold points (after a reparse). Before the
+    /// first parse there are no folds yet: nothing is forgotten then.
     pub(super) fn prune_collapsed(&mut self, cx: &App) {
+        if self.buffer.read(cx).folds_pending() {
+            return;
+        }
         let text = self.text(cx).clone();
         let collapsed = self.collapsed.lines(&text);
         let folds = self.folds(cx).to_vec();

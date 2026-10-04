@@ -84,9 +84,12 @@ What Phase 1 left for later is marked *(from Phase 1)* in the phases below.
       draggable divider; Move and Clone to Other View, one buffer in two independent views;
       tabs dragged between and within views; Focus on Another View (F8); synchronized vertical
       and horizontal scrolling ([ADR 0016](adr/0016-split-view.md))
-- Sessions and periodic backup of unsaved changes (`-nosession` already accepted); they also
-  cover quitting from the macOS Dock, which bypasses the unsaved-changes prompt today
-  *(from Phase 1)*
+- [x] Sessions and periodic backup of unsaved changes, untitled documents included: quitting
+      does not ask (quitting from the macOS Dock included *(from Phase 1)*), the next launch
+      restores documents, views, carets, folds, bookmarks, languages and encodings, a crash
+      loses at most the backup interval; `session.*` settings, the `BackupUnsaved` policy,
+      `-nosession`; File > Save Session... and Load Session..., `-openSession`, Notepad++
+      `session.xml` import ([ADR 0017](adr/0017-sessions-and-backup.md))
 - External change detection and reload; tail -f monitoring
 - Nightly channel with automatic updates
 - Incremental column index for multi-megabyte lines: typing into a 10 MB line takes about
