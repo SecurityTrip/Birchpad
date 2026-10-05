@@ -341,7 +341,8 @@ impl Workspace {
         self.active_pane
     }
 
-    #[cfg(test)]
+    /// For the menu bar's tests (macOS has the native menu bar instead).
+    #[cfg(all(test, not(target_os = "macos")))]
     pub(crate) fn menu_bar(&self) -> Option<Entity<MenuBar>> {
         self.menu_bar.clone()
     }

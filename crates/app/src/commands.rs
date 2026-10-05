@@ -332,19 +332,38 @@ mod tests {
                 (keymap.bindings().len(), ours, keys)
             })
         };
+        // Linux also reports Shift+2 as the symbol it types on a US layout (ADR 0014).
+        let linux = Platform::current() == Platform::Linux;
+        let symbol: &[&str] = if linux { &["@"] } else { &[] };
         let (all, ours, before) = keys(cx);
-        assert_eq!(before, ["2"]);
+        assert_eq!(before, [symbol, &["2"]].concat());
 
         cx.update(|_, cx| {
             let keymap = Keymap::with_defaults(Platform::current());
-            replace_command_bindings(key_bindings(&keymap, &QuoteOnShift2, false), cx);
+            replace_command_bindings(key_bindings(&keymap, &QuoteOnShift2, linux), cx);
         });
         let (all_after, ours_after, after) = keys(cx);
-        assert_eq!(after, ["\""], "the key Shift+2 types on the new layout");
+        assert_eq!(
+            after,
+            [symbol, &["\""]].concat(),
+            "the key Shift+2 types on the new layout"
+        );
         assert_eq!(
             (all_after, ours_after),
             (all, ours),
             "the other bindings are kept"
         );
+
+        // The Linux bindings, checked wherever the tests run.
+        let linux_keys: Vec<String> = key_bindings(
+            &Keymap::with_defaults(Platform::Linux),
+            &QuoteOnShift2,
+            true,
+        )
+        .iter()
+        .filter(|binding| binding.action().partial_eq(&clear_style_2))
+        .map(|binding| binding.keystrokes()[0].key().to_owned())
+        .collect();
+        assert_eq!(linux_keys, ["@", "\""]);
     }
 }
