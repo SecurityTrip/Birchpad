@@ -9,6 +9,7 @@ repository.workspace = true
 authors.workspace = true
 
 [dependencies]
+fancy-regex = "0.19"
 memchr = "2"
 ropey.workspace = true
 thiserror.workspace = true

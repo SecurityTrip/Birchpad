@@ -11,7 +11,7 @@
 use std::ops::Range as ByteRange;
 use std::time::{Duration, Instant};
 
-use birchpad_core::search::{Query, Scan, SearchMode, Searcher, smart_highlight_token};
+use birchpad_core::search::{Query, Scan, Searcher, smart_highlight_token};
 use birchpad_core::{RangeSet, RevisionId, Rope};
 use gpui_kit::App;
 
@@ -139,7 +139,7 @@ impl EditorView {
             pattern: text.slice(token).to_string(),
             match_case,
             whole_word,
-            mode: SearchMode::Normal,
+            ..Query::default()
         })
     }
 }
