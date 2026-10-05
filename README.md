@@ -44,13 +44,34 @@ On Linux, to see Birchpad in the applications menu, put `birchpad` on your `PATH
 `io.github.securitytrip.birchpad.desktop` to `~/.local/share/applications/` and
 `io.github.securitytrip.birchpad.png` to `~/.local/share/icons/hicolor/512x512/apps/`.
 
-The binaries are not signed yet: Windows SmartScreen asks before the first start ("More info",
-"Run anyway"), and macOS needs Birchpad.app opened once with Control-click > Open. Each release
+Windows releases are being set up for signing (see the [code signing policy](#code-signing-policy));
+until then Windows SmartScreen asks before the first start ("More info", "Run anyway"). macOS
+needs Birchpad.app opened once with Control-click > Open until the app is notarized. Each release
 lists SHA-256 checksums and carries GitHub build provenance (`gh attestation verify <file>
 --repo SecurityTrip/Birchpad`).
 
+To uninstall, use Installed apps in Windows Settings for the installer and the MSI, or delete the
+folder of a portable copy.
+
 Nightly builds of `main` are published as pre-releases; set `updates.channel = "nightly"` to
 get them as updates.
+
+## Code signing policy
+
+Free code signing provided by [SignPath.io](https://signpath.io), certificate by
+[SignPath Foundation](https://signpath.org).
+
+- Committers and reviewers: [@SecurityTrip](https://github.com/SecurityTrip)
+- Approvers: [@SecurityTrip](https://github.com/SecurityTrip)
+
+What is signed: the Windows executable, the per-user installers and the MSI of each release
+(not nightly builds). Each is built by the release workflow from this repository's source on
+GitHub-hosted runners, and an approver approves each signing request. The installers contain
+Velopack's `Update.exe`, which comes unsigned from the Velopack project. See
+[ADR 0021](docs/adr/0021-authenticode-signing-with-signpath.md).
+
+Privacy policy: Birchpad collects no personal data, and connects to the network only to check
+for and download updates, which can be turned off; see [PRIVACY.md](PRIVACY.md).
 
 ## Building
 
@@ -90,7 +111,8 @@ for Updates. It reads a manifest signed with the project's key and refuses any o
 copies (the Windows installer) update themselves when Birchpad restarts, other copies show where
 to download the new version. With `updates.mode = "off"` (a setting or an administrator policy)
 Birchpad makes no network requests at all; `"notify"` announces new versions without
-downloading them. See [ADR 0020](docs/adr/0020-signed-updates-and-nightly-builds.md).
+downloading them. See [ADR 0020](docs/adr/0020-signed-updates-and-nightly-builds.md) and the
+[privacy policy](PRIVACY.md).
 
 ## Repository layout
 

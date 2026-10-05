@@ -112,7 +112,7 @@ jobs:
           tag="v$VERSION"
           gh release create "$tag" --repo "$GITHUB_REPOSITORY" --target "$REF" \
             --prerelease --latest=false --title "Birchpad $VERSION" \
-            --notes "Nightly build of main at $REF. Nightly builds are untested snapshots; the per-user installer updates itself to newer nightly builds." \
+            --notes "Nightly build of main at $REF. Nightly builds are untested snapshots; the per-user installer updates itself to newer nightly builds. They are not signed: [Code signing policy](https://github.com/$GITHUB_REPOSITORY#code-signing-policy)." \
             dist/*
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
       - name: Keep the ten newest nightly releases

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  SignPath artifact configuration "executables": birchpad.exe of each Windows platform, signed
+  before it goes into the packages. The build uploads them as exe-windows-x64/birchpad.exe and
+  exe-windows-arm64/birchpad.exe (ARM64 may be missing while its build is experimental).
+  The metadata must be Birchpad's (crates/app/build.rs writes it), at the version being built.
+-->
+<artifact-configuration xmlns="http://signpath.io/artifact-configuration/v1">
+  <parameters>
+    <parameter name="version" required="true" />
+  </parameters>
+  <zip-file>
+    <pe-file path="exe-windows-*/birchpad.exe" min-matches="1" max-matches="2"
+             product-name="Birchpad" product-version="${version}"
+             company-name="The Birchpad Contributors" original-filename="birchpad.exe">
+      <authenticode-sign />
+    </pe-file>
+  </zip-file>
+</artifact-configuration>

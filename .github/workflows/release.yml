@@ -58,52 +58,16 @@ jobs:
     with:
       version: ${{ needs.prepare.outputs.version }}
       channel: ${{ needs.prepare.outputs.channel }}
-
-  msi:
-    # MSI versions are numeric (major.minor.build); pre-releases get no MSI until there is a
-    # mapping for them (ADR 0005).
-    if: needs.prepare.outputs.prerelease == 'false'
-    needs: [prepare, build]
-    runs-on: windows-latest
-    env:
-      VERSION: ${{ needs.prepare.outputs.version }}
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/download-artifact@v8
-        with:
-          name: bin-windows-x64
-          path: bin
-      - name: Install WiX
-        shell: bash
-        run: |
-          dotnet tool install --global wix --version 5.0.2
-          printf '%s\n' "$USERPROFILE\.dotnet\tools" >> "$GITHUB_PATH"
-      - name: Build the MSI
-        shell: bash
-        run: |
-          IFS=. read -r major minor patch <<< "$VERSION"
-          if [ "$major" -gt 255 ] || [ "$minor" -gt 255 ] || [ "$patch" -gt 65535 ]; then
-            echo "::error::$VERSION cannot be an MSI version (major and minor < 256, build < 65536)"
-            exit 1
-          fi
-          mkdir -p dist
-          wix build packaging/windows/Birchpad.wxs -arch x64 \
-            -d Version="$VERSION" -d BinDir="$(cygpath -w "$PWD/bin")" \
-            -d IconFile="$(cygpath -w "$PWD/packaging/icons/birchpad.ico")" \
-            -o "dist/birchpad-$VERSION-windows-x64.msi"
-      - name: Sign (placeholder)
-        shell: bash
-        run: echo "::notice::Authenticode signing is not set up yet; the MSI is unsigned."
-      - uses: actions/upload-artifact@v7
-        with:
-          name: dist-msi
-          path: dist/*.msi
-          if-no-files-found: error
+      # Windows files are signed when SignPath is set up (packaging/windows/signing).
+      sign: true
+      # MSI versions are numeric (major.minor.build); pre-releases get no MSI until there is a
+      # mapping for them (ADR 0005).
+      msi: ${{ needs.prepare.outputs.prerelease == 'false' }}
 
   publish:
-    # Runs when nothing failed; the MSI job is skipped for pre-releases.
+    # Runs when nothing failed.
     if: ${{ !cancelled() && !failure() }}
-    needs: [prepare, build, msi]
+    needs: [prepare, build]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -111,6 +75,7 @@ jobs:
       attestations: write
     env:
       VERSION: ${{ needs.prepare.outputs.version }}
+      SIGNED: ${{ vars.SIGNPATH_ORGANIZATION_ID != '' }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -129,8 +94,15 @@ jobs:
           subject-path: dist/*
       - name: Release notes
         shell: bash
-        # The version's section of CHANGELOG.md, or GitHub's generated notes without one.
+        # The version's section of CHANGELOG.md, or GitHub's generated notes without one, and
+        # the code signing policy, which SignPath Foundation requires on download pages.
         run: |
+          policy="https://github.com/$GITHUB_REPOSITORY#code-signing-policy"
+          if [ "$SIGNED" = "true" ]; then
+            footer="Free code signing provided by SignPath.io, certificate by SignPath Foundation. [Code signing policy]($policy)"
+          else
+            footer="The Windows files of this release are not signed. [Code signing policy]($policy)"
+          fi
           awk -v heading="## [$VERSION]" '
             index($0, heading) == 1 { inside = 1; next }
             inside && /^## / { exit }
@@ -138,9 +110,11 @@ jobs:
             inside { print }
           ' CHANGELOG.md > notes.md
           if [ -s notes.md ] && grep -q '[^[:space:]]' notes.md; then
+            printf '\n---\n\n%s\n' "$footer" >> notes.md
             echo "NOTES=--notes-file=notes.md" >> "$GITHUB_ENV"
           else
             echo "::warning::CHANGELOG.md has no section for $VERSION; using generated notes"
+            printf '%s\n' "$footer" > notes.md
             echo "NOTES=--generate-notes" >> "$GITHUB_ENV"
           fi
       - name: Create a draft release
@@ -149,6 +123,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           flags=(--draft --verify-tag "$NOTES" --title "Birchpad $VERSION")
+          if [ "$NOTES" = "--generate-notes" ]; then
+            flags+=(--notes-file notes.md)
+          fi
           if [ "${{ needs.prepare.outputs.prerelease }}" = "true" ]; then
             flags+=(--prerelease)
           fi
