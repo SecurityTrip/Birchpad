@@ -1,36 +1,48 @@
 //! Checking for Birchpad updates.
 //!
-//! A release feed is a JSON document in the format of GitHub's releases API: an array of
-//! releases (`/repos/{owner}/{repo}/releases`) or a single release (`.../releases/latest`).
-//! Each release has a `tag_name` such as `v1.2.3` or `v1.3.0-beta.1`, an `html_url` to its
-//! download page, and `draft`/`prerelease` flags. A mirror set in `updates.url` serves the same
-//! format.
+//! The update server publishes a signed manifest ([`manifest`], ADR 0020) listing recent releases
+//! and their installer packages. [`check`] downloads it, checks its signature against the keys
+//! compiled into Birchpad and its freshness, and looks for a release newer than the running one
+//! on the configured channel. `updates.url` may point to a mirror of the manifest: the signature,
+//! not the server, makes it trusted.
 //!
-//! [`check`] never touches the network when `updates.mode` is `off`. Nothing here checks on a
-//! schedule: the application calls [`check`] only when the user asks (Help > Check for Updates).
+//! [`check`] never touches the network when `updates.mode` is `off`.
 
+pub mod install;
+mod keys;
+pub mod manifest;
+
+use std::fs::File;
+use std::io::{Read as _, Write as _};
+use std::path::Path;
 use std::sync::Arc;
 use std::time::Duration;
 
 use birchpad_config::{UpdateChannel, UpdateMode, UpdateSettings};
 use semver::Version;
-use serde::Deserialize;
+use sha2::{Digest as _, Sha256};
 
-/// The official release feed.
-pub const DEFAULT_FEED: &str =
-    "https://api.github.com/repos/SecurityTrip/Birchpad/releases?per_page=30";
+pub use ed25519_dalek::{SigningKey, VerifyingKey};
+pub use manifest::{Manifest, ManifestError, ManifestRelease, Package};
 
-/// Feeds larger than this are rejected.
-const MAX_FEED_SIZE: u64 = 8 * 1024 * 1024;
-const TIMEOUT: Duration = Duration::from_secs(20);
+/// The official update manifest: an asset of the `updates` release on GitHub, replaced by the
+/// release workflows.
+pub const DEFAULT_MANIFEST: &str =
+    "https://github.com/SecurityTrip/Birchpad/releases/download/updates/birchpad-updates.json";
 
-/// A published release.
+/// Manifests larger than this are rejected.
+const MAX_MANIFEST_SIZE: u64 = 1024 * 1024;
+/// A request that sends nothing for this long fails.
+const TIMEOUT: Duration = Duration::from_secs(30);
+
+/// A release newer than the running version.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Release {
     pub version: Version,
-    pub tag: String,
     /// The release's download page (http or https).
     pub page: String,
+    /// The installer package for this platform, if there is one.
+    pub package: Option<Package>,
 }
 
 /// The result of a successful check.
@@ -42,104 +54,113 @@ pub enum Outcome {
     Available(Release),
 }
 
+/// A successful check: its outcome and the manifest's timestamp, to remember so that an older
+/// manifest is refused from now on.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Checked {
+    pub outcome: Outcome,
+    pub timestamp: u64,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum CheckError {
     #[error("checking for updates is turned off (updates.mode = \"off\")")]
     Disabled,
     #[error("cannot download {url}: {message}")]
     Transport { url: String, message: String },
-    #[error("{url} is not a release feed: {message}")]
-    Feed { url: String, message: String },
+    #[error("{error} ({url})")]
+    Manifest { url: String, error: ManifestError },
 }
 
-/// Fetches a URL. The application uses [`HttpTransport`]; tests use fakes.
+/// What a check compares the manifest with.
+pub struct CheckRequest<'a> {
+    pub settings: &'a UpdateSettings,
+    pub current: &'a Version,
+    /// This build's platform, as manifests name it ([`manifest::PLATFORM`]).
+    pub platform: Option<&'a str>,
+    pub keys: &'a [VerifyingKey],
+    /// Seconds since 1970.
+    pub now: u64,
+    /// The timestamp of the newest manifest seen before, or the time of this build: older
+    /// manifests are refused.
+    pub newest_seen: u64,
+}
+
+/// Fetches URLs. The application uses [`HttpTransport`]; tests use fakes.
 pub trait Transport: Send + Sync {
+    /// The body of `url`, at most [`MAX_MANIFEST_SIZE`] bytes.
     fn get(&self, url: &str) -> Result<Vec<u8>, String>;
+
+    /// Downloads `url` into `to`, at most `limit` bytes, reporting the bytes received so far.
+    fn download(
+        &self,
+        url: &str,
+        to: &Path,
+        limit: u64,
+        progress: &dyn Fn(u64),
+    ) -> Result<(), String> {
+        let body = self.get(url)?;
+        if body.len() as u64 > limit {
+            return Err(format!("larger than {limit} bytes"));
+        }
+        progress(body.len() as u64);
+        std::fs::write(to, body).map_err(|error| error.to_string())
+    }
 }
 
-/// The feed to read: `updates.url` if set, the official feed otherwise.
-pub fn feed_url(settings: &UpdateSettings) -> &str {
+/// The manifest to read: `updates.url` if set, the official one otherwise.
+pub fn manifest_url(settings: &UpdateSettings) -> &str {
     settings
         .url
         .as_deref()
         .map(str::trim)
         .filter(|url| !url.is_empty())
-        .unwrap_or(DEFAULT_FEED)
+        .unwrap_or(DEFAULT_MANIFEST)
 }
 
-/// Looks for a release newer than `current` on the configured channel.
-pub fn check(
-    settings: &UpdateSettings,
-    current: &Version,
-    transport: &dyn Transport,
-) -> Result<Outcome, CheckError> {
-    if settings.mode == UpdateMode::Off {
+/// Looks for a release newer than the running one on the configured channel.
+pub fn check(request: &CheckRequest, transport: &dyn Transport) -> Result<Checked, CheckError> {
+    if request.settings.mode == UpdateMode::Off {
         return Err(CheckError::Disabled);
     }
-    let url = feed_url(settings);
+    let url = manifest_url(request.settings);
     let body = transport
         .get(url)
         .map_err(|message| CheckError::Transport {
             url: url.to_owned(),
             message,
         })?;
-    let releases = parse_feed(&body).map_err(|error| CheckError::Feed {
-        url: url.to_owned(),
-        message: error.to_string(),
-    })?;
-    Ok(match newest(&releases, settings.channel) {
-        Some(release) if release.version > *current => Outcome::Available(release.clone()),
+    let manifest = manifest::verify(&body, request.keys, request.now, request.newest_seen)
+        .map_err(|error| CheckError::Manifest {
+            url: url.to_owned(),
+            error,
+        })?;
+    let newest = manifest.newest(request.settings.channel);
+    let outcome = match newest {
+        Some(release) if release.version > *request.current && is_web_page(&release.page) => {
+            Outcome::Available(Release {
+                version: release.version.clone(),
+                page: release.page.clone(),
+                package: request
+                    .platform
+                    .and_then(|platform| release.package(platform))
+                    .cloned(),
+            })
+        }
         newest => Outcome::UpToDate {
             newest: newest.map(|release| release.version.clone()),
         },
+    };
+    Ok(Checked {
+        outcome,
+        timestamp: manifest.timestamp,
     })
 }
 
-#[derive(Deserialize)]
-#[serde(untagged)]
-enum Feed {
-    Many(Vec<FeedRelease>),
-    One(FeedRelease),
-}
-
-#[derive(Deserialize)]
-struct FeedRelease {
-    tag_name: String,
-    html_url: String,
-    #[serde(default)]
-    draft: bool,
-    #[serde(default)]
-    prerelease: bool,
-}
-
-/// Parses a feed. Drafts, tags that are not versions and pages that are not web pages are
-/// skipped. A release marked as a prerelease without a pre-release version (`v1.2.0`, flagged)
-/// is treated as a beta.
-pub fn parse_feed(json: &[u8]) -> Result<Vec<Release>, serde_json::Error> {
-    let releases = match serde_json::from_slice(json)? {
-        Feed::Many(releases) => releases,
-        Feed::One(release) => vec![release],
-    };
-    Ok(releases
-        .into_iter()
-        .filter(|release| !release.draft)
-        .filter(|release| {
-            let page = release.html_url.to_ascii_lowercase();
-            page.starts_with("https://") || page.starts_with("http://")
-        })
-        .filter_map(|release| {
-            let tag = release.tag_name.trim();
-            let mut version = Version::parse(tag.strip_prefix(['v', 'V']).unwrap_or(tag)).ok()?;
-            if release.prerelease && version.pre.is_empty() {
-                version.pre = semver::Prerelease::new("beta").ok()?;
-            }
-            Some(Release {
-                version,
-                tag: release.tag_name,
-                page: release.html_url,
-            })
-        })
-        .collect())
+/// Only web pages are opened from a manifest.
+fn is_web_page(url: &str) -> bool {
+    let url = url.to_ascii_lowercase();
+    url.starts_with("https://") || url.starts_with("http://")
 }
 
 /// Whether a release with `version` belongs to `channel`. Stable takes plain versions, beta
@@ -153,12 +174,38 @@ pub fn on_channel(version: &Version, channel: UpdateChannel) -> bool {
     }
 }
 
-/// The newest release on `channel`.
-pub fn newest(releases: &[Release], channel: UpdateChannel) -> Option<&Release> {
-    releases
-        .iter()
-        .filter(|release| on_channel(&release.version, channel))
-        .max_by(|a, b| a.version.cmp(&b.version))
+/// Checks that a downloaded package is the one the manifest describes.
+pub fn verify_package(path: &Path, package: &Package) -> Result<(), String> {
+    let mut file = File::open(path).map_err(|error| error.to_string())?;
+    let mut hasher = Sha256::new();
+    let mut buffer = vec![0; 64 * 1024];
+    let mut size = 0;
+    loop {
+        let read = file.read(&mut buffer).map_err(|error| error.to_string())?;
+        if read == 0 {
+            break;
+        }
+        size += read as u64;
+        hasher.update(&buffer[..read]);
+    }
+    let sha256 = hex(&hasher.finalize());
+    if size != package.size {
+        return Err(format!(
+            "{} has {size} bytes, the manifest says {}",
+            package.file, package.size
+        ));
+    }
+    if !sha256.eq_ignore_ascii_case(&package.sha256) {
+        return Err(format!(
+            "{} has SHA-256 {sha256}, the manifest says {}",
+            package.file, package.sha256
+        ));
+    }
+    Ok(())
+}
+
+pub fn hex(bytes: &[u8]) -> String {
+    bytes.iter().map(|byte| format!("{byte:02x}")).collect()
 }
 
 /// HTTPS with the operating system's certificate store (so corporate root certificates work)
@@ -185,7 +232,9 @@ impl HttpTransport {
         let agent = ureq::Agent::config_builder()
             .tls_config(tls)
             .proxy(proxy)
-            .timeout_global(Some(TIMEOUT))
+            .timeout_connect(Some(TIMEOUT))
+            .timeout_recv_response(Some(TIMEOUT))
+            .timeout_recv_body(Some(TIMEOUT))
             .user_agent(user_agent)
             .build()
             .new_agent();
@@ -198,35 +247,62 @@ impl Transport for HttpTransport {
         let mut response = self
             .agent
             .get(url)
-            .header("Accept", "application/vnd.github+json, application/json")
+            .header("Accept", "application/json, application/octet-stream")
             .call()
             .map_err(|error| error.to_string())?;
         response
             .body_mut()
             .with_config()
-            .limit(MAX_FEED_SIZE)
+            .limit(MAX_MANIFEST_SIZE)
             .read_to_vec()
             .map_err(|error| error.to_string())
+    }
+
+    fn download(
+        &self,
+        url: &str,
+        to: &Path,
+        limit: u64,
+        progress: &dyn Fn(u64),
+    ) -> Result<(), String> {
+        let mut response = self
+            .agent
+            .get(url)
+            .header("Accept", "application/octet-stream")
+            .call()
+            .map_err(|error| error.to_string())?;
+        let mut reader = response.body_mut().with_config().limit(limit).reader();
+        let mut file = File::create(to).map_err(|error| error.to_string())?;
+        let mut buffer = vec![0; 64 * 1024];
+        let mut received = 0;
+        loop {
+            let read = reader
+                .read(&mut buffer)
+                .map_err(|error| error.to_string())?;
+            if read == 0 {
+                break;
+            }
+            file.write_all(&buffer[..read])
+                .map_err(|error| error.to_string())?;
+            received += read as u64;
+            progress(received);
+        }
+        file.sync_all().map_err(|error| error.to_string())
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use std::io::{BufRead, BufReader, Write};
+    use std::io::{BufRead, BufReader};
     use std::net::TcpListener;
     use std::sync::Mutex;
 
-    use super::*;
+    use ed25519_dalek::SigningKey;
 
-    const FEED: &str = r#"[
-        {"tag_name": "v0.3.0-nightly.20261001", "html_url": "https://example.com/n", "prerelease": true},
-        {"tag_name": "v0.2.1-beta.2", "html_url": "https://example.com/b", "prerelease": true},
-        {"tag_name": "v0.4.0", "html_url": "https://example.com/draft", "draft": true},
-        {"tag_name": "v0.2.0", "html_url": "https://example.com/s", "prerelease": false},
-        {"tag_name": "latest", "html_url": "https://example.com/x"},
-        {"tag_name": "v9.0.0", "html_url": "javascript:alert(1)"},
-        {"tag_name": "v0.1.0", "html_url": "https://example.com/old"}
-    ]"#;
+    use super::*;
+    use crate::manifest::{PRODUCT, SCHEMA};
+
+    const NOW: u64 = 1_790_000_000;
 
     /// Serves canned answers and records what was asked.
     struct Fake {
@@ -235,11 +311,9 @@ mod tests {
     }
 
     impl Fake {
-        fn new(answer: Result<&str, &str>) -> Self {
+        fn new(answer: Result<Vec<u8>, &str>) -> Self {
             Self {
-                answer: answer
-                    .map(|body| body.as_bytes().to_vec())
-                    .map_err(str::to_owned),
+                answer: answer.map_err(str::to_owned),
                 requests: Mutex::default(),
             }
         }
@@ -250,6 +324,39 @@ mod tests {
             self.requests.lock().unwrap().push(url.to_owned());
             self.answer.clone()
         }
+    }
+
+    fn key() -> SigningKey {
+        SigningKey::from_bytes(&[7; 32])
+    }
+
+    fn package(version: &str) -> Package {
+        Package {
+            platform: "windows-x64".into(),
+            file: format!("Birchpad-{version}-full.nupkg"),
+            url: format!("https://example.com/{version}.nupkg"),
+            size: 3,
+            sha256: hex(&Sha256::digest(b"abc")),
+            sha1: String::new(),
+        }
+    }
+
+    fn signed(versions: &[&str]) -> Vec<u8> {
+        let manifest = Manifest {
+            schema: SCHEMA,
+            product: PRODUCT.into(),
+            timestamp: NOW,
+            expires: NOW + 86_400,
+            releases: versions
+                .iter()
+                .map(|version| ManifestRelease {
+                    version: Version::parse(version).unwrap(),
+                    page: format!("https://example.com/{version}"),
+                    packages: vec![package(version)],
+                })
+                .collect(),
+        };
+        serde_json::to_vec(&manifest::sign(&manifest, &[key()])).unwrap()
     }
 
     fn settings(mode: UpdateMode, channel: UpdateChannel) -> UpdateSettings {
@@ -264,103 +371,130 @@ mod tests {
         Version::parse(text).unwrap()
     }
 
+    fn run(
+        settings: &UpdateSettings,
+        current: &str,
+        platform: Option<&str>,
+        transport: &dyn Transport,
+    ) -> Result<Checked, CheckError> {
+        let keys = [key().verifying_key()];
+        let request = CheckRequest {
+            settings,
+            current: &version(current),
+            platform,
+            keys: &keys,
+            now: NOW,
+            newest_seen: 0,
+        };
+        check(&request, transport)
+    }
+
     #[test]
     fn off_means_no_request_at_all() {
-        let fake = Fake::new(Ok(FEED));
+        let fake = Fake::new(Ok(signed(&["9.0.0"])));
         let off = settings(UpdateMode::Off, UpdateChannel::Nightly);
-        assert_eq!(
-            check(&off, &version("0.1.0"), &fake),
-            Err(CheckError::Disabled)
-        );
+        assert_eq!(run(&off, "0.1.0", None, &fake), Err(CheckError::Disabled));
         assert!(fake.requests.lock().unwrap().is_empty());
     }
 
     #[test]
-    fn channels_pick_their_newest_release() {
-        let releases = parse_feed(FEED.as_bytes()).unwrap();
-        let tags: Vec<&str> = releases.iter().map(|r| r.tag.as_str()).collect();
-        assert_eq!(
-            tags,
-            [
-                "v0.3.0-nightly.20261001",
-                "v0.2.1-beta.2",
-                "v0.2.0",
-                "v0.1.0"
-            ]
-        );
-        let newest_tag = |channel| newest(&releases, channel).map(|r| r.tag.as_str());
-        assert_eq!(newest_tag(UpdateChannel::Stable), Some("v0.2.0"));
-        assert_eq!(newest_tag(UpdateChannel::Beta), Some("v0.2.1-beta.2"));
-        assert_eq!(
-            newest_tag(UpdateChannel::Nightly),
-            Some("v0.3.0-nightly.20261001")
-        );
-    }
-
-    #[test]
-    fn compares_with_the_running_version() {
-        let fake = Fake::new(Ok(FEED));
+    fn finds_newer_releases_on_the_channel_with_their_package() {
+        let fake = Fake::new(Ok(signed(&[
+            "0.3.0-nightly.20261005.7",
+            "0.2.1-beta.2",
+            "0.2.0",
+        ])));
         let stable = settings(UpdateMode::Notify, UpdateChannel::Stable);
-        let Ok(Outcome::Available(release)) = check(&stable, &version("0.1.0"), &fake) else {
+        let checked = run(&stable, "0.1.0", Some("windows-x64"), &fake).unwrap();
+        assert_eq!(checked.timestamp, NOW);
+        let Outcome::Available(release) = checked.outcome else {
             panic!("0.2.0 is newer than 0.1.0");
         };
-        assert_eq!(release.page, "https://example.com/s");
+        assert_eq!(release.version, version("0.2.0"));
+        assert_eq!(release.package, Some(package("0.2.0")));
+        let checked = run(&stable, "0.1.0", Some("windows-arm64"), &fake).unwrap();
+        assert!(matches!(
+            checked.outcome,
+            Outcome::Available(Release { package: None, .. })
+        ));
+
         assert_eq!(
-            check(&stable, &version("0.2.0"), &fake),
-            Ok(Outcome::UpToDate {
+            run(&stable, "0.2.0", None, &fake).unwrap().outcome,
+            Outcome::UpToDate {
                 newest: Some(version("0.2.0"))
-            })
+            }
         );
-        // A beta of the next version is newer than every stable release.
+        // A beta of the next version is newer than every stable release: no downgrade.
         assert!(matches!(
-            check(&stable, &version("0.2.1-beta.1"), &fake),
-            Ok(Outcome::UpToDate { .. })
+            run(&stable, "0.2.1-beta.1", None, &fake).unwrap().outcome,
+            Outcome::UpToDate { .. }
         ));
-        let beta = settings(UpdateMode::Auto, UpdateChannel::Beta);
+        let nightly = settings(UpdateMode::Auto, UpdateChannel::Nightly);
         assert!(matches!(
-            check(&beta, &version("0.2.1-beta.1"), &fake),
-            Ok(Outcome::Available(release)) if release.tag == "v0.2.1-beta.2"
+            run(&nightly, "0.2.1-beta.1", None, &fake).unwrap().outcome,
+            Outcome::Available(release) if release.version == version("0.3.0-nightly.20261005.7")
         ));
-        assert_eq!(*fake.requests.lock().unwrap(), [DEFAULT_FEED; 4]);
+        assert_eq!(*fake.requests.lock().unwrap(), [DEFAULT_MANIFEST; 5]);
     }
 
     #[test]
-    fn single_release_feeds_and_mirrors() {
-        let fake = Fake::new(Ok(
-            r#"{"tag_name": "1.0.0", "html_url": "http://mirror.local/1.0.0", "prerelease": true}"#,
+    fn mirrors_serve_the_same_signed_manifest() {
+        let fake = Fake::new(Ok(signed(&["1.0.0"])));
+        let mut mirror = settings(UpdateMode::Notify, UpdateChannel::Stable);
+        mirror.url = Some(" http://mirror.local/birchpad-updates.json ".into());
+        assert!(matches!(
+            run(&mirror, "0.9.0", None, &fake).unwrap().outcome,
+            Outcome::Available(_)
         ));
-        let mut mirror = settings(UpdateMode::Notify, UpdateChannel::Beta);
-        mirror.url = Some(" http://mirror.local/feed.json ".into());
-        let outcome = check(&mirror, &version("0.9.0"), &fake).unwrap();
-        // Flagged as a prerelease without a pre-release version: a beta.
-        assert!(
-            matches!(outcome, Outcome::Available(release) if release.version == version("1.0.0-beta"))
-        );
         assert_eq!(
             *fake.requests.lock().unwrap(),
-            ["http://mirror.local/feed.json"]
-        );
-        mirror.channel = UpdateChannel::Stable;
-        assert_eq!(
-            check(&mirror, &version("0.9.0"), &fake),
-            Ok(Outcome::UpToDate { newest: None })
+            ["http://mirror.local/birchpad-updates.json"]
         );
     }
 
     #[test]
-    fn errors_name_the_feed() {
+    fn errors_name_the_manifest() {
         let on = settings(UpdateMode::Auto, UpdateChannel::Stable);
-        let error = check(&on, &version("0.1.0"), &Fake::new(Err("offline"))).unwrap_err();
+        let error = run(&on, "0.1.0", None, &Fake::new(Err("offline"))).unwrap_err();
         assert_eq!(
             error.to_string(),
-            format!("cannot download {DEFAULT_FEED}: offline")
+            format!("cannot download {DEFAULT_MANIFEST}: offline")
         );
-        let error = check(&on, &version("0.1.0"), &Fake::new(Ok("<html>"))).unwrap_err();
-        assert!(matches!(error, CheckError::Feed { .. }));
+        let unsigned = br#"{"manifest": "{}", "signatures": []}"#.to_vec();
+        let error = run(&on, "0.1.0", None, &Fake::new(Ok(unsigned))).unwrap_err();
+        assert_eq!(
+            error,
+            CheckError::Manifest {
+                url: DEFAULT_MANIFEST.into(),
+                error: ManifestError::Untrusted
+            }
+        );
     }
 
     #[test]
-    fn http_transport_reads_a_feed() {
+    fn packages_are_checked_against_the_manifest() {
+        let dir = std::env::temp_dir().join(format!("birchpad-update-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("package.nupkg");
+        std::fs::write(&path, b"abc").unwrap();
+        assert_eq!(verify_package(&path, &package("1.0.0")), Ok(()));
+        std::fs::write(&path, b"abd").unwrap();
+        assert!(
+            verify_package(&path, &package("1.0.0"))
+                .unwrap_err()
+                .contains("SHA-256")
+        );
+        std::fs::write(&path, b"abcd").unwrap();
+        assert!(
+            verify_package(&path, &package("1.0.0"))
+                .unwrap_err()
+                .contains("4 bytes")
+        );
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    /// Answers one request with `body`; returns the request's lines.
+    fn serve_once(body: Vec<u8>) -> (String, std::thread::JoinHandle<Vec<String>>) {
         let listener = TcpListener::bind("127.0.0.1:0").unwrap();
         let address = listener.local_addr().unwrap();
         let server = std::thread::spawn(move || {
@@ -373,25 +507,54 @@ mod tests {
                 }
                 request.push(line);
             }
-            let body = FEED.as_bytes();
             write!(
                 stream,
-                "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+                "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
                 body.len()
             )
             .unwrap();
-            stream.write_all(body).unwrap();
+            stream.write_all(&body).unwrap();
             request
         });
+        (format!("http://{address}"), server)
+    }
+
+    #[test]
+    fn http_transport_reads_and_downloads() {
         let transport = HttpTransport::build("Birchpad/0.1.0 (test)", None);
-        let body = transport.get(&format!("http://{address}/feed")).unwrap();
-        assert_eq!(parse_feed(&body).unwrap().len(), 4);
+        let (base, server) = serve_once(signed(&["1.0.0"]));
+        let body = transport.get(&format!("{base}/manifest")).unwrap();
+        assert!(manifest::verify(&body, &[key().verifying_key()], NOW, 0).is_ok());
         let request = server.join().unwrap();
-        assert_eq!(request[0], "GET /feed HTTP/1.1");
+        assert_eq!(request[0], "GET /manifest HTTP/1.1");
         assert!(
             request
                 .iter()
                 .any(|line| line.eq_ignore_ascii_case("user-agent: Birchpad/0.1.0 (test)"))
         );
+
+        let dir = std::env::temp_dir().join(format!("birchpad-download-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("package.nupkg");
+        let (base, server) = serve_once(vec![b'x'; 200_000]);
+        let progress = Mutex::new(0);
+        transport
+            .download(&format!("{base}/p"), &path, 1_000_000, &|received| {
+                *progress.lock().unwrap() = received;
+            })
+            .unwrap();
+        server.join().unwrap();
+        assert_eq!(std::fs::metadata(&path).unwrap().len(), 200_000);
+        assert_eq!(*progress.lock().unwrap(), 200_000);
+
+        let (base, server) = serve_once(vec![b'x'; 200_000]);
+        assert!(
+            transport
+                .download(&format!("{base}/p"), &path, 1_000, &|_| {})
+                .is_err(),
+            "over the limit"
+        );
+        server.join().ok();
+        std::fs::remove_dir_all(&dir).unwrap();
     }
 }

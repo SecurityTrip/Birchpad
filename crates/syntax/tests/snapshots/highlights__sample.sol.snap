@@ -1,0 +1,54 @@
+---
+source: crates/syntax/tests/highlights.rs
+expression: render(&path)
+---
+language: solidity
+comment                  // SPDX-License-Identifier: MIT
+keyword                  pragma
+tag                       solidity
+operator                  ^
+tag                      0.8.24;
+comment                  /// A greeting, stored on chain.
+keyword                  contract
+type                     Greeting
+punctuation.bracket      {
+type                     string
+keyword                  public
+variable                 name
+string                   "world"
+type                     uint256
+keyword                  public
+variable                 times
+number                   2
+keyword                  event
+type                     Changed
+punctuation.bracket      (
+type                     address
+keyword                  indexed
+variable.parameter       by
+punctuation.delimiter    ,
+type                     string
+variable.parameter       name
+punctuation.bracket      )
+keyword                  function
+function                 rename
+punctuation.bracket      (
+type                     string
+keyword                  calldata
+variable.parameter       newName
+punctuation.bracket      )
+keyword                  external
+punctuation.bracket      {
+variable                 name
+variable                 newName
+keyword                  emit
+type                     Changed
+punctuation.bracket      (
+variable                 msg
+punctuation.delimiter    .
+property                 sender
+punctuation.delimiter    ,
+variable                 newName
+punctuation.bracket      )
+punctuation.bracket      }
+punctuation.bracket      }

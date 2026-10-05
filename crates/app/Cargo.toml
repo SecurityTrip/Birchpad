@@ -15,16 +15,21 @@ birchpad-commands.workspace = true
 birchpad-config.workspace = true
 birchpad-core.workspace = true
 birchpad-io.workspace = true
-birchpad-update.workspace = true
+birchpad-menu-bar.workspace = true
+birchpad-syntax.workspace = true
+birchpad-update = { workspace = true, features = ["installer"] }
 birchpad-view.workspace = true
 futures = "0.3"
 gpui-kit = "0.7"
 semver = "1"
 serde.workspace = true
 serde_json.workspace = true
+notify = "8"
 
 [dev-dependencies]
 gpui-kit = { version = "0.7", features = ["test-support"] }
+# The map type of GPUI's keyboard mapper trait, for a test mapper.
+rustc-hash = "2"
 tempfile = "3"
 
 [lints]

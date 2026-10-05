@@ -224,4 +224,53 @@ mod tests {
         assert!(!resolved.is_locked("updates.mode"));
         assert_eq!(resolved.diagnostics.len(), 1);
     }
+
+    #[test]
+    fn highlighting_settings_nest_two_levels() {
+        let resolved = resolve(Sources {
+            user: table(
+                "highlighting.smart.enabled = false\nhighlighting.token-style.match-case = true",
+            ),
+            ..Sources::default()
+        });
+        let highlighting = &resolved.settings.highlighting;
+        assert!(!highlighting.smart.enabled);
+        assert!(highlighting.smart.whole_word, "defaults stay");
+        assert!(highlighting.token_style.match_case);
+        assert!(resolved.diagnostics.is_empty());
+    }
+
+    #[test]
+    fn session_settings() {
+        let resolved = resolve(Sources {
+            user: table("session.backup-interval-seconds = 30"),
+            policy: table("session.backup-unsaved = false"),
+            ..Sources::default()
+        });
+        let session = &resolved.settings.session;
+        assert!(session.remember, "on by default, as in Notepad++");
+        assert!(!session.backup_unsaved);
+        assert_eq!(session.backup_interval_seconds, 30);
+        assert!(resolved.is_locked("session.backup-unsaved"));
+    }
+
+    #[test]
+    fn edge_and_current_line_settings() {
+        use crate::settings::{CurrentLine, Edge};
+        let resolved = resolve(Sources {
+            user: table(
+                "editor.edge = 'line'\neditor.edge-columns = [80, 120]\n\
+                 editor.current-line = 'frame'\neditor.edge-column = 72",
+            ),
+            ..Sources::default()
+        });
+        let editor = &resolved.settings.editor;
+        assert_eq!(editor.edge, Edge::Line);
+        assert_eq!(editor.edge_columns, [80, 120]);
+        assert_eq!(editor.current_line, CurrentLine::Frame);
+        assert!(editor.indent_guides, "on by default, as in Notepad++");
+        assert!(!editor.show_whitespace && !editor.show_eol && !editor.wrap_symbol);
+        // The edge-column of earlier versions is ignored like any unknown key.
+        assert!(resolved.diagnostics.is_empty());
+    }
 }

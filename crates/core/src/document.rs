@@ -140,6 +140,12 @@ impl Document {
     pub fn mark_saved_at(&mut self, revision: RevisionId) {
         self.saved = revision;
     }
+
+    /// Records that no state of the history is on disk, as for text restored from a backup
+    /// copy of unsaved changes: the document stays modified even after undoing everything.
+    pub fn mark_unsaved(&mut self) {
+        self.saved = RevisionId::NEVER;
+    }
 }
 
 #[cfg(test)]
@@ -194,6 +200,21 @@ mod tests {
         type_text(&mut doc, &selection, "?", UndoGrouping::MergeWithPrevious);
         assert_eq!(doc.text(), "saved!?");
         assert!(doc.is_modified());
+    }
+
+    #[test]
+    fn restored_unsaved_text_stays_modified() {
+        let mut doc = Document::from_text(Rope::from_str("from a backup"));
+        doc.mark_unsaved();
+        assert!(doc.is_modified());
+        type_text(&mut doc, &Selection::point(0), "x", UndoGrouping::NewStep);
+        doc.undo();
+        assert!(
+            doc.is_modified(),
+            "undoing everything does not reach the saved file"
+        );
+        doc.mark_saved();
+        assert!(!doc.is_modified());
     }
 
     #[test]

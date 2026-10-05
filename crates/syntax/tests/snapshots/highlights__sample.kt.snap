@@ -1,0 +1,80 @@
+---
+source: crates/syntax/tests/highlights.rs
+expression: render(&path)
+---
+language: kotlin
+module                   package 
+variable                 demo
+keyword.directive        import
+variable                 kotlin
+variable                 math
+variable                 max
+comment                  // A greeting, twice.
+keyword                  data
+keyword                  class
+type                     Greeting
+punctuation.bracket      (
+keyword                  val
+constructor               
+property                 name
+punctuation.delimiter    :
+constructor               
+type.builtin             String
+punctuation.delimiter    ,
+constructor               
+keyword                  val
+constructor               
+property                 times
+punctuation.delimiter    :
+constructor               
+type.builtin             Int
+constructor               
+operator                 =
+constructor               
+number                   2
+punctuation.bracket      )
+keyword                  fun
+type                     Greeting
+punctuation.delimiter    .
+variable                 render
+punctuation.bracket      ()
+punctuation.delimiter    :
+type.builtin             String
+operator                 =
+punctuation.bracket      (
+number                   1
+operator                 ..
+function                 max
+punctuation.bracket      (
+variable                 times
+punctuation.delimiter    ,
+number                   1
+punctuation.bracket      ))
+punctuation.delimiter    .
+function                 joinToString
+punctuation.bracket      (
+string                   " "
+punctuation.bracket      )
+punctuation.bracket      {
+string                   "Hello, 
+punctuation.special      $
+string                   name!"
+punctuation.bracket      }
+keyword                  fun
+function                 main
+punctuation.bracket      ()
+punctuation.bracket      {
+keyword                  val
+variable                 greeting
+operator                 =
+function                 Greeting
+punctuation.bracket      (
+string                   "world"
+punctuation.bracket      )
+function.builtin         println
+punctuation.bracket      (
+variable                 greeting
+punctuation.delimiter    .
+function                 render
+punctuation.bracket      ())
+punctuation.bracket      }

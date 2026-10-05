@@ -113,7 +113,7 @@ impl Workspace {
     }
 
     /// The folder dialogs start in: the active file's, else the home folder.
-    fn default_directory(&self, cx: &App) -> PathBuf {
+    pub(crate) fn default_directory(&self, cx: &App) -> PathBuf {
         self.active_view(cx)
             .and_then(|view| {
                 let buffer = view.read(cx).buffer.read(cx);
@@ -236,12 +236,57 @@ impl Workspace {
         })
     }
 
-    /// File > Exit: closes everything (asking about unsaved changes), then quits.
+    /// Asks about every modified document, saving those the user wants saved. Resolves to
+    /// `false` if the user cancelled.
+    pub(crate) fn ask_to_save_all(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Task<bool> {
+        let views = self.unique_buffer_views(cx);
+        cx.spawn_in(window, async move |this, cx| {
+            for view in views {
+                if !ask_to_save(&this, &view, cx).await {
+                    return false;
+                }
+            }
+            true
+        })
+    }
+
+    /// Whether quitting can go ahead without asking anything: unsaved changes are backed up,
+    /// or there are none.
+    pub(crate) fn can_quit_now(&self, cx: &App) -> bool {
+        AppState::global(cx).backs_up_unsaved() || !self.has_unsaved_changes(cx)
+    }
+
+    /// Gets ready to quit: asks about unsaved changes unless they are backed up, then saves
+    /// the session. Resolves to `false` if the user cancelled.
+    pub(crate) fn prepare_to_quit(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Task<bool> {
+        if self.can_quit_now(cx) {
+            self.save_session_for_quit(cx);
+            return Task::ready(true);
+        }
+        let asking = self.ask_to_save_all(window, cx);
+        cx.spawn_in(window, async move |this, cx| {
+            if !asking.await {
+                return false;
+            }
+            this.update(cx, |this, cx| this.save_session_for_quit(cx))
+                .is_ok()
+        })
+    }
+
+    /// File > Exit: asks about unsaved changes (unless they are backed up), saves the session
+    /// and quits.
     pub(crate) fn exit(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        let views = self.all_views(cx);
-        let closing = self.close_with_confirmation(views, window, cx);
+        let ready = self.prepare_to_quit(window, cx);
         cx.spawn(async move |_, cx| {
-            if closing.await {
+            if ready.await {
                 cx.update(|cx| cx.quit());
             }
         })
@@ -294,16 +339,27 @@ async fn write_buffer(
     let recovery = cx.update(|_, cx| AppState::global(cx).recovery_dir())?;
     let target = path.clone();
     let encoded_text = text.clone();
+    buffer.update(cx, |buffer, _| buffer.begin_save());
     let written = cx
         .background_spawn(async move {
             let bytes = birchpad_io::encode(&encoded_text, format.encoding, format.bom)
                 .map_err(WriteFailure::Unencodable)?;
-            birchpad_io::save(&target, &bytes, recovery.as_deref()).map_err(WriteFailure::Save)
+            let written = birchpad_io::save(&target, &bytes, recovery.as_deref())
+                .map_err(WriteFailure::Save)?;
+            // What the file looks like now, so that this write is not taken for a change
+            // made by another program.
+            let stamp = birchpad_io::stamp(&written).ok().flatten();
+            Ok(stamp.map(|stamp| (stamp, birchpad_io::Head::of(&bytes))))
         })
         .await;
+    if written.is_err() {
+        buffer.update(cx, |buffer, _| buffer.end_save());
+    }
     match written {
-        Ok(_) => {
-            buffer.update(cx, |buffer, cx| buffer.did_save(path.clone(), revision, cx));
+        Ok(disk) => {
+            buffer.update(cx, |buffer, cx| {
+                buffer.did_save(path.clone(), revision, disk, cx);
+            });
             cx.update(|_, cx| AppState::remove_recent(&path, cx))?;
             workspace.update(cx, |workspace, cx| workspace.refresh_menus(cx))?;
             Ok(())
@@ -318,30 +374,38 @@ async fn write_buffer(
     }
 }
 
-/// Asks whether to save the buffer of `view` before closing it. `true` means go ahead.
+/// Asks whether to save the buffer of `view` before closing it. `true` means go ahead. A
+/// document that another view still shows is not asked about.
 async fn confirm_close(
     workspace: &WeakEntity<Workspace>,
     view: &Entity<EditorView>,
     cx: &mut AsyncWindowContext,
 ) -> bool {
-    let Ok((needs_question, name, path)) = workspace.read_with(cx, |workspace, cx| {
-        let buffer = view.read(cx).buffer.clone();
-        let other_views = workspace
+    let Ok(shown_elsewhere) = workspace.read_with(cx, |workspace, cx| {
+        let buffer = &view.read(cx).buffer;
+        workspace
             .all_views(cx)
             .iter()
-            .filter(|other| *other != view && other.read(cx).buffer == buffer)
-            .count();
-        let buffer = buffer.read(cx);
-        let path = buffer.path().map(|path| path.display().to_string());
-        (
-            buffer.is_modified() && other_views == 0,
-            buffer.display_name(),
-            path,
-        )
+            .any(|other| other != view && &other.read(cx).buffer == buffer)
     }) else {
         return false;
     };
-    if !needs_question {
+    shown_elsewhere || ask_to_save(workspace, view, cx).await
+}
+
+/// Asks whether to save the buffer of `view` if it is modified, and saves it on Save. `true`
+/// unless the user cancelled or saving failed.
+async fn ask_to_save(
+    workspace: &WeakEntity<Workspace>,
+    view: &Entity<EditorView>,
+    cx: &mut AsyncWindowContext,
+) -> bool {
+    let (modified, name, path) = view.read_with(cx, |view, cx| {
+        let buffer = view.buffer.read(cx);
+        let path = buffer.path().map(|path| path.display().to_string());
+        (buffer.is_modified(), buffer.display_name(), path)
+    });
+    if !modified {
         return true;
     }
     if workspace

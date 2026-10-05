@@ -163,6 +163,57 @@ impl Keystroke {
     }
 }
 
+/// What Shift with each digit and punctuation key types on a US layout.
+const US_SHIFTED: [(char, char); 21] = [
+    ('1', '!'),
+    ('2', '@'),
+    ('3', '#'),
+    ('4', '$'),
+    ('5', '%'),
+    ('6', '^'),
+    ('7', '&'),
+    ('8', '*'),
+    ('9', '('),
+    ('0', ')'),
+    ('-', '_'),
+    ('=', '+'),
+    ('[', '{'),
+    (']', '}'),
+    ('\\', '|'),
+    (';', ':'),
+    ('\'', '"'),
+    (',', '<'),
+    ('.', '>'),
+    ('/', '?'),
+    ('`', '~'),
+];
+
+impl Keystroke {
+    /// The keystroke as X11 and Wayland report it when Shift is held with a digit or
+    /// punctuation key: the shifted character without Shift (`ctrl-alt-shift-1` arrives as
+    /// `ctrl-alt-!`). GPUI has no keyboard mapper on Linux, so bindings with such keys need
+    /// this second spelling. The characters are a US layout's; layouts that are not Latin
+    /// report the US character too, but European ones may type others (a German Shift+7 is
+    /// `/`). `None` for keystrokes that need no second spelling.
+    pub fn shifted_symbol(&self) -> Option<Self> {
+        if !self.modifiers.shift {
+            return None;
+        }
+        let mut chars = self.key.chars();
+        let (Some(key), None) = (chars.next(), chars.next()) else {
+            return None;
+        };
+        let (_, shifted) = US_SHIFTED.iter().find(|(plain, _)| *plain == key)?;
+        Some(Self {
+            modifiers: Modifiers {
+                shift: false,
+                ..self.modifiers
+            },
+            key: shifted.to_string(),
+        })
+    }
+}
+
 fn is_function_key(key: &str) -> bool {
     key.strip_prefix('f')
         .and_then(|n| n.parse::<u8>().ok())
@@ -241,6 +292,17 @@ mod tests {
         );
         assert_eq!(err("ctrl-f99"), KeystrokeError::UnknownKey("f99".into()));
         assert_eq!(err("ctrl-pgup"), KeystrokeError::UnknownKey("pgup".into()));
+    }
+
+    #[test]
+    fn shifted_digits_get_the_spelling_linux_reports() {
+        let shifted = |s| parse(s).shifted_symbol().map(|k| k.to_string());
+        assert_eq!(shifted("ctrl-alt-shift-1").as_deref(), Some("ctrl-alt-!"));
+        assert_eq!(shifted("alt-shift-0").as_deref(), Some("alt-)"));
+        assert_eq!(shifted("ctrl-shift-=").as_deref(), Some("ctrl-+"));
+        assert_eq!(shifted("ctrl-alt-1"), None, "no shift");
+        assert_eq!(shifted("ctrl-shift-l"), None, "letters keep shift");
+        assert_eq!(shifted("shift-f2"), None);
     }
 
     #[test]

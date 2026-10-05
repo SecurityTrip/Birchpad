@@ -33,6 +33,8 @@ pub enum Placeholder {
     /// Every supported legacy encoding, grouped by script, each invoking `command` with
     /// `{ "encoding": <name> }`.
     CharacterSets { command: &'static str },
+    /// The languages, grouped by first letter as in Notepad++, each invoking `language.set`.
+    Languages,
 }
 
 impl MenuItem {
@@ -119,12 +121,46 @@ pub fn main_menu() -> Vec<Menu> {
             cmd("file.close-all"),
             cmd("file.close-others"),
             Separator,
+            cmd("file.load-session"),
+            cmd("file.save-session"),
+            Separator,
             cmd("file.exit"),
         ],
     );
 
+    let case = |to: &str, label: &str| {
+        MenuItem::command_with("edit.convert-case", json!({ "to": to }), label)
+    };
+    let sort = |by: &str, descending: bool, label: &str| {
+        MenuItem::command_with(
+            "edit.sort-lines",
+            json!({ "by": by, "descending": descending }),
+            label,
+        )
+    };
+    let trim = |which: &str, label: &str| {
+        MenuItem::command_with("edit.trim", json!({ "which": which }), label)
+    };
     let eol = |eol: &str, label: &str| {
         MenuItem::command_with("edit.convert-eol", json!({ "eol": eol }), label)
+    };
+    // The four variants of Notepad++'s Multi-select All and Multi-select Next.
+    let multi_select = |command: &str| {
+        [
+            (false, false, "Ignore Case & Whole Word"),
+            (true, false, "Match Case Only"),
+            (false, true, "Match Whole Word Only"),
+            (true, true, "Match Case & Whole Word"),
+        ]
+        .into_iter()
+        .map(|(match_case, whole_word, label)| {
+            MenuItem::command_with(
+                command,
+                json!({ "match-case": match_case, "whole-word": whole_word }),
+                label,
+            )
+        })
+        .collect::<Vec<_>>()
     };
     let edit = Menu::new(
         "Edit",
@@ -137,7 +173,143 @@ pub fn main_menu() -> Vec<Menu> {
             cmd("edit.paste"),
             cmd("edit.delete"),
             cmd("edit.select-all"),
+            cmd("edit.begin-end-select"),
+            cmd("edit.begin-end-select-column"),
             Separator,
+            Submenu(Menu::new(
+                "Comment/Uncomment",
+                vec![
+                    cmd("edit.toggle-comment"),
+                    cmd("edit.comment-lines"),
+                    cmd("edit.uncomment-lines"),
+                    cmd("edit.block-comment"),
+                ],
+            )),
+            Submenu(Menu::new(
+                "Convert Case to",
+                vec![
+                    case("upper", "UPPERCASE"),
+                    case("lower", "lowercase"),
+                    case("proper", "Proper Case"),
+                    case("proper-blend", "Proper Case (blend)"),
+                    case("sentence", "Sentence case"),
+                    case("sentence-blend", "Sentence case (blend)"),
+                    case("invert", "iNVERT cASE"),
+                    case("random", "ranDOm CasE"),
+                ],
+            )),
+            Submenu(Menu::new(
+                "Line Operations",
+                vec![
+                    cmd("edit.duplicate-line"),
+                    cmd("edit.delete-line"),
+                    cmd("edit.move-line-up"),
+                    cmd("edit.move-line-down"),
+                    cmd("edit.insert-line-above"),
+                    cmd("edit.insert-line-below"),
+                    Separator,
+                    cmd("edit.join-lines"),
+                    cmd("edit.split-lines"),
+                    Separator,
+                    MenuItem::command_with(
+                        "edit.remove-duplicate-lines",
+                        json!({ "consecutive": false }),
+                        "Remove Duplicate Lines",
+                    ),
+                    MenuItem::command_with(
+                        "edit.remove-duplicate-lines",
+                        json!({ "consecutive": true }),
+                        "Remove Consecutive Duplicate Lines",
+                    ),
+                    MenuItem::command_with(
+                        "edit.remove-empty-lines",
+                        json!({ "blank": false }),
+                        "Remove Empty Lines",
+                    ),
+                    MenuItem::command_with(
+                        "edit.remove-empty-lines",
+                        json!({ "blank": true }),
+                        "Remove Empty Lines (Containing Blank characters)",
+                    ),
+                    Separator,
+                    sort(
+                        "lexicographic",
+                        false,
+                        "Sort Lines Lexicographically Ascending",
+                    ),
+                    sort(
+                        "lexicographic",
+                        true,
+                        "Sort Lines Lexicographically Descending",
+                    ),
+                    sort(
+                        "ignore-case",
+                        false,
+                        "Sort Lines Lex. Ascending Ignoring Case",
+                    ),
+                    sort(
+                        "ignore-case",
+                        true,
+                        "Sort Lines Lex. Descending Ignoring Case",
+                    ),
+                    sort("integer", false, "Sort Lines As Integers Ascending"),
+                    sort("integer", true, "Sort Lines As Integers Descending"),
+                    sort(
+                        "decimal-comma",
+                        false,
+                        "Sort Lines As Decimals (Comma) Ascending",
+                    ),
+                    sort(
+                        "decimal-comma",
+                        true,
+                        "Sort Lines As Decimals (Comma) Descending",
+                    ),
+                    sort(
+                        "decimal-dot",
+                        false,
+                        "Sort Lines As Decimals (Dot) Ascending",
+                    ),
+                    sort(
+                        "decimal-dot",
+                        true,
+                        "Sort Lines As Decimals (Dot) Descending",
+                    ),
+                    sort("length", false, "Sort Lines By Length Ascending"),
+                    sort("length", true, "Sort Lines By Length Descending"),
+                    cmd("edit.reverse-lines"),
+                    cmd("edit.shuffle-lines"),
+                ],
+            )),
+            Submenu(Menu::new(
+                "Blank Operations",
+                vec![
+                    trim("trailing", "Trim Trailing Space"),
+                    trim("leading", "Trim Leading Space"),
+                    trim("both", "Trim Leading and Trailing Space"),
+                    MenuItem::command_with(
+                        "edit.eol-to-space",
+                        json!({ "trim": false }),
+                        "EOL to Space",
+                    ),
+                    MenuItem::command_with(
+                        "edit.eol-to-space",
+                        json!({ "trim": true }),
+                        "Trim both and EOL to Space",
+                    ),
+                    Separator,
+                    cmd("edit.tabs-to-spaces"),
+                    MenuItem::command_with(
+                        "edit.spaces-to-tabs",
+                        json!({ "leading": false }),
+                        "Space to TAB (All)",
+                    ),
+                    MenuItem::command_with(
+                        "edit.spaces-to-tabs",
+                        json!({ "leading": true }),
+                        "Space to TAB (Leading)",
+                    ),
+                ],
+            )),
             Submenu(Menu::new(
                 "EOL Conversion",
                 vec![
@@ -146,9 +318,54 @@ pub fn main_menu() -> Vec<Menu> {
                     eol("cr", "Macintosh (CR)"),
                 ],
             )),
+            Separator,
+            Submenu(Menu::new(
+                "Multi-select All",
+                multi_select("edit.multi-select-all"),
+            )),
+            Submenu(Menu::new(
+                "Multi-select Next",
+                multi_select("edit.multi-select-next"),
+            )),
+            cmd("edit.multi-select-undo"),
+            cmd("edit.multi-select-skip"),
+            Separator,
+            cmd("edit.column-editor"),
         ],
     );
 
+    const ORDINALS: [&str; 5] = ["1st", "2nd", "3rd", "4th", "5th"];
+    let styles = |command: &str, label: &dyn Fn(&str) -> String| {
+        ORDINALS
+            .iter()
+            .enumerate()
+            .map(|(index, ordinal)| {
+                MenuItem::command_with(command, json!({ "style": index + 1 }), &label(ordinal))
+            })
+            .collect::<Vec<_>>()
+    };
+    let using = |ordinal: &str| format!("Using {ordinal} Style");
+    let plain = |ordinal: &str| format!("{ordinal} Style");
+    let mut clear = styles("mark.clear", &|ordinal| format!("Clear {ordinal} Style"));
+    clear.push(cmd("mark.clear-all"));
+    let mut jump_up = styles("mark.jump-up", &plain);
+    jump_up.push(MenuItem::command_with(
+        "mark.jump-up",
+        json!({}),
+        "Any Style",
+    ));
+    let mut jump_down = styles("mark.jump-down", &plain);
+    jump_down.push(MenuItem::command_with(
+        "mark.jump-down",
+        json!({}),
+        "Any Style",
+    ));
+    let mut copy_styled = styles("mark.copy-styled-text", &plain);
+    copy_styled.push(MenuItem::command_with(
+        "mark.copy-styled-text",
+        json!({}),
+        "All Styles",
+    ));
     let search = Menu::new(
         "Search",
         vec![
@@ -158,14 +375,62 @@ pub fn main_menu() -> Vec<Menu> {
             cmd("search.replace"),
             Separator,
             cmd("search.go-to"),
+            cmd("search.go-to-matching-brace"),
+            cmd("search.select-to-matching-brace"),
+            Separator,
+            Submenu(Menu::new(
+                "Style All Occurrences of Token",
+                styles("mark.style-all", &using),
+            )),
+            Submenu(Menu::new(
+                "Style One Token",
+                styles("mark.style-one", &using),
+            )),
+            Submenu(Menu::new("Clear Style", clear)),
+            Submenu(Menu::new("Jump Up", jump_up)),
+            Submenu(Menu::new("Jump Down", jump_down)),
+            Submenu(Menu::new("Copy Styled Text", copy_styled)),
+            Separator,
+            Submenu(Menu::new(
+                "Bookmark",
+                vec![
+                    cmd("bookmark.toggle"),
+                    cmd("bookmark.next"),
+                    cmd("bookmark.previous"),
+                    cmd("bookmark.clear-all"),
+                    cmd("bookmark.cut-lines"),
+                    cmd("bookmark.copy-lines"),
+                    cmd("bookmark.paste-to-lines"),
+                    cmd("bookmark.remove-lines"),
+                    cmd("bookmark.remove-unmarked-lines"),
+                    cmd("bookmark.inverse"),
+                ],
+            )),
         ],
     );
 
+    let level = |command: &str| {
+        (1..=8)
+            .map(|level| {
+                MenuItem::command_with(command, json!({ "level": level }), &level.to_string())
+            })
+            .collect::<Vec<_>>()
+    };
+    // In Notepad++'s order.
     let view = Menu::new(
         "View",
         vec![
-            cmd("view.word-wrap"),
-            Separator,
+            Submenu(Menu::new(
+                "Show Symbol",
+                vec![
+                    cmd("view.show-whitespace"),
+                    cmd("view.show-eol"),
+                    cmd("view.show-all-characters"),
+                    Separator,
+                    cmd("view.indent-guides"),
+                    cmd("view.wrap-symbol"),
+                ],
+            )),
             Submenu(Menu::new(
                 "Zoom",
                 vec![
@@ -175,9 +440,31 @@ pub fn main_menu() -> Vec<Menu> {
                 ],
             )),
             Submenu(Menu::new(
+                "Move/Clone Current Document",
+                vec![
+                    cmd("view.move-to-other-view"),
+                    cmd("view.clone-to-other-view"),
+                ],
+            )),
+            Submenu(Menu::new(
                 "Tab",
                 vec![cmd("view.next-tab"), cmd("view.previous-tab")],
             )),
+            cmd("view.word-wrap"),
+            cmd("view.focus-other-view"),
+            cmd("view.rotate-split"),
+            Separator,
+            cmd("view.fold-all"),
+            cmd("view.unfold-all"),
+            cmd("view.fold-current"),
+            cmd("view.unfold-current"),
+            Submenu(Menu::new("Collapse Level", level("view.fold-level"))),
+            Submenu(Menu::new("Uncollapse Level", level("view.unfold-level"))),
+            Separator,
+            cmd("view.sync-vertical-scroll"),
+            cmd("view.sync-horizontal-scroll"),
+            Separator,
+            cmd("view.monitoring"),
         ],
     );
 
@@ -218,12 +505,21 @@ pub fn main_menu() -> Vec<Menu> {
     )));
     let encoding = Menu::new("Encoding", encoding_items);
 
+    let language = Menu::new(
+        "Language",
+        vec![
+            MenuItem::command_with("language.set", json!({ "language": "text" }), "Normal Text"),
+            Separator,
+            Dynamic(Placeholder::Languages),
+        ],
+    );
+
     let help = Menu::new(
         "Help",
         vec![cmd("help.check-updates"), Separator, cmd("help.about")],
     );
 
-    vec![file, edit, search, view, encoding, help]
+    vec![file, edit, search, view, encoding, language, help]
 }
 
 #[cfg(test)]
@@ -235,7 +531,9 @@ mod tests {
         let titles: Vec<String> = main_menu().into_iter().map(|menu| menu.title).collect();
         assert_eq!(
             titles,
-            ["File", "Edit", "Search", "View", "Encoding", "Help"]
+            [
+                "File", "Edit", "Search", "View", "Encoding", "Language", "Help"
+            ]
         );
     }
 

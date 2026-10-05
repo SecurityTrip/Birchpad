@@ -8,8 +8,10 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use birchpad_core::{Encoding, Format, Rope};
 
+use crate::changes::ByteChanges;
 use crate::decode::{DecodeProblem, decode};
 use crate::detect::{DetectedBy, detect};
+use crate::disk::Head;
 
 /// Files larger than this are refused instead of exhausting memory. The whole text lives in
 /// memory; memory-mapped huge files are a phase 6 feature.
@@ -119,9 +121,14 @@ pub struct LoadedFile {
     /// the actual one from the text.
     pub format: Format,
     pub detected_by: Option<DetectedBy>,
-    /// Set if the text does not represent the file exactly; such files must not be edited.
+    /// Set if the text does not represent the file exactly; such files are not edited unless
+    /// the user accepts `changes`.
     pub problem: Option<DecodeProblem>,
+    /// With a problem: where saving the text would change the file.
+    pub changes: ByteChanges,
     pub info: FileInfo,
+    /// A fingerprint of the file's first bytes, to tell later whether it was only appended to.
+    pub head: Head,
 }
 
 /// Reads and decodes a file.
@@ -143,6 +150,7 @@ pub fn decode_file(bytes: Vec<u8>, info: FileInfo, options: LoadOptions) -> Load
             (detection.encoding, Some(detection.by))
         }
     };
+    let head = Head::of(&bytes);
     let decoded = decode(bytes, encoding);
     LoadedFile {
         text: Rope::from_str(&decoded.text),
@@ -153,7 +161,9 @@ pub fn decode_file(bytes: Vec<u8>, info: FileInfo, options: LoadOptions) -> Load
         },
         detected_by,
         problem: decoded.problem,
+        changes: decoded.changes,
         info,
+        head,
     }
 }
 

@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 #[serde(default, rename_all = "kebab-case")]
 pub struct Settings {
     pub editor: EditorSettings,
+    pub highlighting: HighlightingSettings,
     pub files: FileSettings,
     pub session: SessionSettings,
     pub updates: UpdateSettings,
@@ -21,6 +22,67 @@ pub struct EditorSettings {
     pub tab_width: u8,
     pub insert_spaces: bool,
     pub word_wrap: bool,
+    /// Margins left of the text, as in Notepad++'s Preferences > Margins: line numbers, the
+    /// symbol margin (bookmarks) and the folding margin.
+    pub line_numbers: bool,
+    pub bookmark_margin: bool,
+    pub fold_margin: bool,
+    /// What Enter does with indentation.
+    pub auto_indent: AutoIndent,
+    /// View > Show Symbol as Birchpad starts; the menu toggles them (remembered in
+    /// `state.toml`, like word wrap).
+    pub show_whitespace: bool,
+    pub show_eol: bool,
+    pub indent_guides: bool,
+    pub wrap_symbol: bool,
+    /// How the line of the caret stands out.
+    pub current_line: CurrentLine,
+    /// Width of the frame around the current line in pixels (1 to 6), as in Notepad++.
+    pub current_line_frame_width: u8,
+    /// The vertical edge, as in Notepad++'s Preferences > Margins/Border/Edge.
+    pub edge: Edge,
+    /// Columns of the edge: a line at each in line mode, the first one in background mode.
+    /// Split Lines breaks lines at the first one while the edge is shown, else at the width of
+    /// the view.
+    pub edge_columns: Vec<u16>,
+}
+
+/// Notepad++'s current line indicator.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum CurrentLine {
+    Off,
+    /// A background across the whole line.
+    #[default]
+    Background,
+    /// A frame around the line.
+    Frame,
+}
+
+/// Notepad++'s vertical edge modes.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum Edge {
+    #[default]
+    Off,
+    /// A vertical line at each edge column.
+    Line,
+    /// Text past the first edge column gets the edge color as its background.
+    Background,
+}
+
+/// Notepad++'s auto-indent modes.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum AutoIndent {
+    /// A new line starts at column 1.
+    Off,
+    /// A new line gets the indentation of the line above.
+    Basic,
+    /// Like basic, and one level more after an opening bracket (or a colon in Python); Enter
+    /// between a pair of braces puts the closing one on its own line.
+    #[default]
+    Advanced,
 }
 
 impl Default for EditorSettings {
@@ -29,6 +91,67 @@ impl Default for EditorSettings {
             tab_width: 4,
             insert_spaces: false,
             word_wrap: false,
+            line_numbers: true,
+            bookmark_margin: true,
+            fold_margin: true,
+            auto_indent: AutoIndent::default(),
+            show_whitespace: false,
+            show_eol: false,
+            indent_guides: true,
+            wrap_symbol: false,
+            current_line: CurrentLine::default(),
+            current_line_frame_width: 1,
+            edge: Edge::default(),
+            edge_columns: vec![80],
+        }
+    }
+}
+
+/// Notepad++'s Preferences > Highlighting.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, rename_all = "kebab-case")]
+pub struct HighlightingSettings {
+    /// Highlighting every occurrence of the selected word in the visible text.
+    pub smart: SmartHighlighting,
+    /// How Search > Style All Occurrences of Token matches the token.
+    pub token_style: TokenMatching,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, rename_all = "kebab-case")]
+pub struct SmartHighlighting {
+    pub enabled: bool,
+    pub match_case: bool,
+    /// Highlight only when a whole word is selected, and only whole-word occurrences of it.
+    /// Off: any selection on one line is highlighted wherever it occurs.
+    pub whole_word: bool,
+    /// Take match case and whole word from the find panel instead.
+    pub use_find_options: bool,
+}
+
+impl Default for SmartHighlighting {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            match_case: false,
+            whole_word: true,
+            use_find_options: false,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, rename_all = "kebab-case")]
+pub struct TokenMatching {
+    pub match_case: bool,
+    pub whole_word: bool,
+}
+
+impl Default for TokenMatching {
+    fn default() -> Self {
+        Self {
+            match_case: false,
+            whole_word: true,
         }
     }
 }
@@ -43,6 +166,17 @@ pub struct FileSettings {
     /// elsewhere.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub ansi_encoding: Option<String>,
+    /// Like Notepad++'s Large File Restriction: files larger than this many megabytes open
+    /// without syntax highlighting, brace matching, smart highlighting and folding.
+    pub large_file_limit_mb: u32,
+    /// Notepad++'s File Status Auto-Detection: which open files are watched for changes made
+    /// by other programs.
+    pub change_detection: ChangeDetection,
+    /// Reload a changed file that has no unsaved changes without asking ("Update silently").
+    pub reload_silently: bool,
+    /// After reloading, go to the end of the document ("Scroll to the last line after
+    /// update").
+    pub reload_scrolls_to_end: bool,
 }
 
 impl Default for FileSettings {
@@ -50,21 +184,47 @@ impl Default for FileSettings {
         Self {
             recent_limit: 10,
             ansi_encoding: None,
+            large_file_limit_mb: 20,
+            change_detection: ChangeDetection::default(),
+            reload_silently: false,
+            reload_scrolls_to_end: false,
         }
     }
 }
 
+/// Which open files are watched for changes made by other programs.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum ChangeDetection {
+    /// Every open file.
+    #[default]
+    All,
+    /// The document of the active tab only.
+    Current,
+    Off,
+}
+
+/// Notepad++'s Preferences > Backup.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default, rename_all = "kebab-case")]
 pub struct SessionSettings {
-    /// Periodically back up unsaved changes so they survive closing the app or a crash.
+    /// Reopen the documents of the last run, with their carets, folds and bookmarks
+    /// ("Remember current session for next launch").
+    pub remember: bool,
+    /// Keep unsaved changes, untitled documents included, in backup copies: quitting does not
+    /// ask about them and the next launch restores them; a crash loses at most the last
+    /// interval ("Enable session snapshot and periodic backup"). Needs `remember`.
     pub backup_unsaved: bool,
+    /// How often unsaved changes are backed up, in seconds.
+    pub backup_interval_seconds: u32,
 }
 
 impl Default for SessionSettings {
     fn default() -> Self {
         Self {
+            remember: true,
             backup_unsaved: true,
+            backup_interval_seconds: 7,
         }
     }
 }
@@ -74,7 +234,8 @@ impl Default for SessionSettings {
 pub struct UpdateSettings {
     pub mode: UpdateMode,
     pub channel: UpdateChannel,
-    /// Update feed to use instead of the official one, e.g. an internal mirror.
+    /// The signed update manifest to read instead of the official one, e.g. on an internal
+    /// mirror; it must still be signed with a key Birchpad trusts.
     pub url: Option<String>,
 }
 

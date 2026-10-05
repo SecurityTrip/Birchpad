@@ -1,0 +1,41 @@
+---
+source: crates/syntax/tests/highlights.rs
+expression: render(&path)
+---
+language: cmake
+function.builtin         cmake_minimum_required
+punctuation.bracket      (
+constant                 VERSION
+punctuation.bracket      )
+function.builtin         project
+punctuation.bracket      (
+constant                 LANGUAGES
+constant                 CXX
+punctuation.bracket      )
+comment                  # The demo program.
+function.builtin         set
+punctuation.bracket      (
+variable                 CMAKE_CXX_STANDARD
+punctuation.bracket      )
+function.builtin         add_executable
+punctuation.bracket      (
+punctuation.bracket      )
+keyword                  if
+punctuation.bracket      (
+punctuation.bracket      )
+function.builtin         target_compile_definitions
+punctuation.bracket      (
+constant                 PRIVATE
+constant                 UNICODE
+punctuation.bracket      )
+keyword                  endif
+punctuation.bracket      ()
+function.builtin         message
+punctuation.bracket      (
+constant                 STATUS
+string                   "Building 
+punctuation.special      ${
+variable                 PROJECT_NAME
+punctuation.special      }
+string                   "
+punctuation.bracket      )

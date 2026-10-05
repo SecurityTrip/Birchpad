@@ -1,9 +1,11 @@
 //! Property tests for the text model: random edits on random multilingual text, checked against
 //! a naive `String`-based implementation.
 
+use birchpad_core::motion::{line_count, line_of};
 use birchpad_core::search::{Direction, Query, Searcher};
 use birchpad_core::{
-    Assoc, ChangeSet, Document, Edit, Range, Rope, Selection, Transaction, UndoGrouping,
+    Assoc, ChangeSet, Document, Edit, LineMarkers, Range, RangeSet, Rope, Selection, Transaction,
+    UndoGrouping,
 };
 use proptest::prelude::*;
 
@@ -192,5 +194,359 @@ proptest! {
             .max()
             .map(|at| at..at + folded_needle.len());
         prop_assert_eq!(searcher.find(&rope, rope.len(), Direction::Backward, false), last);
+    }
+
+    #[test]
+    fn mapper_matches_map_pos(doc in text(), raw in raw_edits(), assoc_after: bool) {
+        let rope = Rope::from_str(&doc);
+        let changes = ChangeSet::from_edits(&rope, edits_for(&doc, raw)).unwrap();
+        let assoc = if assoc_after { Assoc::After } else { Assoc::Before };
+        let mut mapper = changes.mapper(assoc);
+        for pos in 0..=doc.len() {
+            prop_assert_eq!(mapper.map(pos), changes.map_pos(pos, assoc));
+        }
+    }
+
+    #[test]
+    fn range_sets_map_like_their_endpoints(
+        doc in text(),
+        raw in raw_edits(),
+        cuts in prop::collection::vec(any::<usize>(), 0..10),
+    ) {
+        let rope = Rope::from_str(&doc);
+        let boundaries: Vec<usize> =
+            doc.char_indices().map(|(i, _)| i).chain([doc.len()]).collect();
+        let mut points: Vec<usize> = cuts.iter().map(|c| boundaries[c % boundaries.len()]).collect();
+        points.sort_unstable();
+        points.dedup();
+        let ranges: Vec<(std::ops::Range<usize>, usize)> = points
+            .as_chunks::<2>()
+            .0
+            .iter()
+            .enumerate()
+            .map(|(i, &[start, end])| (start..end, i))
+            .collect();
+        let mut set = RangeSet::from_sorted(ranges.clone());
+        let changes = ChangeSet::from_edits(&rope, edits_for(&doc, raw)).unwrap();
+        set.map(&changes);
+
+        let expected: Vec<(std::ops::Range<usize>, usize)> = ranges
+            .into_iter()
+            .map(|(range, value)| {
+                let start = changes.map_pos(range.start, Assoc::After);
+                let end = changes.map_pos(range.end, Assoc::Before).max(start);
+                (start..end, value)
+            })
+            .filter(|(range, _)| !range.is_empty())
+            .collect();
+        let actual: Vec<_> = set.iter().map(|(r, v)| (r, *v)).collect();
+        prop_assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn line_markers_stay_one_per_line_and_in_bounds(
+        doc in text(),
+        raw in raw_edits(),
+        marked in prop::collection::vec(any::<usize>(), 0..8),
+    ) {
+        let mut rope = Rope::from_str(&doc);
+        let mut markers = LineMarkers::new();
+        for line in &marked {
+            markers.add(&rope, line % line_count(&rope));
+        }
+        let before: Vec<usize> = markers.lines(&rope);
+        let positions: Vec<usize> = before.iter().map(|&l| rope.line_to_byte_idx(l, birchpad_core::LINE_TYPE)).collect();
+        let changes = ChangeSet::from_edits(&rope, edits_for(&doc, raw)).unwrap();
+        changes.apply(&mut rope);
+        markers.map(&changes, &rope);
+
+        let mut expected: Vec<usize> = positions
+            .iter()
+            .map(|&pos| line_of(&rope, changes.map_pos(pos, Assoc::After)))
+            .collect();
+        expected.dedup();
+        prop_assert_eq!(markers.lines(&rope), expected);
+    }
+
+    #[test]
+    fn nested_ranges_map_like_their_endpoints(
+        doc in text(),
+        raw in raw_edits(),
+        pairs in prop::collection::vec((any::<usize>(), any::<usize>()), 0..8),
+    ) {
+        let rope = Rope::from_str(&doc);
+        let boundaries: Vec<usize> =
+            doc.char_indices().map(|(i, _)| i).chain([doc.len()]).collect();
+        // Arbitrary, possibly nested or overlapping ranges, sorted by start.
+        let mut ranges: Vec<std::ops::Range<usize>> = pairs
+            .into_iter()
+            .map(|(a, b)| {
+                let a = boundaries[a % boundaries.len()];
+                let b = boundaries[b % boundaries.len()];
+                a.min(b)..a.max(b)
+            })
+            .filter(|range| !range.is_empty())
+            .collect();
+        ranges.sort_by_key(|range| range.start);
+        let changes = ChangeSet::from_edits(&rope, edits_for(&doc, raw)).unwrap();
+        let expected: Vec<std::ops::Range<usize>> = ranges
+            .iter()
+            .map(|range| {
+                let start = changes.map_pos(range.start, Assoc::After);
+                start..changes.map_pos(range.end, Assoc::Before).max(start)
+            })
+            .filter(|range| !range.is_empty())
+            .collect();
+        let mut mapped = ranges.clone();
+        birchpad_core::map_ranges(&mut mapped, &changes);
+        prop_assert_eq!(mapped, expected);
+    }
+
+    #[test]
+    fn moving_lines_up_then_down_restores_the_text(
+        lines in prop::collection::vec("[a-c ]{0,4}", 2..8),
+        caret_line in any::<prop::sample::Index>(),
+    ) {
+        use birchpad_core::ops::move_lines;
+        use birchpad_core::LineEnding;
+        let doc = lines.join("\n");
+        let rope = Rope::from_str(&doc);
+        let line = 1 + caret_line.index(lines.len() - 1);
+        let caret = rope.line_to_byte_idx(line, birchpad_core::LINE_TYPE);
+        let selection = Selection::point(caret);
+        let up = move_lines(&rope, &selection, true, LineEnding::Lf).unwrap();
+        let mut moved = rope.clone();
+        up.changes().apply(&mut moved);
+        let after = up.selection().unwrap().clone();
+        let down = move_lines(&moved, &after, false, LineEnding::Lf).unwrap();
+        down.changes().apply(&mut moved);
+        prop_assert_eq!(moved.to_string(), doc);
+        prop_assert_eq!(down.selection().unwrap().primary(), Range::point(caret));
+    }
+
+    #[test]
+    fn sorting_permutes_and_reversing_twice_restores(
+        lines in prop::collection::vec("[a-cA-C]{0,3}", 1..10),
+    ) {
+        use birchpad_core::ops::{SortKey, reverse_lines, sort_lines};
+        use birchpad_core::LineEnding;
+        let doc = lines.join("\n");
+        let rope = Rope::from_str(&doc);
+        let selection = Selection::point(0);
+        let apply = |rope: &Rope, transaction: Option<Transaction>| {
+            let mut rope = rope.clone();
+            if let Some(transaction) = transaction {
+                transaction.changes().apply(&mut rope);
+            }
+            rope
+        };
+        let sorted = apply(&rope, sort_lines(&rope, &selection, SortKey::Lexicographic, false, LineEnding::Lf).unwrap());
+        let mut expected = lines.clone();
+        expected.sort();
+        prop_assert_eq!(sorted.to_string(), expected.join("\n"));
+        let reversed = apply(&rope, reverse_lines(&rope, &selection, LineEnding::Lf));
+        let twice = apply(&reversed, reverse_lines(&reversed, &selection, LineEnding::Lf));
+        prop_assert_eq!(twice.to_string(), doc);
+    }
+
+    #[test]
+    fn selection_with_virtual_space_stays_sorted_and_disjoint(
+        points in prop::collection::vec((0usize..30, 0usize..4, 0usize..30, 0usize..4), 1..8),
+        primary in any::<prop::sample::Index>(),
+    ) {
+        let ranges: Vec<Range> = points
+            .iter()
+            .map(|&(a, av, h, hv)| Range::new(a, h).with_virtual(av, hv))
+            .collect();
+        let primary_range = ranges[primary.index(ranges.len())];
+        let selection = Selection::new(ranges, primary.index(points.len()));
+
+        // The byte invariants of ranges without virtual space still hold...
+        for pair in selection.ranges().windows(2) {
+            prop_assert!(pair[0].to() <= pair[1].from() && pair[0].from() < pair[1].from());
+            // ...and virtual space never makes neighbours overlap.
+            prop_assert!(
+                (pair[0].to(), pair[0].to_virtual()) <= (pair[1].from(), pair[1].from_virtual())
+            );
+        }
+        let primary = selection.primary();
+        prop_assert!(
+            (primary.from(), primary.from_virtual())
+                <= (primary_range.from(), primary_range.from_virtual())
+        );
+        prop_assert!(
+            (primary_range.to(), primary_range.to_virtual()) <= (primary.to(), primary.to_virtual())
+        );
+    }
+
+    #[test]
+    fn typing_into_virtual_space_matches_padding_by_hand(
+        lines in prop::collection::vec("[a-c]{0,4}", 1..6),
+        column in 0usize..7,
+        typed in "[xy]{0,2}",
+    ) {
+        // A zero-width rectangle at `column` over every line: the caret is inside a line or
+        // past its end in virtual space.
+        let doc = lines.join("\n");
+        let rope = Rope::from_str(&doc);
+        let mut start = 0;
+        let mut carets = Vec::new();
+        for line in &lines {
+            let caret = if column <= line.len() {
+                Range::point(start + column)
+            } else {
+                Range::virtual_point(start + line.len(), column - line.len())
+            };
+            carets.push(caret);
+            start += line.len() + 1;
+        }
+        let selection = Selection::new(carets, 0);
+        let transaction = Transaction::replace_selections(&rope, &selection, &typed).unwrap();
+        let result = apply(&rope, transaction.changes());
+
+        let expected: Vec<String> = lines
+            .iter()
+            .map(|line| {
+                if typed.is_empty() {
+                    line.clone()
+                } else if column <= line.len() {
+                    format!("{}{typed}{}", &line[..column], &line[column..])
+                } else {
+                    format!("{line}{}{typed}", " ".repeat(column - line.len()))
+                }
+            })
+            .collect();
+        prop_assert_eq!(result.to_string(), expected.join("\n"));
+        // Every caret ends up after the typed text, in virtual space only if nothing was typed.
+        let after = transaction.selection().unwrap();
+        let mut start = 0;
+        for (range, line) in after.iter().zip(&expected) {
+            let column_after = if typed.is_empty() {
+                (range.head - start) + range.head_virtual
+            } else {
+                prop_assert_eq!(range.head_virtual, 0);
+                range.head - start
+            };
+            prop_assert_eq!(column_after, column + typed.len());
+            start += line.len() + 1;
+        }
+        // Mapping the old carets through the change and clipping leaves virtual space only
+        // at line ends.
+        for range in selection.map(transaction.changes()).clip_virtual(&result).iter() {
+            if range.head_virtual > 0 {
+                let line = birchpad_core::motion::line_of(&result, range.head);
+                prop_assert_eq!(birchpad_core::motion::line_range(&result, line).end, range.head);
+            }
+        }
+    }
+
+    #[test]
+    fn a_scan_in_steps_matches_a_naive_search_of_the_range(
+        hay in prop::collection::vec(prop::sample::select(vec!["ab", "a", "b", "Ж", "ж", " ", "x"]), 0..200),
+        needle in prop::collection::vec(prop::sample::select(vec!["a", "b", "ж", "Ж"]), 1..4),
+        match_case: bool,
+        whole_word: bool,
+        cut in (any::<usize>(), any::<usize>()),
+        step in 1usize..40,
+    ) {
+        use birchpad_core::search::Scan;
+        let hay = hay.concat();
+        let needle = needle.concat();
+        let rope = Rope::from_str(&hay);
+        let boundaries: Vec<usize> = hay.char_indices().map(|(i, _)| i).chain([hay.len()]).collect();
+        let (a, b) = (boundaries[cut.0 % boundaries.len()], boundaries[cut.1 % boundaries.len()]);
+        let range = a.min(b)..a.max(b);
+        let searcher = Searcher::new(&Query { pattern: needle.clone(), match_case, whole_word, ..Query::default() }).unwrap();
+        // Naive: repeated searches from the end of the previous match.
+        let mut expected = Vec::new();
+        let mut from = range.start;
+        while let Some(found) = searcher.find_in(&rope, from..range.end) {
+            from = found.end;
+            expected.push(found);
+        }
+        prop_assert_eq!(searcher.find_all_in(&rope, range.clone()), expected.clone());
+        let mut scan = Scan::with_step(range, step);
+        while !scan.run(&searcher, &rope, || true) {}
+        prop_assert_eq!(scan.into_matches(), expected);
+    }
+
+    #[test]
+    fn bookmarked_line_operations_keep_or_replace_exactly_those_lines(
+        doc in text(),
+        picks in prop::collection::vec(any::<usize>(), 0..8),
+        with in "[a-c\n]{0,4}",
+    ) {
+        use birchpad_core::motion::{line_range, line_range_with_break};
+        use birchpad_core::ops::{other_lines, remove_lines, remove_other_lines, replace_lines};
+        // A lone CR that ends up before an LF would merge with it into one line break.
+        prop_assume!(!doc.replace("\r\n", "").contains('\r'));
+        let rope = Rope::from_str(&doc);
+        let count = line_count(&rope);
+        let mut marked: Vec<usize> = picks.iter().map(|p| p % count).collect();
+        marked.sort_unstable();
+        marked.dedup();
+        let apply = |transaction: Option<Transaction>| {
+            let mut rope = rope.clone();
+            if let Some(transaction) = transaction {
+                transaction.changes().apply(&mut rope);
+            }
+            rope
+        };
+        let contents = |rope: &Rope| -> Vec<String> {
+            (0..line_count(rope)).map(|l| rope.slice(line_range(rope, l)).to_string()).collect()
+        };
+        let original = contents(&rope);
+        let unmarked = other_lines(count, &marked);
+        prop_assert_eq!(other_lines(count, &unmarked), marked.clone());
+
+        // Removing lines leaves exactly the others (or one empty line).
+        let kept = |lines: &[usize]| -> Vec<String> {
+            let kept: Vec<String> = lines.iter().map(|&l| original[l].clone()).collect();
+            if kept.is_empty() { vec![String::new()] } else { kept }
+        };
+        prop_assert_eq!(contents(&apply(remove_lines(&rope, &marked))), kept(&unmarked));
+        prop_assert_eq!(contents(&apply(remove_other_lines(&rope, &marked))), kept(&marked));
+
+        // Pasting replaces the contents of the marked lines and keeps every line break.
+        let mut expected = String::new();
+        for line in 0..count {
+            let content = line_range(&rope, line);
+            let whole = line_range_with_break(&rope, line);
+            if marked.contains(&line) {
+                expected.push_str(&with);
+            } else {
+                expected.push_str(&rope.slice(content.clone()).to_string());
+            }
+            expected.push_str(&rope.slice(content.end..whole.end).to_string());
+        }
+        prop_assert_eq!(apply(replace_lines(&rope, &marked, &with)).to_string(), expected);
+    }
+
+    #[test]
+    fn insert_all_matches_inserting_one_by_one(
+        old in prop::collection::vec((0usize..60, 1usize..8), 0..10),
+        new in prop::collection::vec((0usize..60, 1usize..8), 0..10),
+    ) {
+        let mut set = RangeSet::new();
+        for (start, len) in old {
+            set.insert(start..start + len, 1u8);
+        }
+        // Make the new ranges sorted and disjoint.
+        let mut new: Vec<std::ops::Range<usize>> = new.into_iter().map(|(s, l)| s..s + l).collect();
+        new.sort_by_key(|r| r.start);
+        let mut end = 0;
+        new.retain(|r| {
+            let keep = r.start >= end;
+            if keep {
+                end = r.end;
+            }
+            keep
+        });
+        let mut expected = set.clone();
+        for range in new.clone() {
+            expected.insert(range, 2);
+        }
+        set.insert_all(new, 2);
+        prop_assert_eq!(set, expected);
     }
 }

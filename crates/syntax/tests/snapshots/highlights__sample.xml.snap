@@ -1,0 +1,38 @@
+---
+source: crates/syntax/tests/highlights.rs
+expression: render(&path)
+---
+language: xml
+punctuation.delimiter    <?
+keyword                  xml
+property                 version
+operator                 =
+punctuation.delimiter    "
+number                   1.0
+punctuation.delimiter    "
+property                 encoding
+operator                 =
+punctuation.delimiter    "
+string.special           UTF-8
+punctuation.delimiter    "?>
+comment                  <!-- Settings -->
+punctuation.delimiter    <
+tag                      settings
+property                 version
+operator                 =
+punctuation.delimiter    "
+string                   1
+punctuation.delimiter    ">
+punctuation.delimiter    <
+tag                      editor
+property                 tabWidth
+operator                 =
+punctuation.delimiter    "
+string                   4
+punctuation.delimiter    ">
+punctuation.delimiter    </
+tag                      editor
+punctuation.delimiter    >
+punctuation.delimiter    </
+tag                      settings
+punctuation.delimiter    >

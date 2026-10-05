@@ -1,0 +1,47 @@
+---
+source: crates/syntax/tests/highlights.rs
+expression: render(&path)
+---
+language: asm
+comment                  ; A greeting, on Linux x86-64.
+function.builtin         section
+function.builtin         message
+variable.builtin         db
+string                   "Hello, world!"
+punctuation.delimiter    ,
+number                   10
+function.builtin         length
+variable.builtin         equ
+operator                 -
+variable.builtin         message
+function.builtin         section
+function.builtin         global
+variable.builtin         _start
+label                    _start
+punctuation.delimiter    :
+function.builtin         mov
+variable.builtin         rax
+punctuation.delimiter    ,
+number                   1
+function.builtin         mov
+variable.builtin         rdi
+punctuation.delimiter    ,
+number                   1
+function.builtin         mov
+variable.builtin         rsi
+punctuation.delimiter    ,
+variable.builtin         message
+function.builtin         mov
+variable.builtin         rdx
+punctuation.delimiter    ,
+variable.builtin         length
+function.builtin         syscall
+function.builtin         mov
+variable.builtin         rax
+punctuation.delimiter    ,
+number                   60
+function.builtin         xor
+variable.builtin         rdi
+punctuation.delimiter    ,
+variable.builtin         rdi
+function.builtin         syscall

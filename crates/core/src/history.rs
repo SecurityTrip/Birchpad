@@ -17,6 +17,9 @@ pub struct RevisionId(u64);
 impl RevisionId {
     /// The state before any edit.
     pub const INITIAL: Self = Self(0);
+    /// A state the history never reaches: what a document saved in no state of its history
+    /// was saved at.
+    pub(crate) const NEVER: Self = Self(u64::MAX);
 }
 
 /// How a committed transaction relates to the previous undo step.

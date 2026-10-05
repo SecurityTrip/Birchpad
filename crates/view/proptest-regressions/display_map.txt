@@ -1,0 +1,9 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 9c3d170cef3b53dfb11bcf1ac7b46f2837a27b3f42339f5e390e4101d0b88ff5 # shrinks to doc = "word aaaword aaaaaaa      aaaaword aaaaaa  a  aaaa bbword  \t    word bb", steps = [[(134986180922190576, 2, "")]], width = None, tab_width = 3
+cc e55411d69d66d7f6426ede8ace97946d3c1d8b64d6e31c1d30821f0c06073c0f # shrinks to doc = "😀😀 aaa日a日aaaa日aaaaaaaaword aaaaaa", steps = [[(4823364768877836336, 1784943554212187558, "\t")]], width = Some(3), tab_width = 1
+cc d626c34ba0988bd36128f6f51ebddf939ad0861dc91d9999b4dd6f2b0b70c7e2 # shrinks to doc = " word aa bb\n   日 bb日 word  aa\u{301}word 日\ta bb\r\naaaa\r\naaa  bb \r\na \r\n   aa  bb \r\n word       bb", steps = [[(83367971114, 4282029956797297932, "ab ")]], width = Some(1), tab_width = 2

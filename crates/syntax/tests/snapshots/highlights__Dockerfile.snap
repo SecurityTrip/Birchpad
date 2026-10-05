@@ -1,0 +1,24 @@
+---
+source: crates/syntax/tests/highlights.rs
+expression: render(&path)
+---
+language: dockerfile
+comment                  # The demo image.\n
+keyword                  FROM
+operator                 :
+keyword                  AS
+keyword                  WORKDIR
+keyword                  COPY
+keyword                  RUN
+keyword                  FROM
+operator                 :
+keyword                  ENV
+property                 GREETING
+string                   "Hello, world!"
+keyword                  COPY
+keyword                  EXPOSE
+number                   8080
+keyword                  CMD
+string                   "demo"
+string                   "--port"
+string                   "8080"

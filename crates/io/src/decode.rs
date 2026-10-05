@@ -3,6 +3,7 @@
 use birchpad_core::Encoding;
 use encoding_rs::DecoderResult;
 
+use crate::changes::{ByteChanges, byte_changes};
 use crate::encode;
 use crate::encoding::to_encoding_rs;
 
@@ -34,6 +35,8 @@ pub struct Decoded {
     /// The file started with the byte order mark of `encoding`, which is not part of `text`.
     pub bom: bool,
     pub problem: Option<DecodeProblem>,
+    /// With a problem: where saving the text would change the file.
+    pub changes: ByteChanges,
 }
 
 /// The byte order mark of a Unicode encoding.
@@ -60,6 +63,7 @@ pub fn decode(mut bytes: Vec<u8>, encoding: Encoding) -> Decoded {
     let has_bom = !bom.is_empty() && bytes.starts_with(bom);
     let skip = if has_bom { bom.len() } else { 0 };
 
+    let mut changes = ByteChanges::default();
     let (text, problem) = match encoding {
         Encoding::Utf8 => {
             bytes.drain(..skip);
@@ -68,6 +72,7 @@ pub fn decode(mut bytes: Vec<u8>, encoding: Encoding) -> Decoded {
                 Err(error) => {
                     let offset = skip + error.utf8_error().valid_up_to();
                     let text = String::from_utf8_lossy(error.as_bytes()).into_owned();
+                    changes = byte_changes(error.as_bytes(), skip, encoding);
                     (text, Some(DecodeProblem::Malformed { offset }))
                 }
             }
@@ -86,6 +91,9 @@ pub fn decode(mut bytes: Vec<u8>, encoding: Encoding) -> Decoded {
                             offset: skip + offset,
                         })
                 });
+            if problem.is_some() {
+                changes = byte_changes(&bytes[skip..], skip, encoding);
+            }
             (text, problem)
         }
     };
@@ -94,6 +102,7 @@ pub fn decode(mut bytes: Vec<u8>, encoding: Encoding) -> Decoded {
         encoding,
         bom: has_bom,
         problem,
+        changes,
     }
 }
 

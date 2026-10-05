@@ -14,15 +14,26 @@ mod app_state;
 mod banner;
 mod buffer;
 mod commands;
+mod disk;
+#[cfg(test)]
+mod disk_tests;
 mod editor;
 mod encoding_ui;
 mod file_ops;
 mod find;
 mod help;
+#[cfg(test)]
+mod language_tests;
 mod menus;
 mod pane;
 mod path_dialog;
+mod session;
+#[cfg(test)]
+mod session_tests;
+#[cfg(test)]
+mod split_tests;
 mod status_bar;
+mod updates;
 mod workspace;
 
 use std::fmt::Write as _;
@@ -45,6 +56,7 @@ pub(crate) const MONOSPACE: &str = if cfg!(windows) {
 };
 
 fn main() {
+    birchpad_update::install::run_hooks();
     let cwd = std::env::current_dir().unwrap_or_default();
     let command_line = CommandLine::parse(std::env::args_os().skip(1), &cwd);
     for warning in &command_line.warnings {
@@ -78,8 +90,15 @@ fn main() {
             let user_keymap = paths
                 .user_config_dir()
                 .and_then(|dir| std::fs::read_to_string(dir.join("keymap.toml")).ok());
-            cx.set_global(AppState::new(settings, paths));
-            help::Updates::install(help::Updates::http(), cx);
+            let mut app_state = AppState::new(settings, paths);
+            app_state.no_session = command_line.no_session;
+            cx.set_global(app_state);
+            updates::Updates::install(
+                updates::Updates::http(),
+                updates::trusted_keys(),
+                birchpad_update::install::detect(),
+                cx,
+            );
             commands::init(user_keymap.as_deref(), cx);
             cx.on_window_closed(|cx, _| {
                 if cx.windows().is_empty() {
@@ -96,9 +115,11 @@ fn main() {
             let opened = gpui_kit::open_window(options, cx, |window, cx| {
                 cx.new(|cx| {
                     let mut workspace = Workspace::new(window, cx);
-                    workspace.new_file(window, cx);
+                    workspace.restore_last_session(window, cx);
                     workspace.open_command_line(&command_line, window, cx);
                     workspace.report_pending_recoveries(window, cx);
+                    workspace.start_backups(cx);
+                    workspace.start_watching(window, cx);
                     workspace
                 })
             });
@@ -110,6 +131,17 @@ fn main() {
                     return;
                 }
             };
+            // Quitting from the macOS Dock, logging out: no chance to ask, but the session (with
+            // backups, the unsaved changes too) is saved.
+            let quitting = workspace.downgrade();
+            cx.on_app_quit(move |cx| {
+                quitting
+                    .update(cx, |workspace, cx| workspace.save_session_for_quit(cx))
+                    .ok();
+                async {}
+            })
+            .detach();
+            updates::start_background_checks(window, workspace.downgrade(), cx);
             if let Some(server) = server {
                 serve_later_launches(server, window, workspace, cx);
             }

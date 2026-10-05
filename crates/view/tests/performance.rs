@@ -73,3 +73,29 @@ fn ten_megabyte_line() {
         last.range.start
     );
 }
+
+#[test]
+#[ignore = "performance check; run in release"]
+fn folds_of_a_large_document() {
+    // 400 000 lines with a three-line fold every four lines, like a long source file.
+    let unit = "fn item(x: u32) -> u32 {\n    let y = x * 2;\n    y\n}\n";
+    let source = unit.repeat(100_000);
+    let text = Rope::from_str(&source);
+    let ranges: Vec<std::ops::Range<usize>> = (0..100_000)
+        .map(|i| {
+            let start = i * unit.len();
+            start..start + unit.len() - 1
+        })
+        .collect();
+    let started = Instant::now();
+    let folds = birchpad_view::folds_from_ranges(&text, &ranges);
+    eprintln!("{} folds in lines: {:?}", folds.len(), started.elapsed());
+    let collapsed: Vec<usize> = folds.iter().map(|fold| fold.header).collect();
+    let started = Instant::now();
+    let hidden = birchpad_view::hidden_lines(&folds, &collapsed);
+    eprintln!(
+        "hidden lines of {} collapsed folds: {:?}",
+        hidden.len(),
+        started.elapsed()
+    );
+}

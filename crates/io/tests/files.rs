@@ -304,6 +304,69 @@ fn links_keep_their_identity() {
     );
 }
 
+/// Saving writes the file in place (ADR 0007): its ACL, alternate data streams (the "downloaded
+/// from the internet" mark among them), creation time and hard links stay.
+#[cfg(windows)]
+#[test]
+fn acls_streams_and_links_stay_on_windows() {
+    use std::process::Command;
+
+    let dir = temp_dir();
+    let path = dir.path().join("a.txt");
+    fs::write(&path, b"original content").unwrap();
+    let stream = |name: &str| PathBuf::from(format!("{}:{name}", path.display()));
+    let zone = b"[ZoneTransfer]\r\nZoneId=3\r\n";
+    fs::write(stream("Zone.Identifier"), zone).unwrap();
+    fs::write(stream("extra"), b"kept").unwrap();
+    // An explicit entry for Everyone (by SID, so the system language does not matter), which a
+    // file created anew would not have: it would only inherit the folder's entries.
+    let granted = Command::new("icacls")
+        .arg(&path)
+        .args(["/grant", "*S-1-1-0:(R)"])
+        .output()
+        .unwrap();
+    assert!(granted.status.success(), "{granted:?}");
+    let acl = || {
+        let output = Command::new("icacls").arg(&path).output().unwrap();
+        assert!(output.status.success(), "{output:?}");
+        String::from_utf8_lossy(&output.stdout).into_owned()
+    };
+    let acl_before = acl();
+    let created = fs::metadata(&path).unwrap().created().unwrap();
+    let hard = dir.path().join("hard.txt");
+    fs::hard_link(&path, &hard).unwrap();
+
+    for content in [&b"short"[..], b"longer than the original content was"] {
+        save(&path, content, Some(&dir.path().join("recovery"))).unwrap();
+        assert_eq!(fs::read(&path).unwrap(), content);
+        assert_eq!(acl(), acl_before);
+        assert_eq!(fs::read(stream("Zone.Identifier")).unwrap(), zone);
+        assert_eq!(fs::read(stream("extra")).unwrap(), b"kept");
+        assert_eq!(fs::metadata(&path).unwrap().created().unwrap(), created);
+        assert_eq!(fs::read(&hard).unwrap(), content, "the same file");
+    }
+
+    // Saving through the other name of the file changes it under both.
+    save(&hard, b"via the hard link", None).unwrap();
+    assert_eq!(fs::read(&path).unwrap(), b"via the hard link");
+    assert_eq!(acl(), acl_before);
+
+    // Symbolic links need Developer Mode or administrator rights to create.
+    let link = dir.path().join("link.txt");
+    if std::os::windows::fs::symlink_file("a.txt", &link).is_ok() {
+        let written = save(&link, b"via symlink", None).unwrap();
+        assert_eq!(written, path);
+        assert!(
+            fs::symlink_metadata(&link)
+                .unwrap()
+                .file_type()
+                .is_symlink()
+        );
+        assert_eq!(fs::read(&path).unwrap(), b"via symlink");
+        assert_eq!(fs::read(stream("extra")).unwrap(), b"kept");
+    }
+}
+
 #[test]
 fn leftover_recovery_copies_are_found() {
     let dir = temp_dir();

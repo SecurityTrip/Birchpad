@@ -47,6 +47,23 @@ impl Binding {
     pub fn keys_string(&self) -> String {
         join_keys(&self.keys)
     }
+
+    /// The keys as Linux reports them, if Shift with a digit or punctuation key makes them
+    /// differ (see [`Keystroke::shifted_symbol`]).
+    pub fn shifted_symbol_keys(&self) -> Option<String> {
+        let shifted: Vec<Option<Keystroke>> =
+            self.keys.iter().map(Keystroke::shifted_symbol).collect();
+        if shifted.iter().all(Option::is_none) {
+            return None;
+        }
+        let keys: Vec<Keystroke> = self
+            .keys
+            .iter()
+            .zip(shifted)
+            .map(|(key, shifted)| shifted.unwrap_or_else(|| key.clone()))
+            .collect();
+        Some(join_keys(&keys))
+    }
 }
 
 /// A keymap file could not be parsed at all.

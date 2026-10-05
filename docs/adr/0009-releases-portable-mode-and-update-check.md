@@ -1,6 +1,9 @@
 # ADR 0009: Release builds, portable mode and the manual update check
 
-- Status: accepted
+- Status: accepted; the update check is superseded by
+  [ADR 0020](0020-signed-updates-and-nightly-builds.md) (a signed manifest instead of GitHub's
+  release list, background checks and automatic updates), and the build jobs moved to
+  `build.yml`, shared with nightly builds
 - Date: 2026-10-01
 
 ## Context

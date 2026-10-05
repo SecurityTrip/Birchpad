@@ -1,0 +1,67 @@
+---
+source: crates/syntax/tests/highlights.rs
+expression: render(&path)
+---
+language: erlang
+operator                 -
+keyword                  module
+punctuation.bracket      (
+module                   greeting
+punctuation.bracket      )
+punctuation.delimiter    .
+operator                 -
+keyword                  export
+punctuation.bracket      ([
+function                 render
+operator                 /
+number                   1
+punctuation.bracket      ])
+punctuation.delimiter    .
+comment                  %% A greeting, twice.
+function                 render
+punctuation.bracket      (
+variable                 Name
+punctuation.bracket      )
+keyword                  when
+function                 is_list
+punctuation.bracket      (
+variable                 Name
+punctuation.bracket      )
+operator                 ->
+variable                 Parts
+operator                 =
+punctuation.bracket      [
+module                   io_lib
+operator                 :
+function                 format
+punctuation.bracket      (
+string                   "Hello, ~s!"
+punctuation.delimiter    ,
+punctuation.bracket      [
+variable                 Name
+punctuation.bracket      ])
+operator                 ||
+comment                  _
+operator                 <-
+module                   lists
+operator                 :
+function                 seq
+punctuation.bracket      (
+number                   1
+punctuation.delimiter    ,
+number                   2
+punctuation.bracket      )]
+punctuation.delimiter    ,
+module                   lists
+operator                 :
+function                 flatten
+punctuation.bracket      (
+module                   lists
+operator                 :
+function                 join
+punctuation.bracket      (
+string                   " "
+punctuation.delimiter    ,
+variable                 Parts
+punctuation.bracket      ))
+punctuation.delimiter    .

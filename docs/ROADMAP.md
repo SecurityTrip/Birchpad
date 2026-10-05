@@ -6,7 +6,8 @@ dependency, not by calendar. Architecture decisions live in [`adr/`](adr).
 ## Phase 0: foundation
 
 - [x] Workspace, licenses, contribution and security policies
-- [x] CI: fmt, clippy, tests on Windows x64/ARM64, Linux, macOS; `cargo-deny`
+- [x] CI: fmt, clippy, tests on Windows x64/ARM64, Linux (Ubuntu, Debian 12 and 13), macOS;
+      `cargo-deny`
 - [x] Text model (`birchpad-core`): rope, change sets, selections with multiple carets,
       transactions, linear undo history with save-point tracking; unit and property tests
 - [x] Layered settings with administrator policies (`birchpad-config`), Windows registry policies
@@ -45,29 +46,82 @@ What Phase 1 left for later is marked *(from Phase 1)* in the phases below.
 
 ## Phase 2: Notepad++-level editor
 
-- Syntax highlighting with tree-sitter for ~20 popular languages, auto-indent, brace matching
-- Folding; margins for line numbers, bookmarks and folding
-- Multi-editing, column selection (Alt+drag, Alt+Shift+arrows), Column Editor
-- Smart highlighting, Mark with 5 styles, bookmarks and bookmarked-line operations
-- Line operations: duplicate, move, sort, remove duplicates/empty lines, join/split, trim,
-  case conversion, comment toggling, tab/space conversion
-- Show whitespace and line endings, indentation guides, edge column
-- Split view, clone document to the other view, synchronized scrolling
-- Sessions and periodic backup of unsaved changes (`-nosession` already accepted); they also
-  cover quitting from the macOS Dock, which bypasses the unsaved-changes prompt today
-  *(from Phase 1)*
-- External change detection and reload; tail -f monitoring
-- Nightly channel with automatic updates
-- Incremental column index for multi-megabyte lines: typing into a 10 MB line takes about
-  70 ms per keystroke because the line's index is rebuilt *(from Phase 1)*
-- "Edit anyway" for files that do not decode cleanly; they open read-only with a Reopen with
-  Encoding choice for now *(from Phase 1)*
-- Keyboard access to the menu bar on Windows and Linux (Alt, mnemonics) *(from Phase 1)*
-- Columns count terminal-style cells (East Asian wide characters take two) where Notepad++
-  counts characters; decide together with column editing *(from Phase 1)*
+- [x] Decorations that follow edits (ranges like Scintilla's indicators, line markers like its
+      markers); margins for line numbers, bookmarks and folding; clicking the symbol margin
+      toggles a bookmark, the line number margin selects lines
+      ([ADR 0010](adr/0010-decorations-markers-and-margins.md))
+- [x] Syntax highlighting with tree-sitter for 50 languages, incremental and in the
+      background; language detection by name, extension, `#!` line and first line; Language
+      menu and `-l`; Large File Restriction (`files.large-file-limit-mb`); brace matching with
+      Ctrl+B / Ctrl+Alt+B; basic and advanced auto-indent
+      ([ADR 0011](adr/0011-syntax-highlighting.md))
+- [x] Embedded languages: scripts and styles in HTML and Svelte, code blocks, inline
+      formatting and front matter in Markdown, HTML around PHP, tagged templates, regular
+      expressions and JSDoc in JavaScript and TypeScript, each a tree of its own, reparsed only
+      when its text changes ([ADR 0011](adr/0011-syntax-highlighting.md))
+- [x] 23 more languages: Kotlin, Swift, Dart, Scala, Groovy/Gradle, R, Objective-C, Haskell,
+      Elixir, Erlang, Zig, Pascal, Assembly, Solidity, Dockerfile, CMake, Protocol Buffers,
+      GraphQL, HCL/Terraform, Nix, Properties, nginx, Svelte
+- [x] Folding from the syntax tree (indentation for plain text); Fold All, Unfold All,
+      collapse levels 1–8, current level, fold boxes in the margin; carets step over or expand
+      collapsed folds ([ADR 0012](adr/0012-folding.md))
+- [x] Multi-editing and column selection: rectangles with Alt+drag and Alt+Shift+arrows that
+      reach into virtual space; typing, deleting, copying and pasting a rectangle; Multi-select
+      Next and All, Undo the Latest Added, Skip Current; Esc back to one caret; Begin/End
+      Select in both modes; Column Editor with text or numbers (dec, hex, oct, bin; leading
+      zeros or spaces) as one undo step ([ADR 0013](adr/0013-multi-editing-and-columns.md))
+- [x] Smart highlighting of the selected word in the visible text (settings as in Notepad++,
+      off over the large file limit); Style All Occurrences of Token and Style One Token with
+      5 styles, Clear Style, Jump Up/Down, Copy Styled Text; bookmarks (Ctrl+F2, F2,
+      Shift+F2) and Cut/Copy/Paste to/Remove bookmarked lines, Remove Unmarked Lines,
+      Inverse Bookmark, each one undo step; shifted-digit key bindings on Linux
+      ([ADR 0014](adr/0014-smart-highlighting-token-styles-and-bookmarks.md))
+- [x] Line operations: duplicate, delete, move, insert blank line, join, split; sort
+      (lexicographic, ignoring case, as integers, as decimals with comma or dot, by length;
+      ascending and descending), reverse, randomize; remove duplicate, consecutive duplicate
+      and empty lines; trim, EOL to space, tab/space conversion; case conversion (upper,
+      lower, proper, sentence, invert, random); line and block comments by the language's
+      tokens. All in `birchpad_core::ops`, one undo step each, with Notepad++'s keys
+- [x] Sorting by the columns of a rectangular selection
+- [x] View > Show Symbol: spaces and tabs, line endings (CR, LF, CRLF), Show All Characters,
+      indentation guides, wrap symbol; the vertical edge (lines at several columns, or a
+      background past one); the current line as a background or a frame; Split Lines at the
+      edge or the view width ([ADR 0015](adr/0015-show-symbol-edge-and-current-line.md))
+- [x] Split view: main and second views side by side or stacked (Rotate Split View), a
+      draggable divider; Move and Clone to Other View, one buffer in two independent views;
+      tabs dragged between and within views; Focus on Another View (F8); synchronized vertical
+      and horizontal scrolling ([ADR 0016](adr/0016-split-view.md))
+- [x] Sessions and periodic backup of unsaved changes, untitled documents included: quitting
+      does not ask (quitting from the macOS Dock included *(from Phase 1)*), the next launch
+      restores documents, views, carets, folds, bookmarks, languages and encodings, a crash
+      loses at most the backup interval; `session.*` settings, the `BackupUnsaved` policy,
+      `-nosession`; File > Save Session... and Load Session..., `-openSession`, Notepad++
+      `session.xml` import ([ADR 0017](adr/0017-sessions-and-backup.md))
+- [x] Files changed by other programs: watched with `notify` and checked when the window comes
+      back; reload (silently or after asking) keeping carets, bookmarks and folds on their
+      lines; unsaved changes and deleted files asked about; all, current or no files
+      (`files.change-detection`); View > Monitoring (tail -f) reading only appended bytes
+      ([ADR 0018](adr/0018-file-changes-on-disk.md))
+- [x] Nightly channel with automatic updates: nightly builds of `main` when it changed, an
+      ed25519-signed update manifest with rollback, freeze and downgrade protection, a per-user
+      installer for Windows (Velopack) that updates itself, background checks (`notify`) and
+      automatic updates (`auto`) ([ADR 0020](adr/0020-signed-updates-and-nightly-builds.md))
+- [x] Long lines keep their layout through edits: the column index and the rows of a wrapped
+      line are updated around the edit; typing into a 10 MB line takes 1.6 ms per keystroke
+      (6.7 ms with word wrap), down from 49 ms (168 ms) ([ADR 0008](adr/0008-editor-view-layout.md))
+      *(from Phase 1)*
+- [x] Edit Anyway for files that do not decode exactly, after a list of every place where saving
+      changes the file's bytes ([ADR 0007](adr/0007-encodings-and-saving.md)) *(from Phase 1)*
+- [x] The menu bar from the keyboard on Windows and Linux: Alt or F10, Alt+letter, mnemonics
+      in menus, arrows into submenus ([ADR 0019](adr/0019-menu-bar-keyboard-access.md))
+      *(from Phase 1)*
+- [x] Columns count terminal-style cells (East Asian wide characters take two) where
+      Notepad++ counts characters: kept for rectangles, the Column Editor and the status bar
+      ([ADR 0013](adr/0013-multi-editing-and-columns.md)) *(from Phase 1)*
 - Verify IME input (Windows TSF, macOS, IBus/Fcitx) on real systems; Phase 1 tested text
   input through GPUI's input handler but not with a real IME *(from Phase 1)*
-- Tests that saving preserves Windows ACLs and alternate data streams *(from Phase 1)*
+- [x] Tests that saving preserves Windows ACLs, alternate data streams, the creation time and
+      links *(from Phase 1)*
 
 ## Phase 3: search and navigation
 
@@ -114,13 +168,17 @@ What Phase 1 left for later is marked *(from Phase 1)* in the phases below.
 | Beta | `release/x.y` | every 1–2 weeks |
 | Stable | tags on the release branch | every 4–8 weeks |
 
-- Per-user installer with silent delta updates; per-machine MSI (x64, ARM64) for enterprises,
-  updated by IT; portable ZIP; winget and Scoop manifests
-- Authenticode signing (SignPath Foundation for OSS) plus an ed25519-signed update manifest
+- [x] Per-user installer for Windows (Velopack) with silent updates from the signed manifest
+      ([ADR 0020](adr/0020-signed-updates-and-nightly-builds.md)); delta updates, and installers
+      that update themselves on macOS and Linux, are still to come
+- Per-machine MSI (x64, ARM64) for enterprises, updated by IT; portable ZIP; winget and Scoop
+  manifests
+- [x] ed25519-signed update manifest; Authenticode signing (SignPath Foundation for OSS) is
+      still to come
 - ADMX/ADML templates generated from the policy list in `birchpad-config`
 - SBOM and build provenance attestations with every release (the release workflow does both)
-- Background update checks (`notify`) and automatic updates (`auto`) with the signed manifest;
-  Phase 1 checks only on Help > Check for Updates *(from Phase 1)*
+- [x] Background update checks (`notify`) and automatic updates (`auto`) with the signed
+      manifest *(from Phase 1)*
 - MSI for pre-release versions and for ARM64 *(from Phase 1)*
 
 See [ADR 0005](adr/0005-distribution-and-updates.md).

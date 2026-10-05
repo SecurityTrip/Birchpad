@@ -22,6 +22,53 @@ pub struct UserState {
     /// View > Word Wrap as last toggled; unset means `editor.word-wrap` from the settings.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub word_wrap: Option<bool>,
+    /// View > Show Symbol as last toggled; unset means the `editor.*` setting of the same name.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub show_whitespace: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub show_eol: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub indent_guides: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub wrap_symbol: Option<bool>,
+    /// How split view places the two views, as last rotated.
+    pub split: SplitOrientation,
+    /// What update checks remember.
+    pub updates: UpdateState,
+}
+
+/// What update checks remember between runs (ADR 0020).
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, rename_all = "kebab-case")]
+pub struct UpdateState {
+    /// When a check last succeeded, in seconds since 1970.
+    pub last_check: u64,
+    /// When the newest update manifest seen was signed: older ones are refused, so that an update
+    /// server cannot go back to an old manifest.
+    pub manifest_timestamp: u64,
+    /// The newest version announced by a background check, which is announced only once.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub announced: Option<String>,
+}
+
+/// How split view places its two views.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum SplitOrientation {
+    /// Side by side, Notepad++'s default.
+    #[default]
+    SideBySide,
+    /// One above the other.
+    Stacked,
+}
+
+impl SplitOrientation {
+    pub fn rotated(self) -> Self {
+        match self {
+            Self::SideBySide => Self::Stacked,
+            Self::Stacked => Self::SideBySide,
+        }
+    }
 }
 
 impl UserState {
@@ -85,6 +132,11 @@ mod tests {
         let path = dir.join("state.toml");
         let mut state = UserState {
             zoom: 2,
+            updates: UpdateState {
+                last_check: 1_790_000_000,
+                manifest_timestamp: 1_789_000_000,
+                announced: Some("0.2.0".into()),
+            },
             ..UserState::default()
         };
         state.add_recent(Path::new("/tmp/x y.txt"), 10);

@@ -1,5 +1,5 @@
-//! The workspace: the contents of a main window. It owns the panes, routes commands and draws
-//! the menu bar and the status bar.
+//! The workspace: the contents of a main window. It owns the two panes of split view, routes
+//! commands and draws the menu bar and the status bar.
 
 use std::collections::HashMap;
 use std::path::Path;
@@ -7,24 +7,28 @@ use std::path::Path;
 use anyhow::Result;
 use birchpad_cli::CommandLine;
 use birchpad_commands::Invocation;
+use birchpad_config::{SplitOrientation, UserState};
 use birchpad_core::Document;
+use birchpad_menu_bar::MenuBar;
 use gpui_kit::component::WindowExt as _;
 use gpui_kit::component::button::Button;
 use gpui_kit::component::dialog::DialogAction;
-use gpui_kit::component::menu::AppMenuBar;
 use gpui_kit::component::notification::Notification;
+use gpui_kit::component::{h_resizable, resizable_panel, v_resizable};
 use gpui_kit::{
-    App, AppContext as _, Context, Entity, EntityId, ExternalPaths, FocusHandle, Focusable,
-    Subscription, Window, div, prelude::*, px, rgb,
+    AnyElement, App, AppContext as _, Context, Entity, EntityId, ExternalPaths, FocusHandle,
+    Focusable, Subscription, Window, div, prelude::*, px, rgb,
 };
 
 use crate::app_state::AppState;
 use crate::buffer::{Buffer, BufferEvent};
 use crate::commands::{CommandRegistry, Handler, RunCommand};
-use crate::editor::EditorView;
+use crate::disk::DiskState;
+use crate::editor::{EditorEvent, EditorView, ViewSettings};
 use crate::find::FindBar;
 use crate::menus::{self, MenuState};
 use crate::pane::{Pane, PaneEvent};
+use crate::session::SessionState;
 use crate::status_bar::StatusInfo;
 
 pub(crate) fn register_commands(registry: &mut CommandRegistry) {
@@ -42,9 +46,51 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
             .update(cx, |pane, cx| pane.cycle(-1, window, cx));
         Ok(())
     });
-    registry.workspace("view.word-wrap", |this, (), _, cx| {
-        let current = crate::editor::ViewSettings::read(cx).word_wrap;
-        AppState::update_state(cx, |state, _| state.word_wrap = Some(!current));
+    for &(id, read, write) in VIEW_SWITCHES {
+        registry.workspace(id, move |this, (), _, cx| {
+            let on = !read(&ViewSettings::read(cx));
+            AppState::update_state(cx, |state, _| write(state, on));
+            this.refresh_views(cx);
+            Ok(())
+        });
+    }
+    registry.workspace("view.move-to-other-view", |this, (), window, cx| {
+        this.send_to_other_view(false, window, cx);
+        Ok(())
+    });
+    registry.workspace("view.clone-to-other-view", |this, (), window, cx| {
+        this.send_to_other_view(true, window, cx);
+        Ok(())
+    });
+    registry.workspace("view.focus-other-view", |this, (), window, cx| {
+        let other = 1 - this.active_pane;
+        if let Some(view) = this.panes[other].read(cx).active_item().cloned() {
+            this.activate_view(&view, window, cx);
+        }
+        Ok(())
+    });
+    registry.workspace("view.rotate-split", |_, (), _, cx| {
+        AppState::update_state(cx, |state, _| state.split = state.split.rotated());
+        cx.notify();
+        Ok(())
+    });
+    registry.workspace("view.sync-vertical-scroll", |this, (), _, cx| {
+        this.sync_vertical = !this.sync_vertical;
+        this.refresh_menus(cx);
+        Ok(())
+    });
+    registry.workspace("view.sync-horizontal-scroll", |this, (), _, cx| {
+        this.sync_horizontal = !this.sync_horizontal;
+        this.refresh_menus(cx);
+        Ok(())
+    });
+    // Checked when both are shown; turns both on, or both off if they are.
+    registry.workspace("view.show-all-characters", |this, (), _, cx| {
+        let on = !all_characters(&ViewSettings::read(cx));
+        AppState::update_state(cx, |state, _| {
+            state.show_whitespace = Some(on);
+            state.show_eol = Some(on);
+        });
         this.refresh_views(cx);
         Ok(())
     });
@@ -66,10 +112,70 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
             Ok(())
         });
     }
+    registry.workspace("language.set", |this, args: LanguageArgs, _, cx| {
+        let language = match args.language.as_str() {
+            "text" | "normal" => None,
+            id => Some(
+                birchpad_syntax::by_id(id)
+                    .ok_or_else(|| anyhow::anyhow!("unknown language {id}"))?,
+            ),
+        };
+        if let Some(view) = this.active_view(cx) {
+            let buffer = view.read(cx).buffer.clone();
+            buffer.update(cx, |buffer, cx| buffer.set_language(language, cx));
+        }
+        Ok(())
+    });
     crate::encoding_ui::register_commands(registry);
     crate::file_ops::register_commands(registry);
     crate::find::register_commands(registry);
     crate::help::register_commands(registry);
+    crate::session::register_commands(registry);
+    crate::disk::register_commands(registry);
+}
+
+/// View menu switches kept in `state.toml`: command, current value, how to remember a new one.
+type ViewSwitch = (
+    &'static str,
+    fn(&ViewSettings) -> bool,
+    fn(&mut UserState, bool),
+);
+
+const VIEW_SWITCHES: &[ViewSwitch] = &[
+    (
+        "view.word-wrap",
+        |view| view.word_wrap,
+        |state, on| state.word_wrap = Some(on),
+    ),
+    (
+        "view.show-whitespace",
+        |view| view.show_whitespace,
+        |state, on| state.show_whitespace = Some(on),
+    ),
+    (
+        "view.show-eol",
+        |view| view.show_eol,
+        |state, on| state.show_eol = Some(on),
+    ),
+    (
+        "view.indent-guides",
+        |view| view.indent_guides,
+        |state, on| state.indent_guides = Some(on),
+    ),
+    (
+        "view.wrap-symbol",
+        |view| view.wrap_symbol,
+        |state, on| state.wrap_symbol = Some(on),
+    ),
+];
+
+fn all_characters(view: &ViewSettings) -> bool {
+    view.show_whitespace && view.show_eol
+}
+
+#[derive(serde::Deserialize)]
+struct LanguageArgs {
+    language: String,
 }
 
 /// Shows an error to the user without interrupting them.
@@ -88,65 +194,90 @@ pub(crate) fn report_warning(message: impl Into<String>, window: &mut Window, cx
     window.push_notification(Notification::warning(message.into()), cx);
 }
 
+/// The line over the active view in split view.
+const ACTIVE_VIEW: u32 = 0x0969da;
+
 pub(crate) struct Workspace {
     focus_handle: FocusHandle,
-    panes: Vec<Entity<Pane>>,
+    /// Notepad++'s main and second views. A pane without tabs is hidden; split view shows both.
+    panes: [Entity<Pane>; 2],
     active_pane: usize,
-    menu_bar: Option<Entity<AppMenuBar>>,
+    /// View > Synchronize Vertical / Horizontal Scrolling.
+    sync_vertical: bool,
+    sync_horizontal: bool,
+    menu_bar: Option<Entity<MenuBar>>,
     pub(crate) find_bar: Entity<FindBar>,
     title: String,
     buffer_subscriptions: HashMap<EntityId, Subscription>,
+    /// Focus and scroll events of each view.
+    view_subscriptions: HashMap<EntityId, [Subscription; 2]>,
+    pub(crate) session_state: SessionState,
+    pub(crate) disk_state: DiskState,
     _subscriptions: Vec<Subscription>,
 }
 
 impl Workspace {
     pub(crate) fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
-        let pane = cx.new(|_| Pane::new());
-        let subscription = cx.subscribe_in(&pane, window, Self::on_pane_event);
+        let panes = [cx.new(|_| Pane::new()), cx.new(|_| Pane::new())];
+        let mut subscriptions: Vec<Subscription> = panes
+            .iter()
+            .map(|pane| cx.subscribe_in(pane, window, Self::on_pane_event))
+            .collect();
         let find_bar = cx.new(|cx| FindBar::new(window, cx));
-        let find_events = cx.subscribe_in(&find_bar, window, Self::on_find_bar_event);
+        subscriptions.push(cx.subscribe_in(&find_bar, window, Self::on_find_bar_event));
         let mut this = Self {
             focus_handle: cx.focus_handle(),
-            panes: vec![pane],
+            panes,
             active_pane: 0,
+            sync_vertical: false,
+            sync_horizontal: false,
             menu_bar: None,
             find_bar,
             title: String::new(),
             buffer_subscriptions: HashMap::new(),
-            _subscriptions: vec![subscription, find_events],
+            view_subscriptions: HashMap::new(),
+            session_state: SessionState::default(),
+            disk_state: DiskState::default(),
+            _subscriptions: subscriptions,
         };
+        // Back in front: files may have changed meanwhile.
+        let activation = cx.observe_window_activation(window, |this, window, cx| {
+            if window.is_window_active() {
+                this.check_files(window, cx);
+            }
+        });
+        this._subscriptions.push(activation);
         this.refresh_menus(cx);
-        // The window's close button: ask about unsaved changes first.
+        // The window's close button: ask about unsaved changes first, unless they are backed
+        // up, and save the session.
         let workspace = cx.entity().downgrade();
         window.on_window_should_close(cx, move |window, cx| {
             workspace
                 .update(cx, |workspace, cx| {
-                    if workspace.has_unsaved_changes(cx) {
-                        let views = workspace.all_views(cx);
-                        let closing = workspace.close_with_confirmation(views, window, cx);
-                        cx.spawn_in(window, async move |_, cx| {
-                            if closing.await {
-                                cx.update(|window, _| window.remove_window()).ok();
-                            }
-                        })
-                        .detach();
-                        false
-                    } else {
-                        workspace.remember_open_files(cx);
-                        true
+                    if workspace.can_quit_now(cx) {
+                        workspace.save_session_for_quit(cx);
+                        return true;
                     }
+                    let ready = workspace.prepare_to_quit(window, cx);
+                    cx.spawn_in(window, async move |_, cx| {
+                        if ready.await {
+                            cx.update(|window, _| window.remove_window()).ok();
+                        }
+                    })
+                    .detach();
+                    false
                 })
                 .unwrap_or(true)
         });
         if !cfg!(target_os = "macos") {
-            this.menu_bar = Some(AppMenuBar::new(cx));
+            this.menu_bar = Some(cx.new(|cx| MenuBar::new(window, cx)));
         }
         this
     }
 
     fn on_pane_event(
         &mut self,
-        _: &Entity<Pane>,
+        pane: &Entity<Pane>,
         event: &PaneEvent,
         window: &mut Window,
         cx: &mut Context<Self>,
@@ -157,11 +288,157 @@ impl Workspace {
                 cx.notify();
             }
             PaneEvent::CloseRequested(view) => self.close_view(view, window, cx),
+            PaneEvent::Dropped { view, index } => {
+                let target = usize::from(pane == &self.panes[1]);
+                if self.pane_of(view, cx) == Some(target) {
+                    self.active_pane = target;
+                    pane.update(cx, |pane, cx| pane.move_item(view, *index, window, cx));
+                } else {
+                    self.send_to_pane(view, target, Some(*index), false, window, cx);
+                }
+            }
+        }
+    }
+
+    /// Scrolls the other view along when synchronized scrolling is on.
+    fn on_editor_event(
+        &mut self,
+        view: &Entity<EditorView>,
+        event: &EditorEvent,
+        _: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let EditorEvent::Scrolled { rows, x } = *event;
+        if !(self.sync_vertical || self.sync_horizontal) || !self.is_split(cx) {
+            return;
+        }
+        let Some(index) = self.pane_of(view, cx) else {
+            return;
+        };
+        if self.panes[index].read(cx).active_item() != Some(view) {
+            return;
+        }
+        let Some(other) = self.panes[1 - index].read(cx).active_item().cloned() else {
+            return;
+        };
+        let rows = if self.sync_vertical { rows } else { 0. };
+        let x = if self.sync_horizontal { x } else { px(0.) };
+        if rows != 0. || x != px(0.) {
+            other.update(cx, |other, cx| other.scroll_by(rows, x, cx));
         }
     }
 
     pub(crate) fn active_pane(&self) -> &Entity<Pane> {
         &self.panes[self.active_pane]
+    }
+
+    /// The main and the second view.
+    pub(crate) fn panes(&self) -> &[Entity<Pane>; 2] {
+        &self.panes
+    }
+
+    pub(crate) fn active_pane_index(&self) -> usize {
+        self.active_pane
+    }
+
+    /// The pane showing `view`: 0 for the main view, 1 for the second.
+    pub(crate) fn pane_of(&self, view: &Entity<EditorView>, cx: &App) -> Option<usize> {
+        self.panes
+            .iter()
+            .position(|pane| pane.read(cx).index_of(view).is_some())
+    }
+
+    /// Whether both views are shown.
+    pub(crate) fn is_split(&self, cx: &App) -> bool {
+        self.panes
+            .iter()
+            .all(|pane| !pane.read(cx).items().is_empty())
+    }
+
+    /// Follows the focus into a view (a click in the other pane makes it the active one) and its
+    /// scrolling.
+    pub(crate) fn track_view(
+        &mut self,
+        view: &Entity<EditorView>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let focus = view.read(cx).focus_handle.clone();
+        let focused_view = view.downgrade();
+        let focused = cx.on_focus(&focus, window, move |this, _, cx| {
+            let Some(view) = focused_view.upgrade() else {
+                return;
+            };
+            if let Some(index) = this.pane_of(&view, cx)
+                && index != this.active_pane
+            {
+                this.active_pane = index;
+                this.refresh_menus(cx);
+                cx.notify();
+            }
+        });
+        let events = cx.subscribe_in(view, window, Self::on_editor_event);
+        self.view_subscriptions
+            .insert(view.entity_id(), [focused, events]);
+    }
+
+    /// View > Move/Clone Current Document.
+    fn send_to_other_view(&mut self, clone: bool, window: &mut Window, cx: &mut Context<Self>) {
+        if let Some(view) = self.active_view(cx) {
+            let target = 1 - self.active_pane;
+            self.send_to_pane(&view, target, None, clone, window, cx);
+        }
+    }
+
+    /// Shows `view`'s document in pane `target`, at `index` or after its active tab: moves the
+    /// tab there, or adds another view of the document at the same place. If that pane already
+    /// shows the document, its view is activated instead (and a moved tab closes).
+    fn send_to_pane(
+        &mut self,
+        view: &Entity<EditorView>,
+        target: usize,
+        index: Option<usize>,
+        clone: bool,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let buffer = view.read(cx).buffer.clone();
+        let source = self.pane_of(view, cx);
+        let existing = self.panes[target]
+            .read(cx)
+            .items()
+            .iter()
+            .find(|other| other.read(cx).buffer == buffer)
+            .cloned();
+        if let Some(existing) = existing {
+            if !clone && source != Some(target) {
+                self.close_view(view, window, cx);
+            }
+            self.activate_view(&existing, window, cx);
+            return;
+        }
+        let item = if clone {
+            let state = view.read(cx).view_state(cx);
+            let copy = cx.new(|cx| {
+                let mut copy = EditorView::new(buffer, window, cx);
+                copy.restore(state, cx);
+                copy
+            });
+            self.track_view(&copy, window, cx);
+            copy
+        } else {
+            if let Some(source) = source {
+                self.panes[source].update(cx, |pane, cx| pane.remove(view, window, cx));
+            }
+            view.clone()
+        };
+        self.active_pane = target;
+        self.panes[target].update(cx, |pane, cx| match index {
+            Some(index) => pane.insert(index, item, window, cx),
+            None => pane.add(item, window, cx),
+        });
+        self.refresh_menus(cx);
+        cx.notify();
     }
 
     pub(crate) fn active_view(&self, cx: &App) -> Option<Entity<EditorView>> {
@@ -222,11 +499,36 @@ impl Workspace {
             let doc = Document::from_text(birchpad_core::Rope::from_str(&crate::generate(lines)));
             self.open_document(doc, window, cx);
         }
+        if command_line.open_session {
+            for path in &command_line.files {
+                if let Err(error) = self.load_session_file(path, window, cx) {
+                    report_error(&error, window, cx);
+                }
+            }
+            return;
+        }
         let target = command_line.caret_target();
+        // `-l<language>`, with Notepad++'s names; `-lnormal` is plain text.
+        let language = command_line.language.as_deref().and_then(|id| match id {
+            "normal" | "text" => Some(None),
+            "javascript.js" => Some(birchpad_syntax::by_id("javascript")),
+            "props" => Some(birchpad_syntax::by_id("properties")),
+            id => match birchpad_syntax::by_id(id) {
+                Some(language) => Some(Some(language)),
+                None => {
+                    report_warning(format!("Unknown language -l{id}"), window, cx);
+                    None
+                }
+            },
+        });
         for path in &command_line.files {
             let view = self.open_path_with(path, command_line.read_only, window, cx);
             if let Some(target) = target {
                 view.update(cx, |view, cx| view.set_caret_target(target, cx));
+            }
+            if let Some(language) = language {
+                let buffer = view.read(cx).buffer.clone();
+                buffer.update(cx, |buffer, cx| buffer.set_language(language, cx));
             }
         }
     }
@@ -281,7 +583,7 @@ impl Workspace {
         }
     }
 
-    fn view_for_path(&self, path: &Path, cx: &App) -> Option<Entity<EditorView>> {
+    pub(crate) fn view_for_path(&self, path: &Path, cx: &App) -> Option<Entity<EditorView>> {
         self.all_views(cx)
             .into_iter()
             .find(|view| view.read(cx).buffer.read(cx).path() == Some(path))
@@ -299,6 +601,8 @@ impl Workspace {
                 pane.update(cx, |pane, cx| pane.activate(position, window, cx));
             }
         }
+        self.refresh_menus(cx);
+        cx.notify();
     }
 
     fn add_buffer(
@@ -307,14 +611,26 @@ impl Workspace {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> Entity<EditorView> {
-        let subscription = cx.subscribe_in(&buffer, window, Self::on_buffer_event);
-        self.buffer_subscriptions
-            .insert(buffer.entity_id(), subscription);
+        self.watch_buffer(&buffer, window, cx);
         let view = cx.new(|cx| EditorView::new(buffer, window, cx));
+        self.track_view(&view, window, cx);
         self.active_pane()
             .update(cx, |pane, cx| pane.add(view.clone(), window, cx));
         cx.notify();
         view
+    }
+
+    /// Follows a buffer's events: loading failures, state shown in the menus.
+    pub(crate) fn watch_buffer(
+        &mut self,
+        buffer: &Entity<Buffer>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let subscription = cx.subscribe_in(buffer, window, Self::on_buffer_event);
+        self.buffer_subscriptions
+            .insert(buffer.entity_id(), subscription);
+        self.sync_watches(cx);
     }
 
     fn on_buffer_event(
@@ -333,11 +649,16 @@ impl Workspace {
                     }
                 }
             }
-            BufferEvent::StateChanged | BufferEvent::Reloaded => {
+            BufferEvent::StateChanged | BufferEvent::Reloaded { .. } => {
+                // Save As may have moved the file to another folder.
+                self.sync_watches(cx);
                 self.refresh_menus(cx);
                 cx.notify();
             }
-            BufferEvent::Edited { .. } => {}
+            BufferEvent::Edited { .. }
+            | BufferEvent::MarksChanged
+            | BufferEvent::SyntaxChanged
+            | BufferEvent::FollowEnd => {}
         }
     }
 
@@ -367,9 +688,18 @@ impl Workspace {
             .map(|view| view.read(cx).buffer.entity_id())
             .collect();
         self.buffer_subscriptions.retain(|id, _| live.contains(id));
-        // Like Notepad++, closing the last document leaves an empty "new 1".
+        self.view_subscriptions.remove(&view.entity_id());
+        self.sync_watches(cx);
         if self.all_views(cx).is_empty() {
+            // Like Notepad++, closing the last document leaves an empty "new 1".
+            self.active_pane = 0;
             self.new_file(window, cx);
+        } else if self.active_pane().read(cx).items().is_empty() {
+            // The pane is hidden now: the other one takes over.
+            let other = 1 - self.active_pane;
+            if let Some(view) = self.panes[other].read(cx).active_item().cloned() {
+                self.activate_view(&view, window, cx);
+            }
         }
         cx.notify();
     }
@@ -411,7 +741,7 @@ impl Workspace {
         }
     }
 
-    /// Redraws every editor after a view setting (zoom, word wrap) changed.
+    /// Redraws every editor after a view setting (zoom, word wrap, Show Symbol) changed.
     fn refresh_views(&mut self, cx: &mut Context<Self>) {
         for view in self.all_views(cx) {
             view.update(cx, |view, cx| view.settings_changed(cx));
@@ -425,11 +755,39 @@ impl Workspace {
         let format = self
             .active_view(cx)
             .map(|view| view.read(cx).buffer.read(cx).doc().format());
+        let language = self.active_view(cx).map(|view| {
+            view.read(cx)
+                .buffer
+                .read(cx)
+                .language()
+                .map_or("text", |l| l.id)
+        });
         let ansi = AppState::global(cx).ansi;
-        let word_wrap = crate::editor::ViewSettings::read(cx).word_wrap;
+        let view = ViewSettings::read(cx);
+        let monitoring = self
+            .active_view(cx)
+            .is_some_and(|view| view.read(cx).buffer.read(cx).is_monitoring());
         let checked = |invocation: &Invocation| {
-            if invocation.command == "view.word-wrap" {
-                return word_wrap;
+            if let Some((_, read, _)) = VIEW_SWITCHES
+                .iter()
+                .find(|(id, _, _)| *id == invocation.command)
+            {
+                return read(&view);
+            }
+            if invocation.command == "view.show-all-characters" {
+                return all_characters(&view);
+            }
+            if invocation.command == "view.monitoring" {
+                return monitoring;
+            }
+            if invocation.command == "view.sync-vertical-scroll" {
+                return self.sync_vertical;
+            }
+            if invocation.command == "view.sync-horizontal-scroll" {
+                return self.sync_horizontal;
+            }
+            if invocation.command == "language.set" {
+                return invocation.args.get("language").and_then(|id| id.as_str()) == language;
             }
             let Some(format) = format else {
                 return false;
@@ -491,6 +849,7 @@ impl Render for Workspace {
             .flex_col()
             .bg(rgb(0xffffff))
             .text_color(rgb(0x1f2328))
+            .when_some(self.menu_bar.clone(), birchpad_menu_bar::route_input)
             .when_some(self.menu_bar.clone(), |this, menu_bar| {
                 this.child(
                     div()
@@ -502,16 +861,45 @@ impl Render for Workspace {
                         .child(menu_bar),
                 )
             })
-            .child(
-                div()
-                    .flex_1()
-                    .min_h(px(0.))
-                    .child(self.active_pane().clone()),
-            )
+            .child(div().flex_1().min_h(px(0.)).child(self.render_panes(cx)))
             .when(self.find_bar.read(cx).visible, |this| {
                 this.child(self.find_bar.clone())
             })
             .child(crate::status_bar::render(status, ansi, cx))
+    }
+}
+
+impl Workspace {
+    /// The pane with tabs, or both side by side or stacked, with a splitter between them.
+    fn render_panes(&self, cx: &App) -> AnyElement {
+        if !self.is_split(cx) {
+            let shown = self
+                .panes
+                .iter()
+                .find(|pane| !pane.read(cx).items().is_empty())
+                .unwrap_or(&self.panes[0]);
+            return shown.clone().into_any_element();
+        }
+        let group = match AppState::global(cx).state.split {
+            SplitOrientation::SideBySide => h_resizable("split-side-by-side"),
+            SplitOrientation::Stacked => v_resizable("split-stacked"),
+        };
+        // A line over the active view, as Notepad++ marks the tab of the focused view.
+        let panel = |index: usize| {
+            let line = if index == self.active_pane {
+                rgb(ACTIVE_VIEW)
+            } else {
+                rgb(0xffffff)
+            };
+            resizable_panel().child(
+                div()
+                    .size_full()
+                    .border_t_2()
+                    .border_color(line)
+                    .child(self.panes[index].clone()),
+            )
+        };
+        group.child(panel(0)).child(panel(1)).into_any_element()
     }
 }
 
@@ -534,6 +922,54 @@ pub(crate) mod tests {
             "ctrl"
         };
         format!("{modifier}-{key}")
+    }
+
+    /// The keystroke that moves the caret to the start of the document on this platform:
+    /// Ctrl+Home on Windows and Linux, Cmd+Up on macOS (Cmd+Home does nothing there).
+    pub(crate) fn document_start() -> &'static str {
+        if cfg!(target_os = "macos") {
+            "cmd-up"
+        } else {
+            "ctrl-home"
+        }
+    }
+
+    /// Toggle Bookmark: Ctrl+F2, or Cmd+F2 on macOS.
+    pub(crate) fn toggle_bookmark() -> &'static str {
+        if cfg!(target_os = "macos") {
+            "cmd-f2"
+        } else {
+            "ctrl-f2"
+        }
+    }
+
+    /// The keystroke that extends a rectangular selection towards `key`: Alt+Shift+<key> on
+    /// Windows and Linux, Cmd+Alt+Shift+<key> on macOS.
+    pub(crate) fn block(key: &str) -> String {
+        if cfg!(target_os = "macos") {
+            format!("cmd-alt-shift-{key}")
+        } else {
+            format!("alt-shift-{key}")
+        }
+    }
+
+    /// Column-mode Begin/End Select: Alt+Shift+B on Windows and Linux, Cmd+Alt+Shift+B on
+    /// macOS.
+    pub(crate) fn begin_end_column() -> &'static str {
+        if cfg!(target_os = "macos") {
+            "cmd-alt-shift-b"
+        } else {
+            "alt-shift-b"
+        }
+    }
+
+    /// The Column Editor: Alt+C on Windows and Linux, Cmd+Alt+C on macOS.
+    pub(crate) fn column_editor() -> &'static str {
+        if cfg!(target_os = "macos") {
+            "cmd-alt-c"
+        } else {
+            "alt-c"
+        }
     }
 
     pub(crate) fn open_workspace(
@@ -567,6 +1003,8 @@ pub(crate) mod tests {
             .expect("open test window")
         });
         let cx = VisualTestContext::from_window(window, cx).into_mut();
+        // Active like the window the user works in: focus events are only reported then.
+        cx.update(|window, _| window.activate_window());
         cx.run_until_parked();
         (workspace, cx)
     }
@@ -582,6 +1020,47 @@ pub(crate) mod tests {
                 .map(|view| view.read(cx).buffer.read(cx).display_name())
                 .collect()
         })
+    }
+
+    /// The tab names of the main and the second view, and which view is active.
+    pub(crate) fn panes(
+        workspace: &Entity<Workspace>,
+        cx: &mut VisualTestContext,
+    ) -> ([Vec<String>; 2], usize) {
+        workspace.read_with(cx, |workspace, cx| {
+            let names = workspace.panes.clone().map(|pane| {
+                pane.read(cx)
+                    .items()
+                    .iter()
+                    .map(|view| view.read(cx).buffer.read(cx).display_name())
+                    .collect()
+            });
+            (names, workspace.active_pane)
+        })
+    }
+
+    /// The views of a pane.
+    pub(crate) fn pane_views(
+        workspace: &Entity<Workspace>,
+        pane: usize,
+        cx: &mut VisualTestContext,
+    ) -> Vec<Entity<EditorView>> {
+        workspace.read_with(cx, |workspace, cx| {
+            workspace.panes[pane].read(cx).items().to_vec()
+        })
+    }
+
+    /// Sends a pane the event of a tab dropped on it.
+    pub(crate) fn drop_tab(
+        workspace: &Entity<Workspace>,
+        pane: usize,
+        view: Entity<EditorView>,
+        index: usize,
+        cx: &mut VisualTestContext,
+    ) {
+        let pane = workspace.read_with(cx, |workspace, _| workspace.panes[pane].clone());
+        pane.update(cx, |_, cx| cx.emit(PaneEvent::Dropped { view, index }));
+        cx.run_until_parked();
     }
 
     pub(crate) fn active_text(workspace: &Entity<Workspace>, cx: &mut VisualTestContext) -> String {

@@ -16,12 +16,14 @@ birchpad-commands = { path = "crates/commands", version = "0.1.0" }
 birchpad-config = { path = "crates/config", version = "0.1.0" }
 birchpad-core = { path = "crates/core", version = "0.1.0" }
 birchpad-io = { path = "crates/io", version = "0.1.0" }
+birchpad-menu-bar = { path = "crates/menu-bar", version = "0.1.0" }
+birchpad-syntax = { path = "crates/syntax", version = "0.1.0" }
 birchpad-update = { path = "crates/update", version = "0.1.0" }
 birchpad-view = { path = "crates/view", version = "0.1.0" }
 
 anyhow = "1"
 proptest = "1.11"
-ropey = { version = "=2.0.0-beta.1", features = ["metric_utf16"] }
+ropey = { version = "=2.0.0-beta.1", features = ["metric_utf16", "metric_lines_lf"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 smallvec = "1.15"

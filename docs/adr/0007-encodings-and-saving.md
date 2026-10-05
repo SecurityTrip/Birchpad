@@ -95,12 +95,25 @@ read + detect + decode + rope). Memory-mapped huge files are a phase 6 item.
 
 ## Consequences
 
-- The save path needs no platform-specific code and no `unsafe`; its behavior with symlinks,
-  hard links and permissions is tested on Unix. ACL and alternate data stream preservation on
-  Windows follows from never replacing the file, but is not covered by automated tests yet.
+- The save path needs no platform-specific code and no `unsafe`. Its behavior with symlinks,
+  hard links and permissions is tested on Unix. On Windows, tests check that the ACL (an explicit
+  entry), alternate data streams (`Zone.Identifier` among them), the creation time and hard links
+  stay, and symbolic links when the system allows creating them.
 - Every save writes the content twice (recovery copy, then the file). For a 100 MB file that is
   an extra ~100 MB of I/O; acceptable for the safety it buys.
 - encoding_rs implements the WHATWG encodings: OEM code pages other than 866 (437, 850, ...)
   and EBCDIC are not available yet.
-- A document with a decoding problem cannot be edited, even to fix it. Reopening in the right
-  encoding is the way out; an explicit "edit anyway, invalid bytes become U+FFFD" may come later.
+- A document with a decoding problem opens read-only. Reopening in the right encoding is the
+  usual way out. **Edit Anyway** (on the banner, command `encoding.edit-anyway`) makes it
+  editable after listing where saving will change the file:
+  - every malformed byte sequence, read as U+FFFD, with the bytes saving writes instead;
+  - in multi-byte legacy encodings, every sequence that encodes back to other bytes (∵ read from
+    Shift_JIS `FA 5B` is written `81 E6`);
+  - the places where the encoding cannot write U+FFFD at all: saving is then refused until the
+    text is fixed or converted to UTF-8.
+
+  The places are found when the file is read, only for files with a problem: UTF-8 by its error
+  positions, UTF-16 and single-byte encodings by the decoder's malformed sequences, multi-byte
+  legacy encodings line by line, decoding byte by byte only the lines that do not encode back to
+  themselves (ISO-2022-JP, whose escape sequences carry over lines, throughout). The first eight
+  are listed, with the count of all. Nothing else changes: the rest of the file round-trips.
