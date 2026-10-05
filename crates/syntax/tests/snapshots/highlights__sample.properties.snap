@@ -1,0 +1,23 @@
+---
+source: crates/syntax/tests/highlights.rs
+expression: render(&path)
+---
+language: properties
+comment                  # Greeting settings.
+property                 greeting
+punctuation.delimiter    .
+property                 name
+operator                 =
+string                   world
+property                 greeting
+punctuation.delimiter    .
+property                 times
+operator                 =
+string                   2
+property                 greeting
+punctuation.delimiter    .
+property                 message
+operator                 :
+string                   Hello, 
+punctuation.delimiter    \
+string                   \n    world!

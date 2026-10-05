@@ -20,11 +20,17 @@ pub struct Language {
     pub interpreters: &'static [&'static str],
     /// Prefixes of the first line that identify the language (`<?xml`).
     pub first_line: &'static [&'static str],
+    /// Other names a fenced code block or a heredoc may use for it (`js`, `c++`, `shell`).
+    /// Ids, names and extensions need no alias.
+    pub aliases: &'static [&'static str],
     pub line_comment: Option<&'static str>,
     pub block_comment: Option<(&'static str, &'static str)>,
     pub(crate) grammar: fn() -> tree_sitter::Language,
     /// Highlight queries, concatenated in order; later patterns win over earlier ones.
     pub(crate) highlights: &'static [&'static str],
+    /// Where other languages are embedded (scripts in HTML, code blocks in Markdown):
+    /// injection queries, concatenated in order.
+    pub(crate) injections: &'static [&'static str],
 }
 
 impl PartialEq for Language {
@@ -64,16 +70,31 @@ const fn lang(
         file_names: &[],
         interpreters: &[],
         first_line: &[],
+        aliases: &[],
         line_comment: comments.0,
         block_comment: comments.1,
         grammar,
         highlights,
+        injections: &[],
     }
 }
 
 /// Every language, sorted by name for the Language menu.
 pub static LANGUAGES: &[Language] = &[
     Language {
+        aliases: &["assembly", "nasm", "gas"],
+        ..lang(
+            "asm",
+            "Assembly",
+            "Assembly language source file",
+            &["asm", "s", "nasm"],
+            (Some(";"), None),
+            grammar!(tree_sitter_asm::LANGUAGE),
+            &[tree_sitter_asm::HIGHLIGHTS_QUERY],
+        )
+    },
+    Language {
+        aliases: &["shell", "sh", "zsh", "console"],
         file_names: &[
             ".bashrc",
             ".bash_profile",
@@ -93,15 +114,18 @@ pub static LANGUAGES: &[Language] = &[
             &[tree_sitter_bash::HIGHLIGHT_QUERY],
         )
     },
-    lang(
-        "batch",
-        "Batch",
-        "Batch file",
-        &["bat", "cmd", "nt"],
-        (Some("REM"), None),
-        grammar!(tree_sitter_batch::LANGUAGE),
-        &[tree_sitter_batch::HIGHLIGHTS_QUERY],
-    ),
+    Language {
+        aliases: &["dosbatch", "winbatch"],
+        ..lang(
+            "batch",
+            "Batch",
+            "Batch file",
+            &["bat", "cmd", "nt"],
+            (Some("REM"), None),
+            grammar!(tree_sitter_batch::LANGUAGE),
+            &[tree_sitter_batch::HIGHLIGHTS_QUERY],
+        )
+    },
     lang(
         "c",
         "C",
@@ -111,30 +135,49 @@ pub static LANGUAGES: &[Language] = &[
         grammar!(tree_sitter_c::LANGUAGE),
         &[tree_sitter_c::HIGHLIGHT_QUERY],
     ),
-    lang(
-        "cs",
-        "C#",
-        "C# source file",
-        &["cs", "csx"],
-        C_LIKE,
-        grammar!(tree_sitter_c_sharp::LANGUAGE),
-        &[tree_sitter_c_sharp::HIGHLIGHTS_QUERY],
-    ),
+    Language {
+        aliases: &["csharp", "c#"],
+        ..lang(
+            "cs",
+            "C#",
+            "C# source file",
+            &["cs", "csx"],
+            C_LIKE,
+            grammar!(tree_sitter_c_sharp::LANGUAGE),
+            &[tree_sitter_c_sharp::HIGHLIGHTS_QUERY],
+        )
+    },
     // Like Notepad++, `.h` is C++: the C++ grammar parses C headers too.
-    lang(
-        "cpp",
-        "C++",
-        "C++ source file",
-        &[
-            "cpp", "cxx", "cc", "c++", "h", "hh", "hpp", "hxx", "h++", "ino", "ipp", "tpp", "inl",
-        ],
-        C_LIKE,
-        grammar!(tree_sitter_cpp::LANGUAGE),
-        &[
-            tree_sitter_c::HIGHLIGHT_QUERY,
-            tree_sitter_cpp::HIGHLIGHT_QUERY,
-        ],
-    ),
+    Language {
+        aliases: &["c++"],
+        ..lang(
+            "cpp",
+            "C++",
+            "C++ source file",
+            &[
+                "cpp", "cxx", "cc", "c++", "h", "hh", "hpp", "hxx", "h++", "ino", "ipp", "tpp",
+                "inl",
+            ],
+            C_LIKE,
+            grammar!(tree_sitter_cpp::LANGUAGE),
+            &[
+                tree_sitter_c::HIGHLIGHT_QUERY,
+                tree_sitter_cpp::HIGHLIGHT_QUERY,
+            ],
+        )
+    },
+    Language {
+        file_names: &["CMakeLists.txt"],
+        ..lang(
+            "cmake",
+            "CMake",
+            "CMake file",
+            &["cmake"],
+            (Some("#"), Some(("#[[", "]]"))),
+            grammar!(tree_sitter_cmake::LANGUAGE),
+            &[tree_sitter_cmake::HIGHLIGHTS_QUERY],
+        )
+    },
     lang(
         "css",
         "CSS",
@@ -145,27 +188,130 @@ pub static LANGUAGES: &[Language] = &[
         &[tree_sitter_css::HIGHLIGHTS_QUERY],
     ),
     lang(
-        "diff",
-        "Diff",
-        "Diff file",
-        &["diff", "patch"],
-        (None, None),
-        grammar!(tree_sitter_diff::LANGUAGE),
-        &[
-            tree_sitter_diff::HIGHLIGHTS_QUERY,
-            include_str!("../queries/diff.scm"),
-        ],
-    ),
-    lang(
-        "go",
-        "Go",
-        "Go source file",
-        &["go"],
+        "dart",
+        "Dart",
+        "Dart source file",
+        &["dart"],
         C_LIKE,
-        grammar!(tree_sitter_go::LANGUAGE),
-        &[tree_sitter_go::HIGHLIGHTS_QUERY],
+        grammar!(tree_sitter_dart::LANGUAGE),
+        &[tree_sitter_dart::HIGHLIGHTS_QUERY],
     ),
     Language {
+        aliases: &["udiff"],
+        ..lang(
+            "diff",
+            "Diff",
+            "Diff file",
+            &["diff", "patch"],
+            (None, None),
+            grammar!(tree_sitter_diff::LANGUAGE),
+            &[
+                tree_sitter_diff::HIGHLIGHTS_QUERY,
+                include_str!("../queries/diff.scm"),
+            ],
+        )
+    },
+    Language {
+        file_names: &["Dockerfile", "Containerfile", "dockerfile"],
+        aliases: &["docker"],
+        ..lang(
+            "dockerfile",
+            "Dockerfile",
+            "Dockerfile",
+            &["dockerfile", "containerfile"],
+            HASH,
+            grammar!(tree_sitter_containerfile::LANGUAGE),
+            &[tree_sitter_containerfile::HIGHLIGHTS_QUERY],
+        )
+    },
+    Language {
+        file_names: &["mix.lock"],
+        interpreters: &["elixir"],
+        ..lang(
+            "elixir",
+            "Elixir",
+            "Elixir source file",
+            &["ex", "exs"],
+            HASH,
+            grammar!(tree_sitter_elixir::LANGUAGE),
+            &[tree_sitter_elixir::HIGHLIGHTS_QUERY],
+        )
+    },
+    Language {
+        file_names: &["rebar.config"],
+        interpreters: &["escript"],
+        ..lang(
+            "erlang",
+            "Erlang",
+            "Erlang source file",
+            &["erl", "hrl", "escript"],
+            (Some("%"), None),
+            grammar!(tree_sitter_erlang::LANGUAGE),
+            &[tree_sitter_erlang::HIGHLIGHTS_QUERY],
+        )
+    },
+    Language {
+        aliases: &["golang"],
+        ..lang(
+            "go",
+            "Go",
+            "Go source file",
+            &["go"],
+            C_LIKE,
+            grammar!(tree_sitter_go::LANGUAGE),
+            &[tree_sitter_go::HIGHLIGHTS_QUERY],
+        )
+    },
+    lang(
+        "graphql",
+        "GraphQL",
+        "GraphQL file",
+        &["graphql", "graphqls", "gql"],
+        HASH,
+        grammar!(tree_sitter_graphql::LANGUAGE),
+        &[include_str!("../queries/graphql.scm")],
+    ),
+    Language {
+        file_names: &["Jenkinsfile"],
+        interpreters: &["groovy"],
+        aliases: &["gradle"],
+        ..lang(
+            "groovy",
+            "Groovy",
+            "Groovy source file",
+            &["groovy", "gradle", "gvy", "gy", "gsh"],
+            C_LIKE,
+            grammar!(tree_sitter_groovy::LANGUAGE),
+            &[include_str!("../queries/groovy.scm")],
+        )
+    },
+    Language {
+        interpreters: &["runhaskell", "runghc"],
+        ..lang(
+            "haskell",
+            "Haskell",
+            "Haskell source file",
+            &["hs", "hsc"],
+            (Some("--"), Some(("{-", "-}"))),
+            grammar!(tree_sitter_haskell::LANGUAGE),
+            &[tree_sitter_haskell::HIGHLIGHTS_QUERY],
+        )
+    },
+    Language {
+        aliases: &["terraform"],
+        ..lang(
+            "hcl",
+            "HCL",
+            "HashiCorp Configuration Language file",
+            &["hcl", "tf", "tfvars", "nomad"],
+            (Some("#"), Some(("/*", "*/"))),
+            grammar!(tree_sitter_hcl::LANGUAGE),
+            &[include_str!("../queries/hcl.scm")],
+        )
+    },
+    Language {
+        injections: &[include_str!("../queries/html-injections.scm")],
+        aliases: &["xhtml"],
         first_line: &["<!DOCTYPE html", "<!doctype html", "<html", "<HTML"],
         ..lang(
             "html",
@@ -199,6 +345,8 @@ pub static LANGUAGES: &[Language] = &[
         &[tree_sitter_java::HIGHLIGHTS_QUERY],
     ),
     Language {
+        injections: &[include_str!("../queries/javascript-injections.scm")],
+        aliases: &["js", "node", "jsx"],
         interpreters: &["node", "nodejs", "deno"],
         ..lang(
             "javascript",
@@ -231,6 +379,18 @@ pub static LANGUAGES: &[Language] = &[
         &[tree_sitter_json::HIGHLIGHTS_QUERY],
     ),
     Language {
+        interpreters: &["kotlin"],
+        ..lang(
+            "kotlin",
+            "Kotlin",
+            "Kotlin source file",
+            &["kt", "kts"],
+            C_LIKE,
+            grammar!(tree_sitter_kotlin_sg::LANGUAGE),
+            &[tree_sitter_kotlin_sg::HIGHLIGHTS_QUERY],
+        )
+    },
+    Language {
         interpreters: &["lua", "luajit"],
         ..lang(
             "lua",
@@ -243,6 +403,7 @@ pub static LANGUAGES: &[Language] = &[
         )
     },
     Language {
+        aliases: &["make"],
         file_names: &["Makefile", "makefile", "GNUmakefile"],
         ..lang(
             "makefile",
@@ -254,16 +415,69 @@ pub static LANGUAGES: &[Language] = &[
             &[tree_sitter_make::HIGHLIGHTS_QUERY],
         )
     },
+    Language {
+        injections: &[tree_sitter_md::INJECTION_QUERY_BLOCK],
+        aliases: &["md"],
+        ..lang(
+            "markdown",
+            "Markdown",
+            "Markdown file",
+            &["md", "markdown", "mdown", "mkd", "mkdn"],
+            (None, Some(("<!--", "-->"))),
+            grammar!(tree_sitter_md::LANGUAGE),
+            &[tree_sitter_md::HIGHLIGHT_QUERY_BLOCK],
+        )
+    },
+    Language {
+        file_names: &["nginx.conf"],
+        ..lang(
+            "nginx",
+            "nginx",
+            "nginx configuration file",
+            &["nginx"],
+            HASH,
+            grammar!(tree_sitter_nginx::LANGUAGE),
+            &[include_str!("../queries/nginx.scm")],
+        )
+    },
     lang(
-        "markdown",
-        "Markdown",
-        "Markdown file",
-        &["md", "markdown", "mdown", "mkd", "mkdn"],
-        (None, Some(("<!--", "-->"))),
-        grammar!(tree_sitter_md::LANGUAGE),
-        &[tree_sitter_md::HIGHLIGHT_QUERY_BLOCK],
+        "nix",
+        "Nix",
+        "Nix expression file",
+        &["nix"],
+        (Some("#"), Some(("/*", "*/"))),
+        grammar!(tree_sitter_nix::LANGUAGE),
+        &[tree_sitter_nix::HIGHLIGHTS_QUERY],
     ),
     Language {
+        aliases: &["objective-c", "objectivec", "obj-c"],
+        ..lang(
+            "objc",
+            "Objective-C",
+            "Objective-C source file",
+            &["m", "mm"],
+            C_LIKE,
+            grammar!(tree_sitter_objc::LANGUAGE),
+            &[
+                tree_sitter_c::HIGHLIGHT_QUERY,
+                tree_sitter_objc::HIGHLIGHTS_QUERY,
+            ],
+        )
+    },
+    Language {
+        aliases: &["delphi", "objectpascal"],
+        ..lang(
+            "pascal",
+            "Pascal",
+            "Pascal source file",
+            &["pas", "pp", "dpr", "dpk", "lpr"],
+            (Some("//"), Some(("{", "}"))),
+            grammar!(tree_sitter_pascal::LANGUAGE),
+            &[include_str!("../queries/pascal.scm")],
+        )
+    },
+    Language {
+        injections: &[include_str!("../queries/php-injections.scm")],
         interpreters: &["php"],
         first_line: &["<?php"],
         ..lang(
@@ -277,6 +491,7 @@ pub static LANGUAGES: &[Language] = &[
         )
     },
     Language {
+        aliases: &["pwsh", "ps"],
         interpreters: &["pwsh", "powershell"],
         ..lang(
             "powershell",
@@ -288,7 +503,29 @@ pub static LANGUAGES: &[Language] = &[
             &[tree_sitter_powershell::HIGHLIGHTS_QUERY],
         )
     },
+    lang(
+        "properties",
+        "Properties",
+        "Properties file",
+        &["properties"],
+        HASH,
+        grammar!(tree_sitter_properties::LANGUAGE),
+        &[tree_sitter_properties::HIGHLIGHTS_QUERY],
+    ),
     Language {
+        aliases: &["protobuf"],
+        ..lang(
+            "proto",
+            "Protocol Buffers",
+            "Protocol Buffers file",
+            &["proto"],
+            C_LIKE,
+            grammar!(tree_sitter_proto::LANGUAGE),
+            &[include_str!("../queries/proto.scm")],
+        )
+    },
+    Language {
+        aliases: &["py", "python3", "py3"],
         file_names: &["SConstruct", "SConscript", "BUCK", "Snakefile"],
         interpreters: &["python", "python2", "python3", "pypy", "pypy3"],
         ..lang(
@@ -299,6 +536,19 @@ pub static LANGUAGES: &[Language] = &[
             HASH,
             grammar!(tree_sitter_python::LANGUAGE),
             &[tree_sitter_python::HIGHLIGHTS_QUERY],
+        )
+    },
+    Language {
+        file_names: &[".Rprofile"],
+        interpreters: &["Rscript"],
+        ..lang(
+            "r",
+            "R",
+            "R programming language",
+            &["r"],
+            HASH,
+            grammar!(tree_sitter_r::LANGUAGE),
+            &[tree_sitter_r::HIGHLIGHTS_QUERY],
         )
     },
     Language {
@@ -330,6 +580,27 @@ pub static LANGUAGES: &[Language] = &[
         grammar!(tree_sitter_rust::LANGUAGE),
         &[tree_sitter_rust::HIGHLIGHTS_QUERY],
     ),
+    Language {
+        interpreters: &["scala"],
+        ..lang(
+            "scala",
+            "Scala",
+            "Scala source file",
+            &["scala", "sc", "sbt"],
+            C_LIKE,
+            grammar!(tree_sitter_scala::LANGUAGE),
+            &[tree_sitter_scala::HIGHLIGHTS_QUERY],
+        )
+    },
+    lang(
+        "solidity",
+        "Solidity",
+        "Solidity source file",
+        &["sol"],
+        C_LIKE,
+        grammar!(tree_sitter_solidity::LANGUAGE),
+        &[include_str!("../queries/solidity.scm")],
+    ),
     lang(
         "sql",
         "SQL",
@@ -339,6 +610,33 @@ pub static LANGUAGES: &[Language] = &[
         grammar!(tree_sitter_sequel::LANGUAGE),
         &[tree_sitter_sequel::HIGHLIGHTS_QUERY],
     ),
+    Language {
+        injections: &[include_str!("../queries/svelte-injections.scm")],
+        ..lang(
+            "svelte",
+            "Svelte",
+            "Svelte component",
+            &["svelte"],
+            (None, Some(("<!--", "-->"))),
+            grammar!(tree_sitter_svelte_ng::LANGUAGE),
+            &[
+                tree_sitter_html::HIGHLIGHTS_QUERY,
+                tree_sitter_svelte_ng::HIGHLIGHTS_QUERY,
+            ],
+        )
+    },
+    Language {
+        interpreters: &["swift"],
+        ..lang(
+            "swift",
+            "Swift",
+            "Swift source file",
+            &["swift"],
+            C_LIKE,
+            grammar!(tree_sitter_swift::LANGUAGE),
+            &[tree_sitter_swift::HIGHLIGHTS_QUERY],
+        )
+    },
     Language {
         file_names: &["Cargo.lock", "Pipfile", "poetry.lock", "uv.lock"],
         ..lang(
@@ -351,32 +649,40 @@ pub static LANGUAGES: &[Language] = &[
             &[tree_sitter_toml_ng::HIGHLIGHTS_QUERY],
         )
     },
-    lang(
-        "typescript",
-        "TypeScript",
-        "TypeScript file",
-        &["ts", "mts", "cts"],
-        C_LIKE,
-        grammar!(tree_sitter_typescript::LANGUAGE_TYPESCRIPT),
-        &[
-            tree_sitter_javascript::HIGHLIGHT_QUERY,
-            tree_sitter_typescript::HIGHLIGHTS_QUERY,
-        ],
-    ),
-    lang(
-        "tsx",
-        "TypeScript JSX",
-        "TypeScript JSX file",
-        &["tsx"],
-        C_LIKE,
-        grammar!(tree_sitter_typescript::LANGUAGE_TSX),
-        &[
-            tree_sitter_javascript::HIGHLIGHT_QUERY,
-            tree_sitter_javascript::JSX_HIGHLIGHT_QUERY,
-            tree_sitter_typescript::HIGHLIGHTS_QUERY,
-        ],
-    ),
     Language {
+        injections: &[include_str!("../queries/javascript-injections.scm")],
+        aliases: &["ts"],
+        ..lang(
+            "typescript",
+            "TypeScript",
+            "TypeScript file",
+            &["ts", "mts", "cts"],
+            C_LIKE,
+            grammar!(tree_sitter_typescript::LANGUAGE_TYPESCRIPT),
+            &[
+                tree_sitter_javascript::HIGHLIGHT_QUERY,
+                tree_sitter_typescript::HIGHLIGHTS_QUERY,
+            ],
+        )
+    },
+    Language {
+        injections: &[include_str!("../queries/javascript-injections.scm")],
+        ..lang(
+            "tsx",
+            "TypeScript JSX",
+            "TypeScript JSX file",
+            &["tsx"],
+            C_LIKE,
+            grammar!(tree_sitter_typescript::LANGUAGE_TSX),
+            &[
+                tree_sitter_javascript::HIGHLIGHT_QUERY,
+                tree_sitter_javascript::JSX_HIGHLIGHT_QUERY,
+                tree_sitter_typescript::HIGHLIGHTS_QUERY,
+            ],
+        )
+    },
+    Language {
+        aliases: &["svg"],
         first_line: &["<?xml"],
         ..lang(
             "xml",
@@ -393,21 +699,101 @@ pub static LANGUAGES: &[Language] = &[
             &[tree_sitter_xml::XML_HIGHLIGHT_QUERY],
         )
     },
+    Language {
+        aliases: &["yml"],
+        ..lang(
+            "yaml",
+            "YAML",
+            "YAML Ain't Markup Language",
+            &["yml", "yaml"],
+            HASH,
+            grammar!(tree_sitter_yaml::LANGUAGE),
+            &[tree_sitter_yaml::HIGHLIGHTS_QUERY],
+        )
+    },
     lang(
-        "yaml",
-        "YAML",
-        "YAML Ain't Markup Language",
-        &["yml", "yaml"],
-        HASH,
-        grammar!(tree_sitter_yaml::LANGUAGE),
-        &[tree_sitter_yaml::HIGHLIGHTS_QUERY],
+        "zig",
+        "Zig",
+        "Zig source file",
+        &["zig", "zon"],
+        (Some("//"), None),
+        grammar!(tree_sitter_zig::LANGUAGE),
+        &[tree_sitter_zig::HIGHLIGHTS_QUERY],
     ),
 ];
+
+/// Languages found only inside others, which the Language menu does not list: Markdown's inline
+/// syntax, regular expressions in JavaScript, JSDoc comments.
+pub(crate) static EMBEDDED: &[Language] = &[
+    Language {
+        injections: &[tree_sitter_md::INJECTION_QUERY_INLINE],
+        ..lang(
+            "markdown_inline",
+            "Markdown (inline)",
+            "Markdown inline syntax",
+            &[],
+            (None, None),
+            grammar!(tree_sitter_md::INLINE_LANGUAGE),
+            &[tree_sitter_md::HIGHLIGHT_QUERY_INLINE],
+        )
+    },
+    lang(
+        "regex",
+        "Regular expression",
+        "Regular expression",
+        &[],
+        (None, None),
+        grammar!(tree_sitter_regex::LANGUAGE),
+        &[tree_sitter_regex::HIGHLIGHTS_QUERY],
+    ),
+    lang(
+        "jsdoc",
+        "JSDoc",
+        "JSDoc comment",
+        &[],
+        (None, None),
+        grammar!(tree_sitter_jsdoc::LANGUAGE),
+        &[tree_sitter_jsdoc::HIGHLIGHTS_QUERY],
+    ),
+];
+
+/// Every language with a grammar: those of the Language menu, then the embedded ones.
+pub(crate) fn all() -> impl Iterator<Item = &'static Language> {
+    LANGUAGES.iter().chain(EMBEDDED)
+}
 
 /// The language with `id`, if Birchpad knows it.
 pub fn by_id(id: &str) -> Option<&'static Language> {
     let id = id.to_ascii_lowercase();
     LANGUAGES.iter().find(|language| language.id == id)
+}
+
+/// The language an embedded block names: a fenced code block's info string (`rust`, `js`,
+/// `C++`, `{.python}`), a tagged template (`css`), a heredoc delimiter (`SQL`), or an injection
+/// query. Tried as an id, an alias, a name and a file extension, ignoring case.
+pub fn injected(name: &str) -> Option<&'static Language> {
+    let name = name
+        .trim()
+        .trim_start_matches(['{', '.'])
+        .split(|c: char| c.is_whitespace() || matches!(c, ',' | '}' | '='))
+        .next()?
+        .to_ascii_lowercase();
+    if name.is_empty() {
+        return None;
+    }
+    all()
+        .find(|language| language.id == name)
+        .or_else(|| all().find(|language| language.aliases.contains(&name.as_str())))
+        .or_else(|| {
+            LANGUAGES
+                .iter()
+                .find(|language| language.name.eq_ignore_ascii_case(&name))
+        })
+        .or_else(|| {
+            LANGUAGES
+                .iter()
+                .find(|language| language.extensions.contains(&name.as_str()))
+        })
 }
 
 /// Recognizes a file's language from its name, then from its first line (a `#!` interpreter
@@ -509,5 +895,30 @@ mod tests {
         // The name wins over the first line.
         assert_eq!(detected("build.py", "#!/bin/sh"), Some("python"));
         assert_eq!(by_id("CPP").map(|language| language.name), Some("C++"));
+        assert_eq!(detected("app/build.gradle.kts", ""), Some("kotlin"));
+        assert_eq!(detected("build.gradle", ""), Some("groovy"));
+        assert_eq!(detected("Dockerfile", ""), Some("dockerfile"));
+        assert_eq!(detected("CMakeLists.txt", ""), Some("cmake"));
+        assert_eq!(detected("main.tf", ""), Some("hcl"));
+        // Embedded languages are not files' languages.
+        assert_eq!(by_id("markdown_inline"), None);
+    }
+
+    #[test]
+    fn embedded_blocks_name_languages_many_ways() {
+        let named = |name| injected(name).map(|language| language.id);
+        assert_eq!(named("rust"), Some("rust"));
+        assert_eq!(named("JS"), Some("javascript"));
+        assert_eq!(named("c++"), Some("cpp"));
+        assert_eq!(named("C#"), Some("cs"));
+        assert_eq!(named("shell"), Some("bash"));
+        assert_eq!(named("{.python}"), Some("python"));
+        assert_eq!(named("rust,ignore"), Some("rust"));
+        assert_eq!(named("kt"), Some("kotlin"));
+        assert_eq!(named("Objective-C"), Some("objc"));
+        assert_eq!(named("SQL"), Some("sql"));
+        assert_eq!(named("markdown_inline"), Some("markdown_inline"));
+        assert_eq!(named("div"), None);
+        assert_eq!(named(""), None);
     }
 }

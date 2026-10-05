@@ -1,0 +1,47 @@
+---
+source: crates/syntax/tests/highlights.rs
+expression: render(&path)
+---
+language: hcl
+comment                  # The demo bucket.
+keyword                  variable
+string                   "region"
+punctuation.bracket      {
+property                 type
+variable                 string
+property                 default
+string                   "eu-west-1"
+punctuation.bracket      }
+keyword                  resource
+string                   "aws_s3_bucket"
+string                   "demo"
+punctuation.bracket      {
+property                 bucket
+string                   "demo-
+punctuation.special      ${
+variable.builtin         var
+punctuation.delimiter    .
+property                 region
+punctuation.special      }
+string                   "
+property                 tags
+punctuation.bracket      {
+property                 Name
+string                   "Demo"
+property                 Enabled
+boolean                  true
+punctuation.bracket      }
+punctuation.bracket      }
+keyword                  output
+string                   "bucket"
+punctuation.bracket      {
+property                 value
+function                 upper
+punctuation.bracket      (
+variable.builtin         aws_s3_bucket
+punctuation.delimiter    .
+property                 demo
+punctuation.delimiter    .
+property                 id
+punctuation.bracket      )
+punctuation.bracket      }

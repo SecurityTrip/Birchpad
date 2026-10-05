@@ -512,6 +512,7 @@ impl Workspace {
         let language = command_line.language.as_deref().and_then(|id| match id {
             "normal" | "text" => Some(None),
             "javascript.js" => Some(birchpad_syntax::by_id("javascript")),
+            "props" => Some(birchpad_syntax::by_id("properties")),
             id => match birchpad_syntax::by_id(id) {
                 Some(language) => Some(Some(language)),
                 None => {

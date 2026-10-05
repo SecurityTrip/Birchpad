@@ -1,0 +1,52 @@
+---
+source: crates/syntax/tests/highlights.rs
+expression: render(&path)
+---
+language: groovy
+function.method          plugins
+punctuation.bracket      {
+function                 id
+string                   'java'
+punctuation.bracket      }
+comment                  // Dependencies of the demo.
+function.method          dependencies
+punctuation.bracket      {
+function                 implementation
+string                   'org.slf4j:slf4j-api:2.0.13'
+function                 testImplementation
+string                   "junit:junit:${junitVersion}"
+punctuation.bracket      }
+keyword                  def
+function                 greet
+punctuation.bracket      (
+type                     String
+variable.parameter       name
+punctuation.delimiter    ,
+type.builtin             int
+variable.parameter       times
+operator                 =
+number                   2
+punctuation.bracket      )
+punctuation.bracket      {
+keyword                  return
+punctuation.bracket      (
+number                   1
+operator                 ..
+variable                 times
+punctuation.bracket      )
+punctuation.delimiter    .
+function.method          collect
+punctuation.bracket      {
+string                   "Hello, $name!"
+punctuation.bracket      }
+punctuation.delimiter    .
+function.method          join
+punctuation.bracket      (
+string                   ' '
+punctuation.bracket      )
+punctuation.bracket      }
+function                 println
+variable                 greet
+punctuation.bracket      (
+string                   'world'
+punctuation.bracket      )

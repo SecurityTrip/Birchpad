@@ -1,0 +1,50 @@
+---
+source: crates/syntax/tests/highlights.rs
+expression: render(&path)
+---
+language: nix
+comment                  # A greeting, twice.
+punctuation.bracket      {
+variable                 pkgs
+punctuation.delimiter    ?
+variable                 import
+string.special           <nixpkgs>
+punctuation.bracket      {
+punctuation.bracket      }
+punctuation.bracket      }
+keyword                  let
+variable                 name
+punctuation.delimiter    =
+string                   "world"
+punctuation.delimiter    ;
+variable                 greet
+punctuation.delimiter    =
+variable                 times
+variable                 builtins
+punctuation.delimiter    .
+variable                 concatStringsSep
+string                   " "
+punctuation.bracket      (
+variable                 builtins
+punctuation.delimiter    .
+variable                 genList
+punctuation.bracket      (
+variable                 _
+string                   "Hello, 
+punctuation.special      ${
+embedded                 name
+punctuation.special      }
+string                   !"
+punctuation.bracket      )
+variable                 times
+punctuation.bracket      )
+punctuation.delimiter    ;
+keyword                  in
+variable                 pkgs
+punctuation.delimiter    .
+variable                 writeText
+string                   "greeting"
+punctuation.bracket      (
+variable                 greet
+number                   2
+punctuation.bracket      )

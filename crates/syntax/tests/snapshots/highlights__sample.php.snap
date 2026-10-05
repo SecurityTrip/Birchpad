@@ -16,6 +16,16 @@ string                   "Hello,
 operator                 $
 variable                 name
 string                   !"
-keyword                  echo
+tag                      ?>
+punctuation.bracket      <
+tag                      h1
+attribute                class
+string                   title
+punctuation.bracket      >
+tag                      <?=
 function                 greet
 string                   "world"
+tag                      ?>
+punctuation.bracket      </
+tag                      h1
+punctuation.bracket      >

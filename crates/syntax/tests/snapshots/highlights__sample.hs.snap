@@ -1,0 +1,62 @@
+---
+source: crates/syntax/tests/highlights.rs
+expression: render(&path)
+---
+language: haskell
+keyword                  module
+module                   Main
+keyword                  where
+keyword                  import
+module                   Data
+operator                 .
+module                   List
+punctuation.bracket      (
+type                     intercalate
+punctuation.bracket      )
+comment.documentation    -- | A greeting, twice.
+type                     greet
+function                  
+operator                 ::
+function                  
+type                     String
+function                  
+operator                 ->
+function                  
+type                     Int
+function                  
+operator                 ->
+function                  
+type                     String
+type                     greet
+type                     name
+type                     times
+operator                 =
+type                     intercalate
+string                   " "
+punctuation.bracket      (
+type                     replicate
+type                     times
+punctuation.bracket      (
+string                   "Hello, "
+operator                 ++
+type                     name
+operator                 ++
+string                   "!"
+punctuation.bracket      ))
+type                     main
+operator                 ::
+type                     IO
+punctuation.bracket      ()
+type                     main
+operator                 =
+keyword                  do
+keyword                  let
+type                     name
+operator                 =
+string                   "world"
+type                     putStrLn
+punctuation.bracket      (
+type                     greet
+type                     name
+number                   2
+punctuation.bracket      )

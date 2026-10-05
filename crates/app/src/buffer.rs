@@ -13,7 +13,7 @@ use birchpad_core::{
 use birchpad_io::{
     ByteChanges, DecodeProblem, DiskStamp, Head, LoadOptions, LoadedFile, ReadError,
 };
-use birchpad_syntax::{Language, Syntax, Tree};
+use birchpad_syntax::{Language, Parsed, Syntax};
 use gpui_kit::{AppContext as _, Context, EntityId, EventEmitter, Task};
 
 use crate::app_state::AppState;
@@ -563,9 +563,9 @@ impl Buffer {
             let parsed = cx
                 .background_spawn(async move {
                     let text = job.text().clone();
-                    let tree = job.run(&flag)?;
-                    let folds = birchpad_syntax::fold_ranges(&tree, &text);
-                    Some((tree, folds))
+                    let parsed = job.run(&flag)?;
+                    let folds = birchpad_syntax::fold_ranges(parsed.tree(), &text);
+                    Some((parsed, folds))
                 })
                 .await;
             if std::env::var_os("BIRCHPAD_TIMINGS").is_some() {
@@ -584,7 +584,7 @@ impl Buffer {
 
     fn finish_parse(
         &mut self,
-        parsed: Option<(Tree, Vec<ByteRange<usize>>)>,
+        parsed: Option<(Parsed, Vec<ByteRange<usize>>)>,
         cx: &mut Context<Self>,
     ) {
         let Some(mut parsing) = self.syntax.parsing.take() else {
@@ -594,10 +594,10 @@ impl Buffer {
         if let Some(task) = parsing.task.take() {
             task.detach();
         }
-        let (Some((tree, mut folds)), Some(syntax)) = (parsed, &mut self.syntax.syntax) else {
+        let (Some((parsed, mut folds)), Some(syntax)) = (parsed, &mut self.syntax.syntax) else {
             return;
         };
-        syntax.install(tree);
+        syntax.install(parsed);
         self.syntax.folds_pending = false;
         let since = parsing.since.take();
         if let Some(since) = &since {

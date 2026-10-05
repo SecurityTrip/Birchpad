@@ -5,9 +5,22 @@ expression: render(&path)
 language: markdown
 punctuation.special      #
 markup.heading           Title
+punctuation.delimiter    *
+markup.italic            text
+punctuation.delimiter    *
+punctuation.delimiter    `
+markup.raw               code
+punctuation.delimiter    `
 punctuation.special      - 
 punctuation.special      - 
 punctuation.delimiter    ```
-markup.raw               rust\nfn main() {}\n
+markup.raw               rust\n
+keyword                  fn
+markup.raw                
+function                 main
+punctuation.bracket      ()
+markup.raw                
+punctuation.bracket      {}
+markup.raw               \n
 punctuation.delimiter    ```
 markup.raw               \n

@@ -1,0 +1,61 @@
+---
+source: crates/syntax/tests/highlights.rs
+expression: render(&path)
+---
+language: r
+comment                  # A greeting, twice.
+function                 greet
+operator                 <-
+keyword                  function
+punctuation.bracket      (
+variable.parameter       name
+punctuation.delimiter    ,
+variable.parameter       times
+operator                 =
+number                   2L
+punctuation.bracket      )
+punctuation.bracket      {
+function                 paste
+punctuation.bracket      (
+function                 rep
+punctuation.bracket      (
+function                 sprintf
+punctuation.bracket      (
+string                   "Hello, %s!"
+punctuation.delimiter    ,
+variable                 name
+punctuation.bracket      )
+punctuation.delimiter    ,
+variable                 times
+punctuation.bracket      )
+punctuation.delimiter    ,
+variable.parameter       collapse
+operator                 =
+string                   " "
+punctuation.bracket      )
+punctuation.bracket      }
+variable                 values
+operator                 <-
+function                 c
+punctuation.bracket      (
+number                   1
+punctuation.delimiter    ,
+number                   2.5
+punctuation.delimiter    ,
+constant.builtin         NA
+punctuation.bracket      )
+keyword                  if
+punctuation.bracket      (
+operator                 !
+function                 is.null
+punctuation.bracket      (
+variable                 values
+punctuation.bracket      ))
+punctuation.bracket      {
+function                 print
+punctuation.bracket      (
+function                 greet
+punctuation.bracket      (
+string                   "world"
+punctuation.bracket      ))
+punctuation.bracket      }

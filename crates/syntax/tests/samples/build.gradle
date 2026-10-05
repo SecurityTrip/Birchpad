@@ -1,0 +1,15 @@
+plugins {
+    id 'java'
+}
+
+// Dependencies of the demo.
+dependencies {
+    implementation 'org.slf4j:slf4j-api:2.0.13'
+    testImplementation "junit:junit:${junitVersion}"
+}
+
+def greet(String name, int times = 2) {
+    return (1..times).collect { "Hello, $name!" }.join(' ')
+}
+
+println greet('world')

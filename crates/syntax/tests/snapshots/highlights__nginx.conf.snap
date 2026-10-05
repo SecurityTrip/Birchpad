@@ -1,0 +1,32 @@
+---
+source: crates/syntax/tests/highlights.rs
+expression: render(&path)
+---
+language: nginx
+comment                  # The demo site.
+keyword                  server
+punctuation.bracket      {
+keyword                  listen
+number                   80
+punctuation.delimiter    ;
+keyword                  server_name
+variable                 example.org
+punctuation.delimiter    ;
+keyword                  location
+string.special           / 
+punctuation.bracket      {
+keyword                  root
+variable                 /var/www/demo
+punctuation.delimiter    ;
+keyword                  index
+variable                 index.html
+punctuation.delimiter    ;
+punctuation.bracket      }
+keyword                  location
+string.special           /api/ 
+punctuation.bracket      {
+keyword                  proxy_pass
+variable                 http://127.0.0.1:8080
+punctuation.delimiter    ;
+punctuation.bracket      }
+punctuation.bracket      }

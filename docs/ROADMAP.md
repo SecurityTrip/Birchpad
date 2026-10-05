@@ -50,12 +50,18 @@ What Phase 1 left for later is marked *(from Phase 1)* in the phases below.
       markers); margins for line numbers, bookmarks and folding; clicking the symbol margin
       toggles a bookmark, the line number margin selects lines
       ([ADR 0010](adr/0010-decorations-markers-and-margins.md))
-- [x] Syntax highlighting with tree-sitter for 27 languages, incremental and in the
+- [x] Syntax highlighting with tree-sitter for 50 languages, incremental and in the
       background; language detection by name, extension, `#!` line and first line; Language
       menu and `-l`; Large File Restriction (`files.large-file-limit-mb`); brace matching with
       Ctrl+B / Ctrl+Alt+B; basic and advanced auto-indent
       ([ADR 0011](adr/0011-syntax-highlighting.md))
-- Language injections (scripts in HTML, code blocks and inline formatting in Markdown)
+- [x] Embedded languages: scripts and styles in HTML and Svelte, code blocks, inline
+      formatting and front matter in Markdown, HTML around PHP, tagged templates, regular
+      expressions and JSDoc in JavaScript and TypeScript, each a tree of its own, reparsed only
+      when its text changes ([ADR 0011](adr/0011-syntax-highlighting.md))
+- [x] 23 more languages: Kotlin, Swift, Dart, Scala, Groovy/Gradle, R, Objective-C, Haskell,
+      Elixir, Erlang, Zig, Pascal, Assembly, Solidity, Dockerfile, CMake, Protocol Buffers,
+      GraphQL, HCL/Terraform, Nix, Properties, nginx, Svelte
 - [x] Folding from the syntax tree (indentation for plain text); Fold All, Unfold All,
       collapse levels 1–8, current level, fold boxes in the margin; carets step over or expand
       collapsed folds ([ADR 0012](adr/0012-folding.md))

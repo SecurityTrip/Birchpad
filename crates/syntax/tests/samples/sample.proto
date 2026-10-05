@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package demo.v1;
+
+// A greeting, twice.
+message Greeting {
+  string name = 1;
+  int32 times = 2;
+  repeated string tags = 3;
+}
+
+service Greeter {
+  rpc Greet (Greeting) returns (Greeting);
+}

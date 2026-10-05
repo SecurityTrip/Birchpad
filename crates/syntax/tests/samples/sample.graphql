@@ -1,0 +1,12 @@
+# A greeting, twice.
+type Greeting {
+  name: String!
+  times: Int = 2
+}
+
+query Greet($name: String!) {
+  greeting(name: $name) @cached {
+    name
+    times
+  }
+}

@@ -3,4 +3,5 @@
 function greet(string $name): string {
     return "Hello, $name!";
 }
-echo greet("world");
+?>
+<h1 class="title"><?= greet("world") ?></h1>
