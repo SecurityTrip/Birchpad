@@ -967,6 +967,15 @@ pub(crate) mod tests {
         }
     }
 
+    /// Toggle Bookmark: Ctrl+F2, or Cmd+F2 on macOS.
+    pub(crate) fn toggle_bookmark() -> &'static str {
+        if cfg!(target_os = "macos") {
+            "cmd-f2"
+        } else {
+            "ctrl-f2"
+        }
+    }
+
     /// The keystroke that extends a rectangular selection towards `key`: Alt+Shift+<key> on
     /// Windows and Linux, Cmd+Alt+Shift+<key> on macOS.
     pub(crate) fn block(key: &str) -> String {

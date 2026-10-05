@@ -336,7 +336,9 @@ mod tests {
 
     use super::*;
     use crate::workspace::Workspace;
-    use crate::workspace::tests::{active_text, document_start, open_workspace, secondary};
+    use crate::workspace::tests::{
+        active_text, document_start, open_workspace, secondary, toggle_bookmark,
+    };
 
     fn view(workspace: &Entity<Workspace>, cx: &mut VisualTestContext) -> Entity<EditorView> {
         workspace.read_with(cx, |workspace, cx| workspace.active_view(cx).unwrap())
@@ -402,15 +404,6 @@ mod tests {
         cx.update(|_, cx| cx.read_from_clipboard().and_then(|item| item.text()))
     }
 
-    /// Toggle Bookmark: Ctrl+F2, or Cmd+F2 on macOS.
-    fn toggle_key() -> &'static str {
-        if cfg!(target_os = "macos") {
-            "cmd-f2"
-        } else {
-            "ctrl-f2"
-        }
-    }
-
     /// Jump Up for style `n`: Ctrl+Shift+N, or Cmd+Ctrl+N on macOS.
     fn jump_up_key(n: usize) -> String {
         if cfg!(target_os = "macos") {
@@ -425,8 +418,8 @@ mod tests {
         let (workspace, cx) = open_workspace(cx);
         cx.simulate_input("zero\none\ntwo\nthree\nfour");
         cx.simulate_keystrokes(document_start());
-        cx.simulate_keystrokes(&format!("down {}", toggle_key()));
-        cx.simulate_keystrokes(&format!("down down {}", toggle_key()));
+        cx.simulate_keystrokes(&format!("down {}", toggle_bookmark()));
+        cx.simulate_keystrokes(&format!("down down {}", toggle_bookmark()));
         assert_eq!(bookmarks(&workspace, cx), [1, 3]);
 
         cx.simulate_keystrokes(document_start());
@@ -452,9 +445,9 @@ mod tests {
         // With several carets: marks all their lines unless all are marked, then unmarks them.
         let carets = Selection::new([Range::point(1), Range::point(6), Range::point(7)], 0);
         select(&workspace, carets.clone(), cx);
-        cx.simulate_keystrokes(toggle_key());
+        cx.simulate_keystrokes(toggle_bookmark());
         assert_eq!(bookmarks(&workspace, cx), [0, 1, 3]);
-        cx.simulate_keystrokes(toggle_key());
+        cx.simulate_keystrokes(toggle_bookmark());
         assert_eq!(bookmarks(&workspace, cx), [3]);
 
         run(&workspace, Invocation::new("bookmark.clear-all"), cx);

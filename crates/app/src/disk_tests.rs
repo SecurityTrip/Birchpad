@@ -15,7 +15,7 @@ use crate::app_state::AppState;
 use crate::buffer::ReadOnly;
 use crate::editor::EditorView;
 use crate::workspace::Workspace;
-use crate::workspace::tests::{active_text, open_workspace, secondary, tab_names};
+use crate::workspace::tests::{active_text, open_workspace, secondary, tab_names, toggle_bookmark};
 
 fn open(workspace: &Entity<Workspace>, path: &Path, cx: &mut VisualTestContext) {
     workspace.update_in(cx, |workspace, window, cx| {
@@ -69,7 +69,7 @@ fn a_changed_file_reloads_on_the_same_lines(cx: &mut TestAppContext) {
         view.selection = Selection::point(6);
         cx.notify();
     });
-    cx.simulate_keystrokes("ctrl-f2");
+    cx.simulate_keystrokes(toggle_bookmark());
     check(&workspace, cx);
     assert!(!cx.has_pending_prompt(), "unchanged");
 

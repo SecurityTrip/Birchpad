@@ -13,7 +13,9 @@ use serde_json::json;
 use crate::app_state::AppState;
 use crate::editor::EditorView;
 use crate::workspace::Workspace;
-use crate::workspace::tests::{active_text, document_start, pane_views, panes, secondary};
+use crate::workspace::tests::{
+    active_text, document_start, pane_views, panes, secondary, toggle_bookmark,
+};
 
 /// The application's globals, with its data in `data`.
 fn set_up(cx: &mut TestAppContext, data: &Path, configure: impl FnOnce(&mut Settings)) {
@@ -122,7 +124,7 @@ fn quitting_keeps_unsaved_documents_and_where_they_were(cx: &mut TestAppContext)
     open(&workspace, &file, first);
     first.simulate_keystrokes(document_start());
     first.simulate_input("// edit\n");
-    first.simulate_keystrokes("down ctrl-f2");
+    first.simulate_keystrokes(&format!("down {}", toggle_bookmark()));
     run(&workspace, Invocation::new("view.fold-all"), first);
     let edited = pane_views(&workspace, 0, first)[1].clone();
     edited.update(first, |view, cx| {

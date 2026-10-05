@@ -12,6 +12,7 @@ use crate::editor::EditorView;
 use crate::workspace::Workspace;
 use crate::workspace::tests::{
     active_text, document_start, drop_tab, open_workspace, pane_views, panes, secondary,
+    toggle_bookmark,
 };
 
 fn run(workspace: &Entity<Workspace>, command: &str, cx: &mut VisualTestContext) {
@@ -92,7 +93,7 @@ fn views_of_one_buffer_follow_each_others_edits(cx: &mut TestAppContext) {
         clone.selection = Selection::single(Range::point(12));
         cx.notify();
     });
-    cx.simulate_keystrokes("up ctrl-f2");
+    cx.simulate_keystrokes(&format!("up {}", toggle_bookmark()));
     run(&workspace, "view.fold-all", cx);
     let clone_state = |cx: &mut VisualTestContext| {
         clone.read_with(cx, |clone, cx| {
