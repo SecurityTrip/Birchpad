@@ -11,6 +11,11 @@
 //! Mnemonics are picked automatically: the first letter of a label, or of a later word, or any
 //! later letter or digit that no earlier item in the same menu has. Notepad++'s menus get the
 //! same ones: File, Edit, Search, View, E*n*coding, Language.
+//!
+//! The menus are those installed for the window (`GlobalState::set_app_menus`); a chosen command
+//! is dispatched from where the focus was before the menu bar took it. The application calls
+//! [`init`] once, puts a [`MenuBar`] at the top of its window, and passes the window's root
+//! element through [`route_input`].
 
 use std::collections::HashSet;
 use std::ops::Range;
@@ -19,9 +24,10 @@ use gpui_kit::component::global_state::GlobalState;
 use gpui_kit::component::kbd::Kbd;
 use gpui_kit::{
     Action, Anchor, AnchoredPositionMode, AnyElement, App, AsKeystroke as _, Bounds, Context,
-    ElementId, FocusHandle, HighlightStyle, KeyBinding, KeyDownEvent, Modifiers, MouseButton,
-    OwnedMenu, OwnedMenuItem, Pixels, ScrollHandle, SharedString, StyledText, Subscription,
-    UnderlineStyle, Window, actions, anchored, canvas, deferred, div, point, prelude::*, px, rgb,
+    ElementId, Entity, FocusHandle, HighlightStyle, KeyBinding, KeyDownEvent, Modifiers,
+    MouseButton, OwnedMenu, OwnedMenuItem, Pixels, ScrollHandle, SharedString, StyledText,
+    Subscription, UnderlineStyle, Window, actions, anchored, canvas, deferred, div, point,
+    prelude::*, px, rgb,
 };
 
 actions!(
@@ -51,7 +57,8 @@ const SELECTED: u32 = 0xddf4ff;
 const HOVERED: u32 = 0xeaeef2;
 const MUTED: u32 = 0x8c959f;
 
-pub(crate) fn init(cx: &mut App) {
+/// Binds the menu bar's keys. Nothing on macOS, which has the native menu bar.
+pub fn init(cx: &mut App) {
     if cfg!(target_os = "macos") {
         return;
     }
@@ -68,6 +75,36 @@ pub(crate) fn init(cx: &mut App) {
         KeyBinding::new("space", Choose, Some(CONTEXT)),
         KeyBinding::new("escape", Close, Some(CONTEXT)),
     ]);
+}
+
+/// Routes to the menu bar what it needs from the whole window, wherever the focus is: Alt
+/// pressed and released alone, F10, Alt+letter, and mouse clicks (Alt released after a click,
+/// as in a rectangular selection, is not a tap). `root` is the window's root element.
+pub fn route_input<E: InteractiveElement>(root: E, menu_bar: Entity<MenuBar>) -> E {
+    let [modifiers, mouse, alt, toggle, keys] = std::array::from_fn(|_| menu_bar.clone());
+    root.on_modifiers_changed(move |event, window, cx| {
+        modifiers.update(cx, |bar, cx| {
+            bar.modifiers_changed(event.modifiers, window, cx)
+        });
+    })
+    .capture_any_mouse_down(move |_, _, cx| mouse.update(cx, |bar, _| bar.mouse_down()))
+    .on_action(move |_: &AltReleased, window, cx| {
+        alt.update(cx, |bar, cx| bar.alt_released(window, cx));
+    })
+    .on_action(move |_: &ToggleMenuBar, window, cx| {
+        toggle.update(cx, |bar, cx| bar.toggle(window, cx));
+    })
+    .on_key_down(move |event: &KeyDownEvent, window, cx| {
+        if event.keystroke.modifiers != Modifiers::alt() {
+            return;
+        }
+        let mut chars = event.keystroke.key.chars();
+        if let (Some(key), None) = (chars.next(), chars.next())
+            && keys.update(cx, |bar, cx| bar.open_by_mnemonic(key, window, cx))
+        {
+            cx.stop_propagation();
+        }
+    })
 }
 
 /// The letter that opens or chooses an item from the keyboard.
@@ -121,7 +158,7 @@ enum State {
     },
 }
 
-pub(crate) struct MenuBar {
+pub struct MenuBar {
     titles: Vec<Title>,
     state: State,
     focus_handle: FocusHandle,
@@ -142,7 +179,7 @@ pub(crate) struct MenuBar {
 }
 
 impl MenuBar {
-    pub(crate) fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
+    pub fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
         let focus_handle = cx.focus_handle();
         let subscriptions = vec![
             // Something else took the focus.
@@ -178,7 +215,7 @@ impl MenuBar {
 
     /// Takes the menus installed for the window again (after recent files or check marks
     /// changed), keeping what is open where it still exists.
-    pub(crate) fn reload(&mut self, cx: &mut Context<Self>) {
+    pub fn reload(&mut self, cx: &mut Context<Self>) {
         let menus: Vec<OwnedMenu> = GlobalState::global(cx).app_menus().to_vec();
         let labels: Vec<&str> = menus.iter().map(|menu| menu.name.as_ref()).collect();
         self.titles = mnemonics(&labels)
@@ -216,17 +253,12 @@ impl MenuBar {
         cx.notify();
     }
 
-    pub(crate) fn is_active(&self) -> bool {
+    pub fn is_active(&self) -> bool {
         self.state != State::Closed
     }
 
-    /// The workspace saw the modifiers change.
-    pub(crate) fn modifiers_changed(
-        &mut self,
-        modifiers: Modifiers,
-        window: &Window,
-        cx: &mut Context<Self>,
-    ) {
+    /// The window saw the modifiers change.
+    fn modifiers_changed(&mut self, modifiers: Modifiers, window: &Window, cx: &mut Context<Self>) {
         let alt_alone = modifiers == Modifiers::alt();
         if alt_alone && !self.alt_held {
             self.alt_armed = window.is_window_active();
@@ -239,20 +271,20 @@ impl MenuBar {
         }
     }
 
-    /// The workspace saw a mouse button go down.
-    pub(crate) fn mouse_down(&mut self) {
+    /// The window saw a mouse button go down.
+    fn mouse_down(&mut self) {
         self.alt_armed = false;
     }
 
     /// Alt was released alone.
-    pub(crate) fn alt_released(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+    fn alt_released(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         if std::mem::take(&mut self.alt_armed) {
             self.toggle(window, cx);
         }
     }
 
     /// F10, or Alt alone: the menu bar takes the focus, or gives it back.
-    pub(crate) fn toggle(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+    fn toggle(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         if self.is_active() {
             self.close(window, cx);
         } else if !self.titles.is_empty() {
@@ -265,12 +297,7 @@ impl MenuBar {
 
     /// Alt+letter while the menu bar does not have the focus: opens the menu with that
     /// mnemonic. Returns whether there is one.
-    pub(crate) fn open_by_mnemonic(
-        &mut self,
-        key: char,
-        window: &mut Window,
-        cx: &mut Context<Self>,
-    ) -> bool {
+    fn open_by_mnemonic(&mut self, key: char, window: &mut Window, cx: &mut Context<Self>) -> bool {
         let Some(menu) = self.title_with_mnemonic(key) else {
             return false;
         };
@@ -1053,14 +1080,106 @@ impl Render for MenuBar {
 // macOS has the native menu bar.
 #[cfg(all(test, not(target_os = "macos")))]
 mod gpui_tests {
-    use gpui_kit::{Entity, Modifiers, MouseButton, TestAppContext, VisualTestContext, point, px};
+    use gpui_kit::{Menu, MenuItem, TestAppContext, VisualTestContext, WindowOptions};
 
     use super::*;
-    use crate::workspace::Workspace;
-    use crate::workspace::tests::{active_text, open_workspace, tab_names};
 
-    fn state(workspace: &Entity<Workspace>, cx: &mut VisualTestContext) -> State {
-        let bar = workspace.read_with(cx, |workspace, _| workspace.menu_bar().unwrap());
+    actions!(
+        menu_bar_tests,
+        [
+            New,
+            Open,
+            ClearRecent,
+            Exit,
+            Undo,
+            Redo,
+            Find,
+            WordWrap,
+            Utf8
+        ]
+    );
+
+    /// A window as Birchpad has it: the menu bar above an editor, which gets the commands.
+    struct TestWindow {
+        menu_bar: Entity<MenuBar>,
+        editor: FocusHandle,
+        chosen: Vec<&'static str>,
+    }
+
+    impl Render for TestWindow {
+        fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+            route_input(div().id("window"), self.menu_bar.clone())
+                .size_full()
+                .flex()
+                .flex_col()
+                .child(div().flex_none().h(px(30.)).child(self.menu_bar.clone()))
+                .child(
+                    div()
+                        .id("editor")
+                        .track_focus(&self.editor)
+                        .flex_1()
+                        .on_action(cx.listener(|this, _: &New, _, _| this.chosen.push("New")))
+                        .on_action(cx.listener(|this, _: &Undo, _, _| this.chosen.push("Undo")))
+                        .on_action(cx.listener(|this, _: &Utf8, _, _| this.chosen.push("UTF-8"))),
+                )
+        }
+    }
+
+    /// Notepad++'s first menus, in short.
+    fn menus() -> Vec<OwnedMenu> {
+        [
+            Menu::new("File").items([
+                MenuItem::action("New", New),
+                MenuItem::action("Open...", Open),
+                MenuItem::submenu(
+                    Menu::new("Recent Files")
+                        .items([MenuItem::action("(empty)", ClearRecent).disabled(true)]),
+                ),
+                MenuItem::separator(),
+                MenuItem::action("Exit", Exit),
+            ]),
+            Menu::new("Edit").items([
+                MenuItem::action("Undo", Undo),
+                MenuItem::action("Redo", Redo),
+            ]),
+            Menu::new("Search").items([MenuItem::action("Find...", Find)]),
+            Menu::new("View").items([MenuItem::action("Word Wrap", WordWrap)]),
+            Menu::new("Encoding").items([MenuItem::action("UTF-8", Utf8)]),
+        ]
+        .into_iter()
+        .map(Menu::owned)
+        .collect()
+    }
+
+    fn open_window(cx: &mut TestAppContext) -> (Entity<TestWindow>, &mut VisualTestContext) {
+        cx.update(|cx| {
+            gpui_kit::init(cx);
+            init(cx);
+            GlobalState::global_mut(cx).set_app_menus(menus());
+        });
+        let (window, root) = cx.update(|cx| {
+            gpui_kit::open_window(WindowOptions::default(), cx, |window, cx| {
+                cx.new(|cx| {
+                    let editor = cx.focus_handle();
+                    editor.focus(window, cx);
+                    TestWindow {
+                        menu_bar: cx.new(|cx| MenuBar::new(window, cx)),
+                        editor,
+                        chosen: Vec::new(),
+                    }
+                })
+            })
+            .expect("open the test window")
+        });
+        let cx = VisualTestContext::from_window(window, cx).into_mut();
+        // Active like the window the user works in: Alt only arms the menu bar then.
+        cx.update(|window, _| window.activate_window());
+        cx.run_until_parked();
+        (root, cx)
+    }
+
+    fn state(root: &Entity<TestWindow>, cx: &mut VisualTestContext) -> State {
+        let bar = root.read_with(cx, |root, _| root.menu_bar.clone());
         bar.read_with(cx, |bar, _| bar.state.clone())
     }
 
@@ -1071,10 +1190,12 @@ mod gpui_tests {
         }
     }
 
-    /// Whether the active editor has the focus.
-    fn editor_focused(workspace: &Entity<Workspace>, cx: &mut VisualTestContext) -> bool {
-        let view = workspace.read_with(cx, |workspace, cx| workspace.active_view(cx).unwrap());
-        cx.update(|window, cx| view.read(cx).focus_handle.is_focused(window))
+    fn chosen(root: &Entity<TestWindow>, cx: &mut VisualTestContext) -> Vec<&'static str> {
+        root.read_with(cx, |root, _| root.chosen.clone())
+    }
+
+    fn editor_focused(root: &Entity<TestWindow>, cx: &mut VisualTestContext) -> bool {
+        cx.update(|window, cx| root.read(cx).editor.is_focused(window))
     }
 
     /// Alt pressed and released alone.
@@ -1086,104 +1207,95 @@ mod gpui_tests {
 
     #[gpui_kit::test]
     fn alt_and_the_arrows_walk_the_menus(cx: &mut TestAppContext) {
-        let (workspace, cx) = open_workspace(cx);
+        let (root, cx) = open_window(cx);
         tap_alt(cx);
-        assert_eq!(state(&workspace, cx), State::Selected(0));
+        assert_eq!(state(&root, cx), State::Selected(0));
         cx.simulate_keystrokes("right");
-        assert_eq!(state(&workspace, cx), State::Selected(1));
+        assert_eq!(state(&root, cx), State::Selected(1));
         cx.simulate_keystrokes("down");
-        assert_eq!(state(&workspace, cx), open(1, &[Some(0)]), "Edit, on Undo");
+        assert_eq!(state(&root, cx), open(1, &[Some(0)]), "Edit, on Undo");
         cx.simulate_keystrokes("up");
-        let last = state(&workspace, cx);
-        assert!(matches!(&last, State::Open { menu: 1, path } if path[0] > Some(0)));
+        assert_eq!(state(&root, cx), open(1, &[Some(1)]), "around the ends");
         cx.simulate_keystrokes("down");
-        assert_eq!(
-            state(&workspace, cx),
-            open(1, &[Some(0)]),
-            "around the ends"
-        );
+        assert_eq!(state(&root, cx), open(1, &[Some(0)]));
         cx.simulate_keystrokes("left");
-        assert_eq!(state(&workspace, cx), open(0, &[Some(0)]), "File, on New");
+        assert_eq!(state(&root, cx), open(0, &[Some(0)]), "File, on New");
         cx.simulate_keystrokes("escape");
-        assert_eq!(state(&workspace, cx), State::Selected(0));
+        assert_eq!(state(&root, cx), State::Selected(0));
         cx.simulate_keystrokes("escape");
-        assert_eq!(state(&workspace, cx), State::Closed);
-        assert!(editor_focused(&workspace, cx));
+        assert_eq!(state(&root, cx), State::Closed);
+        assert!(editor_focused(&root, cx));
+        assert!(chosen(&root, cx).is_empty());
 
         // F10 does the same; Alt gives the focus back.
         cx.simulate_keystrokes("f10");
-        assert_eq!(state(&workspace, cx), State::Selected(0));
+        assert_eq!(state(&root, cx), State::Selected(0));
+        assert!(!editor_focused(&root, cx));
         tap_alt(cx);
-        assert_eq!(state(&workspace, cx), State::Closed);
-        assert!(editor_focused(&workspace, cx));
+        assert_eq!(state(&root, cx), State::Closed);
+        assert!(editor_focused(&root, cx));
     }
 
     #[gpui_kit::test]
     fn mnemonics_open_menus_and_choose_commands(cx: &mut TestAppContext) {
-        let (workspace, cx) = open_workspace(cx);
-        cx.simulate_input("abc");
+        let (root, cx) = open_window(cx);
         cx.simulate_keystrokes("alt-f");
-        assert_eq!(state(&workspace, cx), open(0, &[Some(0)]));
+        assert_eq!(state(&root, cx), open(0, &[Some(0)]));
         cx.simulate_keystrokes("n");
-        assert_eq!(state(&workspace, cx), State::Closed);
-        assert_eq!(tab_names(&workspace, cx), ["new 1", "new 2"], "File > New");
-        assert!(editor_focused(&workspace, cx));
+        assert_eq!(state(&root, cx), State::Closed);
+        assert_eq!(chosen(&root, cx), ["New"], "File > New, sent to the editor");
+        assert!(editor_focused(&root, cx));
 
-        // Enter chooses the selected item: Edit > Undo, in the first document.
-        cx.simulate_keystrokes("ctrl-tab");
+        // Enter chooses the selected item.
         cx.simulate_keystrokes("alt-e enter");
-        assert_eq!(active_text(&workspace, cx), "");
+        assert_eq!(chosen(&root, cx), ["New", "Undo"]);
 
         // Encoding is E&ncoding: E is Edit's.
         cx.simulate_keystrokes("alt-n");
-        assert!(matches!(state(&workspace, cx), State::Open { menu: 4, .. }));
-        cx.simulate_keystrokes("escape escape");
-        assert_eq!(state(&workspace, cx), State::Closed);
+        assert_eq!(state(&root, cx), open(4, &[Some(0)]));
+        cx.simulate_keystrokes("space");
+        assert_eq!(chosen(&root, cx), ["New", "Undo", "UTF-8"]);
+        assert_eq!(state(&root, cx), State::Closed);
     }
 
     #[gpui_kit::test]
     fn submenus_open_with_their_letter_or_right(cx: &mut TestAppContext) {
-        let (workspace, cx) = open_workspace(cx);
+        let (root, cx) = open_window(cx);
         // File > Recent Files.
         cx.simulate_keystrokes("alt-f r");
-        assert_eq!(state(&workspace, cx), open(0, &[Some(2), Some(0)]));
+        assert_eq!(state(&root, cx), open(0, &[Some(2), Some(0)]));
         cx.simulate_keystrokes("left");
-        assert_eq!(state(&workspace, cx), open(0, &[Some(2)]));
+        assert_eq!(state(&root, cx), open(0, &[Some(2)]));
         cx.simulate_keystrokes("right");
-        assert_eq!(state(&workspace, cx), open(0, &[Some(2), Some(0)]));
+        assert_eq!(state(&root, cx), open(0, &[Some(2), Some(0)]));
         // "(empty)" has no submenu: Right goes to the next menu.
         cx.simulate_keystrokes("right");
-        assert_eq!(state(&workspace, cx), open(1, &[Some(0)]));
+        assert_eq!(state(&root, cx), open(1, &[Some(0)]));
+
         // A disabled item does nothing.
-        cx.simulate_keystrokes("left down down enter");
-        assert!(matches!(state(&workspace, cx), State::Open { menu: 0, .. }));
+        cx.simulate_keystrokes("left down down right enter");
+        assert_eq!(state(&root, cx), open(0, &[Some(2), Some(0)]));
+        assert!(chosen(&root, cx).is_empty());
     }
 
     #[gpui_kit::test]
     fn alt_with_a_click_is_not_a_tap(cx: &mut TestAppContext) {
-        let (workspace, cx) = open_workspace(cx);
-        let inside = workspace.read_with(cx, |workspace, cx| {
-            let view = workspace.active_view(cx).unwrap();
-            view.read(cx).bounds().unwrap().center()
-        });
+        let (root, cx) = open_window(cx);
+        let inside = point(px(200.), px(200.));
         cx.simulate_modifiers_change(Modifiers::alt());
         cx.simulate_mouse_down(inside, MouseButton::Left, Modifiers::alt());
         cx.simulate_mouse_up(inside, MouseButton::Left, Modifiers::alt());
         cx.simulate_keystrokes("alt");
         cx.simulate_modifiers_change(Modifiers::none());
-        assert_eq!(
-            state(&workspace, cx),
-            State::Closed,
-            "a rectangular selection"
-        );
+        assert_eq!(state(&root, cx), State::Closed, "a rectangular selection");
 
         // The menu bar opens with the mouse and closes with a click outside it.
         let title = point(px(20.), px(15.));
         cx.simulate_click(title, Modifiers::none());
-        assert_eq!(state(&workspace, cx), open(0, &[None]));
+        assert_eq!(state(&root, cx), open(0, &[None]));
         cx.simulate_click(inside, Modifiers::none());
-        assert_eq!(state(&workspace, cx), State::Closed);
-        assert!(editor_focused(&workspace, cx));
+        assert_eq!(state(&root, cx), State::Closed);
+        assert!(editor_focused(&root, cx));
     }
 }
 

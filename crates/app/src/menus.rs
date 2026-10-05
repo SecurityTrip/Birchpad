@@ -1,7 +1,7 @@
 //! Builds the main menu from the menu model in `birchpad-commands`.
 //!
 //! macOS gets a native menu bar through `cx.set_menus`; Windows and Linux get the menu bar of
-//! [`crate::menu_bar`], drawn at the top of the window, fed from the same menus.
+//! `birchpad-menu-bar`, drawn at the top of the window, fed from the same menus.
 
 use std::path::PathBuf;
 
@@ -169,5 +169,25 @@ pub(crate) fn install(state: &MenuState, cx: &mut App) {
             .map(gpui_kit::Menu::owned)
             .collect();
         GlobalState::global_mut(cx).set_app_menus(owned);
+    }
+}
+
+#[cfg(all(test, not(target_os = "macos")))]
+mod tests {
+    use gpui_kit::TestAppContext;
+
+    use crate::workspace::tests::{active_text, open_workspace, tab_names};
+
+    /// The drawn menu bar's commands reach the workspace, and the editor that had the focus.
+    #[gpui_kit::test]
+    fn menu_bar_commands_reach_the_workspace(cx: &mut TestAppContext) {
+        let (workspace, cx) = open_workspace(cx);
+        cx.simulate_input("abc");
+        cx.simulate_keystrokes("alt-f n");
+        assert_eq!(tab_names(&workspace, cx), ["new 1", "new 2"], "File > New");
+
+        // Edit > Undo, in the first document.
+        cx.simulate_keystrokes("ctrl-tab alt-e enter");
+        assert_eq!(active_text(&workspace, cx), "");
     }
 }

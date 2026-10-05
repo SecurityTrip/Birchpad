@@ -599,6 +599,7 @@ dependencies = [
  "birchpad-config",
  "birchpad-core",
  "birchpad-io",
+ "birchpad-menu-bar",
  "birchpad-syntax",
  "birchpad-update",
  "birchpad-view",
@@ -666,6 +667,13 @@ dependencies = [
  "tempfile",
  "thiserror 2.0.21",
  "windows-sys 0.61.2",
+]
+
+[[package]]
+name = "birchpad-menu-bar"
+version = "0.1.0"
+dependencies = [
+ "gpui-kit",
 ]
 
 [[package]]

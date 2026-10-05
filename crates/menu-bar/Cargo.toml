@@ -1,0 +1,18 @@
+[package]
+name = "birchpad-menu-bar"
+description = "The menu bar Birchpad draws in its window on Windows and Linux, used with the mouse or the keyboard as Windows menus are."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[dependencies]
+gpui-kit = "0.7"
+
+[dev-dependencies]
+gpui-kit = { version = "0.7", features = ["test-support"] }
+
+[lints]
+workspace = true

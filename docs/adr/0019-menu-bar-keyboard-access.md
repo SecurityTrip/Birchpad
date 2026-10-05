@@ -14,11 +14,12 @@ letters for items.
 
 ## Decision
 
-- **Birchpad's own menu bar** (`menu_bar.rs`), fed from the same menu data as before, draws the
-  titles and the menus and keeps one state: closed, a title selected, or a menu open with the
-  selected item of each open level. The menu bar has a single focus handle while it is in use;
-  the focus it took is given back when it is done, and commands are dispatched from there, so
-  they reach the editor that was active.
+- **Birchpad's own menu bar** (crate `birchpad-menu-bar`, which knows only GPUI: the application
+  installs the menus and routes the window's input to it), fed from the same menu data as
+  before, draws the titles and the menus and keeps one state: closed, a title selected, or a
+  menu open with the selected item of each open level. The menu bar has a single focus handle
+  while it is in use; the focus it took is given back when it is done, and commands are
+  dispatched from there, so they reach the editor that was active.
 - **Keys, as in Windows menus:**
   - Alt pressed and released alone, or F10, selects the first title; again, or Esc, gives the
     focus back. GPUI reports a modifier released without other input as a keystroke, so Alt is

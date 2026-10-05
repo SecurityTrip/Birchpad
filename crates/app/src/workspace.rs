@@ -9,14 +9,15 @@ use birchpad_cli::CommandLine;
 use birchpad_commands::Invocation;
 use birchpad_config::{SplitOrientation, UserState};
 use birchpad_core::Document;
+use birchpad_menu_bar::MenuBar;
 use gpui_kit::component::WindowExt as _;
 use gpui_kit::component::button::Button;
 use gpui_kit::component::dialog::DialogAction;
 use gpui_kit::component::notification::Notification;
 use gpui_kit::component::{h_resizable, resizable_panel, v_resizable};
 use gpui_kit::{
-    AnyElement, App, AppContext as _, Context, Div, Entity, EntityId, ExternalPaths, FocusHandle,
-    Focusable, KeyDownEvent, Modifiers, Stateful, Subscription, Window, div, prelude::*, px, rgb,
+    AnyElement, App, AppContext as _, Context, Entity, EntityId, ExternalPaths, FocusHandle,
+    Focusable, Subscription, Window, div, prelude::*, px, rgb,
 };
 
 use crate::app_state::AppState;
@@ -25,7 +26,6 @@ use crate::commands::{CommandRegistry, Handler, RunCommand};
 use crate::disk::DiskState;
 use crate::editor::{EditorEvent, EditorView, ViewSettings};
 use crate::find::FindBar;
-use crate::menu_bar::{AltReleased, MenuBar, ToggleMenuBar};
 use crate::menus::{self, MenuState};
 use crate::pane::{Pane, PaneEvent};
 use crate::session::SessionState;
@@ -339,12 +339,6 @@ impl Workspace {
 
     pub(crate) fn active_pane_index(&self) -> usize {
         self.active_pane
-    }
-
-    /// For the menu bar's tests (macOS has the native menu bar instead).
-    #[cfg(all(test, not(target_os = "macos")))]
-    pub(crate) fn menu_bar(&self) -> Option<Entity<MenuBar>> {
-        self.menu_bar.clone()
     }
 
     /// The pane showing `view`: 0 for the main view, 1 for the second.
@@ -854,7 +848,7 @@ impl Render for Workspace {
             .flex_col()
             .bg(rgb(0xffffff))
             .text_color(rgb(0x1f2328))
-            .when_some(self.menu_bar.clone(), Self::menu_bar_keys)
+            .when_some(self.menu_bar.clone(), birchpad_menu_bar::route_input)
             .when_some(self.menu_bar.clone(), |this, menu_bar| {
                 this.child(
                     div()
@@ -875,34 +869,6 @@ impl Render for Workspace {
 }
 
 impl Workspace {
-    /// Alt, F10 and Alt+letter reach the menu bar from wherever the focus is.
-    fn menu_bar_keys(root: Stateful<Div>, menu_bar: Entity<MenuBar>) -> Stateful<Div> {
-        let [modifiers, mouse, alt, toggle, keys] = std::array::from_fn(|_| menu_bar.clone());
-        root.on_modifiers_changed(move |event, window, cx| {
-            modifiers.update(cx, |bar, cx| {
-                bar.modifiers_changed(event.modifiers, window, cx)
-            });
-        })
-        .capture_any_mouse_down(move |_, _, cx| mouse.update(cx, |bar, _| bar.mouse_down()))
-        .on_action(move |_: &AltReleased, window, cx| {
-            alt.update(cx, |bar, cx| bar.alt_released(window, cx));
-        })
-        .on_action(move |_: &ToggleMenuBar, window, cx| {
-            toggle.update(cx, |bar, cx| bar.toggle(window, cx));
-        })
-        .on_key_down(move |event: &KeyDownEvent, window, cx| {
-            if event.keystroke.modifiers != Modifiers::alt() {
-                return;
-            }
-            let mut chars = event.keystroke.key.chars();
-            if let (Some(key), None) = (chars.next(), chars.next())
-                && keys.update(cx, |bar, cx| bar.open_by_mnemonic(key, window, cx))
-            {
-                cx.stop_propagation();
-            }
-        })
-    }
-
     /// The pane with tabs, or both side by side or stacked, with a splitter between them.
     fn render_panes(&self, cx: &App) -> AnyElement {
         if !self.is_split(cx) {
