@@ -1,7 +1,8 @@
 //! `birchpad-release`: the update manifest tooling of the release workflows (ADR 0020).
 //!
 //! ```text
-//! birchpad-release keygen [--keys-file crates/update/trusted-keys.txt]
+//! birchpad-release keygen
+//! birchpad-release public-key
 //! birchpad-release add --manifest FILE --out FILE --version V --page URL --download-base URL
 //!                      [--package PLATFORM=PATH]... [--keep N] [--expires-days N] [--new]
 //! birchpad-release remove --manifest FILE --out FILE --version V [--expires-days N]
@@ -9,10 +10,11 @@
 //! birchpad-release verify --manifest FILE
 //! ```
 //!
-//! Signing commands read the secret keys from `BIRCHPAD_UPDATE_KEY` (base64, several separated
-//! by commas or newlines while a key is being replaced). An existing manifest is extended only if
-//! its signature checks out against the trusted keys: those compiled in from
-//! `crates/update/trusted-keys.txt`, or those of `--keys-file`.
+//! Signing commands (and `public-key`) read the secret keys from `BIRCHPAD_UPDATE_KEY` (base64,
+//! several separated by commas or newlines while a key is being replaced). An existing manifest
+//! is extended only if its signature checks out against the trusted public keys: those of
+//! `BIRCHPAD_TRUSTED_KEYS`, the repository variable that release builds compile in, or those of
+//! `--keys-file`.
 
 #![allow(
     clippy::print_stdout,
@@ -51,11 +53,14 @@ fn main() -> ExitCode {
 
 fn run(args: &[String]) -> Result<()> {
     let Some((command, rest)) = args.split_first() else {
-        bail!("usage: birchpad-release keygen|add|remove|refresh|verify ... (see the source)");
+        bail!(
+            "usage: birchpad-release keygen|public-key|add|remove|refresh|verify ... (see the source)"
+        );
     };
     let options = Options::parse(rest)?;
     match command.as_str() {
-        "keygen" => keygen(&options),
+        "keygen" => keygen(),
+        "public-key" => public_key(),
         "add" => add(&options),
         "remove" => remove(&options),
         "refresh" => refresh(&options),
@@ -129,24 +134,16 @@ fn now() -> u64 {
         .as_secs()
 }
 
-/// Makes a new signing key: its public half is added to the trusted keys file, its secret is
-/// printed (only) to standard output, to be piped into the repository secret.
-fn keygen(options: &Options) -> Result<()> {
-    let keys_file = options
-        .get("keys-file")
-        .unwrap_or("crates/update/trusted-keys.txt");
+/// Makes a new signing key. Its secret is printed (only) to standard output, to be piped into
+/// the repository secret; its public key, for the trusted keys, to standard error.
+fn keygen() -> Result<()> {
     let mut secret = [0u8; 32];
     getrandom::fill(&mut secret).map_err(|error| anyhow::anyhow!("no randomness: {error}"))?;
     let key = SigningKey::from_bytes(&secret);
-    let public = manifest::public_key_text(&key.verifying_key());
-    let mut text = fs::read_to_string(keys_file)
-        .with_context(|| format!("cannot read {keys_file} (run this in the repository root)"))?;
-    if !text.ends_with('\n') {
-        text.push('\n');
-    }
-    text.push_str(&format!("{public}  # added {}\n", manifest::date(now())));
-    fs::write(keys_file, text).with_context(|| format!("cannot write {keys_file}"))?;
-    eprintln!("Added the public key {public} to {keys_file}: commit it.");
+    eprintln!(
+        "Its public key, to add to the BIRCHPAD_TRUSTED_KEYS repository variable: {}",
+        manifest::public_key_text(&key.verifying_key())
+    );
     eprintln!(
         "The secret key follows on standard output: store it as the BIRCHPAD_UPDATE_KEY secret \
          and keep a copy offline. Whoever has it can sign updates; without it, no update can be \
@@ -156,19 +153,37 @@ fn keygen(options: &Options) -> Result<()> {
     Ok(())
 }
 
-/// The keys a manifest must be signed with: `--keys-file`, or those compiled in.
-fn trusted(options: &Options) -> Result<Vec<VerifyingKey>> {
-    match options.get("keys-file") {
-        Some(path) => {
-            let text = fs::read_to_string(path).with_context(|| format!("cannot read {path}"))?;
-            manifest::parse_keys(&text).map_err(anyhow::Error::msg)
-        }
-        None => Ok(manifest::trusted_keys()),
+/// Prints the public keys of the secret keys in `BIRCHPAD_UPDATE_KEY`, one per line.
+fn public_key() -> Result<()> {
+    for key in secret_keys()? {
+        println!("{}", manifest::public_key_text(&key.verifying_key()));
     }
+    Ok(())
 }
 
-/// The secret keys from `BIRCHPAD_UPDATE_KEY`; at least one must be trusted.
-fn signing_keys(trusted: &[VerifyingKey]) -> Result<Vec<SigningKey>> {
+/// The keys a manifest must be signed with: `--keys-file`, or `BIRCHPAD_TRUSTED_KEYS`.
+fn trusted(options: &Options) -> Result<Vec<VerifyingKey>> {
+    let keys = match options.get("keys-file") {
+        Some(path) => {
+            let text = fs::read_to_string(path).with_context(|| format!("cannot read {path}"))?;
+            manifest::parse_keys(&text)
+                .map_err(anyhow::Error::msg)
+                .with_context(|| path.to_owned())?
+        }
+        None => manifest::parse_keys(&std::env::var("BIRCHPAD_TRUSTED_KEYS").unwrap_or_default())
+            .map_err(anyhow::Error::msg)
+            .context("BIRCHPAD_TRUSTED_KEYS")?,
+    };
+    ensure!(
+        !keys.is_empty(),
+        "no trusted keys: set BIRCHPAD_TRUSTED_KEYS to the public keys release builds trust \
+         (gh variable get BIRCHPAD_TRUSTED_KEYS), or pass --keys-file"
+    );
+    Ok(keys)
+}
+
+/// The secret keys from `BIRCHPAD_UPDATE_KEY`.
+fn secret_keys() -> Result<Vec<SigningKey>> {
     let text = std::env::var("BIRCHPAD_UPDATE_KEY")
         .context("BIRCHPAD_UPDATE_KEY is not set: it holds the update signing key")?;
     let keys = text
@@ -178,11 +193,18 @@ fn signing_keys(trusted: &[VerifyingKey]) -> Result<Vec<SigningKey>> {
         .map(|key| manifest::parse_signing_key(key).map_err(anyhow::Error::msg))
         .collect::<Result<Vec<_>>>()
         .context("BIRCHPAD_UPDATE_KEY")?;
+    ensure!(!keys.is_empty(), "BIRCHPAD_UPDATE_KEY holds no key");
+    Ok(keys)
+}
+
+/// The secret keys from `BIRCHPAD_UPDATE_KEY`; at least one must be trusted.
+fn signing_keys(trusted: &[VerifyingKey]) -> Result<Vec<SigningKey>> {
+    let keys = secret_keys()?;
     ensure!(
         keys.iter()
             .any(|key| trusted.contains(&key.verifying_key())),
-        "none of the keys in BIRCHPAD_UPDATE_KEY is trusted (crates/update/trusted-keys.txt), \
-         so Birchpad would refuse what they sign"
+        "none of the keys in BIRCHPAD_UPDATE_KEY is trusted (BIRCHPAD_TRUSTED_KEYS), so Birchpad \
+         would refuse what they sign"
     );
     Ok(keys)
 }

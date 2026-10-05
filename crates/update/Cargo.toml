@@ -20,5 +20,10 @@ sha2 = "0.11"
 thiserror.workspace = true
 ureq = { version = "3", default-features = false, features = ["rustls-no-provider", "platform-verifier", "win-system-proxy"] }
 
+# build.rs checks the trusted keys with the library's own code (src/keys.rs).
+[build-dependencies]
+base64 = "0.22"
+ed25519-dalek = "3"
+
 [lints]
 workspace = true

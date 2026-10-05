@@ -1,9 +1,9 @@
 //! The signed update manifest (ADR 0020).
 //!
 //! The update server publishes one file, an [`Envelope`]: the manifest as JSON text and ed25519
-//! signatures of exactly those bytes. Birchpad trusts the public keys compiled into it
-//! (`trusted-keys.txt`), not the server or the connection: a manifest that is not signed by one
-//! of them is refused, whoever serves it.
+//! signatures of exactly those bytes. Birchpad trusts the public keys compiled into it (those of
+//! `BIRCHPAD_TRUSTED_KEYS` when it was built, see build.rs), not the server or the connection: a
+//! manifest that is not signed by one of them is refused, whoever serves it.
 //!
 //! The manifest lists recent releases, each with its page and its installer packages (Velopack,
 //! per-user installs on Windows) with their sizes and SHA-256 hashes. Signing the hashes signs
@@ -23,6 +23,7 @@ use ed25519_dalek::{Signer as _, SigningKey, VerifyingKey};
 use semver::Version;
 use serde::{Deserialize, Serialize};
 
+pub use crate::keys::{parse_keys, public_key_text};
 use crate::on_channel;
 
 /// The manifest format this Birchpad reads.
@@ -127,29 +128,11 @@ pub enum ManifestError {
     Rollback { signed: String, newest: String },
 }
 
-/// Parses the trusted public keys: one base64 key per line, `#` starts a comment.
-pub fn parse_keys(text: &str) -> Result<Vec<VerifyingKey>, String> {
-    text.lines()
-        .map(|line| line.split('#').next().unwrap_or_default().trim())
-        .filter(|line| !line.is_empty())
-        .map(|line| {
-            let bytes: [u8; 32] = BASE64
-                .decode(line)
-                .ok()
-                .and_then(|bytes| bytes.try_into().ok())
-                .ok_or_else(|| format!("{line:?} is not a base64 ed25519 public key"))?;
-            VerifyingKey::from_bytes(&bytes).map_err(|error| format!("{line:?}: {error}"))
-        })
-        .collect()
-}
-
-/// The keys compiled into Birchpad, from `trusted-keys.txt`.
+/// The keys compiled into Birchpad: those of `BIRCHPAD_TRUSTED_KEYS` when it was built, which
+/// build.rs checked. Development builds have none.
 pub fn trusted_keys() -> Vec<VerifyingKey> {
-    parse_keys(include_str!("../trusted-keys.txt")).expect("trusted-keys.txt holds valid keys")
-}
-
-pub fn public_key_text(key: &VerifyingKey) -> String {
-    BASE64.encode(key.as_bytes())
+    parse_keys(include_str!(concat!(env!("OUT_DIR"), "/trusted-keys.txt")))
+        .expect("build.rs checked the trusted keys")
 }
 
 /// Checks an envelope's signatures and the manifest's freshness. `now` and `newest_seen` (the
@@ -446,11 +429,16 @@ mod tests {
 
     #[test]
     fn keys_round_trip_through_text() {
+        let (three, five) = (key(3).verifying_key(), key(5).verifying_key());
         let text = format!(
-            "# Birchpad update keys\n{}  # 2026-10-05\n\n",
-            public_key_text(&key(3).verifying_key())
+            "# Birchpad update keys\r\n{}  # 2026-10-05\n\n",
+            public_key_text(&three)
         );
-        assert_eq!(parse_keys(&text).unwrap(), [key(3).verifying_key()]);
+        assert_eq!(parse_keys(&text).unwrap(), [three]);
+        // As a repository variable: on one line, or one per line.
+        let text = format!("{}, {}", public_key_text(&three), public_key_text(&five));
+        assert_eq!(parse_keys(&text).unwrap(), [three, five]);
+        assert_eq!(parse_keys(" \n").unwrap(), []);
         assert!(parse_keys("not a key").is_err());
         let secret = signing_key_text(&key(4));
         assert_eq!(parse_signing_key(&secret).unwrap().to_bytes(), [4; 32]);

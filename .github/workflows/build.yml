@@ -28,7 +28,23 @@ env:
   VELOPACK_VERSION: "1.2.161"
 
 jobs:
+  keys:
+    runs-on: ubuntu-latest
+    env:
+      BIRCHPAD_TRUSTED_KEYS: ${{ vars.BIRCHPAD_TRUSTED_KEYS }}
+    steps:
+      - name: Trusted update keys
+        shell: bash
+        # Public keys, not secrets: the log shows which keys this build trusts.
+        run: |
+          if [ -z "${BIRCHPAD_TRUSTED_KEYS//[[:space:],]/}" ]; then
+            echo "::error::The BIRCHPAD_TRUSTED_KEYS repository variable is not set: this build could never update itself (packaging/updates/README.md)"
+            exit 1
+          fi
+          echo "This build trusts update manifests signed with: $BIRCHPAD_TRUSTED_KEYS"
+
   build:
+    needs: keys
     name: build (${{ matrix.name }})
     strategy:
       fail-fast: false
@@ -61,6 +77,8 @@ jobs:
       BIRCHPAD_VERSION: ${{ inputs.version }}
       BIRCHPAD_CHANNEL: ${{ inputs.channel }}
       BIRCHPAD_COMMIT: ${{ github.sha }}
+      # The public keys update manifests must be signed with (crates/update/build.rs).
+      BIRCHPAD_TRUSTED_KEYS: ${{ vars.BIRCHPAD_TRUSTED_KEYS }}
     steps:
       - uses: actions/checkout@v7
       - name: Build time

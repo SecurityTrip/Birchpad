@@ -8,6 +8,7 @@
 //!
 //! [`check`] never touches the network when `updates.mode` is `off`.
 
+mod keys;
 pub mod manifest;
 
 use std::fs::File;

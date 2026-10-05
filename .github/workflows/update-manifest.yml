@@ -5,7 +5,8 @@ name: Update manifest
 # release. See docs/adr/0020-signed-updates-and-nightly-builds.md and packaging/updates/README.md.
 #
 # The signing key is the BIRCHPAD_UPDATE_KEY secret of the `update-signing` environment, which
-# can require approval or limit the branches that use it.
+# can require approval or limit the branches that use it. The public keys that releases trust are
+# the BIRCHPAD_TRUSTED_KEYS repository variable.
 on:
   # A maintainer published a reviewed draft release. (Releases that workflows publish, like the
   # nightly ones, do not trigger this: the nightly workflow calls this workflow itself.)
@@ -58,7 +59,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          # The trusted keys and the tool of the default branch, not of the release.
+          # The tool of the default branch, not of the release.
           ref: ${{ github.event.repository.default_branch || 'main' }}
       - uses: actions-rust-lang/setup-rust-toolchain@v2
         with:
@@ -79,10 +80,15 @@ jobs:
         shell: bash
         env:
           BIRCHPAD_UPDATE_KEY: ${{ secrets.BIRCHPAD_UPDATE_KEY }}
+          BIRCHPAD_TRUSTED_KEYS: ${{ vars.BIRCHPAD_TRUSTED_KEYS }}
         run: |
           tool=target/release/birchpad-release
           if [ -z "$BIRCHPAD_UPDATE_KEY" ]; then
             echo "::error::The BIRCHPAD_UPDATE_KEY secret is not set (packaging/updates/README.md)"
+            exit 1
+          fi
+          if [ -z "$BIRCHPAD_TRUSTED_KEYS" ]; then
+            echo "::error::The BIRCHPAD_TRUSTED_KEYS repository variable is not set (packaging/updates/README.md)"
             exit 1
           fi
           if [ -n "$REMOVE" ]; then

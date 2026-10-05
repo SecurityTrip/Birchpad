@@ -20,9 +20,18 @@ was signed. Phase 2 adds the nightly channel, background checks and automatic up
   ed25519 (`ed25519-dalek`, strict verification) over the exact bytes of the manifest text, so
   there is no canonical JSON to get wrong. Several signatures allow replacing the key: old and
   new versions each find one they trust.
-- **Trust is compiled in**: `crates/update/trusted-keys.txt`. A manifest without a valid
-  signature by one of those keys is refused, whoever serves it; `updates.url` may point to any
-  mirror. The secret key is a GitHub environment secret used only to sign the manifest.
+- **Trust is compiled in**: the public keys of the `BIRCHPAD_TRUSTED_KEYS` repository variable,
+  which the release workflows pass to the build (`crates/update/build.rs` checks them; a key that
+  is not valid fails the build). A manifest without a valid signature by one of those keys is
+  refused, whoever serves it; `updates.url` may point to any mirror. The secret key is a secret
+  of the `update-signing` environment, used only to sign the manifest.
+- **Keys stay out of the repository's files.** Neither half of the key is committed: the
+  maintainer keeps both in the repository's settings, replaces a key without a commit, and forks
+  and builds from source do not trust the project's key by accident (they trust none, or their
+  own). The public keys are not secret, so they are a variable rather than a secret: each release
+  build prints the keys it trusts in its public log, which takes the place of reading them in the
+  source. Release and nightly builds stop when the variable is not set, since such a build could
+  never update itself.
 - **Content**: format version, product, signing time, expiry, and the newest releases (five per
   channel): version, release page, and for each platform with an installer its Velopack
   package's URL, size, SHA-256 and SHA-1. Signing the hashes signs the packages.
@@ -85,8 +94,8 @@ was signed. Phase 2 adds the nightly channel, background checks and automatic up
 
 ## Consequences
 
-- Until the maintainer creates the key, builds trust no key: checks report that the manifest
-  cannot be verified, and there is no manifest to check anyway.
+- Until the maintainer creates the key, release and nightly builds stop with an error, and
+  other builds trust no key: checks report that the manifest cannot be verified.
 - The installer and the packages are not Authenticode-signed yet: SmartScreen warns about the
   installer. The manifest's signature protects updates regardless.
 - `vpk` was not run locally (no .NET SDK); the packaging steps first run in CI. The update
