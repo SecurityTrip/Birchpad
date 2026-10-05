@@ -250,12 +250,18 @@ impl Transport for HttpTransport {
             .header("Accept", "application/json, application/octet-stream")
             .call()
             .map_err(|error| error.to_string())?;
-        response
+        // ureq fails the read after its limit is reached even when the body ends there: allow a
+        // byte more, so that a body of exactly the limit ends normally, and check the size here.
+        let body = response
             .body_mut()
             .with_config()
-            .limit(MAX_MANIFEST_SIZE)
+            .limit(MAX_MANIFEST_SIZE + 1)
             .read_to_vec()
-            .map_err(|error| error.to_string())
+            .map_err(|error| error.to_string())?;
+        if body.len() as u64 > MAX_MANIFEST_SIZE {
+            return Err(format!("larger than {MAX_MANIFEST_SIZE} bytes"));
+        }
+        Ok(body)
     }
 
     fn download(
@@ -271,7 +277,12 @@ impl Transport for HttpTransport {
             .header("Accept", "application/octet-stream")
             .call()
             .map_err(|error| error.to_string())?;
-        let mut reader = response.body_mut().with_config().limit(limit).reader();
+        // As in `get`: a package is exactly as large as the manifest says, which is the limit.
+        let mut reader = response
+            .body_mut()
+            .with_config()
+            .limit(limit.saturating_add(1))
+            .reader();
         let mut file = File::create(to).map_err(|error| error.to_string())?;
         let mut buffer = vec![0; 64 * 1024];
         let mut received = 0;
@@ -285,6 +296,9 @@ impl Transport for HttpTransport {
             file.write_all(&buffer[..read])
                 .map_err(|error| error.to_string())?;
             received += read as u64;
+            if received > limit {
+                return Err(format!("larger than {limit} bytes"));
+            }
             progress(received);
         }
         file.sync_all().map_err(|error| error.to_string())
@@ -547,14 +561,24 @@ mod tests {
         assert_eq!(std::fs::metadata(&path).unwrap().len(), 200_000);
         assert_eq!(*progress.lock().unwrap(), 200_000);
 
+        // Exactly as large as the limit, as a package is as large as its manifest says.
         let (base, server) = serve_once(vec![b'x'; 200_000]);
-        assert!(
-            transport
-                .download(&format!("{base}/p"), &path, 1_000, &|_| {})
-                .is_err(),
-            "over the limit"
-        );
-        server.join().ok();
+        transport
+            .download(&format!("{base}/p"), &path, 200_000, &|_| {})
+            .unwrap();
+        server.join().unwrap();
+        assert_eq!(std::fs::metadata(&path).unwrap().len(), 200_000);
+
+        for limit in [1_000, 199_999] {
+            let (base, server) = serve_once(vec![b'x'; 200_000]);
+            assert!(
+                transport
+                    .download(&format!("{base}/p"), &path, limit, &|_| {})
+                    .is_err(),
+                "over the limit of {limit}"
+            );
+            server.join().ok();
+        }
         std::fs::remove_dir_all(&dir).unwrap();
     }
 }
