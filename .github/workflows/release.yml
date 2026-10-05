@@ -111,6 +111,10 @@ jobs:
     env:
       VERSION: ${{ needs.prepare.outputs.version }}
     steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: CHANGELOG.md
+          sparse-checkout-cone-mode: false
       - uses: actions/download-artifact@v4
         with:
           pattern: dist-*
@@ -122,12 +126,28 @@ jobs:
       - uses: actions/attest-build-provenance@v2
         with:
           subject-path: dist/*
+      - name: Release notes
+        shell: bash
+        # The version's section of CHANGELOG.md, or GitHub's generated notes without one.
+        run: |
+          awk -v heading="## [$VERSION]" '
+            index($0, heading) == 1 { inside = 1; next }
+            inside && /^## / { exit }
+            inside && /^\[[^]]+\]: / { next }
+            inside { print }
+          ' CHANGELOG.md > notes.md
+          if [ -s notes.md ] && grep -q '[^[:space:]]' notes.md; then
+            echo "NOTES=--notes-file=notes.md" >> "$GITHUB_ENV"
+          else
+            echo "::warning::CHANGELOG.md has no section for $VERSION; using generated notes"
+            echo "NOTES=--generate-notes" >> "$GITHUB_ENV"
+          fi
       - name: Create a draft release
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          flags=(--draft --verify-tag --generate-notes --title "Birchpad $VERSION")
+          flags=(--draft --verify-tag "$NOTES" --title "Birchpad $VERSION")
           if [ "${{ needs.prepare.outputs.prerelease }}" = "true" ]; then
             flags+=(--prerelease)
           fi

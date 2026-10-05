@@ -2,8 +2,11 @@
 
 A fast, extensible, cross-platform text editor in the spirit of Notepad++, written in Rust.
 
-> **Status: pre-alpha.** Phase 1 is done: a basic notepad with tabs, encodings, find/replace
-> and a Notepad++-compatible command line. Expect rough edges. See the [roadmap](docs/ROADMAP.md).
+> **Status: alpha (0.1).** A Notepad++-like editor: tabs and split views, encodings, syntax
+> highlighting for 50 languages with folding, multi-cursor and column editing, bookmarks,
+> sessions that keep unsaved work, and a Notepad++-compatible command line. Find in Files,
+> macros, themes and plugins come next. Expect rough edges. See the [roadmap](docs/ROADMAP.md)
+> and the [changelog](CHANGELOG.md).
 
 ## Goals
 
@@ -23,6 +26,26 @@ Before paper became common in medieval Novgorod, people wrote everyday notes, le
 school exercises on strips of birch bark. Those birch-bark documents were the notepads of
 their time, and Birchpad is named after them.
 
+## Installing
+
+Downloads are on the [releases page](https://github.com/SecurityTrip/Birchpad/releases):
+
+| File | For |
+|---|---|
+| `birchpad-<version>-windows-x64-setup.exe`, `…-windows-arm64-setup.exe` | Windows, installed for the current user without administrator rights; updates itself |
+| `birchpad-<version>-windows-x64.msi` | Windows, installed per machine by administrators, who also update it |
+| `birchpad-<version>-windows-x64.zip`, `…-windows-arm64.zip` | Windows, portable: unzip and run |
+| `birchpad-<version>-macos.zip` | macOS 10.15.7 or later, Apple silicon and Intel (`Birchpad.app`) |
+| `birchpad-<version>-linux-x64.zip` | Linux x64, portable |
+
+The binaries are not signed yet: Windows SmartScreen asks before the first start ("More info",
+"Run anyway"), and macOS needs Birchpad.app opened once with Control-click > Open. Each release
+lists SHA-256 checksums and carries GitHub build provenance (`gh attestation verify <file>
+--repo SecurityTrip/Birchpad`).
+
+Nightly builds of `main` are published as pre-releases; set `updates.channel = "nightly"` to
+get them as updates.
+
 ## Building
 
 Birchpad needs the Rust toolchain pinned in [`rust-toolchain.toml`](rust-toolchain.toml)
@@ -41,12 +64,14 @@ cargo test --workspace
 Birchpad accepts the Notepad++ options that make sense for it:
 
 ```text
-birchpad [-n<line>] [-c<column>] [-p<position>] [-ro] [-multiInst] [-nosession] [FILE]...
+birchpad [-n<line>] [-c<column>] [-p<position>] [-l<language>] [-ro] [-multiInst]
+         [-nosession] [-openSession] [FILE]...
 ```
 
 A second launch opens its files as tabs in the running window and exits; `-multiInst` starts a
-separate instance instead. Other Notepad++ options (`-l<language>`, `-x`, `-y`, `-notabbar`, ...)
-are accepted and ignored.
+separate instance instead. `-l` takes Notepad++'s language names (`-lcpp`, `-lpython`,
+`-lnormal`), `-openSession` opens the files as sessions. Other Notepad++ options (`-x`, `-y`,
+`-notabbar`, ...) are accepted and ignored.
 
 ## Portable mode and the network
 
