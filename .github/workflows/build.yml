@@ -186,14 +186,14 @@ jobs:
           ditto -c -k --keepParent "dist/$name" "dist/$name.zip"
           rm -r "dist/$name"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: dist-${{ matrix.name }}
           path: dist/*
           if-no-files-found: error
       - name: Keep the Windows x64 binary for the MSI
         if: matrix.name == 'windows-x64'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: bin-windows-x64
           path: bin/birchpad.exe
@@ -217,7 +217,7 @@ jobs:
           cargo cyclonedx --format json --spec-version 1.5 --target all
           mkdir -p dist
           cp crates/app/birchpad.cdx.json "dist/birchpad-$VERSION-sbom.cdx.json"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: dist-sbom
           path: dist/*

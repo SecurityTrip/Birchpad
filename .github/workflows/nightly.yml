@@ -94,7 +94,7 @@ jobs:
       REF: ${{ github.sha }}
       GH_TOKEN: ${{ github.token }}
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           pattern: dist-*
           path: dist
@@ -102,7 +102,7 @@ jobs:
       - name: Checksums
         working-directory: dist
         run: sha256sum -- * > "birchpad-$VERSION-SHA256SUMS.txt"
-      - uses: actions/attest-build-provenance@v2
+      - uses: actions/attest-build-provenance@v4
         with:
           subject-path: dist/*
       - name: Publish the pre-release
