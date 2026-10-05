@@ -95,9 +95,10 @@ read + detect + decode + rope). Memory-mapped huge files are a phase 6 item.
 
 ## Consequences
 
-- The save path needs no platform-specific code and no `unsafe`; its behavior with symlinks,
-  hard links and permissions is tested on Unix. ACL and alternate data stream preservation on
-  Windows follows from never replacing the file, but is not covered by automated tests yet.
+- The save path needs no platform-specific code and no `unsafe`. Its behavior with symlinks,
+  hard links and permissions is tested on Unix. On Windows, tests check that the ACL (an explicit
+  entry), alternate data streams (`Zone.Identifier` among them), the creation time and hard links
+  stay, and symbolic links when the system allows creating them.
 - Every save writes the content twice (recovery copy, then the file). For a 100 MB file that is
   an extra ~100 MB of I/O; acceptable for the safety it buys.
 - encoding_rs implements the WHATWG encodings: OEM code pages other than 866 (437, 850, ...)
