@@ -39,8 +39,15 @@ every frame. Phase 2 adds folding, which must fit the same structure.
 
 - Measured in a release build (Linux, software rendering): a frame's layout takes 0.2–0.4 ms
   for a 100 MB file; a 10 MB single-line file opens in 0.09 s and scrolls to its end instantly.
-- Typing into a multi-megabyte line rebuilds that line's column index (about 70 ms for 10 MB),
-  and with word wrap also rewraps it. Incremental updates of the index are future work.
+- Long lines keep their layout through edits. An edit inside a long line rescans its column index
+  from the checkpoint before the edit to the one after, then shifts later checkpoints, which a
+  shift by a whole tab stop leaves valid (a tab after the edit makes the shift whole). With word
+  wrap the line is rewrapped from the row before the edit until a row starts where one started
+  before, at a column with the same tab stops; later rows are only moved. Starting at any row
+  start gives the same rows as wrapping the line from its beginning, which a property test
+  checks against fresh layouts, with small thresholds so that short texts have long lines.
+  Typing into the middle of a 10 MB line, with a frame drawn (release build, Windows): 1.6 ms per
+  keystroke, 6.7 ms with word wrap, down from 49 ms and 168 ms.
 - Characters whose shaped width differs from their cell width (some fallback fonts) can make
   wrapped rows slightly narrower or wider than the view and vertical movement slightly off
   from the pixel column; Scintilla works in pixels instead. Acceptable for a monospace editor.

@@ -19,13 +19,15 @@ struct Wrapper {
 }
 
 impl Wrapper {
-    fn new(start: usize, width: usize, tab_width: usize) -> Self {
+    /// Starts wrapping at a row start: `start`, at `column` from the line start. Starting again
+    /// at any row start a line wrapped into gives the same rows after it.
+    fn new(start: usize, column: usize, width: usize, tab_width: usize) -> Self {
         Self {
             width: width.max(1),
             tab_width,
             row_start: start,
-            row_start_column: 0,
-            column: 0,
+            row_start_column: column,
+            column,
             pos: start,
             opportunity: None,
         }
@@ -68,7 +70,7 @@ pub(crate) fn count_rows(line: RopeSlice, width: usize, tab_width: usize) -> usi
     if line.len() <= width && !line.bytes().any(|b| b == b'\t') {
         return 1;
     }
-    let mut wrapper = Wrapper::new(0, width, tab_width);
+    let mut wrapper = Wrapper::new(0, 0, width, tab_width);
     1 + line
         .chars()
         .filter(|&ch| wrapper.push(ch).is_some())
@@ -87,10 +89,121 @@ pub fn wrap_line(
     width: usize,
     tab_width: usize,
 ) -> Vec<(usize, usize)> {
-    let mut wrapper = Wrapper::new(range.start, width, tab_width);
+    let mut wrapper = Wrapper::new(range.start, 0, width, tab_width);
     let mut rows = vec![(range.start, 0)];
     rows.extend(text.slice(range).chars().filter_map(|ch| wrapper.push(ch)));
     rows
+}
+
+/// Rows of `line` (its range in `text`) as offsets from its start and columns.
+pub(crate) fn line_rows(
+    text: &Rope,
+    line: Range<usize>,
+    width: usize,
+    tab_width: usize,
+) -> Vec<(usize, usize)> {
+    let mut rows = vec![(0, 0)];
+    rows.extend(rows_after(text, line, (0, 0), width, tab_width));
+    rows
+}
+
+/// The rows of `line` after the one that starts at `from` (offset from the line start, column).
+fn rows_after(
+    text: &Rope,
+    line: Range<usize>,
+    (offset, column): (usize, usize),
+    width: usize,
+    tab_width: usize,
+) -> impl Iterator<Item = (usize, usize)> {
+    let mut wrapper = Wrapper::new(line.start + offset, column, width, tab_width);
+    text.slice(line.start + offset..line.end)
+        .chars()
+        .filter_map(move |ch| wrapper.push(ch))
+        .map(move |(pos, column)| (pos - line.start, column))
+}
+
+/// The rows of a line after an edit, from its rows before it (offsets and columns, as from
+/// [`line_rows`]). The edit replaced the offsets `old` with text that ends at `new_end`, which
+/// made the line `line` of `text`.
+///
+/// Wrapping starts again one row before the edit (where a row ends depends on the character
+/// that did not fit, at the start of the next row) and stops at the first row after the edit
+/// that starts where a row started before: later rows are the same, moved. A shift of the
+/// columns by part of a tab stop changes nothing until the next tab; past it, the columns
+/// differ by whole tab stops again.
+pub(crate) fn rewrap(
+    text: &Rope,
+    line: Range<usize>,
+    rows: &[(usize, usize)],
+    old: Range<usize>,
+    new_end: usize,
+    width: usize,
+    tab_width: usize,
+) -> Vec<(usize, usize)> {
+    let delta = new_end as isize - old.end as isize;
+    let stop = tab_width.max(1) as isize;
+    let moved = |(offset, column): (usize, usize), columns: isize| {
+        (
+            offset.strict_add_signed(delta),
+            column.strict_add_signed(columns),
+        )
+    };
+    let restart = rows
+        .partition_point(|&(offset, _)| offset <= old.start)
+        .saturating_sub(2);
+    let mut wrapped = rows[..=restart].to_vec();
+    let mut from = rows[restart];
+    // Rows starting before this may still change.
+    let mut settled = new_end;
+    'wrapping: loop {
+        for (offset, column) in rows_after(text, line.clone(), from, width, tab_width) {
+            wrapped.push((offset, column));
+            if offset < settled {
+                continue;
+            }
+            let before = offset.strict_add_signed(-delta);
+            let Ok(same) = rows.binary_search_by_key(&before, |&(offset, _)| offset) else {
+                continue;
+            };
+            let columns = column as isize - rows[same].1 as isize;
+            let tab = if columns % stop == 0 {
+                None
+            } else {
+                next_tab(text, line.start + offset..line.end).map(|tab| tab - line.start)
+            };
+            let Some(tab) = tab else {
+                wrapped.extend(rows[same + 1..].iter().map(|&row| moved(row, columns)));
+                return wrapped;
+            };
+            // The rows up to the one before the last that starts at or before the tab are the
+            // same; wrapping goes on from there.
+            let up_to_tab = same
+                + rows[same..]
+                    .partition_point(|&(offset, _)| offset.strict_add_signed(delta) <= tab);
+            let restart = (up_to_tab - 1).saturating_sub(1).max(same);
+            wrapped.extend(
+                rows[same + 1..=restart]
+                    .iter()
+                    .map(|&row| moved(row, columns)),
+            );
+            from = moved(rows[restart], columns);
+            settled = tab + 1;
+            continue 'wrapping;
+        }
+        return wrapped;
+    }
+}
+
+/// The position of the first tab in `range`.
+pub(crate) fn next_tab(text: &Rope, range: Range<usize>) -> Option<usize> {
+    let mut pos = range.start;
+    for chunk in text.slice(range).chunks() {
+        if let Some(index) = chunk.find('\t') {
+            return Some(pos + index);
+        }
+        pos += chunk.len();
+    }
+    None
 }
 
 /// Number of rows `range` wraps into; fast for lines that obviously fit.

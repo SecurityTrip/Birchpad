@@ -1752,4 +1752,48 @@ three",
         cx.simulate_click(number, Modifiers::none());
         assert_eq!(primary(&workspace, cx), Range::new(9, 13));
     }
+
+    #[gpui_kit::test]
+    #[ignore = "a timing; run in release: cargo test --release -- --ignored --nocapture"]
+    fn typing_into_a_ten_megabyte_line(cx: &mut TestAppContext) {
+        let (workspace, cx) = open_workspace(cx);
+        let line = "0123456789 abcdef\t".repeat(10 * 1024 * 1024 / 18);
+        workspace.update_in(cx, |workspace, window, cx| {
+            let doc = birchpad_core::Document::from_text(Rope::from_str(&line));
+            workspace.open_document(doc, window, cx);
+        });
+        cx.run_until_parked();
+        let view = workspace.read_with(cx, |workspace, cx| workspace.active_view(cx).unwrap());
+        let frame = |cx: &mut VisualTestContext| {
+            cx.update(|window, cx| {
+                window.refresh();
+                window.draw(cx).clear(cx);
+            });
+        };
+        view.update(cx, |view, cx| {
+            view.selection = Selection::point(line.len() / 2);
+            view.autoscroll = true;
+            cx.notify();
+        });
+        frame(cx);
+        for wrap in [false, true] {
+            if wrap {
+                workspace.update_in(cx, |workspace, window, cx| {
+                    let wrap = birchpad_commands::Invocation::new("view.word-wrap");
+                    workspace.dispatch(&wrap, window, cx).unwrap();
+                });
+                frame(cx);
+                cx.run_until_parked();
+                frame(cx);
+            }
+            let started = std::time::Instant::now();
+            for _ in 0..20 {
+                cx.simulate_input("x");
+                frame(cx);
+            }
+            let per_key = started.elapsed() / 20;
+            eprintln!("typing into a 10 MB line (word wrap {wrap}): {per_key:?} per keystroke");
+        }
+        assert_eq!(active_text(&workspace, cx).len(), line.len() + 40);
+    }
 }
