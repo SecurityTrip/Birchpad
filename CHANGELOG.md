@@ -6,6 +6,13 @@ version's release notes from its section here.
 
 ## [Unreleased]
 
+### Fixed
+
+- Installed copies could not download any update: every package failed with "the response
+  body is larger than request limit", because a package exactly as large as its manifest says
+  was refused. Copies of 0.1.0 and 0.1.1 have the bug, so they need the installer of the next
+  version run once by hand; it updates them in place, keeping settings and sessions.
+
 ### Added
 
 - The application icon: a strip of birch bark. On Windows the executable, its windows, the

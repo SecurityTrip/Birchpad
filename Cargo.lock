@@ -591,7 +591,7 @@ dependencies = [
 
 [[package]]
 name = "birchpad"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "anyhow",
  "birchpad-cli",
@@ -616,7 +616,7 @@ dependencies = [
 
 [[package]]
 name = "birchpad-cli"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "interprocess",
  "serde",
@@ -626,7 +626,7 @@ dependencies = [
 
 [[package]]
 name = "birchpad-commands"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "serde",
  "serde_json",
@@ -636,7 +636,7 @@ dependencies = [
 
 [[package]]
 name = "birchpad-config"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "roxmltree 0.21.1",
  "serde",
@@ -647,7 +647,7 @@ dependencies = [
 
 [[package]]
 name = "birchpad-core"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "memchr",
  "proptest",
@@ -658,7 +658,7 @@ dependencies = [
 
 [[package]]
 name = "birchpad-io"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "birchpad-core",
  "chardetng",
@@ -671,14 +671,14 @@ dependencies = [
 
 [[package]]
 name = "birchpad-menu-bar"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "gpui-kit",
 ]
 
 [[package]]
 name = "birchpad-release-tool"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "anyhow",
  "birchpad-update",
@@ -693,7 +693,7 @@ dependencies = [
 
 [[package]]
 name = "birchpad-syntax"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "birchpad-core",
  "insta",
@@ -756,7 +756,7 @@ dependencies = [
 
 [[package]]
 name = "birchpad-update"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "base64 0.22.1",
  "birchpad-config",
@@ -774,7 +774,7 @@ dependencies = [
 
 [[package]]
 name = "birchpad-view"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "birchpad-core",
  "proptest",
