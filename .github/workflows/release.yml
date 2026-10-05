@@ -58,7 +58,6 @@ jobs:
     with:
       version: ${{ needs.prepare.outputs.version }}
       channel: ${{ needs.prepare.outputs.channel }}
-      ref: ${{ github.sha }}
 
   msi:
     # MSI versions are numeric (major.minor.build); pre-releases get no MSI until there is a

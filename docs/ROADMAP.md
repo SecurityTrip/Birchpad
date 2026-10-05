@@ -6,7 +6,8 @@ dependency, not by calendar. Architecture decisions live in [`adr/`](adr).
 ## Phase 0: foundation
 
 - [x] Workspace, licenses, contribution and security policies
-- [x] CI: fmt, clippy, tests on Windows x64/ARM64, Linux, macOS; `cargo-deny`
+- [x] CI: fmt, clippy, tests on Windows x64/ARM64, Linux (Ubuntu, Debian 12 and 13), macOS;
+      `cargo-deny`
 - [x] Text model (`birchpad-core`): rope, change sets, selections with multiple carets,
       transactions, linear undo history with save-point tracking; unit and property tests
 - [x] Layered settings with administrator policies (`birchpad-config`), Windows registry policies

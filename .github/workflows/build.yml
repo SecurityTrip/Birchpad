@@ -4,6 +4,9 @@ name: Build
 # platform, the per-user installer and update package for Windows (Velopack), the SBOM, and the
 # Windows x64 binary for the MSI. See docs/adr/0009-releases-portable-mode-and-update-check.md and
 # docs/adr/0020-signed-updates-and-nightly-builds.md.
+#
+# It builds the commit that started the calling workflow (`github.sha`), never one passed in:
+# release jobs run with access to the default branch's context and must not run other code.
 on:
   workflow_call:
     inputs:
@@ -13,10 +16,6 @@ on:
         type: string
       channel:
         description: stable, beta or nightly.
-        required: true
-        type: string
-      ref:
-        description: The commit to build.
         required: true
         type: string
 
@@ -61,11 +60,9 @@ jobs:
       # Read by crates/app/build.rs.
       BIRCHPAD_VERSION: ${{ inputs.version }}
       BIRCHPAD_CHANNEL: ${{ inputs.channel }}
-      BIRCHPAD_COMMIT: ${{ inputs.ref }}
+      BIRCHPAD_COMMIT: ${{ github.sha }}
     steps:
       - uses: actions/checkout@v7
-        with:
-          ref: ${{ inputs.ref }}
       - name: Build time
         shell: bash
         # Update manifests signed before this commit are refused by this build (ADR 0020).
@@ -185,8 +182,6 @@ jobs:
       VERSION: ${{ inputs.version }}
     steps:
       - uses: actions/checkout@v7
-        with:
-          ref: ${{ inputs.ref }}
       - uses: actions-rust-lang/setup-rust-toolchain@v2
         with:
           cache: false

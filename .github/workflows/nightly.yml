@@ -30,11 +30,14 @@ jobs:
     outputs:
       build: ${{ steps.decide.outputs.build }}
       version: ${{ steps.decide.outputs.version }}
-      ref: ${{ steps.decide.outputs.ref }}
     steps:
+      - name: Only main
+        if: github.ref != 'refs/heads/main'
+        run: |
+          echo "::error::Nightly builds are built from main; run the workflow on main"
+          exit 1
       - uses: actions/checkout@v7
         with:
-          ref: main
           # The tags, to find the last nightly build and the released versions.
           fetch-depth: 0
       - name: Decide
@@ -65,7 +68,6 @@ jobs:
           {
             echo "build=true"
             echo "version=$version"
-            echo "ref=$head"
           } >> "$GITHUB_OUTPUT"
           echo "Building $version from $head."
 
@@ -76,7 +78,6 @@ jobs:
     with:
       version: ${{ needs.prepare.outputs.version }}
       channel: nightly
-      ref: ${{ needs.prepare.outputs.ref }}
 
   publish:
     needs: [prepare, build]
@@ -90,7 +91,7 @@ jobs:
       tag: ${{ steps.release.outputs.tag }}
     env:
       VERSION: ${{ needs.prepare.outputs.version }}
-      REF: ${{ needs.prepare.outputs.ref }}
+      REF: ${{ github.sha }}
       GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/download-artifact@v4

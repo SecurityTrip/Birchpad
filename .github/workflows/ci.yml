@@ -50,6 +50,37 @@ jobs:
       - run: cargo clippy --workspace --all-targets --locked
       - run: cargo test --workspace --locked
 
+  # Debian's own libraries, the stable and the previous stable release: the Linux build is used
+  # there as much as on Ubuntu.
+  debian:
+    name: test (debian ${{ matrix.release }})
+    strategy:
+      fail-fast: false
+      matrix:
+        release: [trixie, bookworm]
+    runs-on: ubuntu-latest
+    container: debian:${{ matrix.release }}
+    steps:
+      - name: Install build and GUI dependencies
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends ca-certificates curl git build-essential \
+            pkg-config libxkbcommon-dev libxkbcommon-x11-dev libwayland-dev libvulkan-dev \
+            libx11-xcb-dev libxcb1-dev libfontconfig-dev libfreetype-dev libssl-dev libzstd-dev
+      - uses: actions/checkout@v7
+      - name: Install Rust
+        run: |
+          # The checkout belongs to another user than the container's root.
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain none
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+      # The version and components of rust-toolchain.toml.
+      - run: rustup toolchain install
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: debian-${{ matrix.release }}
+      - run: cargo test --workspace --locked
+
   deny:
     runs-on: ubuntu-latest
     steps:
