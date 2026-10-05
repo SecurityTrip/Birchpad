@@ -755,6 +755,13 @@ impl EditorView {
                     .map(|(range, _)| (range, paint)),
             );
         }
+        let found = Paint::Fill(gpui_kit::rgba(theme::FIND_MARK));
+        ranges.extend(
+            marks
+                .found
+                .overlapping(visible.clone())
+                .map(|(range, _)| (range, found)),
+        );
         let mut quads = Vec::new();
         for (range, paint) in ranges {
             for bounds in self.range_bounds(layout, text, range) {

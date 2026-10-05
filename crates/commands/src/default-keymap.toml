@@ -69,6 +69,20 @@ keys = "shift-f3"
 command = "search.find-previous"
 
 [[binding]]
+keys = "secondary-f3"
+command = "search.select-and-find-next"
+
+[[binding]]
+keys = "secondary-shift-f3"
+command = "search.select-and-find-previous"
+
+# macOS takes Cmd+M for Minimize.
+[[binding]]
+keys = "ctrl-m"
+command = "search.mark"
+platforms = ["windows", "linux"]
+
+[[binding]]
 keys = "secondary-g"
 command = "search.go-to"
 

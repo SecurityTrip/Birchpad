@@ -27,6 +27,9 @@ pub(crate) fn mark_style(index: usize) -> Paint {
     Paint::Fill(rgba(MARK_STYLES[index]))
 }
 
+/// The matches of Search > Mark: Notepad++'s "Find Mark Style", a translucent red.
+pub(crate) const FIND_MARK: u32 = 0xff000055;
+
 /// Smart highlighting: Notepad++'s translucent green.
 pub(crate) const SMART_HIGHLIGHT: u32 = 0x00ff0064;
 

@@ -125,8 +125,11 @@ What Phase 1 left for later is marked *(from Phase 1)* in the phases below.
 
 ## Phase 3: search and navigation
 
-- Find / Replace / Find in Files / Mark dialog: Normal, Extended (`\n`, `\t`, `\x..`), Regex
-  (back-references, look-around); in selection, wrap around, backwards, all open documents
+- [x] Find / Replace / Mark: Normal, Extended (`\n`, `\t`, `\x..`), Regex (back-references,
+      look-around); in selection, wrap around, backwards, all open documents; Count, Mark All
+      with Bookmark line and Purge, Copy Marked Text
+      ([ADR 0022](adr/0022-search-modes-and-the-find-panel.md))
+- Find in Files
 - Search results panel; incremental search
 - Function List, Document Map, Document List, Folder as Workspace, Project panels
 - Clipboard history, character panel, navigation history

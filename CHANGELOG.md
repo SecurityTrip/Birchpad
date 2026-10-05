@@ -6,6 +6,16 @@ version's release notes from its section here.
 
 ## [Unreleased]
 
+### Added
+
+- Search modes as in Notepad++: Extended (`\n`, `\t`, `\x41`, ...) and regular expressions
+  with back-references and look-around; replacements with `$1`, `\1`, `${name}` and case
+  conversion (`\U`, `\L`, `\u`, `\l`).
+- The find panel has Find, Replace and Mark tabs: Count; Replace All in the selection or in all
+  opened documents; Mark All with Bookmark line and Purge for each search, Clear All Marks and
+  Copy Marked Text. Search > Mark... (Ctrl+M), Select and Find Next / Previous (Ctrl+F3,
+  Ctrl+Shift+F3).
+
 ## [0.1.2] - 2026-10-05
 
 ### Fixed

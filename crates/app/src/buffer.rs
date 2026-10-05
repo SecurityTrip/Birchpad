@@ -61,22 +61,19 @@ pub(crate) enum ReadOnly {
 /// Number of styles of Search > Style All Occurrences of Token, as in Notepad++.
 pub(crate) const MARK_STYLES: usize = 5;
 
-/// Decorations that belong to the document, so every view of it shows them: bookmarks and
-/// the token styles. They follow every edit, undo and redo.
+/// Decorations that belong to the document, so every view of it shows them: bookmarks, the
+/// token styles and the matches of Search > Mark. They follow every edit, undo and redo.
 #[derive(Debug, Clone, Default)]
 pub(crate) struct DocumentMarks {
     pub(crate) bookmarks: LineMarkers,
     pub(crate) styles: [RangeSet<()>; MARK_STYLES],
+    /// Marked by the Mark tab of the find panel ("Find Mark Style" in Notepad++).
+    pub(crate) found: RangeSet<()>,
 }
 
 impl DocumentMarks {
-    /// Bookmarks the line where each of `ranges` starts. This is the "Bookmark line" option of
-    /// Notepad++'s Mark dialog, which comes with the Find dialog in phase 3 and calls this
-    /// with the matches of Mark All (through `Buffer::update_marks`).
-    #[cfg_attr(
-        not(test),
-        expect(dead_code, reason = "the Mark dialog comes in phase 3")
-    )]
+    /// Bookmarks the line where each of `ranges` starts: the "Bookmark line" option of Mark
+    /// All.
     pub(crate) fn bookmark_lines_of(&mut self, text: &Rope, ranges: &[ByteRange<usize>]) {
         let mut lines = self.bookmarks.lines(text);
         lines.extend(
@@ -93,6 +90,7 @@ impl DocumentMarks {
         for style in &mut self.styles {
             style.map(changes);
         }
+        self.found.map(changes);
     }
 }
 
