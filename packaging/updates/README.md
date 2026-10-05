@@ -41,9 +41,10 @@ Builds from then on trust the key. Release and nightly builds stop with an error
 variable is not set, since such a build could never update itself. Builds without it elsewhere
 (development builds, builds from source) trust no key: Help > Check for Updates says so.
 
-Recommended in Settings > Environments > `update-signing`: limit it to the `main` branch, and,
-if you want every manifest change approved, add yourself as a required reviewer (the nightly
-workflow then waits for approval every night it publishes).
+Recommended in Settings > Environments > `update-signing`: under *Deployment branches and
+tags*, allow only the `main` branch and the `v*` tags (publishing a release runs the manifest
+workflow on its tag), and, if you want every manifest change approved, add yourself as a
+required reviewer (the nightly workflow then waits for approval every night it publishes).
 
 Without the script, the same by hand (`keygen` prints the public key on standard error):
 
