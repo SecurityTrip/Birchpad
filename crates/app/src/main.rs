@@ -47,6 +47,9 @@ use gpui_kit::{
 use crate::app_state::AppState;
 use crate::workspace::Workspace;
 
+/// The application's id: the macOS bundle identifier, and the Linux desktop file's name.
+const APP_ID: &str = "io.github.securitytrip.birchpad";
+
 pub(crate) const MONOSPACE: &str = if cfg!(windows) {
     "Consolas"
 } else if cfg!(target_os = "macos") {
@@ -110,6 +113,8 @@ fn main() {
             let bounds = Bounds::centered(None, size(px(1100.), px(760.)), cx);
             let options = WindowOptions {
                 window_bounds: Some(WindowBounds::Windowed(bounds)),
+                // Linux desktops match it to io.github.securitytrip.birchpad.desktop and its icon.
+                app_id: Some(APP_ID.to_owned()),
                 ..WindowOptions::default()
             };
             let opened = gpui_kit::open_window(options, cx, |window, cx| {

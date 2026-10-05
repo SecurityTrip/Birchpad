@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Birchpad
+GenericName=Text Editor
+Comment=A fast text editor in the spirit of Notepad++
+Exec=birchpad %F
+Icon=io.github.securitytrip.birchpad
+Terminal=false
+Categories=Utility;TextEditor;Development;
+MimeType=text/plain;
+StartupWMClass=io.github.securitytrip.birchpad

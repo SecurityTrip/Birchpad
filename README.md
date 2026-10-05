@@ -1,5 +1,7 @@
 # Birchpad
 
+<img src="packaging/icons/birchpad.svg" alt="" width="96" align="right">
+
 A fast, extensible, cross-platform text editor in the spirit of Notepad++, written in Rust.
 
 > **Status: alpha (0.1).** A Notepad++-like editor: tabs and split views, encodings, syntax
@@ -37,6 +39,10 @@ Downloads are on the [releases page](https://github.com/SecurityTrip/Birchpad/re
 | `birchpad-<version>-windows-x64.zip`, `…-windows-arm64.zip` | Windows, portable: unzip and run |
 | `birchpad-<version>-macos.zip` | macOS 10.15.7 or later, Apple silicon and Intel (`Birchpad.app`) |
 | `birchpad-<version>-linux-x64.zip` | Linux x64, portable |
+
+On Linux, to see Birchpad in the applications menu, put `birchpad` on your `PATH` and copy
+`io.github.securitytrip.birchpad.desktop` to `~/.local/share/applications/` and
+`io.github.securitytrip.birchpad.png` to `~/.local/share/icons/hicolor/512x512/apps/`.
 
 The binaries are not signed yet: Windows SmartScreen asks before the first start ("More info",
 "Run anyway"), and macOS needs Birchpad.app opened once with Control-click > Open. Each release

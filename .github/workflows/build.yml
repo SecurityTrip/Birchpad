@@ -143,7 +143,8 @@ jobs:
           # Full packages only: the signed manifest lists no deltas (ADR 0020).
           vpk pack --packId Birchpad --packVersion "$VERSION" --packTitle Birchpad \
             --packAuthors "The Birchpad Contributors" --packDir velopack/in \
-            --mainExe birchpad.exe --runtime "${{ matrix.runtime }}" \
+            --mainExe birchpad.exe --icon packaging/icons/birchpad.ico \
+            --runtime "${{ matrix.runtime }}" \
             --channel "${{ matrix.name }}-$CHANNEL" --delta None --noPortable \
             --outputDir velopack/out
           ls -l velopack/out
@@ -159,6 +160,9 @@ jobs:
           mkdir -p "dist/$name"
           cp "target/${{ matrix.targets }}/release/birchpad" "dist/$name/"
           cp packaging/portable/birchpad-portable.txt LICENSE-MIT LICENSE-APACHE README.md "dist/$name/"
+          # For the applications menu: see the README's Installing section.
+          cp packaging/linux/io.github.securitytrip.birchpad.desktop "dist/$name/"
+          cp packaging/icons/birchpad.png "dist/$name/io.github.securitytrip.birchpad.png"
           cd dist
           zip -r "$name.zip" "$name"
           rm -r "$name"
@@ -169,7 +173,8 @@ jobs:
         run: |
           name="birchpad-$VERSION-${{ matrix.name }}"
           app="dist/$name/Birchpad.app"
-          mkdir -p "$app/Contents/MacOS"
+          mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
+          cp packaging/icons/Birchpad.icns "$app/Contents/Resources/"
           lipo -create -output "$app/Contents/MacOS/birchpad" \
             target/aarch64-apple-darwin/release/birchpad \
             target/x86_64-apple-darwin/release/birchpad

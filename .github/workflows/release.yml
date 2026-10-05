@@ -89,6 +89,7 @@ jobs:
           mkdir -p dist
           wix build packaging/windows/Birchpad.wxs -arch x64 \
             -d Version="$VERSION" -d BinDir="$(cygpath -w "$PWD/bin")" \
+            -d IconFile="$(cygpath -w "$PWD/packaging/icons/birchpad.ico")" \
             -o "dist/birchpad-$VERSION-windows-x64.msi"
       - name: Sign (placeholder)
         shell: bash

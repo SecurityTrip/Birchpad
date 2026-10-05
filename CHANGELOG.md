@@ -6,6 +6,13 @@ version's release notes from its section here.
 
 ## [Unreleased]
 
+### Added
+
+- The application icon: a strip of birch bark. On Windows the executable, its windows, the
+  installer and the shortcuts show it; the macOS app and the Linux desktop file too.
+- The MSI adds a Start menu shortcut, and Explorer shows Birchpad's name and version in the
+  executable's details.
+
 ## [0.1.0] - 2026-10-05
 
 The first release: a Notepad++-like editor for Windows, Linux and macOS.

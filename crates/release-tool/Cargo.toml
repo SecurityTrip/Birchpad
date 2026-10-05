@@ -23,5 +23,9 @@ serde_json.workspace = true
 sha1 = "0.11"
 sha2 = "0.11"
 
+# The `icons` example renders the application icon (the version GPUI uses).
+[dev-dependencies]
+resvg = { version = "0.46", default-features = false }
+
 [lints]
 workspace = true

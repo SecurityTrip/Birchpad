@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!-- Birchpad at 32 pixels and less: birchpad.svg without the tilt and the fine marks, with
+       three lines on the pixel grid (64 units are a pixel at 16 pixels). -->
+  <defs>
+    <linearGradient id="tile" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4fa26f"/>
+      <stop offset="1" stop-color="#25633e"/>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="1024" height="1024" rx="192" fill="url(#tile)"/>
+  <!-- The sheet of bark, and its rolled top. -->
+  <rect x="192" y="192" width="640" height="704" rx="64" fill="#fbf8f0"/>
+  <rect x="128" y="128" width="768" height="192" rx="96" fill="#d9cdb0"/>
+  <rect x="128" y="128" width="768" height="96" rx="48" fill="#f3ecda"/>
+  <!-- Three lines of writing. -->
+  <g fill="#2f2a25">
+    <rect x="320" y="384" width="448" height="64" rx="32"/>
+    <rect x="320" y="576" width="320" height="64" rx="32"/>
+    <rect x="320" y="768" width="384" height="64" rx="32"/>
+  </g>
+</svg>

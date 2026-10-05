@@ -9,6 +9,8 @@
     <string>Birchpad</string>
     <key>CFBundleExecutable</key>
     <string>birchpad</string>
+    <key>CFBundleIconFile</key>
+    <string>Birchpad</string>
     <key>CFBundleIdentifier</key>
     <string>io.github.securitytrip.birchpad</string>
     <key>CFBundleInfoDictionaryVersion</key>

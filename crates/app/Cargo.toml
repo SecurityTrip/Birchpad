@@ -26,6 +26,10 @@ serde.workspace = true
 serde_json.workspace = true
 notify = "8"
 
+# The Windows icon and version resources (build.rs); the version GPUI uses.
+[build-dependencies]
+embed-resource = "3"
+
 [dev-dependencies]
 gpui-kit = { version = "0.7", features = ["test-support"] }
 # The map type of GPUI's keyboard mapper trait, for a test mapper.

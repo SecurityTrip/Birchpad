@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!-- Birchpad: a strip of birch bark, the notepad of medieval Novgorod. Its dark marks read
+       as lines of text. Source of every icon size; see packaging/icons/README.md. -->
+  <defs>
+    <linearGradient id="tile" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4fa26f"/>
+      <stop offset="1" stop-color="#25633e"/>
+    </linearGradient>
+    <linearGradient id="bark" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#e9e1cd"/>
+      <stop offset="0.18" stop-color="#fcfaf3"/>
+      <stop offset="0.8" stop-color="#f7f2e5"/>
+      <stop offset="1" stop-color="#ddd3ba"/>
+    </linearGradient>
+    <linearGradient id="roll" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fffdf7"/>
+      <stop offset="0.45" stop-color="#efe7d2"/>
+      <stop offset="1" stop-color="#c9bc9b"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="18" stdDeviation="22" flood-color="#0b2e1a" flood-opacity="0.45"/>
+    </filter>
+  </defs>
+
+  <!-- The tile. -->
+  <rect x="64" y="64" width="896" height="896" rx="200" fill="url(#tile)"/>
+
+  <g transform="rotate(-6 512 540)" filter="url(#shadow)">
+    <!-- The sheet of bark. -->
+    <path d="M262 250 H762 V812 Q762 846 728 850 L296 850 Q262 846 262 812 Z" fill="url(#bark)"/>
+    <!-- Its top, rolled up as birch bark curls. -->
+    <rect x="232" y="186" width="560" height="112" rx="56" fill="url(#roll)"/>
+    <ellipse cx="262" cy="242" rx="30" ry="50" fill="#d8ccad"/>
+    <ellipse cx="262" cy="242" rx="13" ry="26" fill="#a8977a"/>
+
+    <!-- Lenticels: the dark marks of birch bark, as lines of writing. -->
+    <g fill="#2f2a25">
+      <path d="M318 382 Q470 356 676 372 Q690 380 676 388 Q470 404 318 398 Q306 390 318 382 Z"/>
+      <path d="M318 478 Q430 456 586 470 Q600 478 586 486 Q430 500 318 494 Q306 486 318 478 Z"/>
+      <path d="M318 574 Q480 550 704 566 Q718 574 704 582 Q480 598 318 590 Q306 582 318 574 Z"/>
+      <path d="M318 670 Q410 650 540 664 Q554 672 540 680 Q410 692 318 686 Q306 678 318 670 Z"/>
+      <path d="M318 766 Q450 744 640 760 Q654 768 640 776 Q450 790 318 782 Q306 774 318 766 Z"/>
+      <!-- Short marks at the edges, as on a birch trunk. -->
+      <path d="M716 432 Q740 424 762 428 L762 444 Q740 446 716 442 Q708 437 716 432 Z"/>
+      <path d="M698 704 Q732 694 762 700 L762 716 Q732 720 698 714 Q690 709 698 704 Z"/>
+      <path d="M262 616 Q282 610 300 616 Q306 622 300 628 Q282 632 262 628 Z"/>
+    </g>
+  </g>
+</svg>
