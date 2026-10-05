@@ -28,6 +28,7 @@ use crate::editor::{EditorEvent, EditorView, ViewSettings};
 use crate::find::FindBar;
 use crate::menus::{self, MenuState};
 use crate::pane::{Pane, PaneEvent};
+use crate::search_results::SearchResults;
 use crate::session::SessionState;
 use crate::status_bar::StatusInfo;
 
@@ -207,6 +208,7 @@ pub(crate) struct Workspace {
     sync_horizontal: bool,
     menu_bar: Option<Entity<MenuBar>>,
     pub(crate) find_bar: Entity<FindBar>,
+    pub(crate) search_results: Entity<SearchResults>,
     title: String,
     buffer_subscriptions: HashMap<EntityId, Subscription>,
     /// Focus and scroll events of each view.
@@ -225,6 +227,8 @@ impl Workspace {
             .collect();
         let find_bar = cx.new(|cx| FindBar::new(window, cx));
         subscriptions.push(cx.subscribe_in(&find_bar, window, Self::on_find_bar_event));
+        let search_results = cx.new(SearchResults::new);
+        subscriptions.push(cx.subscribe_in(&search_results, window, Self::on_search_results_event));
         let mut this = Self {
             focus_handle: cx.focus_handle(),
             panes,
@@ -233,6 +237,7 @@ impl Workspace {
             sync_horizontal: false,
             menu_bar: None,
             find_bar,
+            search_results,
             title: String::new(),
             buffer_subscriptions: HashMap::new(),
             view_subscriptions: HashMap::new(),
@@ -861,7 +866,12 @@ impl Render for Workspace {
                         .child(menu_bar),
                 )
             })
-            .child(div().flex_1().min_h(px(0.)).child(self.render_panes(cx)))
+            .child(
+                div()
+                    .flex_1()
+                    .min_h(px(0.))
+                    .child(self.render_main_area(cx)),
+            )
             .when(self.find_bar.read(cx).visible, |this| {
                 this.child(self.find_bar.clone())
             })
@@ -870,6 +880,28 @@ impl Render for Workspace {
 }
 
 impl Workspace {
+    /// The documents, and the search results under them when they are shown.
+    fn render_main_area(&self, cx: &App) -> AnyElement {
+        if !self.search_results.read(cx).visible {
+            return self.render_panes(cx);
+        }
+        v_resizable("results-split")
+            .child(resizable_panel().child(self.render_panes(cx)))
+            .child(
+                resizable_panel()
+                    .size(px(220.))
+                    .size_range(px(60.)..px(2000.))
+                    .child(
+                        div()
+                            .size_full()
+                            .border_t_1()
+                            .border_color(rgb(0xd0d7de))
+                            .child(self.search_results.clone()),
+                    ),
+            )
+            .into_any_element()
+    }
+
     /// The pane with tabs, or both side by side or stacked, with a splitter between them.
     fn render_panes(&self, cx: &App) -> AnyElement {
         if !self.is_split(cx) {

@@ -24,6 +24,9 @@ use gpui_kit::{
 
 use crate::commands::CommandRegistry;
 use crate::editor::EditorView;
+use crate::search_results::{
+    FileResults, ResultLocation, SearchResults, SearchResultsEvent, SearchRun, line_hits,
+};
 use crate::workspace::Workspace;
 
 pub(crate) fn register_commands(registry: &mut CommandRegistry) {
@@ -53,6 +56,22 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
     });
     registry.workspace("search.select-and-find-previous", |this, (), window, cx| {
         this.select_and_find(Direction::Backward, window, cx);
+        Ok(())
+    });
+    registry.workspace("search.next-result", |this, (), window, cx| {
+        this.step_result(true, window, cx);
+        Ok(())
+    });
+    registry.workspace("search.previous-result", |this, (), window, cx| {
+        this.step_result(false, window, cx);
+        Ok(())
+    });
+    registry.workspace("search.results-window", |this, (), _, cx| {
+        this.search_results.update(cx, |results, cx| {
+            results.visible ^= true;
+            cx.notify();
+        });
+        cx.notify();
         Ok(())
     });
     registry.workspace("search.close", |this, (), window, cx| {
@@ -121,6 +140,10 @@ impl Default for FindOptions {
 pub(crate) enum FindBarEvent {
     Find(Direction),
     Count,
+    /// Find All in Current Document, or in All Opened Documents.
+    FindAll {
+        all_documents: bool,
+    },
     Replace,
     ReplaceAll,
     ReplaceAllInAll,
@@ -300,6 +323,18 @@ impl Render for FindBar {
                     FindBarEvent::Find(Direction::Forward)
                 }),
                 button("count", "Count", || FindBarEvent::Count),
+                button("find-all", "Find All in Current Document", || {
+                    FindBarEvent::FindAll {
+                        all_documents: false,
+                    }
+                }),
+                button(
+                    "find-all-in-all",
+                    "Find All in All Opened Documents",
+                    || FindBarEvent::FindAll {
+                        all_documents: true,
+                    },
+                ),
             ],
             FindTab::Replace => vec![button("find-next", "Find Next", || {
                 FindBarEvent::Find(Direction::Forward)
@@ -549,6 +584,7 @@ impl Workspace {
         match event {
             FindBarEvent::Find(direction) => self.find(*direction, window, cx),
             FindBarEvent::Count => self.count(cx),
+            FindBarEvent::FindAll { all_documents } => self.find_all(*all_documents, cx),
             FindBarEvent::Replace => self.replace(window, cx),
             FindBarEvent::ReplaceAll => self.replace_all(window, cx),
             FindBarEvent::ReplaceAllInAll => self.replace_all_in_all(cx),
@@ -739,6 +775,168 @@ impl Workspace {
             count == 0,
             cx,
         );
+    }
+
+    /// One view per open document: views of one buffer share its text. The active document
+    /// comes first.
+    fn document_views(&self, cx: &App) -> Vec<Entity<EditorView>> {
+        let mut views = self.all_views(cx);
+        if let Some(active) = self.active_view(cx) {
+            views.retain(|view| *view != active);
+            views.insert(0, active);
+        }
+        let mut seen = Vec::new();
+        views.retain(|view| {
+            let buffer = view.read(cx).buffer.entity_id();
+            let new = !seen.contains(&buffer);
+            seen.push(buffer);
+            new
+        });
+        views
+    }
+
+    /// Find All in Current Document (in the selection with In selection) or in All Opened
+    /// Documents: lists the lines with matches in the search results panel.
+    fn find_all(&mut self, all_documents: bool, cx: &mut Context<Self>) {
+        let Some((searcher, query)) = self.searcher(cx) else {
+            return;
+        };
+        let views = if all_documents {
+            self.document_views(cx)
+        } else {
+            self.active_view(cx).into_iter().collect()
+        };
+        let searched = views.len();
+        let mut files = Vec::new();
+        for view in views {
+            let range = if all_documents {
+                0..view.read(cx).text(cx).len()
+            } else {
+                self.scope(&view, cx).range
+            };
+            let view = view.read(cx);
+            let buffer = view.buffer.read(cx);
+            let text = view.text(cx);
+            let matches = searcher.find_all_in(text, range);
+            if matches.is_empty() {
+                continue;
+            }
+            let name = buffer
+                .path()
+                .map_or_else(|| buffer.display_name(), |path| path.display().to_string());
+            files.push(FileResults::new(
+                ResultLocation::Buffer(view.buffer.downgrade()),
+                name,
+                line_hits(text, &matches),
+                matches.len(),
+            ));
+        }
+        if self.report_failure(&searcher, cx) {
+            return;
+        }
+        let run = SearchRun::new(&query.pattern, files, searched);
+        let hits: usize = run.files.iter().map(|file| file.hits).sum();
+        self.search_results
+            .update(cx, |results, cx| results.add(run, cx));
+        self.report(
+            Some(format!("Find All: {}", plural(hits, "hit", "hits"))),
+            hits == 0,
+            cx,
+        );
+        cx.notify();
+    }
+
+    /// F4 / Shift+F4: the next or previous search result.
+    fn step_result(&mut self, forward: bool, _: &mut Window, cx: &mut Context<Self>) {
+        let found = self
+            .search_results
+            .update(cx, |results, cx| results.step(forward, cx));
+        if !found {
+            self.report(Some("No search results".into()), true, cx);
+        }
+        cx.notify();
+    }
+
+    pub(crate) fn on_search_results_event(
+        &mut self,
+        _: &Entity<SearchResults>,
+        event: &SearchResultsEvent,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        match event {
+            SearchResultsEvent::Close => {
+                self.search_results.update(cx, |results, cx| {
+                    results.visible = false;
+                    cx.notify();
+                });
+                cx.notify();
+            }
+            SearchResultsEvent::Open {
+                location,
+                line,
+                target,
+            } => self.open_result(location, *line, target.clone(), window, cx),
+        }
+    }
+
+    /// Goes to a search result: the tab of its document, and the match on its line.
+    fn open_result(
+        &mut self,
+        location: &ResultLocation,
+        line: usize,
+        target: std::ops::Range<usize>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let view = match location {
+            ResultLocation::Buffer(buffer) => {
+                let Some(buffer) = buffer.upgrade() else {
+                    self.report(Some("The document was closed".into()), true, cx);
+                    return;
+                };
+                let active = self
+                    .active_view(cx)
+                    .filter(|view| view.read(cx).buffer == buffer);
+                let Some(view) = active.or_else(|| {
+                    self.all_views(cx)
+                        .into_iter()
+                        .find(|view| view.read(cx).buffer == buffer)
+                }) else {
+                    self.report(Some("The document was closed".into()), true, cx);
+                    return;
+                };
+                self.activate_view(&view, window, cx);
+                view.update(cx, |view, cx| {
+                    let text = view.text(cx);
+                    let line = line.min(line_count(text).saturating_sub(1));
+                    let start = line_range(text, line).start;
+                    let from = text.floor_char_boundary((start + target.start).min(text.len()));
+                    let to = text.floor_char_boundary((start + target.end).min(text.len()));
+                    view.select_range(from..to.max(from), cx);
+                });
+                view
+            }
+            ResultLocation::File(path) => {
+                self.open_path(path, window, cx);
+                let Some(view) = self.view_for_path(path, cx) else {
+                    return;
+                };
+                view.update(cx, |view, cx| {
+                    view.set_caret_target(
+                        birchpad_cli::CaretTarget::LineColumn {
+                            line: line + 1,
+                            column: 1,
+                        },
+                        cx,
+                    );
+                });
+                view
+            }
+        };
+        let focus = view.read(cx).focus_handle.clone();
+        window.focus(&focus, cx);
+        cx.notify();
     }
 
     /// Replace: replaces the selection if it is a match, then finds the next one.
@@ -1404,6 +1602,63 @@ mod tests {
         assert_eq!(selection(&workspace, cx), (8, 11));
         cx.simulate_keystrokes(&secondary("shift-f3"));
         assert_eq!(selection(&workspace, cx), (0, 3));
+    }
+
+    #[gpui_kit::test]
+    fn find_all_lists_lines_and_f4_walks_them(cx: &mut TestAppContext) {
+        let (workspace, cx) = open_workspace(cx);
+        cx.simulate_input("foo\nbar foo\nfoo foo");
+        cx.simulate_keystrokes(&secondary("n"));
+        cx.simulate_input("no match\nfoo");
+        search_for(&workspace, "foo", FindOptions::default(), cx);
+        let status = act(
+            &workspace,
+            FindBarEvent::FindAll {
+                all_documents: true,
+            },
+            cx,
+        );
+        assert_eq!(status.as_deref(), Some("Find All: 5 hits"));
+        let rows = workspace.read_with(cx, |workspace, cx| {
+            workspace.search_results.read(cx).rows_text()
+        });
+        assert_eq!(
+            rows,
+            [
+                "Search \"foo\" (5 hits in 2 files of 2 searched)",
+                "  new 2 (1)",
+                "    Line 2: foo",
+                "  new 1 (4)",
+                "    Line 1: foo",
+                "    Line 2: bar foo",
+                "    Line 3: foo foo",
+            ],
+            "the active document first, one row per line"
+        );
+        let active = |cx: &mut VisualTestContext| {
+            workspace.read_with(cx, |workspace, cx| {
+                let view = workspace.active_view(cx).unwrap();
+                let view = view.read(cx);
+                let range = view.selection.primary();
+                (
+                    view.buffer.read(cx).display_name(),
+                    range.anchor,
+                    range.head,
+                )
+            })
+        };
+        cx.simulate_keystrokes("f4");
+        assert_eq!(active(cx), ("new 2".to_owned(), 9, 12));
+        cx.simulate_keystrokes("f4");
+        assert_eq!(active(cx), ("new 1".to_owned(), 0, 3), "into the other tab");
+        cx.simulate_keystrokes("f4 f4");
+        assert_eq!(
+            active(cx),
+            ("new 1".to_owned(), 12, 15),
+            "the first match of the line"
+        );
+        cx.simulate_keystrokes("shift-f4");
+        assert_eq!(active(cx), ("new 1".to_owned(), 8, 11));
     }
 
     #[test]

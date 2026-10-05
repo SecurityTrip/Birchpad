@@ -130,7 +130,10 @@ What Phase 1 left for later is marked *(from Phase 1)* in the phases below.
       with Bookmark line and Purge, Copy Marked Text
       ([ADR 0022](adr/0022-search-modes-and-the-find-panel.md))
 - Find in Files
-- Search results panel; incremental search
+- [x] Search results panel: Find All in Current Document and in All Opened Documents, searches
+      stacked and foldable, F4 / Shift+F4 through the results, F7 to show or hide it
+      ([ADR 0022](adr/0022-search-modes-and-the-find-panel.md))
+- Incremental search
 - Function List, Document Map, Document List, Folder as Workspace, Project panels
 - Clipboard history, character panel, navigation history
 

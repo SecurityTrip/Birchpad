@@ -76,6 +76,18 @@ command = "search.select-and-find-next"
 keys = "secondary-shift-f3"
 command = "search.select-and-find-previous"
 
+[[binding]]
+keys = "f7"
+command = "search.results-window"
+
+[[binding]]
+keys = "f4"
+command = "search.next-result"
+
+[[binding]]
+keys = "shift-f4"
+command = "search.previous-result"
+
 # macOS takes Cmd+M for Minimize.
 [[binding]]
 keys = "ctrl-m"

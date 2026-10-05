@@ -15,6 +15,9 @@ version's release notes from its section here.
   opened documents; Mark All with Bookmark line and Purge for each search, Clear All Marks and
   Copy Marked Text. Search > Mark... (Ctrl+M), Select and Find Next / Previous (Ctrl+F3,
   Ctrl+Shift+F3).
+- The search results panel, as in Notepad++: Find All in Current Document and in All Opened
+  Documents list the lines with matches; double-click or F4 and Shift+F4 go to them, F7 shows or
+  hides the panel.
 
 ## [0.1.2] - 2026-10-05
 

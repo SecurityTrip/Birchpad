@@ -27,6 +27,7 @@ mod language_tests;
 mod menus;
 mod pane;
 mod path_dialog;
+mod search_results;
 mod session;
 #[cfg(test)]
 mod session_tests;

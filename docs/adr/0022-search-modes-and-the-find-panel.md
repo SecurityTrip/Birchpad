@@ -52,10 +52,25 @@ tabs: Find, Replace, Find in Files and Mark. Phase 3 brings Birchpad to that.
 - **Select and Find Next / Previous** (Ctrl+F3, Ctrl+Shift+F3) search for the selection or the
   word at the caret. **Mark...** is Ctrl+M on Windows and Linux (macOS uses Cmd+M to minimize).
 
+### The search results panel
+
+- **Find All in Current Document** (in the selection with In selection) and **in All Opened
+  Documents** list their matches in a panel under the documents, with a splitter, as
+  Notepad++'s Search results window does: `Search "foo" (5 hits in 2 files of 3 searched)`, each
+  document with its count, and one row per line with its matches highlighted. The active
+  document comes first.
+- Searches stack, the newest on top, until Clear; a search or a document folds when clicked.
+  The list is virtual (`uniform_list`), so tens of thousands of lines cost nothing to show; a
+  line shows at most its first kilobyte.
+- **Going to a result:** double-click or Enter, and F4 / Shift+F4 from anywhere, which walk the
+  lines and wrap around. The result's tab comes forward and its first match on the line is
+  selected. Results keep the line number and the offsets in the line, as Notepad++ does, so an
+  edit above a match moves it away from its result. F7 shows or hides the panel.
+
 ## Consequences
 
 - `fancy-regex` is a new dependency of `birchpad-core` (MIT; it brings no new crates besides).
 - Regular expressions copy the text for each search; incremental search on very large files
   will want a cached copy.
-- Not yet: Find in Files and the search results panel (Find All in Current Document, Find All
-  in All Opened Documents), incremental search, and remembering past searches.
+- Not yet: Find in Files (whose results go to the same panel), incremental search, copying
+  results, and remembering past searches.
