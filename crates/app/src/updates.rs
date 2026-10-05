@@ -15,10 +15,10 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use anyhow::{Context as _, Result};
 use birchpad_config::UpdateMode;
+use birchpad_update::install::Installer;
 use birchpad_update::manifest::{self, PLATFORM};
 use birchpad_update::{
-    CheckError, CheckRequest, Checked, HttpTransport, Outcome, Package, Release, Transport,
-    VerifyingKey,
+    CheckError, CheckRequest, Checked, HttpTransport, Outcome, Release, Transport, VerifyingKey,
 };
 use gpui_kit::component::WindowExt as _;
 use gpui_kit::component::button::{Button, ButtonVariants as _};
@@ -62,22 +62,6 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
     registry.enabled_when("help.restart-to-update", |cx| {
         cx.global::<Updates>().ready.is_some()
     });
-}
-
-/// Installs updates of a per-user installation (Velopack on Windows); tests use fakes.
-pub(crate) trait Installer: Send + Sync {
-    /// Downloads the package of `version` and checks it against the manifest (blocking), so that
-    /// it is installed when Birchpad starts next, or by [`Installer::restart`].
-    fn download(
-        &self,
-        version: &Version,
-        package: &Package,
-        transport: Arc<dyn Transport>,
-    ) -> Result<(), String>;
-
-    /// Starts the installer of the downloaded update: it waits for Birchpad to quit, installs
-    /// the update and starts Birchpad again.
-    fn restart(&self) -> Result<(), String>;
 }
 
 /// How updates are checked and installed.
@@ -595,159 +579,6 @@ pub(crate) fn describe(cx: &App) -> String {
     format!("{channel} channel from {source}, {how}{last}")
 }
 
-#[cfg(windows)]
-pub(crate) mod velopack_installer {
-    //! Per-user installations made by Velopack's installer update themselves with it. The
-    //! packages come from the signed manifest: Velopack is given a feed of exactly the package
-    //! the manifest lists, which is downloaded and checked against its size and SHA-256 before
-    //! Velopack checks it again and installs it.
-
-    use std::path::Path;
-    use std::sync::mpsc::Sender;
-    use std::sync::{Arc, Mutex};
-
-    use birchpad_update::manifest::PACKAGE_ID;
-    use birchpad_update::{Package, Transport};
-    use semver::Version;
-    use velopack::sources::UpdateSource;
-    use velopack::{
-        UpdateCheck, UpdateManager, UpdateOptions, VelopackAsset, VelopackAssetFeed, bundle,
-    };
-
-    use super::Installer;
-
-    /// The installer, if Birchpad runs from a Velopack installation.
-    pub(crate) fn detect() -> Option<Arc<dyn Installer>> {
-        UpdateManager::new(velopack::sources::NoneSource {}, None, None).ok()?;
-        Some(Arc::new(Velopack::default()))
-    }
-
-    #[derive(Default)]
-    struct Velopack {
-        /// The manager and the package of a downloaded update.
-        downloaded: Mutex<Option<(UpdateManager, VelopackAsset)>>,
-    }
-
-    impl Installer for Velopack {
-        fn download(
-            &self,
-            version: &Version,
-            package: &Package,
-            transport: Arc<dyn Transport>,
-        ) -> Result<(), String> {
-            let source = SignedSource {
-                version: version.to_string(),
-                package: package.clone(),
-                transport,
-            };
-            let options = UpdateOptions {
-                AllowVersionDowngrade: false,
-                ExplicitChannel: None,
-                // Only full packages are listed.
-                MaximumDeltasBeforeFallback: -1,
-            };
-            let manager = UpdateManager::new(source, Some(options), None)
-                .map_err(|error| error.to_string())?;
-            let UpdateCheck::UpdateAvailable(update) = manager
-                .check_for_updates()
-                .map_err(|error| error.to_string())?
-            else {
-                return Err(format!("{version} is not newer than the installed version"));
-            };
-            manager
-                .download_updates(&update, None)
-                .map_err(|error| error.to_string())?;
-            *self.downloaded.lock().expect("not poisoned") =
-                Some((manager, update.TargetFullRelease.clone()));
-            Ok(())
-        }
-
-        fn restart(&self) -> Result<(), String> {
-            let downloaded = self.downloaded.lock().expect("not poisoned");
-            let (manager, package) = downloaded.as_ref().ok_or("nothing was downloaded")?;
-            manager
-                .wait_exit_then_apply_updates(package, true, true, Vec::<String>::new())
-                .map_err(|error| error.to_string())
-        }
-    }
-
-    /// A Velopack feed of the one package of a release that the signed manifest lists.
-    struct SignedSource {
-        version: String,
-        package: Package,
-        transport: Arc<dyn Transport>,
-    }
-
-    impl UpdateSource for SignedSource {
-        fn get_release_feed(
-            &self,
-            _channel: &str,
-            _app: &bundle::Manifest,
-            _staged_user_id: &str,
-        ) -> Result<VelopackAssetFeed, velopack::Error> {
-            Ok(VelopackAssetFeed {
-                Assets: vec![VelopackAsset {
-                    PackageId: PACKAGE_ID.to_owned(),
-                    Version: self.version.clone(),
-                    Type: "Full".to_owned(),
-                    FileName: self.package.file.clone(),
-                    SHA1: self.package.sha1.clone(),
-                    SHA256: self.package.sha256.clone(),
-                    Size: self.package.size,
-                    NotesMarkdown: String::new(),
-                    NotesHtml: String::new(),
-                }],
-            })
-        }
-
-        fn download_release_entry(
-            &self,
-            asset: &VelopackAsset,
-            local_file: &Path,
-            progress: Option<Sender<i16>>,
-        ) -> Result<(), velopack::Error> {
-            if asset.FileName != self.package.file {
-                return Err(velopack::Error::Other(format!(
-                    "{} is not the package of the manifest",
-                    asset.FileName
-                )));
-            }
-            let size = self.package.size.max(1);
-            let report = |received: u64| {
-                if let Some(progress) = &progress {
-                    progress.send((received * 100 / size) as i16).ok();
-                }
-            };
-            self.transport
-                .download(&self.package.url, local_file, self.package.size, &report)
-                .map_err(velopack::Error::Other)?;
-            birchpad_update::verify_package(local_file, &self.package).map_err(|error| {
-                std::fs::remove_file(local_file).ok();
-                velopack::Error::Other(error)
-            })
-        }
-    }
-}
-
-/// The installer of this copy, if it was installed per user and can update itself.
-pub(crate) fn detect_installer() -> Option<Arc<dyn Installer>> {
-    #[cfg(windows)]
-    {
-        velopack_installer::detect()
-    }
-    #[cfg(not(windows))]
-    {
-        None
-    }
-}
-
-/// Velopack's work at startup, before anything else: finishing an install or uninstall, or
-/// installing an update downloaded during the last run (Birchpad then starts again).
-pub(crate) fn run_installer_hooks() {
-    #[cfg(windows)]
-    velopack::VelopackApp::build().run();
-}
-
 #[cfg(test)]
 mod tests {
     use std::sync::Mutex;
@@ -755,7 +586,7 @@ mod tests {
     use birchpad_commands::Invocation;
     use birchpad_config::UpdateChannel;
     use birchpad_update::manifest::{PRODUCT, SCHEMA};
-    use birchpad_update::{Manifest, ManifestRelease, SigningKey};
+    use birchpad_update::{Manifest, ManifestRelease, Package, SigningKey};
     use gpui_kit::{Entity, TestAppContext, VisualTestContext};
 
     use super::*;

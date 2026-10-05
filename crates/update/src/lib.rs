@@ -8,6 +8,7 @@
 //!
 //! [`check`] never touches the network when `updates.mode` is `off`.
 
+pub mod install;
 mod keys;
 pub mod manifest;
 

@@ -17,7 +17,7 @@ birchpad-core.workspace = true
 birchpad-io.workspace = true
 birchpad-menu-bar.workspace = true
 birchpad-syntax.workspace = true
-birchpad-update.workspace = true
+birchpad-update = { workspace = true, features = ["installer"] }
 birchpad-view.workspace = true
 futures = "0.3"
 gpui-kit = "0.7"
@@ -25,11 +25,6 @@ semver = "1"
 serde.workspace = true
 serde_json.workspace = true
 notify = "8"
-
-# Per-user installs update themselves with Velopack, on Windows (ADR 0020). The version matches
-# the `vpk` tool the release workflows package with.
-[target.'cfg(windows)'.dependencies]
-velopack = { version = "=1.2.161", features = ["public-utils"] }
 
 [dev-dependencies]
 gpui-kit = { version = "0.7", features = ["test-support"] }

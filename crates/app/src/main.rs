@@ -56,7 +56,7 @@ pub(crate) const MONOSPACE: &str = if cfg!(windows) {
 };
 
 fn main() {
-    updates::run_installer_hooks();
+    birchpad_update::install::run_hooks();
     let cwd = std::env::current_dir().unwrap_or_default();
     let command_line = CommandLine::parse(std::env::args_os().skip(1), &cwd);
     for warning in &command_line.warnings {
@@ -96,7 +96,7 @@ fn main() {
             updates::Updates::install(
                 updates::Updates::http(),
                 updates::trusted_keys(),
-                updates::detect_installer(),
+                birchpad_update::install::detect(),
                 cx,
             );
             commands::init(user_keymap.as_deref(), cx);

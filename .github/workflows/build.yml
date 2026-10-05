@@ -24,7 +24,7 @@ permissions:
 
 env:
   CARGO_TERM_COLOR: always
-  # Must match the velopack crate of crates/app/Cargo.toml.
+  # Must match the velopack crate of crates/update/Cargo.toml.
   VELOPACK_VERSION: "1.2.161"
 
 jobs:

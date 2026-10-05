@@ -72,7 +72,7 @@ downloading them. See [ADR 0020](docs/adr/0020-signed-updates-and-nightly-builds
 | `crates/view` | Layout of a document view in cells: tab stops, word wrap, visual rows. No UI. |
 | `crates/syntax` | Languages and syntax trees: detection, tree-sitter parsing, highlighting, folding. No UI. |
 | `crates/cli` | Notepad++-compatible command line and the single-instance hand-off. No UI. |
-| `crates/update` | Checking for updates: the signed update manifest, channels, versions. No UI. |
+| `crates/update` | Updates: the signed update manifest, channels, versions, installing (Velopack on Windows). No UI. |
 | `crates/release-tool` | `birchpad-release`: signing keys and the update manifest, for the release workflows. |
 | `crates/menu-bar` | The menu bar drawn in the window on Windows and Linux, with Windows' keyboard access. |
 | `crates/app` | The desktop application. |
