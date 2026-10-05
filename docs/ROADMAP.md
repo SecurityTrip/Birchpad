@@ -39,8 +39,8 @@ dependency, not by calendar. Architecture decisions live in [`adr/`](adr).
       `-multiInst`, `-nosession`; `-l` and other options accepted and ignored)
 - [x] First installable builds: release workflow with portable ZIPs (Windows x64/ARM64, Linux
       x64, macOS universal), MSI x64, SBOM and provenance; portable mode; manual update check;
-      About ([ADR 0009](adr/0009-releases-portable-mode-and-update-check.md)). The workflow has
-      not run on a real tag yet, and the binaries are not signed yet.
+      About ([ADR 0009](adr/0009-releases-portable-mode-and-update-check.md)). First released
+      as 0.1.0; the binaries are not signed yet.
 
 What Phase 1 left for later is marked *(from Phase 1)* in the phases below.
 
