@@ -44,9 +44,9 @@ anything that is not compiled into the binary.
 - **Menus are data too.** The main menu (File, Edit, Search, View, Encoding, Help) is described
   in `birchpad-commands` with placeholders for live content (recent files, character sets). On
   macOS it becomes the native menu bar through `cx.set_menus`, with About, Check for Updates and
-  Quit moved to the application menu; on Windows and Linux gpui-component's `AppMenuBar` draws it
-  under the system title bar. Shortcuts shown in menus come from the keymap, so a rebinding is
-  reflected everywhere.
+  Quit moved to the application menu; on Windows and Linux Birchpad's own menu bar draws it under
+  the system title bar, usable from the keyboard ([ADR 0019](0019-menu-bar-keyboard-access.md)).
+  Shortcuts shown in menus come from the keymap, so a rebinding is reflected everywhere.
 
 ## Consequences
 

@@ -1,7 +1,7 @@
 //! Builds the main menu from the menu model in `birchpad-commands`.
 //!
-//! macOS gets a native menu bar through `cx.set_menus`; Windows and Linux get gpui-component's
-//! `AppMenuBar`, drawn at the top of the window, fed from the same menus.
+//! macOS gets a native menu bar through `cx.set_menus`; Windows and Linux get the menu bar of
+//! [`crate::menu_bar`], drawn at the top of the window, fed from the same menus.
 
 use std::path::PathBuf;
 

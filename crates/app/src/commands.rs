@@ -170,6 +170,7 @@ pub(crate) fn init(user_keymap: Option<&str>, cx: &mut App) -> Keymap {
         replace_command_bindings(bindings, cx);
     })
     .detach();
+    crate::menu_bar::init(cx);
     keymap
 }
 

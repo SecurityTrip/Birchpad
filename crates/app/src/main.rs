@@ -24,6 +24,7 @@ mod find;
 mod help;
 #[cfg(test)]
 mod language_tests;
+mod menu_bar;
 mod menus;
 mod pane;
 mod path_dialog;
