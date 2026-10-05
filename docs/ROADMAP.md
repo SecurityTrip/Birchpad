@@ -96,17 +96,22 @@ What Phase 1 left for later is marked *(from Phase 1)* in the phases below.
       (`files.change-detection`); View > Monitoring (tail -f) reading only appended bytes
       ([ADR 0018](adr/0018-file-changes-on-disk.md))
 - Nightly channel with automatic updates
-- Incremental column index for multi-megabyte lines: typing into a 10 MB line takes about
-  70 ms per keystroke because the line's index is rebuilt *(from Phase 1)*
-- "Edit anyway" for files that do not decode cleanly; they open read-only with a Reopen with
-  Encoding choice for now *(from Phase 1)*
-- Keyboard access to the menu bar on Windows and Linux (Alt, mnemonics) *(from Phase 1)*
+- [x] Long lines keep their layout through edits: the column index and the rows of a wrapped
+      line are updated around the edit; typing into a 10 MB line takes 1.6 ms per keystroke
+      (6.7 ms with word wrap), down from 49 ms (168 ms) ([ADR 0008](adr/0008-editor-view-layout.md))
+      *(from Phase 1)*
+- [x] Edit Anyway for files that do not decode exactly, after a list of every place where saving
+      changes the file's bytes ([ADR 0007](adr/0007-encodings-and-saving.md)) *(from Phase 1)*
+- [x] The menu bar from the keyboard on Windows and Linux: Alt or F10, Alt+letter, mnemonics
+      in menus, arrows into submenus ([ADR 0019](adr/0019-menu-bar-keyboard-access.md))
+      *(from Phase 1)*
 - [x] Columns count terminal-style cells (East Asian wide characters take two) where
       Notepad++ counts characters: kept for rectangles, the Column Editor and the status bar
       ([ADR 0013](adr/0013-multi-editing-and-columns.md)) *(from Phase 1)*
 - Verify IME input (Windows TSF, macOS, IBus/Fcitx) on real systems; Phase 1 tested text
   input through GPUI's input handler but not with a real IME *(from Phase 1)*
-- Tests that saving preserves Windows ACLs and alternate data streams *(from Phase 1)*
+- [x] Tests that saving preserves Windows ACLs, alternate data streams, the creation time and
+      links *(from Phase 1)*
 
 ## Phase 3: search and navigation
 

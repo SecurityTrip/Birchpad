@@ -42,8 +42,10 @@ letters for items.
 
 - About a thousand lines replace a component from the library; the popups elsewhere (Reopen with
   Encoding, the status bar menus) still use gpui-component's.
-- Alt+letter matches the key the layout produces: with a Russian layout, Alt+F (physically) is
-  Alt+А and opens nothing. Matching the physical key is possible later.
+- Letters are matched by the key GPUI reports. On Windows that is the Latin letter of the key
+  whatever the layout, so Alt+F opens File with a Russian layout too (checked in the running
+  application). On Linux GPUI reports the layout's character: with a non-Latin layout, mnemonics
+  do not match and the arrows remain.
 - Tested with GPUI's test platform on Windows and Linux CI; the keys were checked in the running
   application on Windows. Linux desktops differ (GNOME applications use F10 and do not focus the
   menu bar on Alt); Birchpad behaves the same everywhere.
