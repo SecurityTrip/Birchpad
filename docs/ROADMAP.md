@@ -173,10 +173,13 @@ What Phase 1 left for later is marked *(from Phase 1)* in the phases below.
       that update themselves on macOS and Linux, are still to come
 - Per-machine MSI (x64, ARM64) for enterprises, updated by IT; portable ZIP; winget and Scoop
   manifests
-- [x] ed25519-signed update manifest; Authenticode signing (SignPath Foundation for OSS) is
-      still to come
+- [x] ed25519-signed update manifest
+- Authenticode signing of the Windows executable, installers and MSI through SignPath
+  Foundation: the release workflow is ready and waits for SignPath's approval of the project
+  ([ADR 0021](adr/0021-authenticode-signing-with-signpath.md)); Apple Developer ID signing and
+  notarization still to come
 - ADMX/ADML templates generated from the policy list in `birchpad-config`
-- SBOM and build provenance attestations with every release (the release workflow does both)
+- [x] SBOM and build provenance attestations with every release
 - [x] Background update checks (`notify`) and automatic updates (`auto`) with the signed
       manifest *(from Phase 1)*
 - MSI for pre-release versions and for ARM64 *(from Phase 1)*

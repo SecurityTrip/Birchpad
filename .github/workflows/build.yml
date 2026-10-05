@@ -1,9 +1,14 @@
 name: Build
 
 # The build of a release, shared by the release and nightly workflows: portable ZIPs for every
-# platform, the per-user installer and update package for Windows (Velopack), the SBOM, and the
-# Windows x64 binary for the MSI. See docs/adr/0009-releases-portable-mode-and-update-check.md and
-# docs/adr/0020-signed-updates-and-nightly-builds.md.
+# platform, the per-user installer and update package for Windows (Velopack), the per-machine MSI
+# when asked, and the SBOM. See docs/adr/0009-releases-portable-mode-and-update-check.md,
+# docs/adr/0020-signed-updates-and-nightly-builds.md and
+# docs/adr/0021-authenticode-signing-with-signpath.md.
+#
+# Windows files are signed with SignPath (packaging/windows/signing/README.md) when the caller
+# asks and the repository is set up for it: first the executables, which the packages then
+# contain, then the installers. Each signing request waits for a maintainer's approval.
 #
 # It builds the commit that started the calling workflow (`github.sha`), never one passed in:
 # release jobs run with access to the default branch's context and must not run other code.
@@ -18,6 +23,35 @@ on:
         description: stable, beta or nightly.
         required: true
         type: string
+      sign:
+        description: Sign the Windows executables and installers with SignPath, if it is set up.
+        type: boolean
+        default: false
+      msi:
+        description: Build the per-machine MSI (Windows x64).
+        type: boolean
+        default: false
+  # By hand, to try the packaging on a branch: the files stay in the run's artifacts.
+  workflow_dispatch:
+    inputs:
+      version:
+        description: The version to build as (semver; numeric for the MSI).
+        required: true
+        type: string
+        default: "0.0.0"
+      channel:
+        description: stable, beta or nightly.
+        required: true
+        type: string
+        default: nightly
+      sign:
+        description: Sign the Windows files with SignPath, if it is set up.
+        type: boolean
+        default: false
+      msi:
+        description: Build the per-machine MSI.
+        type: boolean
+        default: true
 
 permissions:
   contents: read
@@ -26,6 +60,10 @@ env:
   CARGO_TERM_COLOR: always
   # Must match the velopack crate of crates/update/Cargo.toml.
   VELOPACK_VERSION: "1.2.161"
+  VERSION: ${{ inputs.version }}
+  # The SignPath project and its signing policy (packaging/windows/signing).
+  SIGNPATH_PROJECT: birchpad
+  SIGNPATH_POLICY: release-signing
 
 jobs:
   keys:
@@ -42,6 +80,19 @@ jobs:
             exit 1
           fi
           echo "This build trusts update manifests signed with: $BIRCHPAD_TRUSTED_KEYS"
+      - name: Code signing
+        shell: bash
+        env:
+          SIGN: ${{ inputs.sign }}
+          ORGANIZATION: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+        run: |
+          if [ "$SIGN" != "true" ]; then
+            echo "This build is not signed (nightly builds never are)."
+          elif [ -z "$ORGANIZATION" ]; then
+            echo "::warning::SignPath is not set up (packaging/windows/signing/README.md): the Windows files are unsigned."
+          else
+            echo "The Windows executables and installers are signed with SignPath: approve both signing requests."
+          fi
 
   build:
     needs: keys
@@ -53,11 +104,9 @@ jobs:
           - name: windows-x64
             os: windows-latest
             targets: x86_64-pc-windows-msvc
-            runtime: win-x64
           - name: windows-arm64
             os: windows-11-arm
             targets: aarch64-pc-windows-msvc
-            runtime: win-arm64
             # Non-blocking until Windows on ARM is green in CI.
             experimental: true
           - name: linux-x64
@@ -71,8 +120,6 @@ jobs:
     runs-on: ${{ matrix.os }}
     continue-on-error: ${{ matrix.experimental == true }}
     env:
-      VERSION: ${{ inputs.version }}
-      CHANNEL: ${{ inputs.channel }}
       # Read by crates/app/build.rs.
       BIRCHPAD_VERSION: ${{ inputs.version }}
       BIRCHPAD_CHANNEL: ${{ inputs.channel }}
@@ -105,52 +152,14 @@ jobs:
             cargo build --release --locked -p birchpad --target "$target"
           done
 
-      - name: Package (Windows)
+      # Windows packages are made from the signed executable, in the package-windows job.
+      - name: Keep the executable (Windows)
         if: runner.os == 'Windows'
-        shell: bash
-        run: |
-          name="birchpad-$VERSION-${{ matrix.name }}"
-          mkdir -p "dist/$name" bin
-          cp "target/${{ matrix.targets }}/release/birchpad.exe" "dist/$name/"
-          cp "target/${{ matrix.targets }}/release/birchpad.exe" bin/
-          cp packaging/portable/birchpad-portable.txt LICENSE-MIT LICENSE-APACHE README.md "dist/$name/"
-      - name: Sign (placeholder)
-        if: runner.os == 'Windows'
-        shell: bash
-        run: |
-          # Authenticode signing (SignPath Foundation, see ADR 0005) goes here and must sign
-          # both dist/*/birchpad.exe and bin/birchpad.exe before they are packaged, and the
-          # Velopack installer (vpk pack --signParams).
-          echo "::notice::Authenticode signing is not set up yet; birchpad.exe is unsigned."
-      - name: Zip (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        working-directory: dist
-        run: |
-          $name = "birchpad-$env:VERSION-${{ matrix.name }}"
-          # The system's bsdtar writes zip files on every Windows runner, including ARM64.
-          & "$env:SystemRoot\System32\tar.exe" -a -c -f "$name.zip" $name
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          Remove-Item -Recurse $name
-      - name: Installer and update package (Windows)
-        if: runner.os == 'Windows'
-        shell: bash
-        run: |
-          dotnet tool install --global vpk --version "$VELOPACK_VERSION"
-          export PATH="$PATH:$USERPROFILE/.dotnet/tools"
-          mkdir -p velopack/in velopack/out
-          cp bin/birchpad.exe LICENSE-MIT LICENSE-APACHE README.md velopack/in/
-          # Full packages only: the signed manifest lists no deltas (ADR 0020).
-          vpk pack --packId Birchpad --packVersion "$VERSION" --packTitle Birchpad \
-            --packAuthors "The Birchpad Contributors" --packDir velopack/in \
-            --mainExe birchpad.exe --icon packaging/icons/birchpad.ico \
-            --runtime "${{ matrix.runtime }}" \
-            --channel "${{ matrix.name }}-$CHANNEL" --delta None --noPortable \
-            --outputDir velopack/out
-          ls -l velopack/out
-          # Both Windows platforms upload to one release: one name per platform.
-          cp velopack/out/*-full.nupkg "dist/birchpad-$VERSION-${{ matrix.name }}-full.nupkg"
-          cp velopack/out/*-Setup.exe "dist/birchpad-$VERSION-${{ matrix.name }}-setup.exe"
+        uses: actions/upload-artifact@v7
+        with:
+          name: exe-${{ matrix.name }}
+          path: target/${{ matrix.targets }}/release/birchpad.exe
+          if-no-files-found: error
 
       - name: Package (Linux)
         if: runner.os == 'Linux'
@@ -186,23 +195,170 @@ jobs:
           ditto -c -k --keepParent "dist/$name" "dist/$name.zip"
           rm -r "dist/$name"
 
-      - uses: actions/upload-artifact@v7
+      - name: Keep the packages (Linux, macOS)
+        if: runner.os != 'Windows'
+        uses: actions/upload-artifact@v7
         with:
           name: dist-${{ matrix.name }}
           path: dist/*
           if-no-files-found: error
-      - name: Keep the Windows x64 binary for the MSI
-        if: matrix.name == 'windows-x64'
+
+  # The executables of both Windows platforms, signed in one request. Runs when the caller asks
+  # for signing and the SIGNPATH_ORGANIZATION_ID variable is set; otherwise the packages contain
+  # the unsigned executables.
+  sign-executables:
+    needs: build
+    if: ${{ !cancelled() && needs.build.result == 'success' && inputs.sign && vars.SIGNPATH_ORGANIZATION_ID != '' }}
+    runs-on: ubuntu-latest
+    # Holds the SIGNPATH_API_TOKEN secret.
+    environment: code-signing
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: exe-*
+          path: executables
+      - id: unsigned
         uses: actions/upload-artifact@v7
         with:
-          name: bin-windows-x64
-          path: bin/birchpad.exe
+          name: unsigned-executables
+          path: executables
+          if-no-files-found: error
+      - uses: signpath/github-action-submit-signing-request@v3
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ env.SIGNPATH_PROJECT }}
+          signing-policy-slug: ${{ env.SIGNPATH_POLICY }}
+          artifact-configuration-slug: executables
+          github-artifact-id: ${{ steps.unsigned.outputs.artifact-id }}
+          parameters: |
+            version: ${{ toJSON(inputs.version) }}
+          wait-for-completion: true
+          # A maintainer approves the request in SignPath.
+          wait-for-completion-timeout-in-seconds: 7200
+          output-artifact-directory: signed
+      - uses: actions/upload-artifact@v7
+        with:
+          name: signed-executables
+          path: signed
+          if-no-files-found: error
+
+  package-windows:
+    needs: [build, sign-executables]
+    # Signing skipped (nightly builds, SignPath not set up) is fine; signing that failed is not.
+    if: ${{ !cancelled() && needs.build.result == 'success' && needs.sign-executables.result != 'failure' }}
+    runs-on: windows-latest
+    outputs:
+      installers: ${{ steps.installers.outputs.artifact-id }}
+    env:
+      CHANNEL: ${{ inputs.channel }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: The signed executables
+        if: needs.sign-executables.result == 'success'
+        uses: actions/download-artifact@v8
+        with:
+          name: signed-executables
+          path: executables
+      - name: The unsigned executables
+        if: needs.sign-executables.result != 'success'
+        uses: actions/download-artifact@v8
+        with:
+          pattern: exe-*
+          path: executables
+      - name: Portable ZIPs, installers and update packages
+        shell: bash
+        run: |
+          dotnet tool install --global vpk --version "$VELOPACK_VERSION"
+          export PATH="$PATH:$USERPROFILE/.dotnet/tools"
+          mkdir -p dist installers
+          for platform in windows-x64 windows-arm64; do
+            exe="executables/exe-$platform/birchpad.exe"
+            if [ ! -f "$exe" ]; then
+              echo "::warning::No executable for $platform: it failed to build."
+              continue
+            fi
+            name="birchpad-$VERSION-$platform"
+            mkdir -p "zip/$name"
+            cp "$exe" packaging/portable/birchpad-portable.txt LICENSE-MIT LICENSE-APACHE README.md "zip/$name/"
+            # Windows' own bsdtar writes zip files (Git Bash's tar does not).
+            (cd zip && /c/Windows/System32/tar.exe -a -c -f "../dist/$name.zip" "$name")
+
+            rm -rf velopack && mkdir -p velopack/in velopack/out
+            cp "$exe" LICENSE-MIT LICENSE-APACHE README.md velopack/in/
+            # Full packages only: the signed manifest lists no deltas (ADR 0020).
+            vpk pack --packId Birchpad --packVersion "$VERSION" --packTitle Birchpad \
+              --packAuthors "The Birchpad Contributors" --packDir velopack/in \
+              --mainExe birchpad.exe --icon packaging/icons/birchpad.ico \
+              --runtime "win-${platform#windows-}" \
+              --channel "$platform-$CHANNEL" --delta None --noPortable \
+              --outputDir velopack/out
+            ls -l velopack/out
+            # Both Windows platforms upload to one release: one name per platform.
+            cp velopack/out/*-full.nupkg "dist/$name-full.nupkg"
+            cp velopack/out/*-Setup.exe "installers/$name-setup.exe"
+          done
+          if [ ! -f "executables/exe-windows-x64/birchpad.exe" ]; then
+            echo "::error::Windows x64 failed to build."
+            exit 1
+          fi
+      - name: MSI
+        if: inputs.msi
+        shell: bash
+        run: |
+          IFS=. read -r major minor patch <<< "$VERSION"
+          if [ "$major" -gt 255 ] || [ "$minor" -gt 255 ] || [ "$patch" -gt 65535 ]; then
+            echo "::error::$VERSION cannot be an MSI version (major and minor < 256, build < 65536)"
+            exit 1
+          fi
+          dotnet tool install --global wix --version 5.0.2
+          export PATH="$PATH:$USERPROFILE/.dotnet/tools"
+          wix build packaging/windows/Birchpad.wxs -arch x64 \
+            -d Version="$VERSION" -d BinDir="$(cygpath -w "$PWD/executables/exe-windows-x64")" \
+            -d IconFile="$(cygpath -w "$PWD/packaging/icons/birchpad.ico")" \
+            -o "installers/birchpad-$VERSION-windows-x64.msi"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: dist-windows
+          path: dist/*
+          if-no-files-found: error
+      # Unsigned installers go to the release as they are, or to signing first.
+      - id: installers
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ needs.sign-executables.result == 'success' && 'unsigned-installers' || 'dist-installers' }}
+          path: installers/*
+          if-no-files-found: error
+
+  # The installers (Velopack's for both platforms, and the MSI), signed in one request, when the
+  # executables were.
+  sign-installers:
+    needs: [sign-executables, package-windows]
+    if: ${{ !cancelled() && needs.sign-executables.result == 'success' && needs.package-windows.result == 'success' }}
+    runs-on: ubuntu-latest
+    environment: code-signing
+    steps:
+      - uses: signpath/github-action-submit-signing-request@v3
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ env.SIGNPATH_PROJECT }}
+          signing-policy-slug: ${{ env.SIGNPATH_POLICY }}
+          artifact-configuration-slug: installers
+          github-artifact-id: ${{ needs.package-windows.outputs.installers }}
+          parameters: |
+            version: ${{ toJSON(inputs.version) }}
+          wait-for-completion: true
+          wait-for-completion-timeout-in-seconds: 7200
+          output-artifact-directory: signed
+      - uses: actions/upload-artifact@v7
+        with:
+          name: dist-installers
+          path: signed/*
           if-no-files-found: error
 
   sbom:
     runs-on: ubuntu-latest
-    env:
-      VERSION: ${{ inputs.version }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions-rust-lang/setup-rust-toolchain@v2

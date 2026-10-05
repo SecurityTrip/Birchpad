@@ -97,7 +97,8 @@ was signed. Phase 2 adds the nightly channel, background checks and automatic up
 - Until the maintainer creates the key, release and nightly builds stop with an error, and
   other builds trust no key: checks report that the manifest cannot be verified.
 - The installer and the packages are not Authenticode-signed yet: SmartScreen warns about the
-  installer. The manifest's signature protects updates regardless.
+  installer. The manifest's signature protects updates regardless. Release builds sign them
+  through SignPath once it is set up ([ADR 0021](0021-authenticode-signing-with-signpath.md)).
 - `vpk` was not run locally (no .NET SDK); the packaging steps first run in CI. The update
   path inside Birchpad is tested with a fake installer, and checked in the running application
   against a local manifest signed with a throwaway key.

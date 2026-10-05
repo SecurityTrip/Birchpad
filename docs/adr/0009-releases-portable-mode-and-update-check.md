@@ -32,7 +32,8 @@ stable, `-beta.N`/`-rc.N` is beta, any other pre-release is nightly. The workflo
 Every file gets a GitHub build provenance attestation. The workflow creates a **draft** release;
 a maintainer checks it and publishes it. Release jobs do not use build caches, so a cache written
 by another workflow cannot end up in a release. Signing steps are placeholders that say the
-binaries are unsigned; Authenticode (SignPath Foundation) and Apple Developer ID signing with
+binaries are unsigned; Authenticode (SignPath Foundation,
+[ADR 0021](0021-authenticode-signing-with-signpath.md)) and Apple Developer ID signing with
 notarization replace them. Windows on ARM is non-blocking, as in CI, until it is green.
 
 **Build information.** The workflow sets `BIRCHPAD_CHANNEL` and `BIRCHPAD_COMMIT`; local builds

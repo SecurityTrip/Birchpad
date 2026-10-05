@@ -33,7 +33,8 @@ are locked in the UI. ADMX/ADML templates are generated from the single policy l
 network requests at all. This is documented and tested.
 
 Implemented for nightly builds, the signed manifest and the Windows per-user installer in
-[ADR 0020](0020-signed-updates-and-nightly-builds.md).
+[ADR 0020](0020-signed-updates-and-nightly-builds.md); Authenticode signing in
+[ADR 0021](0021-authenticode-signing-with-signpath.md).
 
 ## Consequences
 

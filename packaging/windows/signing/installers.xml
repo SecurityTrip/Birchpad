@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  SignPath artifact configuration "installers": the per-user installers that Velopack's vpk makes
+  from the signed executables (vpk writes Birchpad's metadata into them), and the per-machine
+  MSI of stable releases (packaging/windows/Birchpad.wxs sets its Subject and Author).
+  The installers contain Velopack's Update.exe, an upstream open source binary, unsigned.
+-->
+<artifact-configuration xmlns="http://signpath.io/artifact-configuration/v1">
+  <parameters>
+    <parameter name="version" required="true" />
+  </parameters>
+  <zip-file>
+    <pe-file path="birchpad-${version}-windows-*-setup.exe" min-matches="1" max-matches="2"
+             product-name="Birchpad" product-version="${version}"
+             company-name="The Birchpad Contributors">
+      <authenticode-sign />
+    </pe-file>
+    <msi-file path="birchpad-${version}-windows-x64.msi" min-matches="0"
+              subject="Birchpad" author="The Birchpad Contributors">
+      <authenticode-sign />
+    </msi-file>
+  </zip-file>
+</artifact-configuration>
