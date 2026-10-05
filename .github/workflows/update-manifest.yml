@@ -1,0 +1,133 @@
+name: Update manifest
+
+# Adds a published release to the signed update manifest, or signs the manifest again so that it
+# does not expire, and publishes it as the `birchpad-updates.json` asset of the `updates`
+# release. See docs/adr/0020-signed-updates-and-nightly-builds.md and packaging/updates/README.md.
+#
+# The signing key is the BIRCHPAD_UPDATE_KEY secret of the `update-signing` environment, which
+# can require approval or limit the branches that use it.
+on:
+  # A maintainer published a reviewed draft release. (Releases that workflows publish, like the
+  # nightly ones, do not trigger this: the nightly workflow calls this workflow itself.)
+  release:
+    types: [published]
+  workflow_call:
+    inputs:
+      tag:
+        description: The release to add; empty to sign the manifest again.
+        type: string
+        default: ""
+      refresh-after-days:
+        description: Without a tag, sign again only if the manifest is this many days old.
+        type: number
+        default: 7
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: The release to add (v1.2.3); empty to sign the manifest again.
+        type: string
+        default: ""
+      remove:
+        description: Withdraw this version (1.2.3) from the manifest instead.
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+# One manifest change at a time: each extends the manifest the previous one wrote.
+concurrency:
+  group: update-manifest
+  cancel-in-progress: false
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  manifest:
+    runs-on: ubuntu-latest
+    environment: update-signing
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+      TAG: ${{ github.event.release.tag_name || inputs.tag }}
+      REMOVE: ${{ inputs.remove }}
+      REFRESH_DAYS: ${{ inputs.refresh-after-days || 0 }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # The trusted keys and the tool of the default branch, not of the release.
+          ref: ${{ github.event.repository.default_branch || 'main' }}
+      - uses: actions-rust-lang/setup-rust-toolchain@v2
+        with:
+          cache: false
+      - name: Build the release tool
+        run: cargo build --release --locked -p birchpad-release-tool
+      - name: Fetch the current manifest
+        shell: bash
+        run: |
+          mkdir -p current
+          if gh release download updates --repo "$REPO" --pattern birchpad-updates.json --dir current; then
+            echo "MANIFEST=current/birchpad-updates.json" >> "$GITHUB_ENV"
+          else
+            echo "::notice::No update manifest yet; starting one."
+            echo "MANIFEST=current/none.json" >> "$GITHUB_ENV"
+          fi
+      - name: Change and sign the manifest
+        shell: bash
+        env:
+          BIRCHPAD_UPDATE_KEY: ${{ secrets.BIRCHPAD_UPDATE_KEY }}
+        run: |
+          tool=target/release/birchpad-release
+          if [ -z "$BIRCHPAD_UPDATE_KEY" ]; then
+            echo "::error::The BIRCHPAD_UPDATE_KEY secret is not set (packaging/updates/README.md)"
+            exit 1
+          fi
+          if [ -n "$REMOVE" ]; then
+            "$tool" remove --manifest "$MANIFEST" --out birchpad-updates.json --version "$REMOVE"
+          elif [ -n "$TAG" ]; then
+            if [ "$TAG" = "updates" ]; then
+              echo "The manifest's own release: nothing to add."
+              exit 0
+            fi
+            version="${TAG#v}"
+            mkdir -p packages
+            packages=()
+            for platform in windows-x64 windows-arm64; do
+              file="birchpad-$version-$platform-full.nupkg"
+              if gh release download "$TAG" --repo "$REPO" --pattern "$file" --dir packages; then
+                packages+=(--package "$platform=packages/$file")
+              else
+                echo "::warning::$TAG has no $file: $platform users get the download page."
+              fi
+            done
+            "$tool" add --new --manifest "$MANIFEST" --out birchpad-updates.json \
+              --version "$version" \
+              --page "https://github.com/$REPO/releases/tag/$TAG" \
+              --download-base "https://github.com/$REPO/releases/download/$TAG" \
+              "${packages[@]}"
+          elif [ -f "$MANIFEST" ]; then
+            "$tool" refresh --manifest "$MANIFEST" --out birchpad-updates.json \
+              --if-older-than-days "$REFRESH_DAYS"
+          else
+            echo "No manifest to sign again."
+          fi
+          if [ -f birchpad-updates.json ]; then
+            "$tool" verify --manifest birchpad-updates.json
+          fi
+      - name: Publish the manifest
+        shell: bash
+        run: |
+          if [ ! -f birchpad-updates.json ]; then
+            echo "Nothing to publish."
+            exit 0
+          fi
+          if ! gh release view updates --repo "$REPO" > /dev/null 2>&1; then
+            gh release create updates --repo "$REPO" --prerelease --latest=false \
+              --target "${{ github.event.repository.default_branch || 'main' }}" \
+              --title "Update manifest" \
+              --notes "The signed manifest Birchpad checks for updates (ADR 0020). Not a release: the files of a version are on its own release page."
+          fi
+          gh release upload updates --repo "$REPO" --clobber birchpad-updates.json

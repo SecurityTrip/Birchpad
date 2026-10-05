@@ -1,0 +1,206 @@
+name: Build
+
+# The build of a release, shared by the release and nightly workflows: portable ZIPs for every
+# platform, the per-user installer and update package for Windows (Velopack), the SBOM, and the
+# Windows x64 binary for the MSI. See docs/adr/0009-releases-portable-mode-and-update-check.md and
+# docs/adr/0020-signed-updates-and-nightly-builds.md.
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: The version being built (semver), the tag without its `v`.
+        required: true
+        type: string
+      channel:
+        description: stable, beta or nightly.
+        required: true
+        type: string
+      ref:
+        description: The commit to build.
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  # Must match the velopack crate of crates/app/Cargo.toml.
+  VELOPACK_VERSION: "1.2.161"
+
+jobs:
+  build:
+    name: build (${{ matrix.name }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: windows-x64
+            os: windows-latest
+            targets: x86_64-pc-windows-msvc
+            runtime: win-x64
+          - name: windows-arm64
+            os: windows-11-arm
+            targets: aarch64-pc-windows-msvc
+            runtime: win-arm64
+            # Non-blocking until Windows on ARM is green in CI.
+            experimental: true
+          - name: linux-x64
+            # The oldest supported runner, so the binary runs on older glibc.
+            os: ubuntu-22.04
+            targets: x86_64-unknown-linux-gnu
+          - name: macos
+            os: macos-latest
+            # Built for both architectures and combined into a universal binary.
+            targets: aarch64-apple-darwin,x86_64-apple-darwin
+    runs-on: ${{ matrix.os }}
+    continue-on-error: ${{ matrix.experimental == true }}
+    env:
+      VERSION: ${{ inputs.version }}
+      CHANNEL: ${{ inputs.channel }}
+      # Read by crates/app/build.rs.
+      BIRCHPAD_VERSION: ${{ inputs.version }}
+      BIRCHPAD_CHANNEL: ${{ inputs.channel }}
+      BIRCHPAD_COMMIT: ${{ inputs.ref }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
+      - name: Build time
+        shell: bash
+        # Update manifests signed before this commit are refused by this build (ADR 0020).
+        run: echo "BIRCHPAD_BUILD_TIME=$(git log -1 --format=%ct)" >> "$GITHUB_ENV"
+      - uses: actions-rust-lang/setup-rust-toolchain@v2
+        with:
+          target: ${{ matrix.targets }}
+          # Release builds never reuse caches that other workflows could have written.
+          cache: false
+      - name: Install Linux GUI dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libxkbcommon-dev libxkbcommon-x11-dev libwayland-dev \
+            libvulkan-dev libx11-xcb-dev libxcb1-dev libfontconfig-dev libfreetype-dev \
+            libssl-dev libzstd-dev zip
+      - name: Build
+        shell: bash
+        run: |
+          IFS=',' read -ra targets <<< "${{ matrix.targets }}"
+          for target in "${targets[@]}"; do
+            cargo build --release --locked -p birchpad --target "$target"
+          done
+
+      - name: Package (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          name="birchpad-$VERSION-${{ matrix.name }}"
+          mkdir -p "dist/$name" bin
+          cp "target/${{ matrix.targets }}/release/birchpad.exe" "dist/$name/"
+          cp "target/${{ matrix.targets }}/release/birchpad.exe" bin/
+          cp packaging/portable/birchpad-portable.txt LICENSE-MIT LICENSE-APACHE README.md "dist/$name/"
+      - name: Sign (placeholder)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          # Authenticode signing (SignPath Foundation, see ADR 0005) goes here and must sign
+          # both dist/*/birchpad.exe and bin/birchpad.exe before they are packaged, and the
+          # Velopack installer (vpk pack --signParams).
+          echo "::notice::Authenticode signing is not set up yet; birchpad.exe is unsigned."
+      - name: Zip (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        working-directory: dist
+        run: |
+          $name = "birchpad-$env:VERSION-${{ matrix.name }}"
+          # The system's bsdtar writes zip files on every Windows runner, including ARM64.
+          & "$env:SystemRoot\System32\tar.exe" -a -c -f "$name.zip" $name
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Remove-Item -Recurse $name
+      - name: Installer and update package (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          dotnet tool install --global vpk --version "$VELOPACK_VERSION"
+          export PATH="$PATH:$USERPROFILE/.dotnet/tools"
+          mkdir -p velopack/in velopack/out
+          cp bin/birchpad.exe LICENSE-MIT LICENSE-APACHE README.md velopack/in/
+          # Full packages only: the signed manifest lists no deltas (ADR 0020).
+          vpk pack --packId Birchpad --packVersion "$VERSION" --packTitle Birchpad \
+            --packAuthors "The Birchpad Contributors" --packDir velopack/in \
+            --mainExe birchpad.exe --runtime "${{ matrix.runtime }}" \
+            --channel "${{ matrix.name }}-$CHANNEL" --delta None --noPortable \
+            --outputDir velopack/out
+          ls -l velopack/out
+          # Both Windows platforms upload to one release: one name per platform.
+          cp velopack/out/*-full.nupkg "dist/birchpad-$VERSION-${{ matrix.name }}-full.nupkg"
+          cp velopack/out/*-Setup.exe "dist/birchpad-$VERSION-${{ matrix.name }}-setup.exe"
+
+      - name: Package (Linux)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          name="birchpad-$VERSION-${{ matrix.name }}"
+          mkdir -p "dist/$name"
+          cp "target/${{ matrix.targets }}/release/birchpad" "dist/$name/"
+          cp packaging/portable/birchpad-portable.txt LICENSE-MIT LICENSE-APACHE README.md "dist/$name/"
+          cd dist
+          zip -r "$name.zip" "$name"
+          rm -r "$name"
+
+      - name: Package (macOS)
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          name="birchpad-$VERSION-${{ matrix.name }}"
+          app="dist/$name/Birchpad.app"
+          mkdir -p "$app/Contents/MacOS"
+          lipo -create -output "$app/Contents/MacOS/birchpad" \
+            target/aarch64-apple-darwin/release/birchpad \
+            target/x86_64-apple-darwin/release/birchpad
+          sed "s/@VERSION@/$VERSION/g" packaging/macos/Info.plist > "$app/Contents/Info.plist"
+          cp LICENSE-MIT LICENSE-APACHE README.md "dist/$name/"
+          # Ad-hoc signature only. Developer ID signing and notarization (ADR 0005) replace it.
+          codesign --force --deep --sign - "$app"
+          echo "::notice::Developer ID signing and notarization are not set up yet; Birchpad.app is ad-hoc signed."
+          ditto -c -k --keepParent "dist/$name" "dist/$name.zip"
+          rm -r "dist/$name"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist-${{ matrix.name }}
+          path: dist/*
+          if-no-files-found: error
+      - name: Keep the Windows x64 binary for the MSI
+        if: matrix.name == 'windows-x64'
+        uses: actions/upload-artifact@v4
+        with:
+          name: bin-windows-x64
+          path: bin/birchpad.exe
+          if-no-files-found: error
+
+  sbom:
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ inputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
+      - uses: actions-rust-lang/setup-rust-toolchain@v2
+        with:
+          cache: false
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-cyclonedx
+      - name: Generate the SBOM
+        shell: bash
+        run: |
+          cargo cyclonedx --format json --spec-version 1.5 --target all
+          mkdir -p dist
+          cp crates/app/birchpad.cdx.json "dist/birchpad-$VERSION-sbom.cdx.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist-sbom
+          path: dist/*
+          if-no-files-found: error

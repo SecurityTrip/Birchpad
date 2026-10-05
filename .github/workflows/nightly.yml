@@ -1,0 +1,138 @@
+name: Nightly
+
+# Builds `main` every night when it changed since the last nightly build, publishes it as a
+# pre-release `v<version>-nightly.<date>.<run>`, adds it to the signed update manifest and keeps
+# the ten newest nightly releases. A night without changes only signs the manifest again when it
+# is a week old, so that it never expires. See docs/adr/0020-signed-updates-and-nightly-builds.md.
+on:
+  schedule:
+    - cron: "17 2 * * *"
+  workflow_dispatch:
+    inputs:
+      force:
+        description: Build even if main did not change since the last nightly build.
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nightly
+  cancel-in-progress: false
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      build: ${{ steps.decide.outputs.build }}
+      version: ${{ steps.decide.outputs.version }}
+      ref: ${{ steps.decide.outputs.ref }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+          # The tags, to find the last nightly build and the released versions.
+          fetch-depth: 0
+      - name: Decide
+        id: decide
+        shell: bash
+        env:
+          FORCE: ${{ inputs.force }}
+        run: |
+          base=$(python3 -c 'import tomllib; print(tomllib.load(open("Cargo.toml", "rb"))["workspace"]["package"]["version"])')
+          case "$base" in
+            *-*)
+              echo "::error::The workspace version $base is a pre-release; nightly versions are pre-releases of a plain one"
+              exit 1
+              ;;
+          esac
+          if git rev-parse -q --verify "refs/tags/v$base" > /dev/null; then
+            echo "::error::v$base is released already: raise the version on main, so that nightly builds are newer than it"
+            exit 1
+          fi
+          head=$(git rev-parse HEAD)
+          last=$(git tag --list 'v*-nightly.*' --sort=-creatordate | head -n 1)
+          if [ -n "$last" ] && [ "$(git rev-list -n 1 "$last")" = "$head" ] && [ "$FORCE" != "true" ]; then
+            echo "main has not changed since $last."
+            echo "build=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          version="$base-nightly.$(date -u +%Y%m%d).$GITHUB_RUN_NUMBER"
+          {
+            echo "build=true"
+            echo "version=$version"
+            echo "ref=$head"
+          } >> "$GITHUB_OUTPUT"
+          echo "Building $version from $head."
+
+  build:
+    needs: prepare
+    if: needs.prepare.outputs.build == 'true'
+    uses: ./.github/workflows/build.yml
+    with:
+      version: ${{ needs.prepare.outputs.version }}
+      channel: nightly
+      ref: ${{ needs.prepare.outputs.ref }}
+
+  publish:
+    needs: [prepare, build]
+    if: ${{ !cancelled() && !failure() && needs.prepare.outputs.build == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    outputs:
+      tag: ${{ steps.release.outputs.tag }}
+    env:
+      VERSION: ${{ needs.prepare.outputs.version }}
+      REF: ${{ needs.prepare.outputs.ref }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: dist-*
+          path: dist
+          merge-multiple: true
+      - name: Checksums
+        working-directory: dist
+        run: sha256sum -- * > "birchpad-$VERSION-SHA256SUMS.txt"
+      - uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: dist/*
+      - name: Publish the pre-release
+        id: release
+        shell: bash
+        run: |
+          tag="v$VERSION"
+          gh release create "$tag" --repo "$GITHUB_REPOSITORY" --target "$REF" \
+            --prerelease --latest=false --title "Birchpad $VERSION" \
+            --notes "Nightly build of main at $REF. Nightly builds are untested snapshots; the per-user installer updates itself to newer nightly builds." \
+            dist/*
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+      - name: Keep the ten newest nightly releases
+        shell: bash
+        run: |
+          gh release list --repo "$GITHUB_REPOSITORY" --limit 200 \
+            --json tagName,createdAt --jq '.[] | select(.tagName | test("-nightly\\.")) | "\(.createdAt) \(.tagName)"' \
+            | sort -r | tail -n +11 | while read -r _ tag; do
+              echo "Deleting $tag"
+              gh release delete "$tag" --repo "$GITHUB_REPOSITORY" --cleanup-tag --yes
+            done
+
+  manifest:
+    # After a new nightly build, add it; on a night without one, sign the manifest again if it is
+    # a week old.
+    needs: [prepare, publish]
+    if: ${{ !cancelled() && (needs.prepare.outputs.build != 'true' || needs.publish.result == 'success') }}
+    uses: ./.github/workflows/update-manifest.yml
+    with:
+      tag: ${{ needs.publish.outputs.tag }}
+      refresh-after-days: 7
+    secrets: inherit
+    permissions:
+      contents: write
