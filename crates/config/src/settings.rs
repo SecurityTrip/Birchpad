@@ -234,7 +234,8 @@ impl Default for SessionSettings {
 pub struct UpdateSettings {
     pub mode: UpdateMode,
     pub channel: UpdateChannel,
-    /// Update feed to use instead of the official one, e.g. an internal mirror.
+    /// The signed update manifest to read instead of the official one, e.g. on an internal
+    /// mirror; it must still be signed with a key Birchpad trusts.
     pub url: Option<String>,
 }
 

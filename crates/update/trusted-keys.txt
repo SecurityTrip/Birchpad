@@ -1,0 +1,3 @@
+# Public keys of the ed25519 keys that sign Birchpad's update manifest (ADR 0020), one base64 key
+# per line. Birchpad accepts a manifest signed by any of them. A new key is added here, and
+# released, before manifests are signed with it; see packaging/updates/README.md.

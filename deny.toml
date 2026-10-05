@@ -40,6 +40,9 @@ allow = [
     "bzip2-1.0.6",
     # File-level copyleft: fine to depend on, but never copy MPL code into our crates.
     "MPL-2.0",
+    # Mozilla's root certificates (webpki-roots), compiled in by the HTTP client of Velopack's
+    # updater; Birchpad's own requests use the operating system's certificate store.
+    "CDLA-Permissive-2.0",
 ]
 
 [bans]

@@ -1,6 +1,6 @@
 [package]
 name = "birchpad-update"
-description = "Checking for Birchpad updates: release feeds, channels and version comparison."
+description = "Checking for Birchpad updates: the signed update manifest, channels and version comparison."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -9,11 +9,14 @@ repository.workspace = true
 authors.workspace = true
 
 [dependencies]
+base64 = "0.22"
 birchpad-config.workspace = true
+ed25519-dalek = "3"
 rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
-semver = "1"
+semver = { version = "1", features = ["serde"] }
 serde.workspace = true
 serde_json.workspace = true
+sha2 = "0.11"
 thiserror.workspace = true
 ureq = { version = "3", default-features = false, features = ["rustls-no-provider", "platform-verifier", "win-system-proxy"] }
 

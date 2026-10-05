@@ -244,6 +244,9 @@ pub const COMMANDS: &[CommandSpec] = &[
     workspace("language.set", "Language"),
     // Help
     workspace("help.check-updates", "Check for Updates..."),
+    // From the update dialogs and notifications.
+    workspace("help.update-now", "Update and Restart"),
+    workspace("help.restart-to-update", "Restart to Update"),
     workspace("help.about", "About Birchpad"),
 ];
 

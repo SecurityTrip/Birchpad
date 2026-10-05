@@ -25,4 +25,4 @@ pub use settings::{
     SessionSettings, Settings, SmartHighlighting, TokenMatching, UpdateChannel, UpdateMode,
     UpdateSettings,
 };
-pub use state::{MAX_RECENT_FILES, SplitOrientation, UserState};
+pub use state::{MAX_RECENT_FILES, SplitOrientation, UpdateState, UserState};

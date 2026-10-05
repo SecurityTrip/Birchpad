@@ -34,6 +34,7 @@ mod session_tests;
 #[cfg(test)]
 mod split_tests;
 mod status_bar;
+mod updates;
 mod workspace;
 
 use std::fmt::Write as _;
@@ -56,6 +57,7 @@ pub(crate) const MONOSPACE: &str = if cfg!(windows) {
 };
 
 fn main() {
+    updates::run_installer_hooks();
     let cwd = std::env::current_dir().unwrap_or_default();
     let command_line = CommandLine::parse(std::env::args_os().skip(1), &cwd);
     for warning in &command_line.warnings {
@@ -92,7 +94,12 @@ fn main() {
             let mut app_state = AppState::new(settings, paths);
             app_state.no_session = command_line.no_session;
             cx.set_global(app_state);
-            help::Updates::install(help::Updates::http(), cx);
+            updates::Updates::install(
+                updates::Updates::http(),
+                updates::trusted_keys(),
+                updates::detect_installer(),
+                cx,
+            );
             commands::init(user_keymap.as_deref(), cx);
             cx.on_window_closed(|cx, _| {
                 if cx.windows().is_empty() {
@@ -135,6 +142,7 @@ fn main() {
                 async {}
             })
             .detach();
+            updates::start_background_checks(window, workspace.downgrade(), cx);
             if let Some(server) = server {
                 serve_later_launches(server, window, workspace, cx);
             }
