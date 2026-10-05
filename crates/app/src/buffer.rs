@@ -10,7 +10,9 @@ use birchpad_core::{
     ChangeSet, Document, Edit, Encoding, Format, LineMarkers, RangeSet, RevisionId, Rope,
     Selection, Transaction, UndoGrouping,
 };
-use birchpad_io::{DecodeProblem, DiskStamp, Head, LoadOptions, LoadedFile, ReadError};
+use birchpad_io::{
+    ByteChanges, DecodeProblem, DiskStamp, Head, LoadOptions, LoadedFile, ReadError,
+};
 use birchpad_syntax::{Language, Syntax, Tree};
 use gpui_kit::{AppContext as _, Context, EntityId, EventEmitter, Task};
 
@@ -157,6 +159,8 @@ pub(crate) struct Buffer {
     /// The number of an untitled buffer: 1 for "new 1".
     untitled: Option<usize>,
     problem: Option<DecodeProblem>,
+    /// With a problem: where saving the text would change the file.
+    decode_changes: ByteChanges,
     file_read_only: bool,
     requested_read_only: bool,
     /// The encoding the file was read in on request (Encoding > Encode in), if any.
@@ -190,6 +194,7 @@ impl Buffer {
             path: None,
             untitled: Some(number),
             problem: None,
+            decode_changes: ByteChanges::default(),
             file_read_only: false,
             requested_read_only: false,
             chosen_encoding: None,
@@ -254,6 +259,7 @@ impl Buffer {
             path: Some(path),
             untitled: None,
             problem: None,
+            decode_changes: ByteChanges::default(),
             file_read_only: false,
             requested_read_only: read_only,
             chosen_encoding: None,
@@ -347,6 +353,7 @@ impl Buffer {
         match result {
             Ok(file) => {
                 self.problem = file.problem;
+                self.decode_changes = file.changes;
                 self.file_read_only = file.info.read_only;
                 self.disk = Some(file.info.stamp());
                 self.head = Some(file.head);
@@ -371,6 +378,7 @@ impl Buffer {
                     format.encoding = encoding;
                 }
                 self.problem = None;
+                self.decode_changes = ByteChanges::default();
                 self.disk = None;
                 self.head = None;
                 self.doc = Document::with_format(Rope::new(), format);
@@ -796,6 +804,20 @@ impl Buffer {
                 (read as f32 / loading.total as f32).min(1.)
             }
         })
+    }
+
+    /// Where saving would change a file that did not decode exactly.
+    pub(crate) fn decode_changes(&self) -> &ByteChanges {
+        &self.decode_changes
+    }
+
+    /// Makes a document that did not decode exactly editable: the user accepted that saving
+    /// changes the bytes in [`Self::decode_changes`].
+    pub(crate) fn edit_anyway(&mut self, cx: &mut Context<Self>) {
+        if self.problem.take().is_some() {
+            cx.emit(BufferEvent::StateChanged);
+            cx.notify();
+        }
     }
 
     pub(crate) fn read_only(&self) -> Option<ReadOnly> {

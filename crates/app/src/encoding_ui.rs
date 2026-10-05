@@ -5,12 +5,14 @@ use anyhow::{Context as _, Result, anyhow, bail};
 use birchpad_commands::Invocation;
 use birchpad_core::motion::{line_of, line_range};
 use birchpad_core::{Encoding, Format, LineEnding, Rope};
+use birchpad_io::ByteChanges;
 use gpui_kit::{Context, Entity, PromptLevel, Window};
 use serde::Deserialize;
 
 use crate::app_state::AppState;
-use crate::buffer::Buffer;
+use crate::buffer::{Buffer, ReadOnly};
 use crate::commands::CommandRegistry;
+use crate::editor::EditorView;
 use crate::workspace::{Workspace, report_warning};
 
 #[derive(Deserialize)]
@@ -27,6 +29,9 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
         "encoding.convert-to",
         |this, args: EncodingArgs, window, cx| convert_to(this, &args.encoding, window, cx),
     );
+    registry.editor("encoding.edit-anyway", |this, (), window, cx| {
+        edit_anyway(this, window, cx)
+    });
 }
 
 fn parse(name: &str, cx: &gpui_kit::App) -> Result<(Encoding, bool)> {
@@ -120,6 +125,91 @@ fn convert_to(
         );
     }
     Ok(())
+}
+
+/// Makes a document that did not decode exactly editable, once the user accepts where saving
+/// will change the file's bytes.
+fn edit_anyway(
+    view: &mut EditorView,
+    window: &mut Window,
+    cx: &mut Context<EditorView>,
+) -> Result<()> {
+    let buffer = view.buffer.clone();
+    let (name, encoding, changes) = {
+        let buffer = buffer.read(cx);
+        if !matches!(buffer.read_only(), Some(ReadOnly::Decoding(_))) {
+            bail!(
+                "{} was decoded exactly: it can be edited",
+                buffer.display_name()
+            );
+        }
+        let encoding = birchpad_io::display_name(buffer.doc().format().encoding, false);
+        (
+            buffer.display_name(),
+            encoding,
+            buffer.decode_changes().clone(),
+        )
+    };
+    let answer = window.prompt(
+        PromptLevel::Warning,
+        &format!("Edit {name} anyway?"),
+        Some(&describe_changes(&changes, &encoding)),
+        &["Edit Anyway", "Cancel"],
+        cx,
+    );
+    cx.spawn(async move |_, cx| {
+        if answer.await == Ok(0) {
+            buffer.update(cx, |buffer, cx| buffer.edit_anyway(cx));
+        }
+    })
+    .detach();
+    Ok(())
+}
+
+/// Where saving a document that did not decode exactly will change the file, for the user to
+/// accept before editing it.
+pub(crate) fn describe_changes(changes: &ByteChanges, encoding: &str) -> String {
+    let hex = |bytes: &[u8]| {
+        bytes
+            .iter()
+            .map(|byte| format!("{byte:02X}"))
+            .collect::<Vec<_>>()
+            .join(" ")
+    };
+    let places = if changes.count == 1 {
+        "1 place".to_owned()
+    } else {
+        format!("{} places", changes.count)
+    };
+    let mut text =
+        format!("Saving writes the text in {encoding} again, which changes {places} in the file:");
+    for change in &changes.first {
+        let (offset, before) = (change.offset, hex(&change.before));
+        let read_as = if change.text.is_empty() {
+            String::new()
+        } else {
+            format!(" ({})", change.text)
+        };
+        let line = match &change.after {
+            Some(after) if after.is_empty() => format!("offset {offset}: {before} is left out"),
+            Some(after) => format!("offset {offset}: {before}{read_as} becomes {}", hex(after)),
+            None => format!("offset {offset}: {before}{read_as} cannot be written in {encoding}"),
+        };
+        text.push_str("\n• ");
+        text.push_str(&line);
+    }
+    let unlisted = changes.count - changes.first.len();
+    if unlisted > 0 {
+        text.push_str(&format!("\n• and {unlisted} more"));
+    }
+    if changes.unwritable > 0 {
+        text.push_str(&format!(
+            "\n\nSaving is refused while the text has characters {encoding} cannot write: \
+             replace them, or convert the document to UTF-8."
+        ));
+    }
+    text.push_str("\n\nEverything else is saved as it was, apart from your edits.");
+    text
 }
 
 /// "first at Ln 3, Col 7" for an encoding problem.
@@ -267,6 +357,71 @@ mod tests {
             )
         });
         assert!(convert.is_err());
+    }
+
+    #[gpui_kit::test]
+    fn files_that_do_not_decode_can_be_edited_anyway(cx: &mut TestAppContext) {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("bad.txt");
+        std::fs::write(&path, b"ok \xC3( caf\xE9\n").unwrap();
+        let (workspace, cx) = open_workspace(cx);
+        workspace.update_in(cx, |workspace, window, cx| {
+            workspace.open_path(&path, window, cx)
+        });
+        cx.run_until_parked();
+        run(
+            &workspace,
+            Invocation::with_args("encoding.encode-in", json!({ "encoding": "utf-8" })),
+            cx,
+        );
+        let changes = workspace.read_with(cx, |workspace, cx| {
+            let view = workspace.active_view(cx).unwrap();
+            view.read(cx).buffer.read(cx).decode_changes().clone()
+        });
+        assert_eq!(
+            changes.first.iter().map(|c| c.offset).collect::<Vec<_>>(),
+            [3, 9]
+        );
+
+        let edit_anyway = Invocation::new("encoding.edit-anyway");
+        run(&workspace, edit_anyway.clone(), cx);
+        cx.simulate_prompt_answer("Cancel");
+        cx.run_until_parked();
+        cx.simulate_input("typed");
+        assert_eq!(active_text(&workspace, cx), "ok \u{FFFD}( caf\u{FFFD}\n");
+
+        run(&workspace, edit_anyway.clone(), cx);
+        cx.simulate_prompt_answer("Edit Anyway");
+        cx.run_until_parked();
+        cx.simulate_input("X");
+        cx.simulate_keystrokes(&secondary("s"));
+        cx.run_until_parked();
+        assert_eq!(
+            std::fs::read(&path).unwrap(),
+            b"Xok \xEF\xBF\xBD( caf\xEF\xBF\xBD\n",
+            "only the bytes that did not decode changed, besides the edit"
+        );
+        let decoded = workspace.update_in(cx, |workspace, window, cx| {
+            workspace.dispatch(&edit_anyway, window, cx)
+        });
+        assert!(decoded.is_err(), "nothing to accept any more");
+    }
+
+    #[test]
+    fn the_warning_lists_the_bytes_that_change() {
+        let changes =
+            birchpad_io::byte_changes(b"a\xFA\x5Bb\x82", 0, Encoding::Legacy("Shift_JIS"));
+        assert_eq!(
+            describe_changes(&changes, "Shift_JIS"),
+            "Saving writes the text in Shift_JIS again, which changes 2 places in the file:\n\
+             • offset 1: FA 5B (∵) becomes 81 E6\n\
+             • offset 4: 82 (\u{FFFD}) cannot be written in Shift_JIS\n\
+             \n\
+             Saving is refused while the text has characters Shift_JIS cannot write: replace \
+             them, or convert the document to UTF-8.\n\
+             \n\
+             Everything else is saved as it was, apart from your edits."
+        );
     }
 
     #[gpui_kit::test]

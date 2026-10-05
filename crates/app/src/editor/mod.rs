@@ -1407,7 +1407,12 @@ impl Render for EditorView {
         let banner = match buffer.read_only() {
             Some(ReadOnly::Decoding(problem)) => {
                 let encoding = birchpad_io::display_name(buffer.doc().format().encoding, false);
-                Some(crate::banner::decoding_problem(&encoding, problem))
+                Some(crate::banner::decoding_problem(
+                    &encoding,
+                    problem,
+                    buffer.decode_changes().count,
+                    self.focus_handle.clone(),
+                ))
             }
             Some(ReadOnly::File) => Some(crate::banner::read_only_file()),
             Some(ReadOnly::Requested) => Some(crate::banner::read_only_requested()),

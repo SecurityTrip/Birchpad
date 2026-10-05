@@ -2,10 +2,12 @@
 //! without losing data.
 //!
 //! The guiding rule is that no operation silently changes bytes of a file. Decoding reports
-//! every reason the text might not save back to the same bytes ([`DecodeProblem`]); encoding
-//! refuses characters the target encoding lacks ([`Unencodable`]) instead of replacing them;
-//! saving overwrites files in place after keeping a recovery copy ([`save`]).
+//! every reason the text might not save back to the same bytes ([`DecodeProblem`]) and where it
+//! would not ([`ByteChanges`]); encoding refuses characters the target encoding lacks
+//! ([`Unencodable`]) instead of replacing them; saving overwrites files in place after keeping a
+//! recovery copy ([`save`]).
 
+mod changes;
 mod decode;
 mod detect;
 mod disk;
@@ -13,6 +15,7 @@ mod encode;
 mod encoding;
 mod file;
 
+pub use changes::{ByteChange, ByteChanges, LISTED, byte_changes};
 pub use decode::{DecodeProblem, Decoded, bom_bytes, decode, sniff_bom};
 pub use detect::{DetectedBy, Detection, detect};
 pub use disk::{DiskStamp, HEAD_LEN, Head, decode_appended, read_from, stamp};

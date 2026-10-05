@@ -239,6 +239,7 @@ pub const COMMANDS: &[CommandSpec] = &[
     // Encoding; { "encoding": "utf-8" | "utf-8-bom" | "utf-16le-bom" | "ansi" | "windows-1251" | ... }
     workspace("encoding.encode-in", "Encode in"),
     workspace("encoding.convert-to", "Convert to"),
+    editor("encoding.edit-anyway", "Edit Anyway..."),
     // Language; { "language": "rust" | "cpp" | ... | "text" }
     workspace("language.set", "Language"),
     // Help
