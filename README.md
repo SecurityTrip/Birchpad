@@ -54,10 +54,12 @@ Put a file named `birchpad-portable.txt` next to the executable (the Windows and
 with it) and Birchpad keeps its settings and data in a `data` folder next to it. Administrator
 policies of the machine still apply.
 
-Birchpad uses the network only when you pick Help > Check for Updates. With
-`updates.mode = "off"` (a setting or an administrator policy) that command is disabled and
-Birchpad makes no network requests at all. See
-[ADR 0009](docs/adr/0009-releases-portable-mode-and-update-check.md).
+Birchpad uses the network only to check for updates: once a day, and when you pick Help > Check
+for Updates. It reads a manifest signed with the project's key and refuses any other; installed
+copies (the Windows installer) update themselves when Birchpad restarts, other copies show where
+to download the new version. With `updates.mode = "off"` (a setting or an administrator policy)
+Birchpad makes no network requests at all; `"notify"` announces new versions without
+downloading them. See [ADR 0020](docs/adr/0020-signed-updates-and-nightly-builds.md).
 
 ## Repository layout
 
@@ -69,9 +71,10 @@ Birchpad makes no network requests at all. See
 | `crates/io` | Encoding detection and conversion, reading and safely saving files. No UI. |
 | `crates/view` | Layout of a document view in cells: tab stops, word wrap, visual rows. No UI. |
 | `crates/cli` | Notepad++-compatible command line and the single-instance hand-off. No UI. |
-| `crates/update` | Checking for updates: release feeds, channels, version comparison. No UI. |
+| `crates/update` | Checking for updates: the signed update manifest, channels, versions. No UI. |
+| `crates/release-tool` | `birchpad-release`: signing keys and the update manifest, for the release workflows. |
 | `crates/app` | The desktop application. |
-| `packaging/` | Release packaging: per-machine MSI, macOS app bundle, portable-mode marker. |
+| `packaging/` | Release packaging: per-machine MSI, macOS app bundle, portable-mode marker, update signing setup. |
 | `docs/` | Roadmap and architecture decision records. |
 
 ## Contributing

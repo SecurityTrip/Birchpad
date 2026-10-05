@@ -32,6 +32,9 @@ are locked in the UI. ADMX/ADML templates are generated from the single policy l
 **Zero-network guarantee:** with updates and online features disabled by policy, Birchpad makes no
 network requests at all. This is documented and tested.
 
+Implemented for nightly builds, the signed manifest and the Windows per-user installer in
+[ADR 0020](0020-signed-updates-and-nightly-builds.md).
+
 ## Consequences
 
 - The MSI `UpgradeCode` is fixed forever: `A1F35DF8-07F9-400E-92E7-E761EC9BAE37`.

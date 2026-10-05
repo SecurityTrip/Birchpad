@@ -95,7 +95,10 @@ What Phase 1 left for later is marked *(from Phase 1)* in the phases below.
       lines; unsaved changes and deleted files asked about; all, current or no files
       (`files.change-detection`); View > Monitoring (tail -f) reading only appended bytes
       ([ADR 0018](adr/0018-file-changes-on-disk.md))
-- Nightly channel with automatic updates
+- [x] Nightly channel with automatic updates: nightly builds of `main` when it changed, an
+      ed25519-signed update manifest with rollback, freeze and downgrade protection, a per-user
+      installer for Windows (Velopack) that updates itself, background checks (`notify`) and
+      automatic updates (`auto`) ([ADR 0020](adr/0020-signed-updates-and-nightly-builds.md))
 - [x] Long lines keep their layout through edits: the column index and the rows of a wrapped
       line are updated around the edit; typing into a 10 MB line takes 1.6 ms per keystroke
       (6.7 ms with word wrap), down from 49 ms (168 ms) ([ADR 0008](adr/0008-editor-view-layout.md))
@@ -158,13 +161,17 @@ What Phase 1 left for later is marked *(from Phase 1)* in the phases below.
 | Beta | `release/x.y` | every 1–2 weeks |
 | Stable | tags on the release branch | every 4–8 weeks |
 
-- Per-user installer with silent delta updates; per-machine MSI (x64, ARM64) for enterprises,
-  updated by IT; portable ZIP; winget and Scoop manifests
-- Authenticode signing (SignPath Foundation for OSS) plus an ed25519-signed update manifest
+- [x] Per-user installer for Windows (Velopack) with silent updates from the signed manifest
+      ([ADR 0020](adr/0020-signed-updates-and-nightly-builds.md)); delta updates, and installers
+      that update themselves on macOS and Linux, are still to come
+- Per-machine MSI (x64, ARM64) for enterprises, updated by IT; portable ZIP; winget and Scoop
+  manifests
+- [x] ed25519-signed update manifest; Authenticode signing (SignPath Foundation for OSS) is
+      still to come
 - ADMX/ADML templates generated from the policy list in `birchpad-config`
 - SBOM and build provenance attestations with every release (the release workflow does both)
-- Background update checks (`notify`) and automatic updates (`auto`) with the signed manifest;
-  Phase 1 checks only on Help > Check for Updates *(from Phase 1)*
+- [x] Background update checks (`notify`) and automatic updates (`auto`) with the signed
+      manifest *(from Phase 1)*
 - MSI for pre-release versions and for ARM64 *(from Phase 1)*
 
 See [ADR 0005](adr/0005-distribution-and-updates.md).
