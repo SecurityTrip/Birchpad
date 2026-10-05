@@ -388,6 +388,14 @@ impl DisplayMap {
                 let last = &replacements[last];
                 last.new.end as isize - last.old.end as isize
             });
+            // A replacement reaching past the line (deleting it with its neighbors) or adding
+            // line breaks leaves nothing to keep.
+            let within = touching
+                .iter()
+                .all(|r| !r.breaks && old.start <= r.old.start && r.old.end <= old.end);
+            if !within {
+                continue;
+            }
             let start = old.start.strict_add_signed(moved);
             let grown: isize = touching
                 .iter()
@@ -395,10 +403,7 @@ impl DisplayMap {
                 .sum();
             let range = start..start + old.len().strict_add_signed(grown);
             let line = line_of(text, start);
-            let within = touching
-                .iter()
-                .all(|r| !r.breaks && old.start <= r.old.start && r.old.end <= old.end);
-            if !within || line_range(text, line) != range {
+            if line_range(text, line) != range {
                 continue;
             }
             if let (Some(first), Some(last)) = (touching.first(), touching.last()) {
@@ -863,7 +868,7 @@ mod tests {
             .map(|(a, b, text)| {
                 let a = boundaries[a % boundaries.len()];
                 let b = boundaries[b % boundaries.len()];
-                Edit::replace(a.min(b)..a.max(b).min(a.min(b) + 6), text)
+                Edit::replace(a.min(b)..a.max(b).min(a.min(b) + 24), text)
             })
             .filter(|edit| doc.is_char_boundary(edit.range.end))
             .collect();
@@ -877,6 +882,21 @@ mod tests {
             keep
         });
         edits
+    }
+
+    #[test]
+    fn deleting_a_long_line_with_its_neighbors() {
+        for config in [LayoutConfig::default(), wrapped(5)] {
+            let mut text = Rope::from_str(&format!("ab\n{}\ncd", "x y ".repeat(10)));
+            let mut map = DisplayMap::new(&text, config);
+            show_all(&mut map, &text);
+            let changes = ChangeSet::from_edits(&text, [Edit::delete(1..text.len() - 1)]).unwrap();
+            changes.apply(&mut text);
+            map.edit(&text, &changes);
+            assert!(map.lines.is_empty() || map.lines.values().all(|l| l.range.len() <= 2));
+            assert_eq!(map.row_count(&text), 1);
+            assert_eq!(map.column(&text, 2), 2);
+        }
     }
 
     proptest! {
