@@ -6,12 +6,14 @@ version's release notes from its section here.
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-10-05
+
 ### Fixed
 
 - Installed copies could not download any update: every package failed with "the response
   body is larger than request limit", because a package exactly as large as its manifest says
-  was refused. Copies of 0.1.0 and 0.1.1 have the bug, so they need the installer of the next
-  version run once by hand; it updates them in place, keeping settings and sessions.
+  was refused. Copies of 0.1.0 have the bug, so they need the 0.1.2 installer run once by hand;
+  it updates them in place, keeping settings and sessions.
 
 ### Added
 
@@ -74,5 +76,6 @@ The first release: a Notepad++-like editor for Windows, Linux and macOS.
   entirely (`updates.mode = "off"`).
 - Nightly builds of `main` on the nightly channel.
 
-[Unreleased]: https://github.com/SecurityTrip/Birchpad/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/SecurityTrip/Birchpad/compare/v0.1.2...HEAD
+[0.1.2]: https://github.com/SecurityTrip/Birchpad/compare/v0.1.0...v0.1.2
 [0.1.0]: https://github.com/SecurityTrip/Birchpad/releases/tag/v0.1.0
