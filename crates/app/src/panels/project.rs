@@ -849,6 +849,7 @@ impl Render for ProjectPanel {
                             Button::new("project-new")
                                 .small()
                                 .label("New Workspace...")
+                                .debug_selector(|| "project-new".into())
                                 .on_click(cx.listener(|this, _, window, cx| {
                                     this.ask_save_path(window, cx, |panel, path, cx| {
                                         panel.new_workspace(path, cx)
@@ -860,6 +861,7 @@ impl Render for ProjectPanel {
                                 .small()
                                 .ghost()
                                 .label("Open Workspace...")
+                                .debug_selector(|| "project-open".into())
                                 .on_click(cx.listener(|this, _, window, cx| {
                                     this.ask_paths(false, window, cx, |panel, paths, cx| {
                                         if let Some(path) = paths.into_iter().next() {
