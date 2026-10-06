@@ -653,6 +653,7 @@ dependencies = [
  "memchr",
  "proptest",
  "ropey",
+ "similar",
  "smallvec",
  "thiserror 2.0.21",
 ]

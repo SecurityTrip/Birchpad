@@ -20,9 +20,9 @@ pub use session::{
     create_private_dir, write_private,
 };
 pub use settings::{
-    AutoIndent, ChangeDetection, CurrentLine, DiagnosticsSettings, Edge, EditorSettings,
-    FileSettings, HighlightingSettings, NetworkSettings, PluginInstall, PluginSettings,
-    SessionSettings, Settings, SmartHighlighting, TokenMatching, UpdateChannel, UpdateMode,
-    UpdateSettings,
+    AutoIndent, ChangeDetection, ChangeHistory, CurrentLine, DiagnosticsSettings, Edge,
+    EditorSettings, FileSettings, HighlightingSettings, NetworkSettings, PluginInstall,
+    PluginSettings, SessionSettings, Settings, SmartHighlighting, TokenMatching, UpdateChannel,
+    UpdateMode, UpdateSettings,
 };
 pub use state::{MAX_RECENT_FILES, SplitOrientation, UpdateState, UserState};

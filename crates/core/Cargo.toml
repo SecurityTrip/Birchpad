@@ -12,6 +12,7 @@ authors.workspace = true
 fancy-regex = "0.19"
 memchr = "2"
 ropey.workspace = true
+similar = { version = "2.7", default-features = false }
 thiserror.workspace = true
 smallvec.workspace = true
 

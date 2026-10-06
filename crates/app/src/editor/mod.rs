@@ -4,6 +4,8 @@
 //! selection through the changes the others make. Layout in cells (tab stops, word wrap, rows)
 //! comes from `birchpad-view`; [`element::EditorElement`] turns it into pixels and paints it.
 
+#[cfg(test)]
+mod change_history_tests;
 mod column_editor;
 mod element;
 mod folding;
@@ -242,6 +244,8 @@ pub(crate) struct ViewSettings {
     pub(crate) line_numbers: bool,
     pub(crate) bookmark_margin: bool,
     pub(crate) fold_margin: bool,
+    /// The change history margin.
+    pub(crate) change_history: bool,
     /// View > Show Symbol.
     pub(crate) show_whitespace: bool,
     pub(crate) show_eol: bool,
@@ -266,6 +270,7 @@ impl ViewSettings {
             line_numbers: editor.line_numbers,
             bookmark_margin: editor.bookmark_margin,
             fold_margin: editor.fold_margin,
+            change_history: editor.change_history == birchpad_config::ChangeHistory::Margin,
             show_whitespace: app.state.show_whitespace.unwrap_or(editor.show_whitespace),
             show_eol: app.state.show_eol.unwrap_or(editor.show_eol),
             indent_guides: app.state.indent_guides.unwrap_or(editor.indent_guides),
@@ -1241,11 +1246,12 @@ impl EditorView {
             }
             return;
         }
-        // In the line number margin, clicking and dragging selects whole lines.
-        let in_line_numbers = layout
-            .margins
-            .line_numbers
-            .is_some_and(|margin| margin.contains(&event.position));
+        // In the line number margin, clicking and dragging selects whole lines; in the change
+        // history margin too, as in Scintilla's margins that take no clicks of their own.
+        let in_line_numbers = [layout.margins.line_numbers, layout.margins.changes]
+            .into_iter()
+            .flatten()
+            .any(|margin| margin.contains(&event.position));
         let text = self.text(cx).clone();
         let Some(pos) = self.position_for_point(event.position, cx) else {
             return;

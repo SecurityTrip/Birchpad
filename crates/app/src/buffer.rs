@@ -7,8 +7,8 @@ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::time::{Duration, Instant};
 
 use birchpad_core::{
-    ChangeSet, Document, Edit, Encoding, Format, LineMarkers, RangeSet, RevisionId, Rope,
-    Selection, Transaction, UndoGrouping,
+    ChangeHistory, ChangeSet, Document, Edit, Encoding, Format, LineChange, LineMarkers, RangeSet,
+    RevisionId, Rope, Selection, Transaction, UndoGrouping,
 };
 use birchpad_io::{
     ByteChanges, DecodeProblem, DiskStamp, Head, LoadOptions, LoadedFile, ReadError,
@@ -35,7 +35,7 @@ pub(crate) enum BufferEvent {
     FollowEnd,
     /// The modified flag, path, format or read-only state changed.
     StateChanged,
-    /// Bookmarks or token styles changed without an edit.
+    /// Bookmarks, token styles or the changed lines changed without an edit.
     MarksChanged,
     /// The language changed or a new syntax tree arrived: highlights need redrawing.
     SyntaxChanged,
@@ -142,6 +142,40 @@ struct Loading {
     tasks: [Task<()>; 2],
 }
 
+/// The change history (Notepad++'s orange and green lines, ADR 0023): the texts to compare
+/// with, and the changed lines as of the last comparison, which follow edits until the next.
+struct ChangeTracking {
+    history: ChangeHistory,
+    modified: LineMarkers,
+    saved: LineMarkers,
+    /// Bumped when `history` changes (a save, text appended to the file), so that a
+    /// comparison started before keeps its result to itself.
+    generation: u64,
+    comparing: Option<Comparing>,
+}
+
+impl ChangeTracking {
+    /// Starts with `text`: no line has changed.
+    fn new(text: Rope) -> Self {
+        Self {
+            history: ChangeHistory::new(text),
+            modified: LineMarkers::new(),
+            saved: LineMarkers::new(),
+            generation: 0,
+            comparing: None,
+        }
+    }
+}
+
+/// A comparison running in the background.
+struct Comparing {
+    /// Edits made since it started, composed into one, to move its result with.
+    since: Option<ChangeSet>,
+    /// The text or the history changed since it started: compare again when it ends.
+    again: bool,
+    task: Task<()>,
+}
+
 /// The backup copy of a buffer's unsaved text (sessions, ADR 0017).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct Backup {
@@ -165,6 +199,7 @@ pub(crate) struct Buffer {
     chosen_encoding: Option<Encoding>,
     loading: Option<Loading>,
     marks: DocumentMarks,
+    changes: ChangeTracking,
     /// Bookmarks to set once the file has been read (a restored session).
     pending_bookmarks: Option<Vec<usize>>,
     pub(crate) backup: Option<Backup>,
@@ -198,6 +233,7 @@ impl Buffer {
             chosen_encoding: None,
             loading: None,
             marks: DocumentMarks::default(),
+            changes: ChangeTracking::new(Rope::new()),
             pending_bookmarks: None,
             backup: None,
             disk: None,
@@ -233,6 +269,8 @@ impl Buffer {
         if buffer.path.is_some() {
             buffer.untitled = None;
         }
+        // The change history starts with the text put back.
+        buffer.changes = ChangeTracking::new(buffer.doc.text().clone());
         buffer.detect_language(cx);
         buffer
     }
@@ -240,6 +278,7 @@ impl Buffer {
     /// An untitled buffer with existing text.
     pub(crate) fn untitled_with(number: usize, doc: Document) -> Self {
         Self {
+            changes: ChangeTracking::new(doc.text().clone()),
             doc,
             ..Self::untitled(number)
         }
@@ -263,6 +302,7 @@ impl Buffer {
             chosen_encoding: None,
             loading: None,
             marks: DocumentMarks::default(),
+            changes: ChangeTracking::new(Rope::new()),
             pending_bookmarks: None,
             backup: None,
             disk: None,
@@ -357,6 +397,7 @@ impl Buffer {
                 self.head = Some(file.head);
                 self.doc = Document::with_format(file.text, file.format);
                 self.marks = DocumentMarks::default();
+                self.changes = ChangeTracking::new(self.doc.text().clone());
                 if let Some(lines) = bookmarks {
                     self.marks.bookmarks.set_lines(self.doc.text(), lines);
                 }
@@ -381,6 +422,7 @@ impl Buffer {
                 self.head = None;
                 self.doc = Document::with_format(Rope::new(), format);
                 self.marks = DocumentMarks::default();
+                self.changes = ChangeTracking::new(Rope::new());
                 self.set_pending_bookmarks();
                 self.loaded = true;
                 self.detect_language(cx);
@@ -440,6 +482,88 @@ impl Buffer {
 
     pub(crate) fn marks(&self) -> &DocumentMarks {
         &self.marks
+    }
+
+    /// The lines changed since the document was opened: those that differ from the saved text,
+    /// and those changed and saved.
+    pub(crate) fn changed_lines(&self) -> (&LineMarkers, &LineMarkers) {
+        (&self.changes.modified, &self.changes.saved)
+    }
+
+    /// Compares the text with the change history in the background. A comparison already
+    /// running compares again when it ends.
+    fn compare_changes(&mut self, cx: &mut Context<Self>) {
+        if let Some(comparing) = &mut self.changes.comparing {
+            comparing.again = true;
+            return;
+        }
+        if AppState::global(cx).settings.editor.change_history
+            == birchpad_config::ChangeHistory::Off
+        {
+            return;
+        }
+        let text = self.doc.text().clone();
+        let mut history = self.changes.history.clone();
+        let generation = self.changes.generation;
+        let task = cx.spawn(async move |this, cx| {
+            let (history, text, lines) = cx
+                .background_spawn(async move {
+                    let lines = history.lines(&text);
+                    (history, text, lines)
+                })
+                .await;
+            this.update(cx, |buffer, cx| {
+                buffer.finish_comparing(history, generation, &text, lines, cx);
+            })
+            .ok();
+        });
+        self.changes.comparing = Some(Comparing {
+            since: None,
+            again: false,
+            task,
+        });
+    }
+
+    /// Takes the changed lines of `text` from a finished comparison, moved through the edits
+    /// made since.
+    fn finish_comparing(
+        &mut self,
+        history: ChangeHistory,
+        generation: u64,
+        text: &Rope,
+        lines: Vec<(ByteRange<usize>, LineChange)>,
+        cx: &mut Context<Self>,
+    ) {
+        let Some(comparing) = self.changes.comparing.take() else {
+            return;
+        };
+        // This runs inside the comparison's task: let it finish instead of cancelling it.
+        comparing.task.detach();
+        if generation == self.changes.generation {
+            // It also compared the saved text with the original: keep that.
+            self.changes.history = history;
+            let lines_of = |kind: LineChange| {
+                lines
+                    .iter()
+                    .filter(move |(_, change)| *change == kind)
+                    .flat_map(|(range, _)| range.clone())
+            };
+            self.changes
+                .modified
+                .set_lines(text, lines_of(LineChange::Modified));
+            self.changes
+                .saved
+                .set_lines(text, lines_of(LineChange::Saved));
+            if let Some(since) = &comparing.since {
+                self.changes.modified.map(since, self.doc.text());
+                self.changes.saved.map(since, self.doc.text());
+            }
+            cx.emit(BufferEvent::MarksChanged);
+            cx.notify();
+        }
+        if comparing.again || generation != self.changes.generation {
+            self.compare_changes(cx);
+        }
     }
 
     /// Changes the document's decorations (bookmarks, token styles) and redraws its views.
@@ -619,6 +743,16 @@ impl Buffer {
         if changes.is_identity() {
             return;
         }
+        // The changed lines move with the text until the comparison brings them up to date.
+        self.changes.modified.map(changes, self.doc.text());
+        self.changes.saved.map(changes, self.doc.text());
+        if let Some(comparing) = &mut self.changes.comparing {
+            comparing.since = Some(match comparing.since.take() {
+                Some(earlier) => earlier.compose(changes.clone()),
+                None => changes.clone(),
+            });
+        }
+        self.compare_changes(cx);
         if self.syntax.syntax.is_some() {
             let mut folds = std::mem::take(&mut self.syntax.folds);
             birchpad_core::map_ranges(&mut folds, changes);
@@ -735,6 +869,9 @@ impl Buffer {
             let mut new_text = old_text.clone();
             transaction.changes().apply(&mut new_text);
             self.doc = Document::with_format(new_text, self.doc.format());
+            // Part of the file, not a change.
+            self.changes.history.append(text);
+            self.changes.generation += 1;
             self.follow_edit(&old_text, &transaction, cx);
             cx.emit(BufferEvent::Edited {
                 transaction,
@@ -768,12 +905,13 @@ impl Buffer {
         cx.notify();
     }
 
-    /// Records that `revision` of the document was written to `path` (a new path after Save As),
-    /// which then looked like `disk`.
+    /// Records that `revision` of the document, `text`, was written to `path` (a new path after
+    /// Save As), which then looked like `disk`.
     pub(crate) fn did_save(
         &mut self,
         path: PathBuf,
         revision: RevisionId,
+        text: Rope,
         disk: Option<(DiskStamp, Head)>,
         cx: &mut Context<Self>,
     ) {
@@ -788,6 +926,10 @@ impl Buffer {
             self.detect_language(cx);
         }
         self.doc.mark_saved_at(revision);
+        // Modified lines that were saved turn green.
+        self.changes.history.save(text);
+        self.changes.generation += 1;
+        self.compare_changes(cx);
         cx.emit(BufferEvent::StateChanged);
         cx.notify();
     }
