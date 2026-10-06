@@ -20,6 +20,14 @@ version's release notes from its section here.
   hides the panel.
 - A middle click on a tab closes it, as in Notepad++
   ([#9](https://github.com/SecurityTrip/Birchpad/issues/9)).
+- Change history, as in Notepad++: a margin marks the lines changed since the document was
+  opened, orange until they are saved, then green
+  ([#11](https://github.com/SecurityTrip/Birchpad/issues/11)). `editor.change-history = "off"`
+  turns it off.
+- Split view by dragging a tab: dropped on the right or bottom third of the text, it opens in
+  the other view beside or below ([#12](https://github.com/SecurityTrip/Birchpad/issues/12)).
+  With Ctrl, or for the only tab, the document is cloned there; with Ctrl, a tab dropped in the
+  other view is cloned too.
 
 ### Fixed
 

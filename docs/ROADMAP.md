@@ -141,6 +141,11 @@ What Phase 1 left for later is marked *(from Phase 1)* in the phases below.
       ([#10](https://github.com/SecurityTrip/Birchpad/issues/10)); found on the way, the close
       button of a tab closed unsaved documents without asking, and TOML keys had the color of
       table names
+- [x] Change history in the margin, orange and green as in Notepad++
+      ([#11](https://github.com/SecurityTrip/Birchpad/issues/11),
+      [ADR 0023](adr/0023-change-history.md)); split view by dragging a tab to the side of the
+      text ([#12](https://github.com/SecurityTrip/Birchpad/issues/12),
+      [ADR 0016](adr/0016-split-view.md))
 - Tests for every scenario. Birchpad has no testers, so its tests are its quality assurance:
   - A coverage report in CI (`cargo llvm-cov`) for each crate, with a floor that only rises,
     and the untested code it shows covered first
