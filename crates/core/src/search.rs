@@ -1045,6 +1045,149 @@ mod tests {
             Searcher::new(&Query::default()).unwrap_err(),
             SearchError::Empty
         );
+        // In every mode and with match case: an Extended pattern of nothing is empty too.
+        for mode in [SearchMode::Normal, SearchMode::Extended] {
+            for match_case in [false, true] {
+                let query = Query {
+                    mode,
+                    match_case,
+                    ..Query::default()
+                };
+                assert_eq!(Searcher::new(&query).unwrap_err(), SearchError::Empty);
+            }
+        }
+    }
+
+    /// A pattern fancy-regex can only run by backtracking (a back-reference), on a text where
+    /// that takes longer than the limit allows.
+    fn runaway() -> (Searcher, Rope) {
+        let text = Rope::from_str(&format!("{}!", "a".repeat(64)));
+        (regex(r"^(a|a)*\1b"), text)
+    }
+
+    #[test]
+    fn a_runaway_regular_expression_fails_instead_of_finding_nothing() {
+        let (s, text) = runaway();
+        assert_eq!(s.failure(), None, "nothing has run yet");
+        assert_eq!(s.find_in(&text, 0..text.len()), None);
+        assert!(matches!(s.failure(), Some(SearchError::RegexFailed(_))));
+        assert_eq!(s.find_last_in(&text, 0..text.len()), None);
+        assert!(s.failure().is_some());
+        assert!(s.replacements(&text, 0..text.len(), "x").is_empty());
+        assert!(!s.is_match(&text, 0..text.len()));
+        // A search that ends normally clears the failure.
+        let fine = regex("a");
+        assert!(fine.find_in(&text, 0..text.len()).is_some());
+        assert_eq!(fine.failure(), None);
+    }
+
+    #[test]
+    fn searching_backward_finds_a_match_far_before_the_end() {
+        // The backward search looks in growing windows from the end: the only match is at
+        // the very start, many windows away; another is cut by the end of the range.
+        let source = format!("needle{}needle", "-".repeat(100_000));
+        let text = Rope::from_str(&source);
+        let s = searcher("needle", true, false);
+        assert_eq!(s.find_last_in(&text, 0..text.len() - 1), Some(0..6));
+        assert_eq!(s.find_last_in(&text, 1..text.len() - 1), None);
+        assert_eq!(s.find_last_in(&text, 0..0), None, "an empty range");
+        assert_eq!(
+            s.find_last_in(&text, 0..text.len()),
+            Some(text.len() - 6..text.len())
+        );
+    }
+
+    #[test]
+    fn extended_escapes_at_their_limits() {
+        // A backslash at the very end, codes with too few or wrong digits, and the largest
+        // and smallest codes.
+        assert_eq!(unescape_extended("end\\"), "end\\");
+        assert_eq!(unescape_extended(r"\u41"), r"\u41");
+        assert_eq!(unescape_extended(r"\xZZ"), r"\xZZ");
+        assert_eq!(unescape_extended(r"\o9"), r"\o9");
+        assert_eq!(unescape_extended(r"\d25"), r"\d25");
+        assert_eq!(unescape_extended(r"\xff\x00"), "\u{ff}\0");
+        assert_eq!(unescape_extended(r"\uffff"), "\u{ffff}");
+        assert_eq!(unescape_extended(r"\o377\d255"), "\u{ff}\u{ff}");
+        // A surrogate is no character: it stays as written.
+        assert_eq!(unescape_extended(r"\ud800"), r"\ud800");
+        assert_eq!(unescape_extended(""), "");
+    }
+
+    #[test]
+    fn replacement_templates_at_their_limits() {
+        let group = |i: usize| ["whole", "one"].get(i).copied();
+        let named = |_: &str| None;
+        let expand = |template: &str| expand_replacement(template, group, named);
+        // A `$` or a backslash at the very end is kept; `$` before a non-group is literal.
+        assert_eq!(expand("cost $"), "cost $");
+        assert_eq!(expand("path\\"), "path\\");
+        assert_eq!(expand("$x"), "$x");
+        // An unknown name, an unclosed name, group 0 and the empty template.
+        assert_eq!(expand("${nope}"), "");
+        assert_eq!(expand("${one"), "${one");
+        assert_eq!(expand(r"\0"), "whole");
+        assert_eq!(expand(""), "");
+        // Line breaks are not case-converted, and \E ends a conversion.
+        assert_eq!(expand(r"\Ua\nb\Ec"), "A\nBc");
+        assert_eq!(expand(r"\l\U$1"), "oNE");
+    }
+
+    /// Where `needle` occurs in `haystack`, without overlaps, by the plainest means.
+    fn naive(haystack: &str, needle: &str, match_case: bool) -> Vec<Range<usize>> {
+        let (haystack, needle) = if match_case {
+            (haystack.to_owned(), needle.to_owned())
+        } else {
+            (haystack.to_lowercase(), needle.to_lowercase())
+        };
+        haystack
+            .match_indices(&needle)
+            .map(|(at, found)| at..at + found.len())
+            .collect()
+    }
+
+    proptest::proptest! {
+        #[test]
+        fn normal_search_finds_what_a_plain_search_finds(
+            pieces in proptest::collection::vec("[abAB \n]{0,40}", 1..60),
+            needle in "[abAB]{1,4}",
+            match_case: bool,
+        ) {
+            // Built from pieces so that chunk boundaries fall all over the text.
+            let source = pieces.concat();
+            let mut text = Rope::new();
+            for piece in &pieces {
+                let end = text.len();
+                text.insert(end, piece);
+            }
+            let found = searcher(&needle, match_case, false).find_all(&text);
+            proptest::prop_assert_eq!(found, naive(&source, &needle, match_case));
+        }
+
+        #[test]
+        fn a_backward_search_finds_the_last_forward_match(
+            source in "[ab \n]{0,300}",
+            needle in "[ab]{1,3}",
+        ) {
+            let text = Rope::from_str(&source);
+            let s = searcher(&needle, true, false);
+            let all = s.find_all(&text);
+            let last = s.find_last_in(&text, 0..text.len());
+            // The last match backward may overlap the last forward one ("aa" in "aaa").
+            match (all.last(), last) {
+                (None, None) => {}
+                (Some(forward), Some(backward)) => {
+                    proptest::prop_assert!(backward.start >= forward.start);
+                    proptest::prop_assert_eq!(&source[backward.clone()], needle.as_str());
+                }
+                (forward, backward) => proptest::prop_assert!(
+                    false,
+                    "forward {:?}, backward {:?}",
+                    forward,
+                    backward
+                ),
+            }
+        }
     }
 
     #[test]

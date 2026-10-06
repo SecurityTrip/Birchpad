@@ -412,6 +412,24 @@ mod tests {
         let fewer = selection.remove(0).unwrap();
         assert_eq!(fewer.primary(), Range::point(9));
         assert!(Selection::point(3).remove(0).is_none());
+
+        // The primary range itself: the one before it takes over; at index 0, the next one.
+        let middle = Selection::new([Range::point(1), Range::point(5), Range::point(9)], 1);
+        assert_eq!(middle.remove(1).unwrap().primary(), Range::point(1));
+        let first = Selection::new([Range::point(1), Range::point(5)], 0);
+        assert_eq!(first.remove(0).unwrap().primary(), Range::point(5));
+        // No such range.
+        assert!(middle.remove(3).is_none());
+    }
+
+    #[test]
+    fn without_virtual_drops_virtual_space_only() {
+        let range = Range::new(2, 4).with_virtual(3, 5);
+        assert!(range.has_virtual());
+        let real = range.without_virtual();
+        assert!(!real.has_virtual());
+        assert_eq!((real.anchor, real.head), (2, 4));
+        assert_eq!(Range::point(0).without_virtual(), Range::point(0));
     }
 
     #[test]
