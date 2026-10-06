@@ -159,7 +159,7 @@ fn edits_are_saved_and_the_session_comes_back() {
         [[step]]
         report = "opened.json"
         [[step]]
-        keys = "secondary-end"
+        command = "cursor.document-end"
         [[step]]
         text = "second line"
         [[step]]
@@ -260,7 +260,7 @@ fn a_read_only_file_and_a_failed_step_change_nothing() {
         &["-ro", "locked.txt"],
         r#"
         [[step]]
-        keys = "secondary-end"
+        keys = "down end"
         [[step]]
         text = "x"
         [[step]]
@@ -294,7 +294,7 @@ fn a_utf16_file_with_crlf_saves_in_its_own_encoding() {
         &["wide.txt"],
         r#"
         [[step]]
-        keys = "secondary-end"
+        keys = "down end"
         [[step]]
         text = "c\nd"
         [[step]]

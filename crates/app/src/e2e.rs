@@ -4,7 +4,7 @@
 //!
 //! ```toml
 //! [[step]]
-//! keys = "secondary-end"         # keystrokes, as in keymap.toml
+//! keys = "down end"              # keystrokes, as in keymap.toml; mind each platform's keys
 //! [[step]]
 //! text = "hello\nworld"          # typed, a key per character
 //! [[step]]
