@@ -1,11 +1,13 @@
 //! Tests of split view: moving and cloning documents to the other view, views of one buffer
-//! following each other's edits, closing a clone, focus, dropped tabs and synchronized
-//! scrolling.
+//! following each other's edits, closing a clone, focus, dropped tabs, splitting by dragging a
+//! tab, and synchronized scrolling.
 
 use birchpad_commands::Invocation;
 use birchpad_config::SplitOrientation;
 use birchpad_core::{Document, Range, Rope, Selection};
-use gpui_kit::{Entity, Modifiers, TestAppContext, VisualTestContext, px};
+use gpui_kit::{
+    Entity, Modifiers, MouseButton, Pixels, Point, TestAppContext, VisualTestContext, point, px,
+};
 
 use crate::app_state::AppState;
 use crate::editor::EditorView;
@@ -257,4 +259,124 @@ fn rotating_the_split_is_remembered(cx: &mut TestAppContext) {
     assert!(bottom > top);
     run(&workspace, "view.rotate-split", cx);
     assert_eq!(split(cx), SplitOrientation::SideBySide);
+}
+
+/// Drags with the left button from `from` to `to`, with `modifiers` held, and drops.
+fn drag(from: Point<Pixels>, to: Point<Pixels>, modifiers: Modifiers, cx: &mut VisualTestContext) {
+    cx.simulate_mouse_down(from, MouseButton::Left, modifiers);
+    for step in 1..=4 {
+        let t = step as f32 / 4.;
+        let at = point(from.x + (to.x - from.x) * t, from.y + (to.y - from.y) * t);
+        cx.simulate_mouse_move(at, MouseButton::Left, modifiers);
+    }
+    cx.simulate_mouse_up(to, MouseButton::Left, modifiers);
+    cx.run_until_parked();
+}
+
+/// The middle of the tab at `index` of the main view, and points of its text: the middle, near
+/// the right edge and near the bottom.
+fn targets(cx: &mut VisualTestContext, index: usize) -> [Point<Pixels>; 4] {
+    let tab = match index {
+        0 => "pane-0-tab-0",
+        1 => "pane-0-tab-1",
+        _ => "pane-0-tab-2",
+    };
+    let tab = cx.debug_bounds(tab).expect("the tab is drawn").center();
+    let text = cx
+        .debug_bounds("pane-content-0")
+        .expect("the text is drawn");
+    let center = text.center();
+    let right = point(text.right() - px(20.), center.y);
+    let bottom = point(center.x, text.bottom() - px(20.));
+    [tab, center, right, bottom]
+}
+
+fn split(cx: &mut VisualTestContext) -> SplitOrientation {
+    cx.update(|_, cx| AppState::global(cx).state.split)
+}
+
+#[gpui_kit::test]
+fn a_tab_dragged_to_the_right_of_the_text_opens_split_view(cx: &mut TestAppContext) {
+    let (workspace, cx) = open_workspace(cx);
+    cx.simulate_keystrokes(&secondary("n"));
+    run(&workspace, "view.rotate-split", cx);
+    assert_eq!(split(cx), SplitOrientation::Stacked);
+
+    let [tab, _, right, _] = targets(cx, 0);
+    drag(tab, right, Modifiers::none(), cx);
+    assert_eq!(
+        panes(&workspace, cx),
+        ([names(&["new 2"]), names(&["new 1"])], 1),
+        "moved to the second view, which is active"
+    );
+    assert_eq!(split(cx), SplitOrientation::SideBySide, "side by side");
+}
+
+#[gpui_kit::test]
+fn a_tab_dragged_to_the_bottom_of_the_text_stacks_the_views(cx: &mut TestAppContext) {
+    let (workspace, cx) = open_workspace(cx);
+    cx.simulate_keystrokes(&secondary("n"));
+    let [_, _, _, bottom] = targets(cx, 0);
+    let tab = targets(cx, 1)[0];
+    drag(tab, bottom, Modifiers::none(), cx);
+    assert_eq!(
+        panes(&workspace, cx),
+        ([names(&["new 1"]), names(&["new 2"])], 1)
+    );
+    assert_eq!(split(cx), SplitOrientation::Stacked);
+}
+
+#[gpui_kit::test]
+fn the_only_tab_or_one_dragged_with_ctrl_is_cloned(cx: &mut TestAppContext) {
+    let (workspace, cx) = open_workspace(cx);
+    cx.simulate_input("text");
+    let [tab, _, right, _] = targets(cx, 0);
+    drag(tab, right, Modifiers::none(), cx);
+    assert_eq!(
+        panes(&workspace, cx),
+        ([names(&["new 1"]), names(&["new 1"])], 1),
+        "the only tab: a second view of it"
+    );
+    let [main, second] = [0, 1].map(|pane| pane_views(&workspace, pane, cx)[0].clone());
+    let same = main.read_with(cx, |main, cx| main.buffer == second.read(cx).buffer);
+    assert!(same);
+
+    // With Ctrl, a tab of two is cloned too.
+    run(&workspace, "view.move-to-other-view", cx);
+    assert_eq!(panes(&workspace, cx).0, [names(&["new 1"]), vec![]]);
+    cx.simulate_keystrokes(&secondary("n"));
+    let [tab, _, right, _] = targets(cx, 1);
+    let ctrl = if cfg!(target_os = "macos") {
+        Modifiers::command()
+    } else {
+        Modifiers::control()
+    };
+    drag(tab, right, ctrl, cx);
+    assert_eq!(
+        panes(&workspace, cx).0,
+        [names(&["new 1", "new 2"]), names(&["new 2"])]
+    );
+}
+
+#[gpui_kit::test]
+fn a_tab_dropped_in_the_middle_of_the_text_stays(cx: &mut TestAppContext) {
+    let (workspace, cx) = open_workspace(cx);
+    cx.simulate_keystrokes(&secondary("n"));
+    let [tab, center, _, _] = targets(cx, 0);
+    drag(tab, center, Modifiers::none(), cx);
+    assert_eq!(
+        panes(&workspace, cx),
+        ([names(&["new 2", "new 1"]), vec![]], 0),
+        "last in its own view"
+    );
+
+    // In split view, the far side of the text is no zone: the tab goes last too.
+    run(&workspace, "view.clone-to-other-view", cx);
+    cx.simulate_keystrokes("f8");
+    let [tab, _, right, _] = targets(cx, 0);
+    drag(tab, right, Modifiers::none(), cx);
+    assert_eq!(
+        panes(&workspace, cx).0,
+        [names(&["new 1", "new 2"]), names(&["new 1"])]
+    );
 }

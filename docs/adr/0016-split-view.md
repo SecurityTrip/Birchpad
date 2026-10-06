@@ -42,7 +42,15 @@ and moves documents between them.
   rotation on the splitter's context menu instead.
 - **Dragging tabs.** A tab dropped on another tab goes to that place. A tab dropped on the text
   of a pane goes last. In the other pane, this moves the tab there, with the same rule as Move
-  to Other View when that pane already shows the document.
+  to Other View when that pane already shows the document. With Ctrl held, the tab stays and
+  the other pane gets a clone.
+- **Splitting by dragging** (added 2026-10-06,
+  [#12](https://github.com/SecurityTrip/Birchpad/issues/12)). While only one pane is shown, a tab
+  dragged over the far third of its text opens the other view: the right third splits side by
+  side, the bottom third stacks the views (for the second view alone, the left and top thirds).
+  The half where the new view will open is highlighted while the tab is over it. The drop sets
+  the orientation and moves the tab there; the only tab of the pane, or one dragged with Ctrl,
+  is cloned instead, since moving it would leave nothing to split.
 - **Synchronized scrolling.** View > Synchronize Vertical Scrolling and Synchronize Horizontal
   Scrolling, off at start, as in Notepad++:
   - After each frame, a view reports how many rows and pixels it scrolled

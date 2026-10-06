@@ -220,7 +220,11 @@ pub(crate) struct Workspace {
 
 impl Workspace {
     pub(crate) fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
-        let panes = [cx.new(|_| Pane::new()), cx.new(|_| Pane::new())];
+        let panes = [cx.new(|_| Pane::new(0)), cx.new(|_| Pane::new(1))];
+        for (pane, other) in [(0, 1), (1, 0)] {
+            let other = panes[other].downgrade();
+            panes[pane].update(cx, |pane, _| pane.set_other(other));
+        }
         let mut subscriptions: Vec<Subscription> = panes
             .iter()
             .map(|pane| cx.subscribe_in(pane, window, Self::on_pane_event))
@@ -297,14 +301,23 @@ impl Workspace {
                 self.close_with_confirmation(vec![view.clone()], window, cx)
                     .detach();
             }
-            PaneEvent::Dropped { view, index } => {
+            PaneEvent::Dropped { view, index, clone } => {
                 let target = usize::from(pane == &self.panes[1]);
                 if self.pane_of(view, cx) == Some(target) {
                     self.active_pane = target;
                     pane.update(cx, |pane, cx| pane.move_item(view, *index, window, cx));
                 } else {
-                    self.send_to_pane(view, target, Some(*index), false, window, cx);
+                    self.send_to_pane(view, target, Some(*index), *clone, window, cx);
                 }
+            }
+            PaneEvent::Split {
+                view,
+                orientation,
+                clone,
+            } => {
+                let target = 1 - usize::from(pane == &self.panes[1]);
+                AppState::update_state(cx, |state, _| state.split = *orientation);
+                self.send_to_pane(view, target, None, *clone, window, cx);
             }
         }
     }
@@ -1095,7 +1108,13 @@ pub(crate) mod tests {
         cx: &mut VisualTestContext,
     ) {
         let pane = workspace.read_with(cx, |workspace, _| workspace.panes[pane].clone());
-        pane.update(cx, |_, cx| cx.emit(PaneEvent::Dropped { view, index }));
+        pane.update(cx, |_, cx| {
+            cx.emit(PaneEvent::Dropped {
+                view,
+                index,
+                clone: false,
+            })
+        });
         cx.run_until_parked();
     }
 
@@ -1162,13 +1181,13 @@ pub(crate) mod tests {
         cx.simulate_keystrokes(&secondary("n"));
 
         // "new 1" has unsaved changes: it comes forward and is asked about.
-        click_on("close-tab-0", MouseButton::Left, cx);
+        click_on("pane-0-close-tab-0", MouseButton::Left, cx);
         assert!(cx.has_pending_prompt());
         assert_eq!(active_text(&workspace, cx), "changed");
         cx.simulate_prompt_answer("Cancel");
         cx.run_until_parked();
         assert_eq!(tab_names(&workspace, cx), ["new 1", "new 2"]);
-        click_on("close-tab-0", MouseButton::Left, cx);
+        click_on("pane-0-close-tab-0", MouseButton::Left, cx);
         cx.simulate_prompt_answer("Don't Save");
         cx.run_until_parked();
         assert_eq!(tab_names(&workspace, cx), ["new 2"]);
@@ -1176,7 +1195,7 @@ pub(crate) mod tests {
         // Without changes, it closes at once.
         cx.simulate_keystrokes(&secondary("n"));
         assert_eq!(tab_names(&workspace, cx), ["new 2", "new 1"]);
-        click_on("close-tab-1", MouseButton::Left, cx);
+        click_on("pane-0-close-tab-1", MouseButton::Left, cx);
         assert!(!cx.has_pending_prompt());
         assert_eq!(tab_names(&workspace, cx), ["new 2"]);
     }
@@ -1190,12 +1209,12 @@ pub(crate) mod tests {
         assert_eq!(tab_names(&workspace, cx), ["new 1", "new 2", "new 3"]);
 
         // A tab that is not the active one closes; the active one stays active.
-        click_on("tab-0", MouseButton::Middle, cx);
+        click_on("pane-0-tab-0", MouseButton::Middle, cx);
         assert_eq!(tab_names(&workspace, cx), ["new 2", "new 3"]);
         assert_eq!(active_text(&workspace, cx), "");
 
         // Unsaved changes are asked about, as with the close button.
-        click_on("tab-0", MouseButton::Middle, cx);
+        click_on("pane-0-tab-0", MouseButton::Middle, cx);
         assert!(cx.has_pending_prompt());
         cx.simulate_prompt_answer("Don't Save");
         cx.run_until_parked();
@@ -1203,7 +1222,7 @@ pub(crate) mod tests {
 
         // A left click only activates.
         cx.simulate_keystrokes(&secondary("n"));
-        click_on("tab-0", MouseButton::Left, cx);
+        click_on("pane-0-tab-0", MouseButton::Left, cx);
         assert_eq!(tab_names(&workspace, cx), ["new 3", "new 1"]);
         let active = workspace.read_with(cx, |workspace, cx| {
             let view = workspace.active_view(cx).unwrap();

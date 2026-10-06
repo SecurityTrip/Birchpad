@@ -3,14 +3,17 @@
 //! The workspace has two panes, Notepad++'s main and second views; a pane without tabs is
 //! hidden. Both may show the same buffer, each in its own view ("Clone to Other View"). Tabs are
 //! dragged to another place in their pane or to the other pane, and closed with their close
-//! button or the middle mouse button, as in Notepad++.
+//! button or the middle mouse button, as in Notepad++. While the other pane is hidden, a tab
+//! dragged to the far side of the text opens it there: split view by dragging.
 
+use birchpad_config::SplitOrientation;
 use gpui_kit::component::button::{Button, ButtonVariants};
 use gpui_kit::component::tab::{Tab, TabBar};
 use gpui_kit::component::{Icon, IconName, Sizable};
 use gpui_kit::{
-    Context, Entity, EventEmitter, MouseButton, ScrollHandle, SharedString, Subscription, Window,
-    div, prelude::*, px, rgb,
+    App, Bounds, Context, DragMoveEvent, Entity, EventEmitter, MouseButton, Pixels, Point,
+    ScrollHandle, SharedString, Subscription, WeakEntity, Window, div, prelude::*, px, relative,
+    rgb, rgba,
 };
 
 use crate::buffer::{BufferEvent, ReadOnly};
@@ -21,10 +24,20 @@ pub(crate) enum PaneEvent {
     ActiveItemChanged,
     /// The user clicked a tab's close button, or the tab with the middle mouse button.
     CloseRequested(Entity<EditorView>),
-    /// A tab was dropped on this pane, to go at `index`. It may come from the other pane.
+    /// A tab was dropped on this pane, to go at `index`. It may come from the other pane; with
+    /// `clone` (Ctrl held), a new view of its document goes there and the tab stays.
     Dropped {
         view: Entity<EditorView>,
         index: usize,
+        clone: bool,
+    },
+    /// A tab was dropped on the far side of this pane's text while the other pane is hidden:
+    /// the other pane opens with it, split `orientation`. With `clone`, with a new view of its
+    /// document.
+    Split {
+        view: Entity<EditorView>,
+        orientation: SplitOrientation,
+        clone: bool,
     },
 }
 
@@ -52,23 +65,87 @@ impl Render for DraggedTab {
 
 /// Where a dragged tab would land.
 const DROP_TARGET: u32 = 0xddf4ff;
+/// Where the other view would open if the dragged tab is dropped.
+const SPLIT_TARGET: u32 = 0x0969da33;
 
 pub(crate) struct Pane {
+    /// 0 for the main view, 1 for the second one.
+    index: usize,
+    /// The other pane.
+    other: WeakEntity<Pane>,
     items: Vec<Entity<EditorView>>,
     active: usize,
     tab_scroll: ScrollHandle,
     subscriptions: Vec<(Entity<EditorView>, Subscription)>,
+    /// How the panes would split if the tab being dragged were dropped where it is.
+    split_zone: Option<SplitOrientation>,
 }
 
 impl EventEmitter<PaneEvent> for Pane {}
 
 impl Pane {
-    pub(crate) fn new() -> Self {
+    /// The main (`index` 0) or the second view.
+    pub(crate) fn new(index: usize) -> Self {
         Self {
+            index,
+            other: WeakEntity::new_invalid(),
             items: Vec::new(),
             active: 0,
             tab_scroll: ScrollHandle::new(),
             subscriptions: Vec::new(),
+            split_zone: None,
+        }
+    }
+
+    pub(crate) fn set_other(&mut self, other: WeakEntity<Pane>) {
+        self.other = other;
+    }
+
+    /// How a tab dropped at `position` in the text (`bounds`) would split the panes: on the far
+    /// third towards where the other view opens (right or below the main view, left or above
+    /// the second one), while that view is hidden.
+    fn split_zone_at(
+        &self,
+        position: Point<Pixels>,
+        bounds: Bounds<Pixels>,
+        cx: &App,
+    ) -> Option<SplitOrientation> {
+        let other_hidden = self
+            .other
+            .upgrade()
+            .is_some_and(|other| other.read(cx).items.is_empty());
+        if !other_hidden || self.items.is_empty() || !bounds.contains(&position) {
+            return None;
+        }
+        let (width, height) = (bounds.size.width / 3., bounds.size.height / 3.);
+        let (beside, below) = if self.index == 0 {
+            (
+                position.x > bounds.right() - width,
+                position.y > bounds.bottom() - height,
+            )
+        } else {
+            (
+                position.x < bounds.left() + width,
+                position.y < bounds.top() + height,
+            )
+        };
+        if beside {
+            Some(SplitOrientation::SideBySide)
+        } else if below {
+            Some(SplitOrientation::Stacked)
+        } else {
+            None
+        }
+    }
+
+    /// The half of the text where the other view would open.
+    fn render_split_zone(&self, orientation: SplitOrientation) -> impl IntoElement {
+        let zone = div().absolute().bg(rgba(SPLIT_TARGET));
+        match (orientation, self.index) {
+            (SplitOrientation::SideBySide, 0) => zone.top_0().right_0().h_full().w(relative(0.5)),
+            (SplitOrientation::SideBySide, _) => zone.top_0().left_0().h_full().w(relative(0.5)),
+            (SplitOrientation::Stacked, 0) => zone.bottom_0().left_0().w_full().h(relative(0.5)),
+            (SplitOrientation::Stacked, _) => zone.top_0().left_0().w_full().h(relative(0.5)),
         }
     }
 
@@ -188,6 +265,7 @@ impl Pane {
     }
 
     fn render_tabs(&self, cx: &mut Context<Self>) -> impl IntoElement {
+        let pane = self.index;
         let tabs = self.items.iter().enumerate().map(|(index, item)| {
             let buffer = item.read(cx).buffer.read(cx);
             let modified = buffer.is_modified();
@@ -229,7 +307,7 @@ impl Pane {
                         .ghost()
                         .xsmall()
                         .icon(IconName::Close)
-                        .debug_selector(|| format!("close-tab-{index}"))
+                        .debug_selector(move || format!("pane-{pane}-close-tab-{index}"))
                         .on_click(cx.listener(move |_, _, _, cx| {
                             cx.stop_propagation();
                             cx.emit(PaneEvent::CloseRequested(close_item.clone()));
@@ -242,13 +320,14 @@ impl Pane {
                         cx.emit(PaneEvent::CloseRequested(middle_item.clone()));
                     }),
                 )
-                .debug_selector(|| format!("tab-{index}"))
+                .debug_selector(move || format!("pane-{pane}-tab-{index}"))
                 .on_drag(dragged, |tab, _, _, cx| cx.new(|_| tab.clone()))
                 .drag_over::<DraggedTab>(|style, _, _, _| style.bg(rgb(DROP_TARGET)))
-                .on_drop(cx.listener(move |_, tab: &DraggedTab, _, cx| {
+                .on_drop(cx.listener(move |_, tab: &DraggedTab, window, cx| {
                     cx.emit(PaneEvent::Dropped {
                         view: tab.view.clone(),
                         index,
+                        clone: window.modifiers().secondary(),
                     });
                 }))
         });
@@ -266,25 +345,54 @@ impl Render for Pane {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let active = self.active_item().cloned();
         let end = self.items.len();
+        let split_zone = self.split_zone.filter(|_| cx.has_active_drag());
+        let index = self.index;
         div()
             .flex()
             .flex_col()
             .size_full()
             .child(self.render_tabs(cx))
             .child(
-                // Dropped on the text: the tab goes last.
+                // Dropped on the text: the tab goes last, or to the other view on its far side.
                 div()
                     .id("pane-content")
+                    .debug_selector(move || format!("pane-content-{index}"))
+                    .relative()
                     .flex_1()
                     .min_h(px(0.))
                     .drag_over::<DraggedTab>(|style, _, _, _| style.bg(rgb(DROP_TARGET)))
-                    .on_drop(cx.listener(move |_, tab: &DraggedTab, _, cx| {
-                        cx.emit(PaneEvent::Dropped {
-                            view: tab.view.clone(),
-                            index: end,
-                        });
+                    .on_drag_move(
+                        cx.listener(|this, event: &DragMoveEvent<DraggedTab>, _, cx| {
+                            let zone = this.split_zone_at(event.event.position, event.bounds, cx);
+                            if zone != this.split_zone {
+                                this.split_zone = zone;
+                                cx.notify();
+                            }
+                        }),
+                    )
+                    .on_drop(cx.listener(move |this, tab: &DraggedTab, window, cx| {
+                        let clone = window.modifiers().secondary();
+                        let view = tab.view.clone();
+                        match this.split_zone.take() {
+                            Some(orientation) => cx.emit(PaneEvent::Split {
+                                view,
+                                orientation,
+                                // Moving the only tab would leave nothing to split: it is
+                                // cloned.
+                                clone: clone || this.items.len() == 1,
+                            }),
+                            None => cx.emit(PaneEvent::Dropped {
+                                view,
+                                index: end,
+                                clone,
+                            }),
+                        }
+                        cx.notify();
                     }))
-                    .when_some(active, |this, item| this.child(item)),
+                    .when_some(active, |this, item| this.child(item))
+                    .when_some(split_zone, |this, orientation| {
+                        this.child(self.render_split_zone(orientation))
+                    }),
             )
     }
 }
