@@ -3,14 +3,16 @@
 //! Each command of the catalog, with the arguments its menus pass, runs on documents in many
 //! states: empty, a caret, a selection over lines, several carets, a rectangle into virtual
 //! space, CRLF and wide characters, no final line break, word wrap, both views, a language with
-//! folds, read-only. None may panic or leave a caret outside the text or inside a CRLF pair, an
-//! edit must undo back to the text before it, and nothing may change a read-only document.
+//! folds, read-only, one long line, a file over the large file limit. None may panic or leave a
+//! caret outside the text or inside a CRLF pair, an edit must undo back to the text before it,
+//! and nothing may change a read-only document.
 
 use std::path::Path;
+use std::sync::LazyLock;
 
 use birchpad_cli::CommandLine;
 use birchpad_commands::{COMMANDS, Invocation};
-use birchpad_config::UserState;
+use birchpad_config::{Settings, UserState};
 use birchpad_core::{Document, Range, Rope, Selection};
 use birchpad_view::{Block, BlockPoint};
 use gpui_kit::{ClipboardItem, Entity, TestAppContext, VisualTestContext};
@@ -316,8 +318,14 @@ fn text_of(buffer: &Entity<Buffer>, cx: &mut VisualTestContext) -> String {
 
 /// Runs every command of the catalog in the state `scenario` sets up.
 fn sweep(scenario: Scenario, cx: &mut TestAppContext) {
+    sweep_with_settings(scenario, |_| {}, cx);
+}
+
+/// [`sweep`] with `settings` changed from the defaults before the first document opens.
+fn sweep_with_settings(scenario: Scenario, settings: fn(&mut Settings), cx: &mut TestAppContext) {
     let dir = tempfile::tempdir().unwrap();
     let (workspace, cx) = open_workspace(cx);
+    cx.update(|_, cx| settings(&mut cx.global_mut::<AppState>().settings));
     cx.write_to_clipboard(ClipboardItem::new_string("pasted\ntext".to_owned()));
     let ids: Vec<&'static str> = cx.update(|_, cx| {
         let registry = cx.global::<CommandRegistry>();
@@ -563,6 +571,62 @@ fn every_command_in_a_read_only_document(cx: &mut TestAppContext) {
             read_only: true,
             setup: |_, view, cx| select(view, Selection::single(Range::new(3, 40)), cx),
         },
+        cx,
+    );
+}
+
+/// 100 KB on one line: words, tabs, wide characters and an emoji, no line break.
+static LONG_LINE: LazyLock<String> =
+    LazyLock::new(|| "word\tsecond Word 12 日本 😀 ".repeat(3_200));
+
+#[gpui_kit::test]
+fn every_command_in_one_long_line(cx: &mut TestAppContext) {
+    assert!(LONG_LINE.len() > 100_000 && !LONG_LINE.contains('\n'));
+    sweep(
+        Scenario {
+            text: &LONG_LINE,
+            read_only: false,
+            setup: |_, view, cx| {
+                // A selection in the middle of the line, far from both ends.
+                let start = LONG_LINE.floor_char_boundary(LONG_LINE.len() / 2);
+                let end = LONG_LINE.floor_char_boundary(start + 300);
+                select(view, Selection::single(Range::new(start, end)), cx);
+            },
+        },
+        cx,
+    );
+}
+
+/// 3 000 lines of a shell script, more than a large file limit of 0 MB lets through.
+static LARGE: LazyLock<String> = LazyLock::new(|| {
+    let mut text = "#!/bin/sh\n".to_owned();
+    for i in 0..1_000 {
+        text.push_str(&format!(
+            "if [ \"$x\" = {i} ]; then\n\techo \"line {i}\" # note\nfi\n"
+        ));
+    }
+    text
+});
+
+#[gpui_kit::test]
+fn every_command_in_a_file_over_the_large_file_limit(cx: &mut TestAppContext) {
+    sweep_with_settings(
+        Scenario {
+            text: &LARGE,
+            read_only: false,
+            setup: |_, view, cx| {
+                // The `#!` line names a language, but the file is too large for one.
+                let language = view.read_with(cx, |view, cx| view.buffer.read(cx).language());
+                assert!(language.is_none(), "the large file has a language");
+                let middle = LARGE.len() / 2;
+                select(
+                    view,
+                    Selection::single(Range::new(middle, middle + 500)),
+                    cx,
+                );
+            },
+        },
+        |settings| settings.files.large_file_limit_mb = 0,
         cx,
     );
 }

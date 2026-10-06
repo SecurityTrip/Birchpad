@@ -164,9 +164,9 @@ What Phase 1 left for later is marked *(from Phase 1)* in the phases below.
 - Tests for every scenario. Birchpad has no testers, so its tests are its quality assurance:
   - A coverage report in CI (`cargo llvm-cov`) for each crate, with a floor that only rises,
     and the untested code it shows covered first
-  - Every command of the registry run in every kind of document (empty, one long line,
-    multiple carets, a rectangular selection, read-only, word wrap, both views, a large file),
-    checking that it neither panics nor breaks the document
+  - [x] Every command of the registry run in every kind of document (empty, one long line,
+        multiple carets, a rectangular selection, read-only, word wrap, both views, a large
+        file), checking that it neither panics nor breaks the document
   - The mouse in GUI tests, not only the keyboard: tabs (click, middle click, close button,
     drag), the menu bar, the status bar's menus, the find and search results panels, prompts
   - Property tests (`proptest`) of the text model: edits, selections, undo and redo,
