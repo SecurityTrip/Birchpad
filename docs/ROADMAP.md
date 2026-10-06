@@ -146,7 +146,7 @@ What Phase 1 left for later is marked *(from Phase 1)* in the phases below.
   - [x] Function List, from tree-sitter tags queries for 28 languages
   - [x] Document Map
   - [x] Folder as Workspace
-  - Project panels
+  - [x] Project Panels 1 to 3, with Notepad++'s `.workspace` files
 - Clipboard history, character panel
 - [x] Navigation history: Go Back and Go Forward through the places the caret jumped from,
       across documents, reopening closed files ([ADR 0025](adr/0025-navigation-history.md))

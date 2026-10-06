@@ -93,6 +93,25 @@ dock anywhere by dragging.
   and Remove and Remove All for top folders.
 - Rows span the panel's width, so a click right of a short name still hits its row.
 
+### Project panels
+
+- **Notepad++'s format.** Each of the three project panels shows one `.workspace` file
+  (`birchpad_config::ProjectWorkspace`): `<NotepadPlus>` with `<Project>`s, `<Folder>`s and
+  `<File name>`s, so workspaces move between the two editors. Paths inside the workspace
+  file's folder are written relative to it with `\`, as Notepad++ writes them; others stay
+  absolute. On reading, both separators and `..` are taken.
+- **Built from the right-click menu,** as in Notepad++: on the workspace, New Workspace, Open
+  Workspace, Reload, Save As, Save a Copy As and Add New Project; on a project or folder,
+  Rename, Add Folder, Add Files, Add Files from Directory (its folders become folders of the
+  project, hidden entries left out), Remove and Move Up/Down; on a file, Open, Modify File Path,
+  Remove and the moves. Names are asked in a small dialog, files and folders in the system's
+  dialogs. Delete removes the selected item; files that do not exist are greyed.
+- **Saved at once.** Notepad++ asks whether to save a changed workspace when it closes or
+  another is opened. Here every change is written to the workspace file immediately, and New
+  Workspace asks where to keep the file first, so there is nothing to lose and nothing to ask.
+  A file that cannot be read or written shows why above the tree. The file of each panel is
+  remembered in `state.toml` (`[panels.projects]`).
+
 ## Consequences
 
 - The docks' widths last for the session only.

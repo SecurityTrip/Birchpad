@@ -8,6 +8,7 @@ mod layers;
 mod load;
 mod notepad_session;
 mod policy;
+mod project;
 mod session;
 mod settings;
 mod state;
@@ -15,6 +16,7 @@ mod state;
 pub use layers::{Diagnostic, Layer, ResolvedSettings, Sources, resolve};
 pub use load::{ConfigPaths, PORTABLE_DATA_DIR, PORTABLE_MARKER, load, load_platform_settings};
 pub use policy::{POLICIES, PolicyDef, PolicyKind, REGISTRY_KEY};
+pub use project::{ProjectError, ProjectFolder, ProjectItem, ProjectWorkspace};
 pub use session::{
     SESSION_VERSION, Session, SessionDocument, SessionError, SessionTab, SessionView,
     create_private_dir, write_private,

@@ -40,6 +40,9 @@ version's release notes from its section here.
   as trees beside the documents, kept current as files come and go; double-click to open a
   file. Its menu copies paths and names, runs Find in Files in a folder, and opens the file
   manager or a terminal there. A folder on the command line opens there too.
+- Project Panels 1 to 3 (View > Project): projects of folders and files, kept in Notepad++'s
+  `.workspace` files so that workspaces move between the two editors, built from each item's
+  right-click menu and saved as soon as they change.
 - Document Map (View > Document Map): the whole document in miniature in its syntax colors,
   with the part on screen framed; click or drag on it to scroll there.
 - Find in Files (Ctrl+Shift+F): Find All and Replace in Files in the files of a folder, with

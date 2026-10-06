@@ -50,6 +50,8 @@ pub struct PanelsState {
     pub open: Vec<String>,
     /// The top folders of Folder as Workspace.
     pub folders: Vec<PathBuf>,
+    /// The workspace file of each project panel, by its number ("1" to "3").
+    pub projects: std::collections::BTreeMap<String, PathBuf>,
 }
 
 /// What the Find in Files tab remembers between runs.

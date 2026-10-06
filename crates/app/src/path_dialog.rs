@@ -83,23 +83,34 @@ async fn ask_in_app(
     initial: &Path,
     cx: &mut AsyncWindowContext,
 ) -> Option<PathBuf> {
+    ask_text(title, initial.display().to_string(), cx)
+        .await
+        .map(PathBuf::from)
+}
+
+/// A dialog with a text field, such as a name; the button is labelled `title`. `None` if the
+/// user cancelled; an empty answer is not taken.
+pub(crate) async fn ask_text(
+    title: &'static str,
+    initial: String,
+    cx: &mut AsyncWindowContext,
+) -> Option<String> {
     let (sender, receiver) = oneshot::channel();
-    let initial = initial.display().to_string();
-    cx.update(|window, cx| open_path_dialog(title, initial, sender, window, cx))
+    cx.update(|window, cx| open_text_dialog(title, initial, sender, window, cx))
         .ok()?;
     receiver.await.ok().flatten()
 }
 
-fn open_path_dialog(
+fn open_text_dialog(
     title: &'static str,
     initial: String,
-    sender: oneshot::Sender<Option<PathBuf>>,
+    sender: oneshot::Sender<Option<String>>,
     window: &mut Window,
     cx: &mut gpui_kit::App,
 ) {
     let input = cx.new(|cx| InputState::new(window, cx).default_value(initial));
     let sender = std::rc::Rc::new(std::cell::RefCell::new(Some(sender)));
-    let respond = move |answer: Option<PathBuf>| {
+    let respond = move |answer: Option<String>| {
         if let Some(sender) = sender.borrow_mut().take() {
             let _ = sender.send(answer);
         }
@@ -125,7 +136,7 @@ fn open_path_dialog(
                 if value.is_empty() {
                     return false;
                 }
-                respond(Some(PathBuf::from(value)));
+                respond(Some(value));
                 true
             })
             .on_close(move |_, _, _| on_cancel(None))
@@ -139,10 +150,10 @@ mod tests {
     use super::*;
     use crate::workspace::tests::open_workspace;
 
-    fn open(initial: &str, cx: &mut VisualTestContext) -> oneshot::Receiver<Option<PathBuf>> {
+    fn open(initial: &str, cx: &mut VisualTestContext) -> oneshot::Receiver<Option<String>> {
         let (sender, receiver) = oneshot::channel();
         cx.update(|window, cx| {
-            open_path_dialog("Save As", initial.to_owned(), sender, window, cx);
+            open_text_dialog("Save As", initial.to_owned(), sender, window, cx);
         });
         cx.run_until_parked();
         assert!(cx.update(|window, cx| window.has_active_dialog(cx)));
@@ -156,7 +167,7 @@ mod tests {
         cx.simulate_keystrokes("enter");
         assert_eq!(
             receiver.try_recv().unwrap(),
-            Some(Some(PathBuf::from("C:/notes/a.txt")))
+            Some(Some("C:/notes/a.txt".to_owned()))
         );
         assert!(!cx.update(|window, cx| window.has_active_dialog(cx)));
     }
@@ -187,7 +198,7 @@ mod tests {
         cx.simulate_keystrokes("enter");
         assert_eq!(
             receiver.try_recv().unwrap(),
-            Some(Some(PathBuf::from("D:/b.txt")))
+            Some(Some("D:/b.txt".to_owned()))
         );
     }
 }

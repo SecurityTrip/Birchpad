@@ -11,6 +11,7 @@ mod document_list;
 mod document_map;
 mod folder_workspace;
 mod function_list;
+mod project;
 
 use std::collections::HashMap;
 
@@ -31,6 +32,7 @@ pub(crate) use document_list::DocumentList;
 pub(crate) use document_map::DocumentMap;
 pub(crate) use folder_workspace::FolderWorkspace;
 pub(crate) use function_list::FunctionList;
+pub(crate) use project::ProjectPanel;
 
 /// The project panels, as Notepad++'s Project Panel 1 to 3.
 pub(crate) const PROJECT_PANELS: u8 = 3;
@@ -297,6 +299,9 @@ impl Workspace {
             PanelKind::DocumentMap => cx.new(|cx| DocumentMap::new(workspace, window, cx)).into(),
             PanelKind::FolderWorkspace => cx
                 .new(|cx| FolderWorkspace::new(workspace, window, cx))
+                .into(),
+            PanelKind::Project(panel) => cx
+                .new(|cx| ProjectPanel::new(panel, workspace, window, cx))
                 .into(),
             // Panels still to come show their name.
             _ => cx.new(|_| Placeholder(kind.title())).into(),
