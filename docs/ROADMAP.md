@@ -136,6 +136,31 @@ What Phase 1 left for later is marked *(from Phase 1)* in the phases below.
 - Incremental search
 - Function List, Document Map, Document List, Folder as Workspace, Project panels
 - Clipboard history, character panel, navigation history
+- [x] Issues reported on 0.1.2: a middle click closes a tab
+      ([#9](https://github.com/SecurityTrip/Birchpad/issues/9)), JSON keys colored as keys
+      ([#10](https://github.com/SecurityTrip/Birchpad/issues/10)); found on the way, the close
+      button of a tab closed unsaved documents without asking, and TOML keys had the color of
+      table names
+- Tests for every scenario. Birchpad has no testers, so its tests are its quality assurance:
+  - A coverage report in CI (`cargo llvm-cov`) for each crate, with a floor that only rises,
+    and the untested code it shows covered first
+  - Every command of the registry run in every kind of document (empty, one long line,
+    multiple carets, a rectangular selection, read-only, word wrap, both views, a large file),
+    checking that it neither panics nor breaks the document
+  - The mouse in GUI tests, not only the keyboard: tabs (click, middle click, close button,
+    drag), the menu bar, the status bar's menus, the find and search results panels, prompts
+  - Property tests (`proptest`) of the text model: edits, selections, undo and redo,
+    decorations following edits, and search checked against a plain reference
+  - Fuzzing (`cargo fuzz`) of everything that reads outside input: decoders, settings and
+    session files, Notepad++'s `session.xml`, the command line, the update manifest
+  - Highlighting: a real-world file for each language, and a check that every capture of a
+    query that the theme colors shows up in its sample, so that a capture hidden by another
+    pattern (JSON's keys) or by a misplaced capture (TOML's keys) fails
+  - End-to-end tests of the built application on Windows, Linux and macOS: start, open, edit,
+    save, quit and restore the session
+  - Every bug fixed with a test that fails without the fix
+  - A short manual checklist before each release for what automation cannot see: input
+    methods, screen readers, high DPI, the installers and updates
 
 ## Phase 4: customization
 
@@ -180,10 +205,10 @@ What Phase 1 left for later is marked *(from Phase 1)* in the phases below.
 - Per-machine MSI (x64, ARM64) for enterprises, updated by IT; portable ZIP; winget and Scoop
   manifests
 - [x] ed25519-signed update manifest
-- Authenticode signing of the Windows executable, installers and MSI through SignPath
-  Foundation: the release workflow is ready and waits for SignPath's approval of the project
-  ([ADR 0021](adr/0021-authenticode-signing-with-signpath.md)); Apple Developer ID signing and
-  notarization still to come
+- Authenticode signing of the Windows executable, installers and MSI: the release workflow can
+  sign through SignPath ([ADR 0021](adr/0021-authenticode-signing-with-signpath.md)), but
+  SignPath Foundation did not take the project for now, so signing waits for a certificate;
+  Apple Developer ID signing and notarization still to come
 - ADMX/ADML templates generated from the policy list in `birchpad-config`
 - [x] SBOM and build provenance attestations with every release
 - [x] Background update checks (`notify`) and automatic updates (`auto`) with the signed

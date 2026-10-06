@@ -18,6 +18,16 @@ version's release notes from its section here.
 - The search results panel, as in Notepad++: Find All in Current Document and in All Opened
   Documents list the lines with matches; double-click or F4 and Shift+F4 go to them, F7 shows or
   hides the panel.
+- A middle click on a tab closes it, as in Notepad++
+  ([#9](https://github.com/SecurityTrip/Birchpad/issues/9)).
+
+### Fixed
+
+- The close button of a tab closed a document with unsaved changes without asking, losing them;
+  it asks now, as File > Close does.
+- JSON keys are colored as keys, no longer like the strings
+  ([#10](https://github.com/SecurityTrip/Birchpad/issues/10)), and TOML keys no longer take the
+  color of table names.
 
 ## [0.1.2] - 2026-10-05
 
