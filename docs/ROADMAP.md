@@ -134,7 +134,8 @@ What Phase 1 left for later is marked *(from Phase 1)* in the phases below.
       other files written back in their own encoding; Stop
       ([ADR 0024](adr/0024-find-in-files.md))
 - [x] Search results panel: Find All in Current Document and in All Opened Documents, searches
-      stacked and foldable, F4 / Shift+F4 through the results, F7 to show or hide it
+      stacked and foldable, F4 / Shift+F4 through the results, F7 to show or hide it; Delete
+      removes the selected result, and a right-click menu copies, folds and clears
       ([ADR 0022](adr/0022-search-modes-and-the-find-panel.md))
 - Incremental search
 - Function List, Document Map, Document List, Folder as Workspace, Project panels

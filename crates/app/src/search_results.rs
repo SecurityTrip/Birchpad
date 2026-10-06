@@ -6,6 +6,10 @@
 //! clicking a line, or Enter, goes to its first match; F4 and Shift+F4 go to the next and
 //! previous line from anywhere. Lines are kept as their line number and the match's offsets
 //! within the line, as Notepad++ does: an edit above a match moves it away from its result.
+//!
+//! Delete removes the selected line, document or search from the list; the right-click menu
+//! does too, and copies the selected line or path, folds and unfolds everything, and clears the
+//! list.
 
 use std::ops::Range;
 use std::path::PathBuf;
@@ -13,11 +17,12 @@ use std::path::PathBuf;
 use birchpad_core::Rope;
 use birchpad_core::motion::{line_of, line_range};
 use gpui_kit::component::button::{Button, ButtonVariants as _};
+use gpui_kit::component::menu::{ContextMenuExt as _, PopupMenu, PopupMenuItem};
 use gpui_kit::component::{IconName, Sizable};
 use gpui_kit::{
-    App, ClickEvent, Context, EventEmitter, FocusHandle, Focusable, FontWeight, HighlightStyle,
-    KeyDownEvent, ScrollStrategy, SharedString, StyledText, UniformListScrollHandle, WeakEntity,
-    Window, div, prelude::*, px, rgb, uniform_list,
+    App, ClickEvent, ClipboardItem, Context, EventEmitter, FocusHandle, Focusable, FontWeight,
+    HighlightStyle, KeyDownEvent, MouseButton, ScrollStrategy, SharedString, StyledText,
+    UniformListScrollHandle, WeakEntity, Window, div, prelude::*, px, rgb, uniform_list,
 };
 
 use crate::buffer::Buffer;
@@ -46,6 +51,8 @@ pub(crate) struct LineHit {
     pub(crate) highlights: Vec<Range<usize>>,
     /// The first match, in bytes from the start of the line (it may run past its end).
     pub(crate) target: Range<usize>,
+    /// How many matches start on the line.
+    pub(crate) matches: usize,
 }
 
 /// The results of one search in one document.
@@ -75,29 +82,39 @@ impl FileResults {
     }
 }
 
-/// One search: its description and its documents.
+/// One search: what was searched for, and its documents.
 pub(crate) struct SearchRun {
-    pub(crate) title: String,
+    pattern: String,
+    /// How many documents were searched.
+    searched: usize,
     pub(crate) files: Vec<FileResults>,
     collapsed: bool,
 }
 
 impl SearchRun {
-    /// Notepad++'s heading: `Search "foo" (3 hits in 2 files of 5 searched)`.
     pub(crate) fn new(pattern: &str, files: Vec<FileResults>, searched: usize) -> Self {
-        let hits: usize = files.iter().map(|file| file.hits).sum();
-        let plural = |count: usize, one: &str, many: &str| {
-            format!("{count} {}", if count == 1 { one } else { many })
-        };
         Self {
-            title: format!(
-                "Search \"{pattern}\" ({} in {} of {searched} searched)",
-                plural(hits, "hit", "hits"),
-                plural(files.len(), "file", "files")
-            ),
+            pattern: pattern.to_owned(),
+            searched,
             files,
             collapsed: false,
         }
+    }
+
+    /// Notepad++'s heading: `Search "foo" (3 hits in 2 files of 5 searched)`. Results removed
+    /// from the list no longer count.
+    pub(crate) fn title(&self) -> String {
+        let hits: usize = self.files.iter().map(|file| file.hits).sum();
+        let plural = |count: usize, one: &str, many: &str| {
+            format!("{count} {}", if count == 1 { one } else { many })
+        };
+        format!(
+            "Search \"{}\" ({} in {} of {} searched)",
+            self.pattern,
+            plural(hits, "hit", "hits"),
+            plural(self.files.len(), "file", "files"),
+            self.searched
+        )
     }
 }
 
@@ -115,9 +132,11 @@ pub(crate) fn line_hits(text: &Rope, matches: &[Range<usize>]) -> Vec<LineHit> {
                 text: text.slice(bounds.start..end).to_string().into(),
                 highlights: Vec::new(),
                 target: found.start - bounds.start..found.end - bounds.start,
+                matches: 0,
             });
         }
         let hit = hits.last_mut().expect("just pushed");
+        hit.matches += 1;
         let shown = hit.text.len();
         let start = found.start - bounds.start;
         let end = (found.end.min(bounds.end) - bounds.start).min(shown);
@@ -191,6 +210,121 @@ impl SearchResults {
         self.rows.clear();
         self.selected = None;
         cx.notify();
+    }
+
+    /// Removes the search, document or line in row `index` from the list. A document without
+    /// lines left goes too, and so does a search without documents left. The row that takes
+    /// its place is selected.
+    pub(crate) fn remove(&mut self, index: usize, cx: &mut Context<Self>) {
+        let Some(row) = self.rows.get(index).copied() else {
+            return;
+        };
+        match row {
+            Row::Run(r) => {
+                self.runs.remove(r);
+            }
+            Row::File(r, f) => {
+                self.runs[r].files.remove(f);
+            }
+            Row::Line(r, f, l) => {
+                let file = &mut self.runs[r].files[f];
+                let line = file.lines.remove(l);
+                file.hits = file.hits.saturating_sub(line.matches);
+                if file.lines.is_empty() {
+                    self.runs[r].files.remove(f);
+                }
+            }
+        }
+        if let Row::File(r, _) | Row::Line(r, ..) = row
+            && self.runs[r].files.is_empty()
+        {
+            self.runs.remove(r);
+        }
+        self.rebuild_rows();
+        self.selected = (!self.rows.is_empty()).then(|| index.min(self.rows.len() - 1));
+        cx.notify();
+    }
+
+    /// Folds or unfolds every search and document.
+    fn fold_all(&mut self, collapsed: bool, cx: &mut Context<Self>) {
+        for run in &mut self.runs {
+            run.collapsed = collapsed;
+            for file in &mut run.files {
+                file.collapsed = collapsed;
+            }
+        }
+        self.rebuild_rows();
+        self.selected = None;
+        cx.notify();
+    }
+
+    /// The text of the line in row `index`, without its "Line N:".
+    fn line_text(&self, index: usize) -> Option<SharedString> {
+        match self.rows.get(index)? {
+            Row::Line(r, f, l) => Some(self.runs[*r].files[*f].lines[*l].text.clone()),
+            _ => None,
+        }
+    }
+
+    /// The path, or untitled name, of the document in row `index` or of its line.
+    fn path_text(&self, index: usize) -> Option<String> {
+        match self.rows.get(index)? {
+            Row::File(r, f) | Row::Line(r, f, _) => Some(self.runs[*r].files[*f].name.clone()),
+            Row::Run(_) => None,
+        }
+    }
+
+    /// The right-click menu of row `index`.
+    fn context_menu(
+        &self,
+        index: usize,
+        cx: &mut Context<Self>,
+    ) -> impl Fn(PopupMenu, &mut Window, &mut Context<PopupMenu>) -> PopupMenu + 'static {
+        let this = cx.entity().downgrade();
+        let line = self.line_text(index);
+        let path = self.path_text(index);
+        move |menu, _, _| {
+            let act = |run: fn(&mut SearchResults, usize, &mut Context<SearchResults>)| {
+                let this = this.clone();
+                move |_: &ClickEvent, _: &mut Window, cx: &mut App| {
+                    this.update(cx, |this, cx| run(this, index, cx)).ok();
+                }
+            };
+            let copy = |text: Option<String>| {
+                move |_: &ClickEvent, _: &mut Window, cx: &mut App| {
+                    if let Some(text) = &text {
+                        cx.write_to_clipboard(ClipboardItem::new_string(text.clone()));
+                    }
+                }
+            };
+            menu.item(
+                PopupMenuItem::new("Remove").on_click(act(|this, index, cx| {
+                    this.remove(index, cx);
+                })),
+            )
+            .separator()
+            .item(
+                PopupMenuItem::new("Copy Selected Line")
+                    .disabled(line.is_none())
+                    .on_click(copy(line.as_ref().map(ToString::to_string))),
+            )
+            .item(
+                PopupMenuItem::new("Copy Selected Pathname")
+                    .disabled(path.is_none())
+                    .on_click(copy(path.clone())),
+            )
+            .separator()
+            .item(PopupMenuItem::new("Fold All").on_click(act(|this, _, cx| {
+                this.fold_all(true, cx);
+            })))
+            .item(
+                PopupMenuItem::new("Unfold All").on_click(act(|this, _, cx| {
+                    this.fold_all(false, cx);
+                })),
+            )
+            .separator()
+            .item(PopupMenuItem::new("Clear All").on_click(act(|this, _, cx| this.clear(cx))))
+        }
     }
 
     fn rebuild_rows(&mut self) {
@@ -274,7 +408,7 @@ impl SearchResults {
         self.rows
             .iter()
             .map(|row| match *row {
-                Row::Run(r) => self.runs[r].title.clone(),
+                Row::Run(r) => self.runs[r].title(),
                 Row::File(r, f) => {
                     let file = &self.runs[r].files[f];
                     format!("  {} ({})", file.name, file.hits)
@@ -294,16 +428,25 @@ impl SearchResults {
         }
         let last = self.rows.len().saturating_sub(1);
         match keystroke.key.as_str() {
+            // An empty list has no row to select.
+            "down" | "up" if self.rows.is_empty() => {}
             "down" => {
                 self.selected = Some(self.selected.map_or(0, |i| (i + 1).min(last)));
             }
             "up" => self.selected = Some(self.selected.map_or(0, |i| i.saturating_sub(1))),
             "enter" => {
-                if let Some(index) = self.selected {
-                    match self.rows[index] {
+                if let Some(index) = self.selected
+                    && let Some(row) = self.rows.get(index).copied()
+                {
+                    match row {
                         Row::Line(..) => self.open(index, cx),
                         row => self.toggle(row, cx),
                     }
+                }
+            }
+            "delete" => {
+                if let Some(index) = self.selected {
+                    self.remove(index, cx);
                 }
             }
             _ => return,
@@ -320,6 +463,7 @@ impl SearchResults {
         let selected = self.selected == Some(index);
         let base = div()
             .id(("search-result", index))
+            .debug_selector(move || format!("search-result-{index}"))
             .w_full()
             .h(px(ROW_HEIGHT))
             .flex()
@@ -328,6 +472,15 @@ impl SearchResults {
             .whitespace_nowrap()
             .overflow_hidden()
             .when(selected, |row| row.bg(rgb(0xddf4ff)))
+            // A right click selects the row its menu works on.
+            .on_mouse_down(
+                MouseButton::Right,
+                cx.listener(move |this, _, window, cx| {
+                    window.focus(&this.focus_handle, cx);
+                    this.selected = Some(index);
+                    cx.notify();
+                }),
+            )
             .on_click(cx.listener(move |this, event: &ClickEvent, window, cx| {
                 window.focus(&this.focus_handle, cx);
                 match row {
@@ -340,6 +493,7 @@ impl SearchResults {
                 }
             }));
         let fold = |collapsed: bool| if collapsed { "▸ " } else { "▾ " };
+        let menu = self.context_menu(index, cx);
         match row {
             Row::Run(r) => {
                 let run = &self.runs[r];
@@ -350,7 +504,8 @@ impl SearchResults {
                         rgb(0xe8eef6)
                     })
                     .font_weight(FontWeight::SEMIBOLD)
-                    .child(format!("{}{}", fold(run.collapsed), run.title))
+                    .child(format!("{}{}", fold(run.collapsed), run.title()))
+                    .context_menu(menu)
                     .into_any_element()
             }
             Row::File(r, f) => {
@@ -364,6 +519,7 @@ impl SearchResults {
                         file.name,
                         file.hits
                     ))
+                    .context_menu(menu)
                     .into_any_element()
             }
             Row::Line(r, f, l) => {
@@ -388,6 +544,7 @@ impl SearchResults {
                 base.pl(px(36.))
                     .font_family(crate::MONOSPACE)
                     .child(StyledText::new(text).with_highlights(highlights))
+                    .context_menu(menu)
                     .into_any_element()
             }
         }
@@ -456,14 +613,219 @@ mod tests {
         reason = "expected results written out"
     )]
 
+    use gpui_kit::{Entity, Modifiers, TestAppContext, VisualTestContext};
+
     use super::*;
+    use crate::workspace::tests::open_workspace;
+
+    fn hit(line: usize, text: &str, matches: usize) -> LineHit {
+        LineHit {
+            line,
+            text: text.to_owned().into(),
+            highlights: Vec::new(),
+            target: 0..1,
+            matches,
+        }
+    }
+
+    fn file(name: &str, lines: Vec<LineHit>) -> FileResults {
+        let hits = lines.iter().map(|line| line.matches).sum();
+        FileResults::new(
+            ResultLocation::File(name.into()),
+            name.to_owned(),
+            lines,
+            hits,
+        )
+    }
+
+    /// The panel of a new window, focused, with a search for "foo" in a.txt (three hits on two
+    /// lines) and b.txt (one), of five documents searched.
+    fn panel_with_results(
+        cx: &mut TestAppContext,
+    ) -> (Entity<SearchResults>, &mut VisualTestContext) {
+        let (workspace, cx) = open_workspace(cx);
+        let results = workspace.read_with(cx, |workspace, _| workspace.search_results.clone());
+        workspace.update_in(cx, |workspace, window, cx| {
+            let run = SearchRun::new(
+                "foo",
+                vec![
+                    file("a.txt", vec![hit(0, "foo foo", 2), hit(2, "foo", 1)]),
+                    file("b.txt", vec![hit(1, "x foo", 1)]),
+                ],
+                5,
+            );
+            workspace.search_results.update(cx, |results, cx| {
+                results.add(run, cx);
+                window.focus(&results.focus_handle, cx);
+            });
+            cx.notify();
+        });
+        cx.run_until_parked();
+        (results, cx)
+    }
+
+    fn rows(results: &Entity<SearchResults>, cx: &mut VisualTestContext) -> Vec<String> {
+        results.read_with(cx, |results, _| results.rows_text())
+    }
+
+    fn selected(results: &Entity<SearchResults>, cx: &mut VisualTestContext) -> Option<usize> {
+        results.read_with(cx, |results, _| results.selected)
+    }
+
+    #[gpui_kit::test]
+    fn delete_removes_the_selected_line_and_what_it_leaves_empty(cx: &mut TestAppContext) {
+        let (results, cx) = panel_with_results(cx);
+        // Nothing selected: Delete removes nothing.
+        cx.simulate_keystrokes("delete");
+        assert_eq!(rows(&results, cx).len(), 6);
+
+        cx.simulate_keystrokes("down down down delete");
+        assert_eq!(
+            rows(&results, cx),
+            [
+                "Search \"foo\" (2 hits in 2 files of 5 searched)",
+                "  a.txt (1)",
+                "    Line 3: foo",
+                "  b.txt (1)",
+                "    Line 2: x foo",
+            ],
+            "the line's two hits no longer count"
+        );
+        assert_eq!(selected(&results, cx), Some(2), "the next line");
+        // The last line of a document takes the document with it.
+        cx.simulate_keystrokes("delete");
+        assert_eq!(
+            rows(&results, cx),
+            [
+                "Search \"foo\" (1 hit in 1 file of 5 searched)",
+                "  b.txt (1)",
+                "    Line 2: x foo",
+            ]
+        );
+        assert_eq!(
+            selected(&results, cx),
+            Some(2),
+            "the last row, past the end"
+        );
+        // The last document of a search takes the search with it.
+        cx.simulate_keystrokes("delete");
+        assert!(rows(&results, cx).is_empty());
+        assert_eq!(selected(&results, cx), None);
+        cx.simulate_keystrokes("delete down enter shift-delete");
+        assert!(rows(&results, cx).is_empty());
+    }
+
+    #[gpui_kit::test]
+    fn delete_on_a_search_or_a_document_removes_everything_under_it(cx: &mut TestAppContext) {
+        let (results, cx) = panel_with_results(cx);
+        results.update(cx, |results, cx| {
+            results.add(
+                SearchRun::new("x", vec![file("c.txt", vec![hit(4, "x", 1)])], 1),
+                cx,
+            );
+        });
+        // The newer search is on top; its heading is row 0, the older one's row 3.
+        cx.simulate_keystrokes("down down down down delete");
+        assert_eq!(
+            rows(&results, cx),
+            [
+                "Search \"x\" (1 hit in 1 file of 1 searched)",
+                "  c.txt (1)",
+                "    Line 5: x",
+            ]
+        );
+        // Delete with a modifier is not Delete.
+        cx.simulate_keystrokes("up shift-delete");
+        assert_eq!(rows(&results, cx).len(), 3);
+        cx.simulate_keystrokes("delete");
+        assert!(
+            rows(&results, cx).is_empty(),
+            "the search went with its only document"
+        );
+        // F4 has nothing to go to.
+        let stepped = results.update(cx, |results, cx| results.step(true, cx));
+        assert!(!stepped);
+    }
+
+    #[gpui_kit::test]
+    fn the_right_click_menu_removes_copies_folds_and_clears(cx: &mut TestAppContext) {
+        let (results, cx) = panel_with_results(cx);
+        let right_click = |index: usize, cx: &mut VisualTestContext| {
+            let selector: &'static str = format!("search-result-{index}").leak();
+            let center = cx.debug_bounds(selector).expect("drawn").center();
+            cx.simulate_mouse_down(center, MouseButton::Right, Modifiers::none());
+            cx.simulate_mouse_up(center, MouseButton::Right, Modifiers::none());
+            cx.run_until_parked();
+        };
+        let clipboard = |cx: &mut VisualTestContext| {
+            cx.update(|_, cx| cx.read_from_clipboard().and_then(|item| item.text()))
+        };
+
+        // Remove, Copy Selected Line, Copy Selected Pathname, Fold All, Unfold All, Clear All;
+        // the arrow keys skip the items that are disabled for the row.
+        right_click(5, cx);
+        assert_eq!(selected(&results, cx), Some(5), "the right click selects");
+        cx.simulate_keystrokes("down down enter");
+        assert_eq!(clipboard(cx).as_deref(), Some("x foo"));
+        right_click(2, cx);
+        cx.simulate_keystrokes("down down down enter");
+        assert_eq!(clipboard(cx).as_deref(), Some("a.txt"));
+        right_click(2, cx);
+        cx.simulate_keystrokes("down enter");
+        assert_eq!(rows(&results, cx)[2], "    Line 3: foo", "removed");
+
+        // A search heading has neither a line nor a path to copy.
+        right_click(0, cx);
+        cx.simulate_keystrokes("down down enter");
+        assert_eq!(
+            rows(&results, cx),
+            ["Search \"foo\" (2 hits in 2 files of 5 searched)"],
+            "folded"
+        );
+        right_click(0, cx);
+        cx.simulate_keystrokes("down down down enter");
+        assert_eq!(rows(&results, cx).len(), 5, "unfolded");
+        // A document has no line to copy.
+        right_click(1, cx);
+        cx.simulate_keystrokes("down down enter");
+        assert_eq!(clipboard(cx).as_deref(), Some("a.txt"));
+        // Escape closes the menu without doing anything.
+        right_click(1, cx);
+        cx.simulate_keystrokes("down escape");
+        assert_eq!(rows(&results, cx).len(), 5);
+        right_click(1, cx);
+        cx.simulate_keystrokes("down down down down down enter");
+        assert!(rows(&results, cx).is_empty(), "cleared");
+    }
+
+    #[gpui_kit::test]
+    fn a_search_heading_has_nothing_to_copy(cx: &mut TestAppContext) {
+        let results = cx.new(SearchResults::new);
+        results.update(cx, |results, cx| {
+            results.add(
+                SearchRun::new("foo", vec![file("a.txt", vec![hit(0, "foo", 1)])], 1),
+                cx,
+            );
+            assert_eq!(results.line_text(0), None);
+            assert_eq!(results.path_text(0), None);
+            assert_eq!(results.line_text(1), None, "a document has no line");
+            assert_eq!(results.path_text(1).as_deref(), Some("a.txt"));
+            assert_eq!(results.line_text(2).as_deref(), Some("foo"));
+            assert_eq!(results.path_text(2).as_deref(), Some("a.txt"));
+            assert_eq!(results.line_text(3), None, "past the end");
+            assert_eq!(results.path_text(3), None);
+            // Removing a row that is not there changes nothing.
+            results.remove(3, cx);
+            assert_eq!(results.rows_text().len(), 3);
+        });
+    }
 
     #[test]
     fn lines_gather_their_matches() {
         let text = Rope::from_str("foo bar foo\r\nbaz\nfoo-\nfoo\nbar");
         let matches = [0..3, 8..11, 17..20, 22..29];
         let hits = line_hits(&text, &matches);
-        let summary: Vec<(usize, &str, Vec<Range<usize>>, Range<usize>)> = hits
+        let summary: Vec<(usize, &str, Vec<Range<usize>>, Range<usize>, usize)> = hits
             .iter()
             .map(|hit| {
                 (
@@ -471,16 +833,17 @@ mod tests {
                     hit.text.as_ref(),
                     hit.highlights.clone(),
                     hit.target.clone(),
+                    hit.matches,
                 )
             })
             .collect();
         assert_eq!(
             summary,
             [
-                (0, "foo bar foo", vec![0..3, 8..11], 0..3),
-                (2, "foo-", vec![0..3], 0..3),
+                (0, "foo bar foo", vec![0..3, 8..11], 0..3, 2),
+                (2, "foo-", vec![0..3], 0..3, 1),
                 // A match over a line break shows its first line's part.
-                (3, "foo", vec![0..3], 0..7),
+                (3, "foo", vec![0..3], 0..7, 1),
             ]
         );
     }

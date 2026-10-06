@@ -66,11 +66,16 @@ tabs: Find, Replace, Find in Files and Mark. Phase 3 brings Birchpad to that.
   lines and wrap around. The result's tab comes forward and its first match on the line is
   selected. Results keep the line number and the offsets in the line, as Notepad++ does, so an
   edit above a match moves it away from its result. F7 shows or hides the panel.
+- **Removing results**, which Notepad++ cannot do: Delete, or Remove in the right-click menu,
+  takes the selected line, document or search out of the list. A document without lines left
+  goes with it, and a search without documents left; the heading counts only what is still
+  listed ("of N searched" stays). The menu also has Copy Selected Line, Copy Selected Pathname,
+  Fold All, Unfold All and Clear All, as Notepad++'s has.
 
 ## Consequences
 
 - `fancy-regex` is a new dependency of `birchpad-core` (MIT; it brings no new crates besides).
 - Regular expressions copy the text for each search; incremental search on very large files
   will want a cached copy.
-- Not yet: Find in Files (since done, [ADR 0024](0024-find-in-files.md)), incremental search, copying
-  results, and remembering past searches.
+- Not yet: Find in Files (since done, [ADR 0024](0024-find-in-files.md)), incremental search,
+  and remembering past searches.

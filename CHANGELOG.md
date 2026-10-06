@@ -18,6 +18,10 @@ version's release notes from its section here.
 - The search results panel, as in Notepad++: Find All in Current Document and in All Opened
   Documents list the lines with matches; double-click or F4 and Shift+F4 go to them, F7 shows or
   hides the panel.
+- Results can be removed from the search results panel one by one: Delete, or Remove in its
+  right-click menu, takes out the selected line, document or search, and the heading counts
+  what is left. The menu also copies the selected line or path, folds and unfolds everything,
+  and clears the list.
 - Find in Files (Ctrl+Shift+F): Find All and Replace in Files in the files of a folder, with
   Notepad++'s filters (`*.rs *.toml !*.bak !\target !+\node_modules`), In all sub-folders, In
   hidden folders and Follow current doc. Open documents are searched with their unsaved changes
