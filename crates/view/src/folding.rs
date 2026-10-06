@@ -125,6 +125,11 @@ pub fn hidden_lines(folds: &[Fold], collapsed: &[usize]) -> Vec<Range<usize>> {
 
 #[cfg(test)]
 mod tests {
+    #![allow(
+        clippy::single_range_in_vec_init,
+        reason = "lists of fold ranges, some with one range"
+    )]
+
     use super::*;
 
     fn folds() -> Vec<Fold> {
@@ -143,6 +148,33 @@ mod tests {
                 start(9)..end(9),
             ],
         )
+    }
+
+    #[test]
+    fn ranges_that_fold_nothing_are_dropped() {
+        let text = Rope::from_str("a {\nb\n}");
+        // Empty, reversed, past the end of the text, on one line.
+        #[expect(clippy::reversed_empty_ranges, reason = "a reversed range is the case")]
+        let reversed = 6..2;
+        let ranges = [4..4, reversed, 99..120, 0..3];
+        assert!(folds_from_ranges(&text, &ranges).is_empty());
+        // One that runs past the end is cut there.
+        let folds = folds_from_ranges(&text, &[2..999]);
+        assert_eq!(
+            folds.iter().map(|f| (f.header, f.last)).collect::<Vec<_>>(),
+            [(0, 2)]
+        );
+        assert!(folds_from_ranges(&Rope::new(), &[0..5]).is_empty());
+    }
+
+    #[test]
+    fn an_edit_that_changes_nothing_keeps_the_folds() {
+        let text = Rope::from_str("a {\nb\n}");
+        let mut folds = folds_from_ranges(&text, &[2..7]);
+        let before = folds.clone();
+        let identity = ChangeSet::identity(text.len());
+        assert!(shift_folds(&mut folds, &text, &identity, line_count(&text)));
+        assert_eq!(folds, before);
     }
 
     #[test]

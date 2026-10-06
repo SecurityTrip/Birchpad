@@ -199,6 +199,23 @@ mod tests {
     use super::*;
 
     #[test]
+    fn control_pictures_at_the_ends_of_their_ranges() {
+        // C0 controls, except the tab, have pictures from U+2400 on.
+        assert_eq!(control_picture('\0'), Some('\u{2400}'));
+        assert_eq!(control_picture('\u{1B}'), Some('\u{241B}'));
+        assert_eq!(control_picture('\u{1F}'), Some('\u{241F}'));
+        assert_eq!(control_picture('\t'), None);
+        // DEL has its own; the C1 controls a box.
+        assert_eq!(control_picture('\u{7F}'), Some('\u{2421}'));
+        assert_eq!(control_picture('\u{80}'), Some('\u{25AF}'));
+        assert_eq!(control_picture('\u{9F}'), Some('\u{25AF}'));
+        // Just past each range, and ordinary characters, have none.
+        for ch in [' ', '~', '\u{A0}', 'a', 'Ж'] {
+            assert_eq!(control_picture(ch), None, "{ch:?}");
+        }
+    }
+
+    #[test]
     fn widths() {
         assert_eq!(char_cells('a'), 1);
         assert_eq!(char_cells('ж'), 1);

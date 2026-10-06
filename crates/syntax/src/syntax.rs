@@ -1169,6 +1169,104 @@ mod tests {
     }
 
     #[test]
+    fn every_lua_class_inside_and_outside_sets() {
+        for (lua, regex) in [
+            ("%a", "[A-Za-z]"),
+            ("[%a]", "[A-Za-z]"),
+            ("%d", "\\\\d"),
+            ("[%d]", "[\\\\d]"),
+            ("%l", "[a-z]"),
+            ("[%l]", "[a-z]"),
+            ("%u", "[A-Z]"),
+            ("[%u]", "[A-Z]"),
+            ("%w", "[A-Za-z0-9]"),
+            ("[%w]", "[A-Za-z0-9]"),
+            ("%x", "[0-9A-Fa-f]"),
+            ("[%x]", "[0-9A-Fa-f]"),
+            ("%s", "\\\\s"),
+            ("%p", "[[:punct:]]"),
+            ("[%p]", "[[:punct:]]"),
+        ] {
+            assert_eq!(lua_pattern_to_regex(lua), regex, "{lua}");
+        }
+    }
+
+    #[test]
+    fn lua_patterns_at_their_edges() {
+        // An unknown class is the letter; `%%` a percent sign; a `%` at the very end nothing.
+        assert_eq!(lua_pattern_to_regex("%z"), "z");
+        assert_eq!(lua_pattern_to_regex("100%%"), "100%");
+        assert_eq!(lua_pattern_to_regex("end%"), "end");
+        assert_eq!(lua_pattern_to_regex(""), "");
+        // A `]` outside a set, and a `^` that does not start a set.
+        assert_eq!(lua_pattern_to_regex("a]^b"), "a]^b");
+    }
+
+    #[test]
+    fn lua_matches_in_queries_at_their_edges() {
+        // Two in one query, an escaped quote inside the pattern, none at all.
+        let two = r#"(#lua-match? @a "^%u") (#lua-match? @b "%d\"x")"#;
+        assert_eq!(
+            lua_matches_to_regex(two),
+            r#"(#match? @a "^[A-Z]") (#match? @b "\\d\"x")"#
+        );
+        assert_eq!(lua_matches_to_regex("(#eq? @a \"x\")"), "(#eq? @a \"x\")");
+        // A predicate without its string is left as it is (the query then fails to compile).
+        assert_eq!(lua_matches_to_regex("(#lua-match? @a"), "(#match? @a");
+        // An unterminated string runs to the end.
+        assert_eq!(
+            lua_matches_to_regex("(#lua-match? @a \"%d"),
+            "(#match? @a \"\\\\d"
+        );
+    }
+
+    #[test]
+    fn a_syntax_without_a_tree_has_no_highlights() {
+        let config = config(by_id("rust").unwrap()).unwrap();
+        assert!(format!("{config:?}").contains("rust"));
+        let mut syntax = Syntax::new(config);
+        let text = Rope::from_str("fn main() {}");
+        assert!(syntax.highlights(&text, 0..text.len()).is_empty());
+        // Following an edit before the first parse is no problem.
+        let changes = ChangeSet::from_edits(&text, [Edit::insert(0, "x")]).unwrap();
+        syntax.edit(&text, &changes);
+        assert!(syntax.layers().is_empty());
+    }
+
+    #[test]
+    fn highlights_of_empty_and_overlong_ranges() {
+        let text = Rope::from_str("fn main() {}");
+        let syntax = parse("rust", &text);
+        assert!(syntax.highlights(&text, 3..3).is_empty());
+        assert!(syntax.highlights(&text, 50..60).is_empty(), "past the end");
+        // A range running past the end is cut there.
+        let whole = syntax.highlights(&text, 0..text.len());
+        assert_eq!(syntax.highlights(&text, 0..1000), whole);
+    }
+
+    #[test]
+    fn embedded_languages_stop_at_the_depth_limit() {
+        // Markdown in a Markdown code block, eight deep, each fence longer than the inner one.
+        let mut source = String::from("deepest *text*\n");
+        for level in 0..8 {
+            let fence = "`".repeat(3 + level);
+            source = format!("{fence}markdown\n{source}{fence}\n");
+        }
+        let text = Rope::from_str(&source);
+        let syntax = parse("markdown", &text);
+        let depths: Vec<u8> = syntax.layers().iter().map(|layer| layer.depth).collect();
+        assert!(!depths.is_empty());
+        assert!(depths.iter().all(|&depth| depth <= MAX_DEPTH), "{depths:?}");
+        assert!(
+            depths.contains(&MAX_DEPTH),
+            "nesting goes down to the limit: {depths:?}"
+        );
+        // A first parse reuses nothing; highlighting still covers the whole text.
+        assert!(syntax.layers().iter().all(|layer| !layer.reused()));
+        assert!(!syntax.highlights(&text, 0..text.len()).is_empty());
+    }
+
+    #[test]
     fn every_language_highlights_something() {
         // Catches a grammar whose query compiles but matches nothing (wrong node names).
         for language in LANGUAGES {
