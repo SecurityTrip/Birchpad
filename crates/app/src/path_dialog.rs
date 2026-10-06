@@ -109,3 +109,63 @@ fn open_path_dialog(
             .on_close(move |_, _, _| on_cancel(None))
     });
 }
+
+#[cfg(test)]
+mod tests {
+    use gpui_kit::{TestAppContext, VisualTestContext};
+
+    use super::*;
+    use crate::workspace::tests::open_workspace;
+
+    fn open(initial: &str, cx: &mut VisualTestContext) -> oneshot::Receiver<Option<PathBuf>> {
+        let (sender, receiver) = oneshot::channel();
+        cx.update(|window, cx| {
+            open_path_dialog("Save As", initial.to_owned(), sender, window, cx);
+        });
+        cx.run_until_parked();
+        assert!(cx.update(|window, cx| window.has_active_dialog(cx)));
+        receiver
+    }
+
+    #[gpui_kit::test]
+    fn enter_answers_with_the_path(cx: &mut TestAppContext) {
+        let (_workspace, cx) = open_workspace(cx);
+        let mut receiver = open("C:/notes/a.txt", cx);
+        cx.simulate_keystrokes("enter");
+        assert_eq!(
+            receiver.try_recv().unwrap(),
+            Some(Some(PathBuf::from("C:/notes/a.txt")))
+        );
+        assert!(!cx.update(|window, cx| window.has_active_dialog(cx)));
+    }
+
+    #[gpui_kit::test]
+    fn escape_cancels(cx: &mut TestAppContext) {
+        let (_workspace, cx) = open_workspace(cx);
+        let mut receiver = open("C:/notes/a.txt", cx);
+        cx.simulate_keystrokes("escape");
+        assert_eq!(receiver.try_recv().unwrap(), Some(None));
+    }
+
+    #[gpui_kit::test]
+    fn an_empty_path_is_not_an_answer(cx: &mut TestAppContext) {
+        let (_workspace, cx) = open_workspace(cx);
+        let mut receiver = open("   ", cx);
+        cx.simulate_keystrokes("enter");
+        assert_eq!(receiver.try_recv().unwrap(), None, "still asking");
+        assert!(cx.update(|window, cx| window.has_active_dialog(cx)));
+        cx.simulate_keystrokes("escape");
+        assert_eq!(receiver.try_recv().unwrap(), Some(None));
+    }
+
+    #[gpui_kit::test]
+    fn spaces_around_the_path_are_dropped(cx: &mut TestAppContext) {
+        let (_workspace, cx) = open_workspace(cx);
+        let mut receiver = open("  D:/b.txt  ", cx);
+        cx.simulate_keystrokes("enter");
+        assert_eq!(
+            receiver.try_recv().unwrap(),
+            Some(Some(PathBuf::from("D:/b.txt")))
+        );
+    }
+}
