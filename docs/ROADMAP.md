@@ -182,9 +182,11 @@ What Phase 1 left for later is marked *(from Phase 1)* in the phases below.
         without errors ([ADR 0011](adr/0011-syntax-highlighting.md))
   - [x] End-to-end tests of the built application on Windows, Linux and macOS: start, open,
         edit, save, quit and restore the session, in a real window driven by a script
-  - Every bug fixed with a test that fails without the fix
-  - A short manual checklist before each release for what automation cannot see: input
-    methods, screen readers, high DPI, the installers and updates
+  - [x] Every bug fixed with a test that fails without the fix
+        ([CONTRIBUTING.md](../CONTRIBUTING.md#tests))
+  - [x] A short manual checklist before each release for what automation cannot see: input
+        methods, screen readers, high DPI, the installers and updates
+        ([release-checklist.md](release-checklist.md))
 
 ## Phase 4: customization
 

@@ -71,6 +71,9 @@ run; on Linux, run them under `xvfb-run`:
 cargo test -p birchpad --features e2e --test e2e
 ```
 
+What no automated test sees (input methods, screen readers, displays, installers and updates)
+is checked by hand before each release: [docs/release-checklist.md](docs/release-checklist.md).
+
 ## Commits and pull requests
 
 - Use [Conventional Commits](https://www.conventionalcommits.org/) (`feat:`, `fix:`, `docs:`,
