@@ -35,7 +35,7 @@ tabs: Find, Replace, Find in Files and Mark. Phase 3 brings Birchpad to that.
 ### The find panel
 
 - **A panel, not a dialog.** It stays at the bottom of the window, above the status bar, with
-  the tabs Find, Replace and Mark (Find in Files joins with the search results panel). Notepad++'s
+  the tabs Find, Replace and Mark (and Find in Files, [ADR 0024](0024-find-in-files.md)). Notepad++'s
   dialog is modeless and floats over the text; a docked panel never covers it, and GPUI dialogs
   are modal.
 - **Find:** Find Next and Previous (F3, Shift+F3), Count. **Replace:** Replace, Replace All,
@@ -72,5 +72,5 @@ tabs: Find, Replace, Find in Files and Mark. Phase 3 brings Birchpad to that.
 - `fancy-regex` is a new dependency of `birchpad-core` (MIT; it brings no new crates besides).
 - Regular expressions copy the text for each search; incremental search on very large files
   will want a cached copy.
-- Not yet: Find in Files (whose results go to the same panel), incremental search, copying
+- Not yet: Find in Files (since done, [ADR 0024](0024-find-in-files.md)), incremental search, copying
   results, and remembering past searches.

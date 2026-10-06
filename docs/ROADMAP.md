@@ -129,7 +129,10 @@ What Phase 1 left for later is marked *(from Phase 1)* in the phases below.
       look-around); in selection, wrap around, backwards, all open documents; Count, Mark All
       with Bookmark line and Purge, Copy Marked Text
       ([ADR 0022](adr/0022-search-modes-and-the-find-panel.md))
-- Find in Files
+- [x] Find in Files: Notepad++'s filters (`*.rs !\target !+\node_modules`), sub-folders and
+      hidden folders, Follow current doc.; open documents searched and replaced in as they are,
+      other files written back in their own encoding; Stop
+      ([ADR 0024](adr/0024-find-in-files.md))
 - [x] Search results panel: Find All in Current Document and in All Opened Documents, searches
       stacked and foldable, F4 / Shift+F4 through the results, F7 to show or hide it
       ([ADR 0022](adr/0022-search-modes-and-the-find-panel.md))

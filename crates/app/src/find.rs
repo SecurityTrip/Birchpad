@@ -1,10 +1,14 @@
-//! Find, Replace, Mark and Go To.
+//! Find, Replace, Find in Files, Mark and Go To.
 //!
 //! The find panel sits at the bottom of the window, above the status bar, with Notepad++'s Find,
-//! Replace and Mark tabs, search modes and options. It is a panel rather than a dialog, and like
+//! Replace, Find in Files and Mark tabs, search modes and options. It is a panel rather than a dialog, and like
 //! Notepad++'s modeless dialog it leaves the document editable while it is open. F3 and
 //! Shift+F3 repeat the last search even when the panel is closed. Searching goes through
 //! `birchpad_core::search`.
+
+use std::path::Path;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use anyhow::{Context as _, Result, anyhow, bail};
 use birchpad_core::motion::{line_count, line_of, line_range, next_boundary, prev_boundary};
@@ -22,6 +26,7 @@ use gpui_kit::{
     Subscription, Window, div, prelude::*, px, rgb,
 };
 
+use crate::app_state::AppState;
 use crate::commands::CommandRegistry;
 use crate::editor::EditorView;
 use crate::search_results::{
@@ -36,6 +41,10 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
     });
     registry.workspace("search.replace", |this, (), window, cx| {
         this.open_find(FindTab::Replace, window, cx);
+        Ok(())
+    });
+    registry.workspace("search.find-in-files", |this, (), window, cx| {
+        this.open_find(FindTab::FindInFiles, window, cx);
         Ok(())
     });
     registry.workspace("search.mark", |this, (), window, cx| {
@@ -88,11 +97,23 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
 pub(crate) enum FindTab {
     Find,
     Replace,
+    FindInFiles,
     Mark,
 }
 
 impl FindTab {
-    const ALL: [Self; 3] = [Self::Find, Self::Replace, Self::Mark];
+    const ALL: [Self; 4] = [Self::Find, Self::Replace, Self::FindInFiles, Self::Mark];
+}
+
+/// The folder options of the Find in Files tab.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct FolderSearch {
+    /// In all sub-folders.
+    pub(crate) subfolders: bool,
+    /// In hidden folders.
+    pub(crate) hidden: bool,
+    /// Follow current doc.: the folder of the active document.
+    pub(crate) follow_current_document: bool,
 }
 
 /// Options of the find panel, as in Notepad++'s Find dialog.
@@ -150,6 +171,15 @@ pub(crate) enum FindBarEvent {
     MarkAll,
     ClearMarks,
     CopyMarked,
+    /// Find All in the files of the Find in Files tab.
+    FindInFiles,
+    ReplaceInFiles,
+    /// Stops a Find in Files or Replace in Files that is running.
+    StopFiles,
+    /// The "..." button: choose the folder.
+    BrowseFolder,
+    /// Another tab was chosen.
+    TabChanged,
     Close,
 }
 
@@ -158,7 +188,12 @@ pub(crate) struct FindBar {
     pub(crate) tab: FindTab,
     find_input: Entity<InputState>,
     replace_input: Entity<InputState>,
+    filters_input: Entity<InputState>,
+    directory_input: Entity<InputState>,
     pub(crate) options: FindOptions,
+    pub(crate) folder: FolderSearch,
+    /// Set while Find in Files or Replace in Files runs; setting the flag stops it.
+    pub(crate) files_running: Option<Arc<AtomicBool>>,
     /// A message from the last search, and whether it is a failure.
     status: Option<(String, bool)>,
     focus_handle: FocusHandle,
@@ -175,14 +210,36 @@ impl Focusable for FindBar {
 
 impl FindBar {
     pub(crate) fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
+        let remembered = cx
+            .try_global::<AppState>()
+            .map(|app| app.state.find_in_files.clone())
+            .unwrap_or_default();
         let find_input = cx.new(|cx| InputState::new(window, cx).placeholder("Find what"));
         let replace_input = cx.new(|cx| InputState::new(window, cx).placeholder("Replace with"));
+        let filters_input = cx.new(|cx| {
+            InputState::new(window, cx)
+                .placeholder("*.*")
+                .default_value(remembered.filters.clone())
+        });
+        let directory = remembered
+            .directory
+            .as_deref()
+            .map(|dir| dir.display().to_string())
+            .unwrap_or_default();
+        let directory_input = cx.new(|cx| {
+            InputState::new(window, cx)
+                .placeholder("Folder")
+                .default_value(directory)
+        });
         let find_events =
             cx.subscribe_in(&find_input, window, |this, _, event: &InputEvent, _, cx| {
                 if let InputEvent::PressEnter { shift, .. } = event {
-                    // Enter does the tab's main action: Find Next, or Mark All.
+                    // Enter does the tab's main action: Find Next, Find All in files, or Mark
+                    // All.
                     if this.tab == FindTab::Mark {
                         cx.emit(FindBarEvent::MarkAll);
+                    } else if this.tab == FindTab::FindInFiles {
+                        cx.emit(FindBarEvent::FindInFiles);
                     } else if *shift != this.options.backward {
                         cx.emit(FindBarEvent::Find(Direction::Backward));
                     } else {
@@ -190,22 +247,95 @@ impl FindBar {
                     }
                 }
             });
-        let replace_events =
-            cx.subscribe_in(&replace_input, window, |_, _, event: &InputEvent, _, cx| {
-                if let InputEvent::PressEnter { .. } = event {
+        // Enter replaces on the Replace tab; replacing in files only ever takes a click.
+        let replace_events = cx.subscribe_in(
+            &replace_input,
+            window,
+            |this, _, event: &InputEvent, _, cx| {
+                if let InputEvent::PressEnter { .. } = event
+                    && this.tab == FindTab::Replace
+                {
                     cx.emit(FindBarEvent::Replace);
                 }
-            });
+            },
+        );
+        let mut subscriptions = vec![find_events, replace_events];
+        for input in [&filters_input, &directory_input] {
+            subscriptions.push(cx.subscribe_in(
+                input,
+                window,
+                |_, _, event: &InputEvent, _, cx| {
+                    if let InputEvent::PressEnter { .. } = event {
+                        cx.emit(FindBarEvent::FindInFiles);
+                    }
+                },
+            ));
+        }
         Self {
             visible: false,
             tab: FindTab::Find,
             find_input,
             replace_input,
+            filters_input,
+            directory_input,
             options: FindOptions::default(),
+            folder: FolderSearch {
+                subfolders: remembered.subfolders,
+                hidden: remembered.hidden,
+                follow_current_document: remembered.follow_current_document,
+            },
+            files_running: None,
             status: None,
             focus_handle: cx.focus_handle(),
-            _subscriptions: vec![find_events, replace_events],
+            _subscriptions: subscriptions,
         }
+    }
+
+    /// The Filters field of Find in Files.
+    pub(crate) fn filters(&self, cx: &App) -> String {
+        self.filters_input.read(cx).value().to_string()
+    }
+
+    /// The Directory field of Find in Files.
+    pub(crate) fn directory(&self, cx: &App) -> String {
+        self.directory_input.read(cx).value().to_string()
+    }
+
+    pub(crate) fn set_directory(&mut self, directory: &Path, window: &mut Window, cx: &mut App) {
+        let directory = directory.display().to_string();
+        self.directory_input
+            .update(cx, |input, cx| input.set_value(directory, window, cx));
+    }
+
+    #[cfg(test)]
+    pub(crate) fn set_filters(&mut self, filters: &str, window: &mut Window, cx: &mut App) {
+        self.filters_input
+            .update(cx, |input, cx| input.set_value(filters, window, cx));
+    }
+
+    #[cfg(test)]
+    pub(crate) fn replace_input_for_tests(
+        &mut self,
+        text: &str,
+        window: &mut Window,
+        cx: &mut App,
+    ) {
+        self.replace_input
+            .update(cx, |input, cx| input.set_value(text, window, cx));
+    }
+
+    /// The panel's message, for tests.
+    #[cfg(test)]
+    pub(crate) fn status_text(&self) -> Option<String> {
+        self.status.as_ref().map(|(message, _)| message.clone())
+    }
+
+    /// Stops Find in Files or Replace in Files, if one runs.
+    pub(crate) fn stop_files(&mut self, cx: &mut Context<Self>) {
+        if let Some(cancel) = &self.files_running {
+            cancel.store(true, Ordering::Relaxed);
+        }
+        cx.notify();
     }
 
     pub(crate) fn query(&self, cx: &App) -> Query {
@@ -281,6 +411,29 @@ impl FindBar {
                     .ok();
             })
     }
+
+    fn folder_box(
+        &self,
+        id: &'static str,
+        label: &'static str,
+        checked: bool,
+        set: fn(&mut FolderSearch, bool),
+        cx: &Context<Self>,
+    ) -> Checkbox {
+        let this = cx.entity().downgrade();
+        Checkbox::new(id)
+            .label(label)
+            .checked(checked)
+            .small()
+            .on_click(move |checked, _, cx| {
+                let checked = *checked;
+                this.update(cx, |this, cx| {
+                    set(&mut this.folder, checked);
+                    cx.notify();
+                })
+                .ok();
+            })
+    }
 }
 
 impl Render for FindBar {
@@ -302,10 +455,12 @@ impl Render for FindBar {
             .on_click(cx.listener(|this, index: &usize, _, cx| {
                 this.tab = FindTab::ALL[*index];
                 this.status = None;
+                cx.emit(FindBarEvent::TabChanged);
                 cx.notify();
             }))
             .child(Tab::new().label("Find"))
             .child(Tab::new().label("Replace"))
+            .child(Tab::new().label("Find in Files"))
             .child(Tab::new().label("Mark"))
             .suffix(
                 Button::new("close-find")
@@ -339,6 +494,15 @@ impl Render for FindBar {
             FindTab::Replace => vec![button("find-next", "Find Next", || {
                 FindBarEvent::Find(Direction::Forward)
             })],
+            FindTab::FindInFiles if self.files_running.is_some() => {
+                vec![button("stop-files", "Stop", || FindBarEvent::StopFiles)]
+            }
+            FindTab::FindInFiles => vec![
+                button("find-in-files", "Find All", || FindBarEvent::FindInFiles),
+                button("replace-in-files", "Replace in Files", || {
+                    FindBarEvent::ReplaceInFiles
+                }),
+            ],
             FindTab::Mark => vec![
                 button("mark-all", "Mark All", || FindBarEvent::MarkAll),
                 button("clear-marks", "Clear All Marks", || {
@@ -363,12 +527,9 @@ impl Render for FindBar {
                     .small(),
             )
             .children(actions);
-        let replace_row = (tab == FindTab::Replace).then(|| {
-            div()
-                .flex()
-                .flex_row()
-                .items_center()
-                .gap_2()
+        let row = || div().flex().flex_row().items_center().gap_2();
+        let replace_row = matches!(tab, FindTab::Replace | FindTab::FindInFiles).then(|| {
+            row()
                 .child(label("Replace with:"))
                 .child(
                     Input::new(&self.replace_input)
@@ -376,15 +537,50 @@ impl Render for FindBar {
                         .w(px(360.))
                         .small(),
                 )
-                .child(button("replace", "Replace", || FindBarEvent::Replace))
-                .child(button("replace-all", "Replace All", || {
-                    FindBarEvent::ReplaceAll
-                }))
-                .child(button(
-                    "replace-all-in-all",
-                    "Replace All in All Opened Documents",
-                    || FindBarEvent::ReplaceAllInAll,
-                ))
+                .when(tab == FindTab::Replace, |row| {
+                    row.child(button("replace", "Replace", || FindBarEvent::Replace))
+                        .child(button("replace-all", "Replace All", || {
+                            FindBarEvent::ReplaceAll
+                        }))
+                        .child(button(
+                            "replace-all-in-all",
+                            "Replace All in All Opened Documents",
+                            || FindBarEvent::ReplaceAllInAll,
+                        ))
+                })
+        });
+        let files_rows = (tab == FindTab::FindInFiles).then(|| {
+            let folder = self.folder;
+            [
+                row()
+                    .child(label("Filters:"))
+                    .child(
+                        Input::new(&self.filters_input)
+                            .id("filters-input")
+                            .w(px(360.))
+                            .small(),
+                    )
+                    .into_any_element(),
+                row()
+                    .child(label("Directory:"))
+                    .child(
+                        Input::new(&self.directory_input)
+                            .id("directory-input")
+                            .w(px(360.))
+                            .small(),
+                    )
+                    .child(button("browse-folder", "...", || {
+                        FindBarEvent::BrowseFolder
+                    }))
+                    .child(self.folder_box(
+                        "follow-current",
+                        "Follow current doc.",
+                        folder.follow_current_document,
+                        |f, v| f.follow_current_document = v,
+                        cx,
+                    ))
+                    .into_any_element(),
+            ]
         });
 
         let mut boxes = vec![
@@ -404,7 +600,23 @@ impl Render for FindBar {
                 cx,
             ),
         ];
-        if tab != FindTab::Mark {
+        if tab == FindTab::FindInFiles {
+            boxes.push(self.folder_box(
+                "subfolders",
+                "In all sub-folders",
+                self.folder.subfolders,
+                |f, v| f.subfolders = v,
+                cx,
+            ));
+            boxes.push(self.folder_box(
+                "hidden-folders",
+                "In hidden folders",
+                self.folder.hidden,
+                |f, v| f.hidden = v,
+                cx,
+            ));
+        }
+        if matches!(tab, FindTab::Find | FindTab::Replace) {
             boxes.push(self.option_box(
                 "wrap-around",
                 "Wrap around",
@@ -420,13 +632,15 @@ impl Render for FindBar {
                 cx,
             ));
         }
-        boxes.push(self.option_box(
-            "in-selection",
-            "In selection",
-            options.in_selection,
-            |o, v| o.in_selection = v,
-            cx,
-        ));
+        if tab != FindTab::FindInFiles {
+            boxes.push(self.option_box(
+                "in-selection",
+                "In selection",
+                options.in_selection,
+                |o, v| o.in_selection = v,
+                cx,
+            ));
+        }
         if tab == FindTab::Mark {
             boxes.push(self.option_box(
                 "bookmark-line",
@@ -509,6 +723,7 @@ impl Render for FindBar {
             .child(tabs)
             .child(find_row)
             .children(replace_row)
+            .children(files_rows.into_iter().flatten())
             .child(options_row)
             .child(mode_row)
             .children(status)
@@ -533,7 +748,7 @@ impl Scope {
     }
 }
 
-fn plural(count: usize, one: &str, many: &str) -> String {
+pub(crate) fn plural(count: usize, one: &str, many: &str) -> String {
     format!("{count} {}", if count == 1 { one } else { many })
 }
 
@@ -559,6 +774,7 @@ impl Workspace {
             .unwrap_or((None, None));
         self.find_bar
             .update(cx, |bar, cx| bar.show(tab, text, in_selection, window, cx));
+        self.follow_current_document(window, cx);
         cx.notify();
     }
 
@@ -591,17 +807,22 @@ impl Workspace {
             FindBarEvent::MarkAll => self.mark_all(cx),
             FindBarEvent::ClearMarks => self.clear_marks(cx),
             FindBarEvent::CopyMarked => self.copy_marked(cx),
+            FindBarEvent::FindInFiles => self.find_in_files(window, cx),
+            FindBarEvent::ReplaceInFiles => self.replace_in_files(window, cx),
+            FindBarEvent::StopFiles => self.find_bar.update(cx, |bar, cx| bar.stop_files(cx)),
+            FindBarEvent::BrowseFolder => self.browse_folder(window, cx),
+            FindBarEvent::TabChanged => self.follow_current_document(window, cx),
             FindBarEvent::Close => self.close_find(window, cx),
         }
     }
 
-    fn report(&mut self, message: Option<String>, failed: bool, cx: &mut Context<Self>) {
+    pub(crate) fn report(&mut self, message: Option<String>, failed: bool, cx: &mut Context<Self>) {
         self.find_bar.update(cx, |bar, cx| {
             bar.set_status(message.map(|message| (message, failed)), cx);
         });
     }
 
-    fn searcher(&mut self, cx: &mut Context<Self>) -> Option<(Searcher, Query)> {
+    pub(crate) fn searcher(&mut self, cx: &mut Context<Self>) -> Option<(Searcher, Query)> {
         let query = self.find_bar.read(cx).query(cx);
         match Searcher::new(&query) {
             Ok(searcher) => Some((searcher, query)),
@@ -613,7 +834,7 @@ impl Workspace {
     }
 
     /// Reports a regular expression that failed to match; true if it did.
-    fn report_failure(&mut self, searcher: &Searcher, cx: &mut Context<Self>) -> bool {
+    pub(crate) fn report_failure(&mut self, searcher: &Searcher, cx: &mut Context<Self>) -> bool {
         match searcher.failure() {
             Some(error) => {
                 self.report(Some(format!("Find: {error}")), true, cx);
@@ -779,7 +1000,7 @@ impl Workspace {
 
     /// One view per open document: views of one buffer share its text. The active document
     /// comes first.
-    fn document_views(&self, cx: &App) -> Vec<Entity<EditorView>> {
+    pub(crate) fn document_views(&self, cx: &App) -> Vec<Entity<EditorView>> {
         let mut views = self.all_views(cx);
         if let Some(active) = self.active_view(cx) {
             views.retain(|view| *view != active);
@@ -907,14 +1128,6 @@ impl Workspace {
                     return;
                 };
                 self.activate_view(&view, window, cx);
-                view.update(cx, |view, cx| {
-                    let text = view.text(cx);
-                    let line = line.min(line_count(text).saturating_sub(1));
-                    let start = line_range(text, line).start;
-                    let from = text.floor_char_boundary((start + target.start).min(text.len()));
-                    let to = text.floor_char_boundary((start + target.end).min(text.len()));
-                    view.select_range(from..to.max(from), cx);
-                });
                 view
             }
             ResultLocation::File(path) => {
@@ -922,18 +1135,10 @@ impl Workspace {
                 let Some(view) = self.view_for_path(path, cx) else {
                     return;
                 };
-                view.update(cx, |view, cx| {
-                    view.set_caret_target(
-                        birchpad_cli::CaretTarget::LineColumn {
-                            line: line + 1,
-                            column: 1,
-                        },
-                        cx,
-                    );
-                });
                 view
             }
         };
+        view.update(cx, |view, cx| view.select_in_line(line, target, cx));
         let focus = view.read(cx).focus_handle.clone();
         window.focus(&focus, cx);
         cx.notify();
@@ -977,7 +1182,7 @@ impl Workspace {
     }
 
     /// The edits of Replace All in `view` (in its scope), and how many there are.
-    fn replace_all_edits(
+    pub(crate) fn replace_all_edits(
         &self,
         searcher: &Searcher,
         template: &str,

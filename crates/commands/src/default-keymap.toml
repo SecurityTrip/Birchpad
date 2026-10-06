@@ -61,6 +61,10 @@ keys = "secondary-h"
 command = "search.replace"
 
 [[binding]]
+keys = "secondary-shift-f"
+command = "search.find-in-files"
+
+[[binding]]
 keys = "f3"
 command = "search.find-next"
 

@@ -35,6 +35,37 @@ pub struct UserState {
     pub split: SplitOrientation,
     /// What update checks remember.
     pub updates: UpdateState,
+    /// The fields and options of Find in Files as last used.
+    pub find_in_files: FindInFilesState,
+}
+
+/// What the Find in Files tab remembers between runs.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, rename_all = "kebab-case")]
+pub struct FindInFilesState {
+    /// Notepad++'s filters: `*.rs *.toml !\target`.
+    pub filters: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub directory: Option<PathBuf>,
+    /// In all sub-folders.
+    pub subfolders: bool,
+    /// In hidden folders.
+    pub hidden: bool,
+    /// Follow current doc.: the folder of the active document whenever the tab opens.
+    pub follow_current_document: bool,
+}
+
+impl Default for FindInFilesState {
+    fn default() -> Self {
+        Self {
+            filters: String::new(),
+            directory: None,
+            // Notepad++'s defaults.
+            subfolders: true,
+            hidden: false,
+            follow_current_document: false,
+        }
+    }
 }
 
 /// What update checks remember between runs (ADR 0020).
@@ -150,5 +181,29 @@ mod tests {
             UserState::default()
         );
         fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn find_in_files_options_round_trip_and_default_when_missing() {
+        let defaults: UserState = toml::from_str("zoom = 1").unwrap();
+        assert_eq!(defaults.find_in_files, FindInFilesState::default());
+        assert!(defaults.find_in_files.subfolders, "Notepad++'s default");
+        // Some keys given: the others keep their defaults.
+        let partial: UserState = toml::from_str("[find-in-files]\nhidden = true").unwrap();
+        assert!(partial.find_in_files.hidden && partial.find_in_files.subfolders);
+        let state = UserState {
+            find_in_files: FindInFilesState {
+                filters: r"*.rs !+\target".into(),
+                directory: Some(PathBuf::from("/projects/birchpad")),
+                subfolders: false,
+                hidden: true,
+                follow_current_document: true,
+            },
+            ..UserState::default()
+        };
+        let text = toml::to_string(&state).unwrap();
+        assert_eq!(toml::from_str::<UserState>(&text).unwrap(), state);
+        // A wrong type is damage: the whole state is the default, as for any other key.
+        assert!(toml::from_str::<UserState>("[find-in-files]\nsubfolders = 3").is_err());
     }
 }

@@ -370,6 +370,7 @@ pub fn main_menu() -> Vec<Menu> {
         "Search",
         vec![
             cmd("search.find"),
+            cmd("search.find-in-files"),
             cmd("search.find-next"),
             cmd("search.find-previous"),
             cmd("search.select-and-find-next"),

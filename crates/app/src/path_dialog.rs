@@ -36,6 +36,28 @@ pub(crate) async fn ask_open(
     }
 }
 
+/// Asks for a folder (Find in Files). `None` if the user cancelled.
+pub(crate) async fn ask_folder(directory: PathBuf, cx: &mut AsyncWindowContext) -> Option<PathBuf> {
+    let platform = cx
+        .update(|_, cx| {
+            cx.prompt_for_paths(PathPromptOptions {
+                files: false,
+                directories: true,
+                multiple: false,
+                prompt: None,
+            })
+        })
+        .ok()?;
+    match platform.await {
+        Ok(Ok(paths)) => paths?.into_iter().next(),
+        Ok(Err(error)) => {
+            eprintln!("the system's folder dialog is not available: {error:#}");
+            ask_in_app("Choose Folder", &directory, cx).await
+        }
+        Err(_) => None,
+    }
+}
+
 /// Asks where to save a file. `None` if the user cancelled.
 pub(crate) async fn ask_save(
     directory: PathBuf,

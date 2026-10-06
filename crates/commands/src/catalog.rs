@@ -178,6 +178,7 @@ pub const COMMANDS: &[CommandSpec] = &[
         "search.select-and-find-previous",
         "Select and Find Previous",
     ),
+    workspace("search.find-in-files", "Find in Files..."),
     workspace("search.mark", "Mark..."),
     workspace("search.results-window", "Search Results Window"),
     workspace("search.next-result", "Next Search Result"),

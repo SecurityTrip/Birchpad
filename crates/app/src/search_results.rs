@@ -32,7 +32,6 @@ pub(crate) enum ResultLocation {
     /// An open document.
     Buffer(WeakEntity<Buffer>),
     /// A file on disk (Find in Files).
-    #[expect(dead_code, reason = "Find in Files comes next")]
     File(PathBuf),
 }
 

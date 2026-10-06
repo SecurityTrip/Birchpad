@@ -18,6 +18,11 @@ version's release notes from its section here.
 - The search results panel, as in Notepad++: Find All in Current Document and in All Opened
   Documents list the lines with matches; double-click or F4 and Shift+F4 go to them, F7 shows or
   hides the panel.
+- Find in Files (Ctrl+Shift+F): Find All and Replace in Files in the files of a folder, with
+  Notepad++'s filters (`*.rs *.toml !*.bak !\target !+\node_modules`), In all sub-folders, In
+  hidden folders and Follow current doc. Open documents are searched with their unsaved changes
+  and replaced in their tabs, where Undo works; other files keep their encoding, byte order mark
+  and line endings. Binary files are skipped. Stop ends a long search with the results so far.
 - A middle click on a tab closes it, as in Notepad++
   ([#9](https://github.com/SecurityTrip/Birchpad/issues/9)).
 - Change history, as in Notepad++: a margin marks the lines changed since the document was
