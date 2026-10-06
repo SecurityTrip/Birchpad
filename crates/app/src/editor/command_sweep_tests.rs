@@ -27,6 +27,7 @@ use crate::workspace::tests::open_workspace;
 /// own tests cover them.
 const SKIPPED: &[&str] = &[
     "file.open",
+    "file.open-folder-as-workspace",
     "file.open-recent",
     "file.save",
     "file.save-as",

@@ -311,6 +311,25 @@ impl Workspace {
         }
     }
 
+    /// Find in Files... from a folder (Folder as Workspace): the tab with that folder.
+    pub(crate) fn find_in_folder(
+        &mut self,
+        folder: &Path,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.dispatch(
+            &birchpad_commands::Invocation::new("search.find-in-files"),
+            window,
+            cx,
+        )
+        .ok();
+        self.find_bar.update(cx, |bar, cx| {
+            bar.folder.follow_current_document = false;
+            bar.set_directory(folder, window, cx);
+        });
+    }
+
     /// The "..." button: the folder dialog, starting from the Directory field.
     pub(crate) fn browse_folder(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let typed = PathBuf::from(self.find_bar.read(cx).directory(cx).trim());

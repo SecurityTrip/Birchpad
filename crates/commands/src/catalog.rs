@@ -42,6 +42,10 @@ pub const COMMANDS: &[CommandSpec] = &[
     // File
     workspace("file.new", "New"),
     workspace("file.open", "Open..."),
+    workspace(
+        "file.open-folder-as-workspace",
+        "Open Folder as Workspace...",
+    ),
     // { "path": "C:\\notes.txt" }
     workspace("file.open-recent", "Open Recent File"),
     workspace("file.clear-recent", "Empty Recent Files List"),

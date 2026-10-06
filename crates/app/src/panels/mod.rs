@@ -9,6 +9,7 @@
 
 mod document_list;
 mod document_map;
+mod folder_workspace;
 mod function_list;
 
 use std::collections::HashMap;
@@ -28,6 +29,7 @@ use crate::workspace::Workspace;
 
 pub(crate) use document_list::DocumentList;
 pub(crate) use document_map::DocumentMap;
+pub(crate) use folder_workspace::FolderWorkspace;
 pub(crate) use function_list::FunctionList;
 
 /// The project panels, as Notepad++'s Project Panel 1 to 3.
@@ -153,6 +155,10 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
             Ok(())
         });
     }
+    registry.workspace("file.open-folder-as-workspace", |this, (), window, cx| {
+        this.open_folder_as_workspace(window, cx);
+        Ok(())
+    });
     registry.workspace("panel.project", |this, args: ProjectArgs, window, cx| {
         let kind = project_panel(args.panel)?;
         this.toggle_panel(kind, window, cx);
@@ -289,6 +295,9 @@ impl Workspace {
             PanelKind::DocumentList => cx.new(|cx| DocumentList::new(workspace, window, cx)).into(),
             PanelKind::FunctionList => cx.new(|cx| FunctionList::new(workspace, window, cx)).into(),
             PanelKind::DocumentMap => cx.new(|cx| DocumentMap::new(workspace, window, cx)).into(),
+            PanelKind::FolderWorkspace => cx
+                .new(|cx| FolderWorkspace::new(workspace, window, cx))
+                .into(),
             // Panels still to come show their name.
             _ => cx.new(|_| Placeholder(kind.title())).into(),
         }
@@ -373,12 +382,53 @@ impl Workspace {
                         .bg(rgb(0xf6f8fa))
                         .border_b_1()
                         .border_color(border)
-                        .child(div().flex_1().min_w(px(0.)).overflow_hidden().child(header))
+                        .child(
+                            div()
+                                .flex_1()
+                                .min_w(px(0.))
+                                .pl_1()
+                                .overflow_hidden()
+                                .child(header),
+                        )
                         .child(close),
                 )
                 .child(div().flex_1().min_h(px(0.)).child(view))
                 .into_any_element(),
         )
+    }
+}
+
+impl Workspace {
+    /// Adds `folder` to Folder as Workspace, opening the panel.
+    pub(crate) fn add_workspace_folder(
+        &mut self,
+        folder: &std::path::Path,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.open_panel(PanelKind::FolderWorkspace, window, cx);
+        if let Some(panel) = self
+            .docks
+            .view(PanelKind::FolderWorkspace)
+            .and_then(|view| view.clone().downcast::<FolderWorkspace>().ok())
+        {
+            panel.update(cx, |panel, cx| panel.add_root(folder.to_owned(), cx));
+        }
+    }
+
+    /// File > Open Folder as Workspace...: the folder dialog.
+    fn open_folder_as_workspace(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let start = self.default_directory(cx);
+        cx.spawn_in(window, async move |this, cx| {
+            let Some(folder) = crate::path_dialog::ask_folder(start, cx).await else {
+                return;
+            };
+            this.update_in(cx, |this, window, cx| {
+                this.add_workspace_folder(&folder, window, cx);
+            })
+            .ok();
+        })
+        .detach();
     }
 }
 

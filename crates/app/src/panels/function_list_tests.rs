@@ -182,9 +182,10 @@ fn the_function_list_follows_the_document(cx: &mut TestAppContext) {
     cx.simulate_keystrokes("left");
     assert_eq!(shown(&list, cx)[3], ">two");
 
-    // A click goes to the definition and selects its name.
-    let row = cx.debug_bounds("function-list-2").expect("drawn").center();
-    cx.simulate_click(row, Modifiers::none());
+    // A click goes to the definition and selects its name, also right of the name.
+    let row = cx.debug_bounds("function-list-2").expect("drawn");
+    let right = gpui_kit::point(row.right() - gpui_kit::px(4.), row.center().y);
+    cx.simulate_click(right, Modifiers::none());
     assert_eq!(selection(&workspace, cx), (26, 29));
     assert_eq!(shown(&list, cx)[2], ">  one");
 

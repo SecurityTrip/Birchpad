@@ -563,6 +563,11 @@ impl Workspace {
             },
         });
         for path in &command_line.files {
+            // A folder goes to Folder as Workspace, as with -openFoldersAsWorkspace.
+            if path.is_dir() {
+                self.add_workspace_folder(path, window, cx);
+                continue;
+            }
             let view = self.open_path_with(path, command_line.read_only, window, cx);
             if let Some(target) = target {
                 view.update(cx, |view, cx| view.set_caret_target(target, cx));
@@ -882,8 +887,13 @@ impl Render for Workspace {
             .track_focus(&self.focus_handle)
             .on_action(cx.listener(Self::run_command))
             .on_drop(cx.listener(|this, paths: &ExternalPaths, window, cx| {
+                // A folder goes to Folder as Workspace, as in Notepad++.
                 for path in paths.paths() {
-                    this.open_path(path, window, cx);
+                    if path.is_dir() {
+                        this.add_workspace_folder(path, window, cx);
+                    } else {
+                        this.open_path(path, window, cx);
+                    }
                 }
             }))
             .size_full()

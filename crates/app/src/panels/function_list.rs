@@ -330,6 +330,7 @@ impl FunctionList {
         });
         div()
             .id(("function-list-row", index))
+            .w_full()
             .debug_selector(move || format!("function-list-{index}"))
             .h(px(ROW_HEIGHT))
             .flex()

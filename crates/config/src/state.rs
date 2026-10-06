@@ -48,6 +48,8 @@ pub struct PanelsState {
     /// The panels open when Birchpad last quit, in the order they were opened:
     /// `function-list`, `project-1`, ...
     pub open: Vec<String>,
+    /// The top folders of Folder as Workspace.
+    pub folders: Vec<PathBuf>,
 }
 
 /// What the Find in Files tab remembers between runs.

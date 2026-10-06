@@ -104,6 +104,7 @@ pub fn main_menu() -> Vec<Menu> {
         vec![
             cmd("file.new"),
             cmd("file.open"),
+            cmd("file.open-folder-as-workspace"),
             Submenu(Menu::new(
                 "Recent Files",
                 vec![

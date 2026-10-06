@@ -36,6 +36,10 @@ version's release notes from its section here.
   document as a tree, from its syntax tree, for 28 languages including Markdown headings. It
   follows edits, highlights the definition the caret is in, goes to a definition on a click,
   and can be filtered, sorted by name and folded.
+- Folder as Workspace (File > Open Folder as Workspace..., or drop a folder on the window): folders
+  as trees beside the documents, kept current as files come and go; double-click to open a
+  file. Its menu copies paths and names, runs Find in Files in a folder, and opens the file
+  manager or a terminal there. A folder on the command line opens there too.
 - Document Map (View > Document Map): the whole document in miniature in its syntax colors,
   with the part on screen framed; click or drag on it to scroll there.
 - Find in Files (Ctrl+Shift+F): Find All and Replace in Files in the files of a folder, with

@@ -73,6 +73,26 @@ dock anywhere by dragging.
 - Panels that show the active view (Function List, Document Map) observe it, so a moved caret,
   a scroll or an edit redraws them.
 
+### Folder as Workspace
+
+- **Folders in:** File > Open Folder as Workspace..., a folder dropped on the window, or a
+  folder named on the command line. Notepad++ opens every file of a folder given without
+  `-openFoldersAsWorkspace`; Birchpad always shows the folder instead, since opening hundreds of
+  files is rarely what was meant. The top folders are kept in `state.toml`
+  (`[panels] folders`).
+- **Read lazily, kept current by polling.** A folder is read when first unfolded, folders before
+  files, each in name order without regard to case. Every two seconds the unfolded folders are
+  read again in the background, so files that appear, go or are renamed show without a watcher
+  crate; what is known of the subfolders still there (unfolded, read) is kept. A folder that
+  cannot be read says why.
+- **Using it:** a click on a folder folds or unfolds it, a double-click or Enter opens a file;
+  the arrow keys walk the tree (Right unfolds, Left folds or goes to the folder above). Unfold,
+  Fold and Locate (the active file, unfolding the folders down to it) are on the toolbar. The
+  right-click menu has Open and Run by System for files, Copy Path and Copy File Name, Find in
+  Files... for folders (the Find in Files tab with that folder), Explorer Here, Terminal Here,
+  and Remove and Remove All for top folders.
+- Rows span the panel's width, so a click right of a short name still hits its row.
+
 ## Consequences
 
 - The docks' widths last for the session only.
