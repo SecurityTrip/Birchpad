@@ -26,6 +26,7 @@ use crate::commands::{CommandRegistry, Handler, RunCommand};
 use crate::disk::DiskState;
 use crate::editor::{EditorEvent, EditorView, ViewSettings};
 use crate::find::FindBar;
+use crate::incremental::IncrementalBar;
 use crate::menus::{self, MenuState};
 use crate::pane::{Pane, PaneEvent};
 use crate::search_results::SearchResults;
@@ -131,6 +132,7 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
     crate::file_ops::register_commands(registry);
     crate::find::register_commands(registry);
     crate::help::register_commands(registry);
+    crate::incremental::register_commands(registry);
     crate::session::register_commands(registry);
     crate::disk::register_commands(registry);
 }
@@ -208,6 +210,7 @@ pub(crate) struct Workspace {
     sync_horizontal: bool,
     menu_bar: Option<Entity<MenuBar>>,
     pub(crate) find_bar: Entity<FindBar>,
+    pub(crate) incremental: Entity<IncrementalBar>,
     pub(crate) search_results: Entity<SearchResults>,
     title: String,
     buffer_subscriptions: HashMap<EntityId, Subscription>,
@@ -231,6 +234,8 @@ impl Workspace {
             .collect();
         let find_bar = cx.new(|cx| FindBar::new(window, cx));
         subscriptions.push(cx.subscribe_in(&find_bar, window, Self::on_find_bar_event));
+        let incremental = cx.new(|cx| IncrementalBar::new(window, cx));
+        subscriptions.push(cx.subscribe_in(&incremental, window, Self::on_incremental_event));
         let search_results = cx.new(SearchResults::new);
         subscriptions.push(cx.subscribe_in(&search_results, window, Self::on_search_results_event));
         let mut this = Self {
@@ -241,6 +246,7 @@ impl Workspace {
             sync_horizontal: false,
             menu_bar: None,
             find_bar,
+            incremental,
             search_results,
             title: String::new(),
             buffer_subscriptions: HashMap::new(),
@@ -891,6 +897,9 @@ impl Render for Workspace {
             )
             .when(self.find_bar.read(cx).visible, |this| {
                 this.child(self.find_bar.clone())
+            })
+            .when(self.incremental.read(cx).visible, |this| {
+                this.child(self.incremental.clone())
             })
             .child(crate::status_bar::render(status, ansi, cx))
     }

@@ -23,6 +23,7 @@ mod file_ops;
 mod find;
 mod find_in_files;
 mod help;
+mod incremental;
 #[cfg(test)]
 mod language_tests;
 mod menus;

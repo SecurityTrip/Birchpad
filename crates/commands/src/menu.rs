@@ -376,6 +376,7 @@ pub fn main_menu() -> Vec<Menu> {
             cmd("search.select-and-find-next"),
             cmd("search.select-and-find-previous"),
             cmd("search.replace"),
+            cmd("search.incremental"),
             Separator,
             cmd("search.mark"),
             Separator,

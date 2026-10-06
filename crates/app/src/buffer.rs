@@ -69,6 +69,8 @@ pub(crate) struct DocumentMarks {
     pub(crate) styles: [RangeSet<()>; MARK_STYLES],
     /// Marked by the Mark tab of the find panel ("Find Mark Style" in Notepad++).
     pub(crate) found: RangeSet<()>,
+    /// The matches of incremental search with Highlight all.
+    pub(crate) incremental: RangeSet<()>,
 }
 
 impl DocumentMarks {
@@ -91,6 +93,7 @@ impl DocumentMarks {
             style.map(changes);
         }
         self.found.map(changes);
+        self.incremental.map(changes);
     }
 }
 

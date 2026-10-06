@@ -72,10 +72,27 @@ tabs: Find, Replace, Find in Files and Mark. Phase 3 brings Birchpad to that.
   listed ("of N searched" stays). The menu also has Copy Selected Line, Copy Selected Pathname,
   Fold All, Unfold All and Clear All, as Notepad++'s has.
 
+### Incremental search
+
+- **A bar of its own**, as Notepad++'s (Search > Incremental Search, Ctrl+Alt+I), under the find
+  panel when both are open. It searches the active document in Normal mode, with Match case
+  and Whole word, and opens with the selection as its text when it is on one line.
+- **As the text is typed**, the search starts again from the start of the selection, so the
+  match grows with the text instead of jumping ahead. Enter and Shift+Enter (or the > and <
+  buttons) find the next and previous match; the search always wraps around and says so. The
+  field turns red with "Phrase not found"; an emptied field leaves the caret where the match
+  began. The field also reports a change after Enter when nothing changed; only a different
+  text searches again.
+- **Highlight all** marks every match of the document in Notepad++'s "Incremental highlight
+  all" blue, a decoration layer of the buffer like the find marks, and counts them. Closing the
+  bar (Escape) removes the highlights and returns to the text.
+- Ctrl+Alt+I was iNVERT cASE in Birchpad's keymap; Notepad++ gives it to Incremental Search and
+  no shortcut to iNVERT cASE, so Birchpad now does the same.
+
 ## Consequences
 
 - `fancy-regex` is a new dependency of `birchpad-core` (MIT; it brings no new crates besides).
 - Regular expressions copy the text for each search; incremental search on very large files
   will want a cached copy.
-- Not yet: Find in Files (since done, [ADR 0024](0024-find-in-files.md)), incremental search,
-  and remembering past searches.
+- Not yet: remembering past searches. (Find in Files came later, [ADR
+  0024](0024-find-in-files.md).)

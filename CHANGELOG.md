@@ -22,6 +22,9 @@ version's release notes from its section here.
   right-click menu, takes out the selected line, document or search, and the heading counts
   what is left. The menu also copies the selected line or path, folds and unfolds everything,
   and clears the list.
+- Incremental search, as in Notepad++ (Search > Incremental Search, Ctrl+Alt+I): a bar that
+  finds the text while it is typed, Enter and Shift+Enter for the next and previous match,
+  Match case, Whole word, and Highlight all, which marks and counts every match.
 - Find in Files (Ctrl+Shift+F): Find All and Replace in Files in the files of a folder, with
   Notepad++'s filters (`*.rs *.toml !*.bak !\target !+\node_modules`), In all sub-folders, In
   hidden folders and Follow current doc. Open documents are searched with their unsaved changes
@@ -37,6 +40,11 @@ version's release notes from its section here.
   the other view beside or below ([#12](https://github.com/SecurityTrip/Birchpad/issues/12)).
   With Ctrl, or for the only tab, the document is cloned there; with Ctrl, a tab dropped in the
   other view is cloned too.
+
+### Changed
+
+- Ctrl+Alt+I opens Incremental Search, as in Notepad++; iNVERT cASE no longer has a shortcut
+  (Notepad++ has none for it) and stays in Edit > Convert Case to.
 
 ### Fixed
 

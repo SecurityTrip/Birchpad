@@ -29,6 +29,8 @@ pub(crate) fn mark_style(index: usize) -> Paint {
 
 /// The matches of Search > Mark: Notepad++'s "Find Mark Style", a translucent red.
 pub(crate) const FIND_MARK: u32 = 0xff000055;
+/// Notepad++'s "Incremental highlight all", translucent.
+pub(crate) const INCREMENTAL_HIGHLIGHT: u32 = 0x0080ff55;
 
 /// Smart highlighting: Notepad++'s translucent green.
 pub(crate) const SMART_HIGHLIGHT: u32 = 0x00ff0064;

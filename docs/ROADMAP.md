@@ -137,7 +137,9 @@ What Phase 1 left for later is marked *(from Phase 1)* in the phases below.
       stacked and foldable, F4 / Shift+F4 through the results, F7 to show or hide it; Delete
       removes the selected result, and a right-click menu copies, folds and clears
       ([ADR 0022](adr/0022-search-modes-and-the-find-panel.md))
-- Incremental search
+- [x] Incremental search (Ctrl+Alt+I): the match grows as the text is typed, Enter and
+      Shift+Enter step through it, Highlight all marks and counts every match
+      ([ADR 0022](adr/0022-search-modes-and-the-find-panel.md))
 - Function List, Document Map, Document List, Folder as Workspace, Project panels
 - Clipboard history, character panel, navigation history
 - [x] Issues reported on 0.1.2: a middle click closes a tab

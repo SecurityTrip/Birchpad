@@ -65,6 +65,10 @@ keys = "secondary-shift-f"
 command = "search.find-in-files"
 
 [[binding]]
+keys = "secondary-alt-i"
+command = "search.incremental"
+
+[[binding]]
 keys = "f3"
 command = "search.find-next"
 
@@ -116,6 +120,11 @@ context = "Editor"
 keys = "escape"
 command = "search.close"
 context = "FindBar"
+
+[[binding]]
+keys = "escape"
+command = "search.close-incremental"
+context = "IncrementalBar"
 
 # Token styles, as in Notepad++: Ctrl+Alt+N styles every occurrence of the token with style N,
 # Ctrl+Alt+Shift+N clears it, Ctrl+N and Ctrl+Shift+N jump to its next and previous occurrence.
@@ -1039,12 +1048,6 @@ context = "Editor"
 keys = "ctrl-alt-shift-u"
 command = "edit.convert-case"
 args = { to = "sentence-blend" }
-context = "Editor"
-
-[[binding]]
-keys = "ctrl-alt-i"
-command = "edit.convert-case"
-args = { to = "invert" }
 context = "Editor"
 
 [[binding]]

@@ -815,6 +815,13 @@ impl EditorView {
                 .overlapping(visible.clone())
                 .map(|(range, _)| (range, found)),
         );
+        let incremental = Paint::Fill(gpui_kit::rgba(theme::INCREMENTAL_HIGHLIGHT));
+        ranges.extend(
+            marks
+                .incremental
+                .overlapping(visible.clone())
+                .map(|(range, _)| (range, incremental)),
+        );
         let mut quads = Vec::new();
         for (range, paint) in ranges {
             for bounds in self.range_bounds(layout, text, range) {
