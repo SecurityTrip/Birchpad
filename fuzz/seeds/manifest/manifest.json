@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "product": "birchpad",
+  "timestamp": 1790000000,
+  "expires": 1790604800,
+  "releases": [
+    {
+      "version": "0.1.3",
+      "page": "https://github.com/SecurityTrip/Birchpad/releases/tag/v0.1.3",
+      "packages": [
+        {
+          "platform": "windows-x64",
+          "file": "Birchpad-0.1.3-full.nupkg",
+          "url": "https://github.com/SecurityTrip/Birchpad/releases/download/v0.1.3/Birchpad-0.1.3-full.nupkg",
+          "size": 9437184,
+          "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+          "sha1": "0000000000000000000000000000000000000000"
+        }
+      ]
+    },
+    {
+      "version": "0.1.4-nightly.20261007.1",
+      "page": "https://github.com/SecurityTrip/Birchpad/releases"
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+# What cargo-fuzz writes; the seeds are committed.
+target
+corpus
+artifacts
+coverage
+Cargo.lock

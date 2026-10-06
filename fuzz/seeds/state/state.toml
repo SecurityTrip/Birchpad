@@ -1,0 +1,24 @@
+recent-files = ['C:\notes\todo.txt', "/home/me/a b.md"]
+zoom = -2
+word-wrap = true
+show-eol = false
+split = "stacked"
+
+[updates]
+last-check = 1790000000
+manifest-timestamp = 1789990000
+announced = "0.1.4"
+
+[find-in-files]
+filters = "*.rs *.toml !\\target"
+directory = 'C:\src'
+subfolders = true
+hidden = false
+follow-current-document = false
+
+[panels]
+open = ["function-list", "project-1"]
+folders = ['C:\src\birchpad']
+
+[panels.projects]
+1 = 'C:\src\birchpad.workspace'

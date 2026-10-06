@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<NotepadPlus>
+    <Session activeView="1">
+        <mainView activeIndex="1">
+            <File firstVisibleLine="12" xOffset="40" startPos="5" endPos="9" lang="Normal text" encoding="-1" userReadOnly="no" filename="C:\notes\a.txt" backupFilePath="">
+                <Mark line="2" />
+                <Mark line="8" />
+                <Fold line="4" />
+            </File>
+            <File firstVisibleLine="0" xOffset="0" startPos="3" endPos="3" lang="Python" encoding="-1" userReadOnly="yes" filename="new 2" backupFilePath="C:\Users\me\AppData\Roaming\Notepad++\backup\new 2@2024-01-01_120000" />
+        </mainView>
+        <subView activeIndex="0">
+            <File firstVisibleLine="1" xOffset="0" startPos="0" endPos="0" lang="Normal text" filename="C:\notes\a.txt" backupFilePath="" />
+        </subView>
+    </Session>
+</NotepadPlus>

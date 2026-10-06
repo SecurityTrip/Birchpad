@@ -115,6 +115,40 @@ jobs:
           name: coverage-lcov
           path: lcov.info
 
+  # libFuzzer on everything that reads outside input (fuzz/, crates/fuzz): each target for a
+  # minute from its seeds and from the corpus earlier runs grew. A crash fails the run and its
+  # input is kept; fixed, it becomes a seed.
+  fuzz:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions-rust-lang/setup-rust-toolchain@v2
+        with:
+          # libFuzzer needs nightly; the checks themselves are tested on the pinned toolchain
+          # (`cargo test -p birchpad-fuzz`), so new nightly warnings do not fail this job.
+          toolchain: nightly
+          rustflags: ""
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-fuzz
+      - uses: actions/cache@v4
+        with:
+          path: fuzz/corpus
+          key: fuzz-corpus-${{ github.run_id }}
+          restore-keys: fuzz-corpus-
+      - name: Fuzz each target
+        run: |
+          for target in $(cargo +nightly fuzz list); do
+            mkdir -p "fuzz/corpus/$target"
+            cargo +nightly fuzz run "$target" "fuzz/corpus/$target" "fuzz/seeds/$target" \
+              -- -max_total_time=60 -timeout=10
+          done
+      - if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: fuzz-artifacts
+          path: fuzz/artifacts
+
   deny:
     runs-on: ubuntu-latest
     steps:

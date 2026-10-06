@@ -45,6 +45,22 @@ change touches, the tests cover:
 A bug fix comes with a test that fails without the fix. `cargo llvm-cov --workspace` shows the
 code no test runs yet.
 
+Everything that reads input from outside (files and their encodings, settings, the state file,
+sessions and Notepad++'s `session.xml`, `.workspace` files, the keymap, the command line and the
+message that hands it to a running instance, the update manifest) is fuzzed. The checks live in
+`crates/fuzz`: each takes any bytes and checks more than "no panic" (what reads cleanly writes
+back the same). `cargo test -p birchpad-fuzz` runs them over the seeds in `fuzz/seeds`, every
+cut of each seed and a few hundred mutants of it (`BIRCHPAD_FUZZ_MUTANTS=20000` for more); CI
+also runs them under libFuzzer for a minute each. To fuzz longer, with a nightly toolchain and
+`cargo install cargo-fuzz`:
+
+```bash
+cargo +nightly fuzz run session fuzz/corpus/session fuzz/seeds/session
+```
+
+An input that crashes a check becomes a seed once the bug is fixed; seeds named `reject-*` must
+be refused, the others accepted.
+
 ## Commits and pull requests
 
 - Use [Conventional Commits](https://www.conventionalcommits.org/) (`feat:`, `fix:`, `docs:`,

@@ -123,8 +123,13 @@ impl UserState {
     pub fn load(path: &Path) -> Self {
         fs::read_to_string(path)
             .ok()
-            .and_then(|text| toml::from_str(&text).ok())
+            .and_then(|text| Self::parse(&text))
             .unwrap_or_default()
+    }
+
+    /// The state in the text of a state file, `None` if it is damaged.
+    pub fn parse(text: &str) -> Option<Self> {
+        toml::from_str(text).ok()
     }
 
     /// Writes the state file, replacing it atomically.

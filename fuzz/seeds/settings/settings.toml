@@ -1,0 +1,21 @@
+# Birchpad settings
+[editor]
+tab-width = 2
+insert-spaces = true
+word-wrap = true
+font-family = "Cascadia Mono"
+font-size = 13
+
+[files]
+large-file-limit-mb = 50
+change-detection = "all"
+
+[session]
+backup-interval-seconds = 30
+
+[updates]
+mode = "notify"
+channel = "nightly"
+
+[highlighting.smart]
+enabled = false

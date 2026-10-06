@@ -1,0 +1,6 @@
+Birchpad test: The quick brown fox jumps over the lazy dog.
+Русский текст: съешь же ещё этих мягких французских булок.
+日本語のテキスト, emoji 😀 and accents: café, naïve, Grüße.
+	Indented line with a tab
+
+Last line

@@ -170,10 +170,12 @@ What Phase 1 left for later is marked *(from Phase 1)* in the phases below.
   - [x] The mouse in GUI tests, not only the keyboard: tabs (click, middle click, close
         button, drag), the menu bar, the status bar's menus, the find and search results
         panels, the side panels, dialogs
-  - Property tests (`proptest`) of the text model: edits, selections, undo and redo,
-    decorations following edits, and search checked against a plain reference
-  - Fuzzing (`cargo fuzz`) of everything that reads outside input: decoders, settings and
-    session files, Notepad++'s `session.xml`, the command line, the update manifest
+  - [x] Property tests (`proptest`) of the text model: edits, selections, undo and redo,
+        decorations following edits, and search checked against a plain reference
+  - [x] Fuzzing (`cargo fuzz`) of everything that reads outside input: decoders, settings, the
+        state and session files, Notepad++'s `session.xml` and `.workspace` files, the keymap,
+        the command line and its hand-off to a running instance, the update manifest; the same
+        checks run over seeds and their mutants in `cargo test`
   - [x] Highlighting: a real-world file for each language, and a check that every capture of a
         query that the theme colors shows up in its sample, so that a capture hidden by another
         pattern (JSON's keys) or by a misplaced capture (TOML's keys) fails; every sample parses

@@ -1,0 +1,16 @@
+<NotepadPlus>
+    <Project name="Editor">
+        <Folder name="Sources">
+            <File name="src\main.rs" />
+            <Folder name="Panels">
+                <File name="src/panels/mod.rs" />
+            </Folder>
+        </Folder>
+        <File name="README.md" />
+        <File name="..\shared\notes.txt" />
+    </Project>
+    <Project name="Empty" />
+    <Project name="Elsewhere &amp; more">
+        <File name="D:\other\x.txt" />
+    </Project>
+</NotepadPlus>
