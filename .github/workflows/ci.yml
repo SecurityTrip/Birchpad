@@ -115,6 +115,34 @@ jobs:
           name: coverage-lcov
           path: lcov.info
 
+  # The built application in a real window (crates/app/tests/e2e.rs): start, open, edit, save,
+  # quit, restore the session. Linux runs it on a virtual display with software Vulkan; Linux and
+  # macOS stay non-blocking until they have been green on the runners.
+  e2e:
+    name: e2e (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    continue-on-error: ${{ matrix.os != 'windows-latest' }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions-rust-lang/setup-rust-toolchain@v2
+      - name: Install Linux GUI dependencies and a virtual display
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libxkbcommon-dev libxkbcommon-x11-dev libwayland-dev \
+            libvulkan-dev libx11-xcb-dev libxcb1-dev libfontconfig-dev libfreetype-dev \
+            libssl-dev libzstd-dev xvfb mesa-vulkan-drivers
+      - run: cargo clippy -p birchpad --features e2e --all-targets --locked
+      - name: End-to-end tests
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = Linux ]; then run=(xvfb-run -a); else run=(); fi
+          "${run[@]}" cargo test -p birchpad --features e2e --test e2e --locked
+
   # libFuzzer on everything that reads outside input (fuzz/, crates/fuzz): each target for a
   # minute from its seeds and from the corpus earlier runs grew. A crash fails the run and its
   # input is kept; fixed, it becomes a seed.

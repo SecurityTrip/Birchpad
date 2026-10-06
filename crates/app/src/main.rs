@@ -17,6 +17,8 @@ mod commands;
 mod disk;
 #[cfg(test)]
 mod disk_tests;
+#[cfg(feature = "e2e")]
+mod e2e;
 mod editor;
 mod encoding_ui;
 mod file_ops;
@@ -153,6 +155,8 @@ fn main() {
             })
             .detach();
             updates::start_background_checks(window, workspace.downgrade(), cx);
+            #[cfg(feature = "e2e")]
+            e2e::run_script(window, workspace.clone(), cx);
             if let Some(server) = server {
                 serve_later_launches(server, window, workspace, cx);
             }

@@ -180,8 +180,8 @@ What Phase 1 left for later is marked *(from Phase 1)* in the phases below.
         query that the theme colors shows up in its sample, so that a capture hidden by another
         pattern (JSON's keys) or by a misplaced capture (TOML's keys) fails; every sample parses
         without errors ([ADR 0011](adr/0011-syntax-highlighting.md))
-  - End-to-end tests of the built application on Windows, Linux and macOS: start, open, edit,
-    save, quit and restore the session
+  - [x] End-to-end tests of the built application on Windows, Linux and macOS: start, open,
+        edit, save, quit and restore the session, in a real window driven by a script
   - Every bug fixed with a test that fails without the fix
   - A short manual checklist before each release for what automation cannot see: input
     methods, screen readers, high DPI, the installers and updates

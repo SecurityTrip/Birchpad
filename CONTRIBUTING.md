@@ -61,6 +61,16 @@ cargo +nightly fuzz run session fuzz/corpus/session fuzz/seeds/session
 An input that crashes a check becomes a seed once the bug is fixed; seeds named `reject-*` must
 be refused, the others accepted.
 
+End-to-end tests start the built application in a real window, as a portable copy in a folder
+of its own, and drive it with a script of keystrokes, typed text and commands (the `e2e`
+feature, `crates/app/src/e2e.rs`); the test then checks the application's reports and the files
+on disk, and starts it again to see the session come back. Windows briefly appear while they
+run; on Linux, run them under `xvfb-run`:
+
+```bash
+cargo test -p birchpad --features e2e --test e2e
+```
+
 ## Commits and pull requests
 
 - Use [Conventional Commits](https://www.conventionalcommits.org/) (`feat:`, `fix:`, `docs:`,

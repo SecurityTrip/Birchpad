@@ -25,6 +25,12 @@ semver = "1"
 serde.workspace = true
 serde_json.workspace = true
 notify = "8"
+toml = { workspace = true, optional = true }
+
+[features]
+# Runs the script named by BIRCHPAD_E2E_SCRIPT once started, for the end-to-end tests
+# (`cargo test -p birchpad --features e2e --test e2e`). Release builds leave it out.
+e2e = ["dep:toml"]
 
 # The Windows icon and version resources (build.rs); the version GPUI uses.
 [build-dependencies]
