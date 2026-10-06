@@ -207,6 +207,51 @@ mod tests {
     }
 
     #[test]
+    fn unreadable_files_are_reported_and_empty_ones_are_empty_layers() {
+        let dir = tempfile::tempdir().unwrap();
+        // A folder where the policy file should be cannot be read; an empty file is a layer
+        // with nothing in it; a good machine file is read.
+        let policy = dir.path().join("policies.toml");
+        fs::create_dir(&policy).unwrap();
+        let user = dir.path().join("settings.toml");
+        fs::write(&user, "").unwrap();
+        let machine = dir.path().join("defaults.toml");
+        fs::write(&machine, "editor.tab-width = 2").unwrap();
+
+        let sources = load(&ConfigPaths {
+            machine_defaults: Some(machine),
+            user_settings: Some(user),
+            policy_file: Some(policy),
+            user_data: None,
+            portable: false,
+        });
+        assert_eq!(
+            sources.machine.and_then(|t| t.get("editor").cloned()),
+            Some(toml::Value::Table(toml::from_str("tab-width = 2").unwrap()))
+        );
+        assert_eq!(sources.user, Some(Table::new()));
+        let policy_problems = sources
+            .diagnostics
+            .iter()
+            .filter(|d| d.layer == Layer::Policy && d.key.is_none())
+            .count();
+        assert_eq!(policy_problems, 1, "{:?}", sources.diagnostics);
+    }
+
+    #[test]
+    fn no_paths_load_nothing() {
+        let sources = load(&ConfigPaths {
+            machine_defaults: None,
+            user_settings: None,
+            policy_file: None,
+            user_data: None,
+            portable: false,
+        });
+        assert!(sources.machine.is_none() && sources.user.is_none());
+        assert_eq!(ConfigPaths::default().user_config_dir(), None);
+    }
+
+    #[test]
     fn a_marker_next_to_the_executable_makes_it_portable() {
         let dir = env::temp_dir().join(format!("birchpad-portable-test-{}", std::process::id()));
         fs::create_dir_all(&dir).unwrap();

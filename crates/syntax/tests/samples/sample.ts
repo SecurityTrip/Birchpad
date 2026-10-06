@@ -4,3 +4,5 @@ interface Greeter {
 }
 type Id = number | undefined;
 export const greeter: Greeter = { greet: (n) => `Hello, ${n}` };
+
+const limit: Id = 42;

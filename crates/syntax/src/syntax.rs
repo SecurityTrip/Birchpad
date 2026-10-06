@@ -72,6 +72,19 @@ impl std::fmt::Debug for LanguageConfig {
     }
 }
 
+impl LanguageConfig {
+    /// The highlights the language's query can give, one per capture that has one (for
+    /// checking that a sample shows each).
+    pub fn capture_highlights(&self) -> Vec<(String, Highlight)> {
+        self.highlights
+            .capture_names()
+            .iter()
+            .zip(&self.capture_highlights)
+            .filter_map(|(name, highlight)| Some(((*name).to_owned(), (*highlight)?)))
+            .collect()
+    }
+}
+
 type ConfigResult = Result<Arc<LanguageConfig>, String>;
 
 /// The compiled configuration of `language`. Compiling a large query takes a few milliseconds,
@@ -172,6 +185,10 @@ pub struct Layer {
 impl Layer {
     pub fn language(&self) -> &'static Language {
         self.config.language
+    }
+
+    pub fn tree(&self) -> &Tree {
+        &self.tree
     }
 
     /// Whether the last parse kept its tree, nothing in its text having changed.
@@ -290,6 +307,28 @@ impl Syntax {
     /// earlier one, as the grammars' queries expect (general patterns first, specific ones
     /// after). An embedded language's highlights win over its host's.
     pub fn highlights(&self, text: &Rope, range: Range<usize>) -> Vec<(Range<usize>, Highlight)> {
+        // Queries are fast (well under a millisecond for a screen) except on trees that error
+        // recovery made very deep, such as a whole file turned into one nested expression
+        // after a typo. Those get a time budget and partial highlights instead of a stall.
+        self.highlights_until(text, range, Some(Instant::now() + HIGHLIGHT_BUDGET))
+    }
+
+    /// Every highlight of `range`, however long the query takes: for checks and exports, where
+    /// a partial result is wrong, not the screen.
+    pub fn all_highlights(
+        &self,
+        text: &Rope,
+        range: Range<usize>,
+    ) -> Vec<(Range<usize>, Highlight)> {
+        self.highlights_until(text, range, None)
+    }
+
+    fn highlights_until(
+        &self,
+        text: &Rope,
+        range: Range<usize>,
+        deadline: Option<Instant>,
+    ) -> Vec<(Range<usize>, Highlight)> {
         let Some(tree) = &self.tree else {
             return Vec::new();
         };
@@ -297,10 +336,6 @@ impl Syntax {
         if range.is_empty() {
             return Vec::new();
         }
-        // Queries are fast (well under a millisecond for a screen) except on trees that error
-        // recovery made very deep, such as a whole file turned into one nested expression
-        // after a typo. Those get a time budget and partial highlights instead of a stall.
-        let started = Instant::now();
         let mut found = Vec::new();
         capture(
             &self.config,
@@ -309,7 +344,7 @@ impl Syntax {
             0,
             text,
             &range,
-            started,
+            deadline,
             &mut found,
         );
         for layer in &self.layers {
@@ -325,7 +360,7 @@ impl Syntax {
                     layer.depth,
                     text,
                     &range,
-                    started,
+                    deadline,
                     &mut found,
                 );
             }
@@ -385,11 +420,11 @@ fn capture(
     depth: u8,
     text: &Rope,
     range: &Range<usize>,
-    started: Instant,
+    deadline: Option<Instant>,
     found: &mut Vec<Capture>,
 ) {
     let mut over_budget = |_: &tree_sitter::QueryCursorState| {
-        if started.elapsed() > HIGHLIGHT_BUDGET {
+        if deadline.is_some_and(|deadline| Instant::now() > deadline) {
             ControlFlow::Break(())
         } else {
             ControlFlow::Continue(())
@@ -767,7 +802,7 @@ fn shift(byte: usize, edit: &InputEdit) -> usize {
 
 /// Neovim queries match with Lua patterns (`#lua-match? @x "^[%u_]+$"`); tree-sitter has
 /// regular expressions (`#match?`). Rewrites the first into the second.
-fn lua_matches_to_regex(source: &str) -> String {
+pub(crate) fn lua_matches_to_regex(source: &str) -> String {
     let mut out = String::with_capacity(source.len());
     let mut rest = source;
     while let Some(at) = rest.find("lua-match?") {
@@ -854,7 +889,7 @@ fn lua_pattern_to_regex(pattern: &str) -> String {
 }
 
 /// Lets queries read node text (for `#eq?` and `#match?` predicates) straight from the rope.
-struct RopeText<'a>(&'a Rope);
+pub(crate) struct RopeText<'a>(pub(crate) &'a Rope);
 
 impl<'a> TextProvider<&'a [u8]> for RopeText<'a> {
     type I = std::iter::Map<ropey::iter::Chunks<'a>, fn(&'a str) -> &'a [u8]>;
@@ -1166,6 +1201,135 @@ mod tests {
             lua_matches_to_regex(query),
             "((identifier) @constant (#match? @constant \"^[A-Z_]+$\"))"
         );
+    }
+
+    #[test]
+    fn every_lua_class_inside_and_outside_sets() {
+        for (lua, regex) in [
+            ("%a", "[A-Za-z]"),
+            ("[%a]", "[A-Za-z]"),
+            ("%d", "\\\\d"),
+            ("[%d]", "[\\\\d]"),
+            ("%l", "[a-z]"),
+            ("[%l]", "[a-z]"),
+            ("%u", "[A-Z]"),
+            ("[%u]", "[A-Z]"),
+            ("%w", "[A-Za-z0-9]"),
+            ("[%w]", "[A-Za-z0-9]"),
+            ("%x", "[0-9A-Fa-f]"),
+            ("[%x]", "[0-9A-Fa-f]"),
+            ("%s", "\\\\s"),
+            ("%p", "[[:punct:]]"),
+            ("[%p]", "[[:punct:]]"),
+        ] {
+            assert_eq!(lua_pattern_to_regex(lua), regex, "{lua}");
+        }
+    }
+
+    #[test]
+    fn lua_patterns_at_their_edges() {
+        // An unknown class is the letter; `%%` a percent sign; a `%` at the very end nothing.
+        assert_eq!(lua_pattern_to_regex("%z"), "z");
+        assert_eq!(lua_pattern_to_regex("100%%"), "100%");
+        assert_eq!(lua_pattern_to_regex("end%"), "end");
+        assert_eq!(lua_pattern_to_regex(""), "");
+        // A `]` outside a set, and a `^` that does not start a set.
+        assert_eq!(lua_pattern_to_regex("a]^b"), "a]^b");
+    }
+
+    #[test]
+    fn lua_matches_in_queries_at_their_edges() {
+        // Two in one query, an escaped quote inside the pattern, none at all.
+        let two = r#"(#lua-match? @a "^%u") (#lua-match? @b "%d\"x")"#;
+        assert_eq!(
+            lua_matches_to_regex(two),
+            r#"(#match? @a "^[A-Z]") (#match? @b "\\d\"x")"#
+        );
+        assert_eq!(lua_matches_to_regex("(#eq? @a \"x\")"), "(#eq? @a \"x\")");
+        // A predicate without its string is left as it is (the query then fails to compile).
+        assert_eq!(lua_matches_to_regex("(#lua-match? @a"), "(#match? @a");
+        // An unterminated string runs to the end.
+        assert_eq!(
+            lua_matches_to_regex("(#lua-match? @a \"%d"),
+            "(#match? @a \"\\\\d"
+        );
+    }
+
+    #[test]
+    fn a_syntax_without_a_tree_has_no_highlights() {
+        let config = config(by_id("rust").unwrap()).unwrap();
+        assert!(format!("{config:?}").contains("rust"));
+        let mut syntax = Syntax::new(config);
+        let text = Rope::from_str("fn main() {}");
+        assert!(syntax.highlights(&text, 0..text.len()).is_empty());
+        // Following an edit before the first parse is no problem.
+        let changes = ChangeSet::from_edits(&text, [Edit::insert(0, "x")]).unwrap();
+        syntax.edit(&text, &changes);
+        assert!(syntax.layers().is_empty());
+    }
+
+    #[test]
+    fn highlights_of_empty_and_overlong_ranges() {
+        let text = Rope::from_str("fn main() {}");
+        let syntax = parse("rust", &text);
+        assert!(syntax.highlights(&text, 3..3).is_empty());
+        assert!(syntax.highlights(&text, 50..60).is_empty(), "past the end");
+        // A range running past the end is cut there.
+        let whole = syntax.highlights(&text, 0..text.len());
+        assert_eq!(syntax.highlights(&text, 0..1000), whole);
+        // The same without the time budget.
+        assert!(syntax.all_highlights(&text, 3..3).is_empty());
+        assert!(syntax.all_highlights(&text, 50..60).is_empty());
+        let all = syntax.all_highlights(&text, 0..text.len());
+        assert_eq!(syntax.all_highlights(&text, 0..1000), all);
+        assert!(!all.is_empty());
+    }
+
+    #[test]
+    fn all_highlights_reach_the_end_of_a_deep_tree() {
+        // A file of thousands of nested parentheses, as a typo can make one: the screen's
+        // query may stop at its budget, never with more than the query without one.
+        let source = format!(
+            "let x = {}1{};\nlet s = \"end\\n\";\n",
+            "(".repeat(5000),
+            ")".repeat(5000)
+        );
+        let text = Rope::from_str(&source);
+        let syntax = parse("javascript", &text);
+        let all = syntax.all_highlights(&text, 0..text.len());
+        let budgeted = syntax.highlights(&text, 0..text.len());
+        assert!(budgeted.len() <= all.len());
+        let end = source.find("\"end").unwrap();
+        let named = named(&all, &source);
+        assert!(
+            named
+                .iter()
+                .any(|(text, name)| text.starts_with("\"end") && *name == "string"),
+            "no string at {end}: {:?}",
+            &named[named.len().saturating_sub(5)..]
+        );
+    }
+
+    #[test]
+    fn embedded_languages_stop_at_the_depth_limit() {
+        // Markdown in a Markdown code block, eight deep, each fence longer than the inner one.
+        let mut source = String::from("deepest *text*\n");
+        for level in 0..8 {
+            let fence = "`".repeat(3 + level);
+            source = format!("{fence}markdown\n{source}{fence}\n");
+        }
+        let text = Rope::from_str(&source);
+        let syntax = parse("markdown", &text);
+        let depths: Vec<u8> = syntax.layers().iter().map(|layer| layer.depth).collect();
+        assert!(!depths.is_empty());
+        assert!(depths.iter().all(|&depth| depth <= MAX_DEPTH), "{depths:?}");
+        assert!(
+            depths.contains(&MAX_DEPTH),
+            "nesting goes down to the limit: {depths:?}"
+        );
+        // A first parse reuses nothing; highlighting still covers the whole text.
+        assert!(syntax.layers().iter().all(|layer| !layer.reused()));
+        assert!(!syntax.highlights(&text, 0..text.len()).is_empty());
     }
 
     #[test]

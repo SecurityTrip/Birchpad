@@ -1,5 +1,7 @@
 {
+  // Settings files often have comments.
   "name": "birchpad",
   "version": 1,
-  "tags": ["editor", true, null]
+  "tags": ["editor", true, null],
+  "nested": { "path": "C:\\Users", "ratio": -1.5e3 }
 }

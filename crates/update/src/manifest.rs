@@ -440,6 +440,19 @@ mod tests {
         assert_eq!(parse_keys(&text).unwrap(), [three, five]);
         assert_eq!(parse_keys(" \n").unwrap(), []);
         assert!(parse_keys("not a key").is_err());
+        // 31 or 33 bytes are no key; neither are 32 bytes that are no point of the curve.
+        assert!(parse_keys(&BASE64.encode([1; 31])).is_err());
+        assert!(parse_keys(&BASE64.encode([1; 33])).is_err());
+        let off_curve = (0..=255u8)
+            .map(|y| {
+                let mut bytes = [0; 32];
+                bytes[0] = y;
+                bytes
+            })
+            .find(|bytes| VerifyingKey::from_bytes(bytes).is_err())
+            .expect("some y has no point");
+        let error = parse_keys(&BASE64.encode(off_curve)).unwrap_err();
+        assert!(error.starts_with('"'), "{error}");
         let secret = signing_key_text(&key(4));
         assert_eq!(parse_signing_key(&secret).unwrap().to_bytes(), [4; 32]);
         assert!(parse_signing_key("c2hvcnQ=").is_err());

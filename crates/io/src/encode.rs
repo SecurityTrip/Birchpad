@@ -181,4 +181,53 @@ mod tests {
         let russian = Rope::from_str("Привет");
         assert!(check_encodable(&russian, Encoding::Legacy("windows-1251")).is_ok());
     }
+
+    #[test]
+    fn the_message_lists_ten_characters_and_says_when_there_are_more() {
+        let latin1 = Encoding::Legacy("windows-1252");
+        // One: no plural.
+        let one = encode(&Rope::from_str("a\u{0416}"), latin1, false).unwrap_err();
+        assert!(one.to_string().starts_with("1 character cannot"), "{one}");
+        // Exactly ten: all shown, no ellipsis.
+        let ten = encode(&Rope::from_str(&"\u{0416}".repeat(10)), latin1, false).unwrap_err();
+        assert_eq!((ten.count, ten.samples.len()), (10, 10));
+        assert!(!ten.to_string().ends_with("..."), "{ten}");
+        // Eleven, after a long text: ten shown, then an ellipsis.
+        let long = format!("{}{}", "x".repeat(100_000), "\u{0416}".repeat(11));
+        let eleven = encode(&Rope::from_str(&long), latin1, false).unwrap_err();
+        assert_eq!((eleven.count, eleven.samples.len()), (11, 10));
+        assert!(eleven.to_string().ends_with(", ..."), "{eleven}");
+        assert_eq!(eleven.samples[0].0, 100_000);
+    }
+
+    #[test]
+    fn empty_text_encodes_to_nothing_or_a_bom() {
+        let empty = Rope::new();
+        assert_eq!(encode(&empty, Encoding::Utf8, false).unwrap(), b"");
+        assert_eq!(
+            encode(&empty, Encoding::Utf8, true).unwrap(),
+            b"\xEF\xBB\xBF"
+        );
+        assert_eq!(
+            encode(&empty, Encoding::Utf16Be, true).unwrap(),
+            b"\xFE\xFF"
+        );
+        // A legacy encoding has no BOM to write.
+        assert_eq!(
+            encode(&empty, Encoding::Legacy("windows-1251"), true).unwrap(),
+            b""
+        );
+    }
+
+    #[test]
+    fn stateful_encodings_end_in_their_initial_state() {
+        // ISO-2022-JP switches to Japanese and must switch back at the end.
+        let bytes = encode(
+            &Rope::from_str("a日本"),
+            Encoding::Legacy("ISO-2022-JP"),
+            false,
+        )
+        .unwrap();
+        assert!(bytes.ends_with(b"\x1B(B"), "{bytes:?}");
+    }
 }

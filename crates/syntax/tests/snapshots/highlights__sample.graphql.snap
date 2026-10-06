@@ -14,8 +14,6 @@ operator                 !
 property                 times
 punctuation.delimiter    :
 type                     Int
-operator                 =
-number                   2
 punctuation.bracket      }
 keyword                  query
 function                 Greet
@@ -25,6 +23,13 @@ variable                 name
 punctuation.delimiter    :
 type                     String
 operator                 !
+punctuation.delimiter    ,
+punctuation.delimiter    $
+variable                 times
+punctuation.delimiter    :
+type                     Int
+operator                 =
+number                   2
 punctuation.bracket      )
 punctuation.bracket      {
 property                 greeting
@@ -39,4 +44,14 @@ punctuation.bracket      {
 property                 name
 property                 times
 punctuation.bracket      }
+punctuation.bracket      }
+string                   """\nA greeting with a description.\n"""
+keyword                  input
+type                     GreetingInput
+punctuation.bracket      {
+variable.parameter       name
+punctuation.delimiter    :
+type                     String
+operator                 =
+string                   "world"
 punctuation.bracket      }

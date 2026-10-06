@@ -18,3 +18,12 @@ int main(void) {
     NSLog(@"%@", [greeting render]);
     return 0;
 }
+
+@import Foundation;
+
+static int retry(int times) {
+    int tries = 0;
+again:
+    if (tries++ < times) goto again;
+    return tries;
+}

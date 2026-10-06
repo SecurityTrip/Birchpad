@@ -4,7 +4,13 @@
 //! selection through the changes the others make. Layout in cells (tab stops, word wrap, rows)
 //! comes from `birchpad-view`; [`element::EditorElement`] turns it into pixels and paints it.
 
+#[cfg(test)]
+mod capture_coverage_tests;
+#[cfg(test)]
+mod change_history_tests;
 mod column_editor;
+#[cfg(test)]
+mod command_sweep_tests;
 mod element;
 mod folding;
 mod layout;
@@ -242,6 +248,8 @@ pub(crate) struct ViewSettings {
     pub(crate) line_numbers: bool,
     pub(crate) bookmark_margin: bool,
     pub(crate) fold_margin: bool,
+    /// The change history margin.
+    pub(crate) change_history: bool,
     /// View > Show Symbol.
     pub(crate) show_whitespace: bool,
     pub(crate) show_eol: bool,
@@ -266,6 +274,7 @@ impl ViewSettings {
             line_numbers: editor.line_numbers,
             bookmark_margin: editor.bookmark_margin,
             fold_margin: editor.fold_margin,
+            change_history: editor.change_history == birchpad_config::ChangeHistory::Margin,
             show_whitespace: app.state.show_whitespace.unwrap_or(editor.show_whitespace),
             show_eol: app.state.show_eol.unwrap_or(editor.show_eol),
             indent_guides: app.state.indent_guides.unwrap_or(editor.indent_guides),
@@ -330,6 +339,9 @@ pub(crate) struct EditorView {
     wrap_job: Option<WrapJob>,
     /// Where to put the caret once the file has been read (`-n`, `-c`, `-p`).
     pending_caret: Option<CaretTarget>,
+    /// A search result to select once the file has been read: a line, and the match's bytes
+    /// from its start.
+    pending_match: Option<(usize, ByteRange<usize>)>,
     /// Where to put the view once the file has been read (a restored session).
     pending_state: Option<ViewState>,
     /// First visible row; fractional while scrolling smoothly.
@@ -431,6 +443,9 @@ impl EditorView {
                 if let Some(target) = this.pending_caret.take() {
                     this.place_caret(target, cx);
                 }
+                if let Some((line, target)) = this.pending_match.take() {
+                    this.select_in_line(line, target, cx);
+                }
                 cx.notify();
             }
             BufferEvent::SyntaxChanged => {
@@ -461,6 +476,7 @@ impl EditorView {
             display,
             wrap_job: None,
             pending_caret: None,
+            pending_match: None,
             pending_state: None,
             scroll_top: 0.,
             scroll_left: px(0.),
@@ -796,6 +812,50 @@ impl EditorView {
         self.goal_column = None;
         self.last_edit = LastEdit::None;
         self.request_autoscroll(cx);
+    }
+
+    /// Selects a search result: `target` holds bytes from the start of the 0-based `line`. A
+    /// line past the end is the last line, and a target past the line's end or inside a
+    /// character is cut to fit, since the text may have changed since the search. Waits for a
+    /// file that is still being read.
+    pub(crate) fn select_in_line(
+        &mut self,
+        line: usize,
+        target: ByteRange<usize>,
+        cx: &mut Context<Self>,
+    ) {
+        if self.buffer.read(cx).read_only() == Some(ReadOnly::Loading) {
+            self.pending_match = Some((line, target));
+            return;
+        }
+        let text = self.text(cx).clone();
+        let line = line.min(motion::line_count(&text).saturating_sub(1));
+        let start = line_range(&text, line).start;
+        let from = text.floor_char_boundary((start + target.start).min(text.len()));
+        let to = text.floor_char_boundary((start + target.end).min(text.len()));
+        self.select_range(from..to.max(from), cx);
+    }
+
+    /// The lines the last frame showed, the last one partly perhaps.
+    pub(crate) fn visible_lines(&self) -> Option<std::ops::Range<usize>> {
+        let layout = self.layout.as_ref()?;
+        let first = layout.rows.first()?.row.line;
+        let last = layout.rows.last()?.row.line;
+        Some(first..last + 1)
+    }
+
+    /// Scrolls so that `line` is the first one shown, or the first shown of its fold (the
+    /// Document Map).
+    pub(crate) fn scroll_to_line(&mut self, line: usize, cx: &mut Context<Self>) {
+        let text = self.text(cx).clone();
+        let line = line.min(motion::line_count(&text).saturating_sub(1));
+        let visible = self.display.visible_line(line);
+        self.scroll_top = self.display.first_row_of_line(visible) as f64;
+        cx.notify();
+    }
+
+    pub(crate) fn tab_width(&self) -> usize {
+        self.display.config().tab_width
     }
 
     /// Puts a single caret at `pos` and scrolls to it (Go To).
@@ -1241,11 +1301,12 @@ impl EditorView {
             }
             return;
         }
-        // In the line number margin, clicking and dragging selects whole lines.
-        let in_line_numbers = layout
-            .margins
-            .line_numbers
-            .is_some_and(|margin| margin.contains(&event.position));
+        // In the line number margin, clicking and dragging selects whole lines; in the change
+        // history margin too, as in Scintilla's margins that take no clicks of their own.
+        let in_line_numbers = [layout.margins.line_numbers, layout.margins.changes]
+            .into_iter()
+            .flatten()
+            .any(|margin| margin.contains(&event.position));
         let text = self.text(cx).clone();
         let Some(pos) = self.position_for_point(event.position, cx) else {
             return;

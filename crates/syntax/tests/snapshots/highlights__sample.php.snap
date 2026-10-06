@@ -4,6 +4,12 @@ expression: render(&path)
 ---
 language: php
 tag                      <?php
+keyword                  namespace
+module                   Demo
+module                   Greeting
+keyword                  const
+constant                 TIMES
+number                   2
 comment                  // Greets someone.
 keyword                  function
 function                 greet

@@ -198,6 +198,46 @@ mod tests {
     }
 
     #[test]
+    fn layers_have_names_for_messages() {
+        assert_eq!(Layer::Defaults.to_string(), "built-in defaults");
+        assert_eq!(Layer::Machine.to_string(), "machine defaults");
+        assert_eq!(Layer::User.to_string(), "user settings");
+        assert_eq!(Layer::Policy.to_string(), "administrator policy");
+    }
+
+    #[test]
+    fn locked_keys_are_exactly_the_policy_keys_that_applied() {
+        let resolved = resolve(Sources {
+            policy: table("updates.mode = 'off'\neditor.tab-width = 8\neditor.word-wrap = 'x'"),
+            ..Sources::default()
+        });
+        let mut locked: Vec<_> = resolved.locked_keys().collect();
+        locked.sort_unstable();
+        assert_eq!(locked, ["editor.tab-width", "updates.mode"]);
+        assert!(
+            !resolved.is_locked("editor.word-wrap"),
+            "its value was invalid"
+        );
+        assert!(!resolved.is_locked("editor"), "only whole keys");
+        // No policy at all: nothing is locked.
+        assert_eq!(resolve(Sources::default()).locked_keys().count(), 0);
+    }
+
+    #[test]
+    fn set_path_replaces_a_value_in_the_way_with_a_table() {
+        let mut table: Table = toml::from_str("editor = 5").unwrap();
+        set_path(&mut table, "editor.tab-width", Value::Integer(2));
+        assert_eq!(table, toml::from_str("editor.tab-width = 2").unwrap());
+        // A key of one part, and one several tables deep that do not exist yet.
+        set_path(&mut table, "top", Value::Boolean(true));
+        set_path(&mut table, "a.b.c", Value::Integer(1));
+        assert_eq!(
+            table,
+            toml::from_str("top = true\neditor.tab-width = 2\na.b.c = 1").unwrap()
+        );
+    }
+
+    #[test]
     fn invalid_key_is_skipped_others_apply() {
         let resolved = resolve(Sources {
             user: table("editor.tab-width = 'four'\neditor.word-wrap = true\nunknown.key = 1"),

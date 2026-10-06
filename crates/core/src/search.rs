@@ -1,23 +1,38 @@
-//! Finding text in a rope without copying it.
+//! Finding text in a rope.
 //!
 //! A [`Query`] is compiled into a [`Searcher`], which finds matches forward or backward from a
-//! position, optionally wrapping around. Matching works on the rope's chunks; only the few bytes
-//! around chunk boundaries are copied. The searcher is an enum of matchers so that Extended
-//! (`\n`, `\t`) and regular expression modes (phase 3) slot in without changing callers.
+//! position, optionally wrapping around, and says what replaces each. Three modes, as in
+//! Notepad++:
+//!
+//! - **Normal**: the pattern is literal text. Matching works on the rope's chunks; only the few
+//!   bytes around chunk boundaries are copied.
+//! - **Extended**: literal text with escapes (`\n`, `\t`, `\x41`, ...), see [`unescape_extended`].
+//! - **Regular expression**: Perl syntax with back-references and look-around
+//!   ([`fancy_regex`]). `^` and `$` match at every line (CRLF included), `.` matches line
+//!   breaks only with [`Query::dot_matches_newline`]. Regular expressions run on a copy of the
+//!   text, made once per operation, so that look-behind and anchors see the whole text even
+//!   when only a part (a selection) is searched.
 
 use std::ops::Range;
+use std::sync::{Arc, Mutex};
 
+use fancy_regex::{Regex, RegexBuilder, RegexInput};
 use memchr::memmem;
 use ropey::Rope;
 
 use crate::motion::{CharClass, char_class, next_boundary, word_at};
 
-/// How the pattern is interpreted. Only `Normal` exists for now.
+/// How the pattern is interpreted.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
 pub enum SearchMode {
     /// The pattern is literal text.
     #[default]
     Normal,
+    /// Literal text with escapes: `\n`, `\r`, `\t`, `\0`, `\\`, `\xHH`, `\uHHHH`, `\oNNN`,
+    /// `\dNNN`, `\bNNNNNNNN`.
+    Extended,
+    /// A regular expression.
+    Regex,
 }
 
 /// What to search for.
@@ -25,15 +40,24 @@ pub enum SearchMode {
 pub struct Query {
     pub pattern: String,
     pub match_case: bool,
-    /// Only matches with a non-word character (or the text edge) on both sides.
+    /// Only matches with a non-word character (or the text edge) on both sides. Not used by
+    /// regular expressions, which say it with `\b`.
     pub whole_word: bool,
     pub mode: SearchMode,
+    /// Regular expressions: `.` also matches `\r` and `\n`.
+    pub dot_matches_newline: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum SearchError {
     #[error("the search text is empty")]
     Empty,
+    #[error("invalid regular expression: {0}")]
+    InvalidRegex(String),
+    /// The regular expression could not be matched, typically because backtracking took too
+    /// long (`(a*)*b` on a long run of `a`).
+    #[error("the regular expression is too complex to match: {0}")]
+    RegexFailed(String),
 }
 
 /// Which way to search.
@@ -47,43 +71,97 @@ pub enum Direction {
 #[derive(Debug, Clone)]
 pub struct Searcher {
     whole_word: bool,
+    mode: SearchMode,
     matcher: Matcher,
+    /// The error that stopped the last regular expression search, if any: searches report "no
+    /// match" and leave the reason here.
+    failure: Arc<Mutex<Option<SearchError>>>,
 }
 
 #[derive(Debug, Clone)]
 enum Matcher {
     /// Case-sensitive literal: byte search with `memmem`.
-    Exact { needle: Vec<u8> },
+    Exact {
+        needle: Vec<u8>,
+    },
     /// Case-insensitive literal: compared character by character after simple case folding.
-    Folded { needle: Vec<char> },
+    Folded {
+        needle: Vec<char>,
+    },
+    Regex(Arc<Regex>),
 }
+
+/// How many backtracking steps a regular expression may take for one match before it fails.
+const BACKTRACK_LIMIT: usize = 10_000_000;
 
 impl Searcher {
     pub fn new(query: &Query) -> Result<Self, SearchError> {
         if query.pattern.is_empty() {
             return Err(SearchError::Empty);
         }
-        let matcher = match (query.mode, query.match_case) {
-            (SearchMode::Normal, true) => Matcher::Exact {
-                needle: query.pattern.as_bytes().to_vec(),
-            },
-            (SearchMode::Normal, false) => Matcher::Folded {
-                needle: query.pattern.chars().map(fold).collect(),
-            },
+        let literal = |pattern: &str| {
+            if pattern.is_empty() {
+                Err(SearchError::Empty)
+            } else if query.match_case {
+                Ok(Matcher::Exact {
+                    needle: pattern.as_bytes().to_vec(),
+                })
+            } else {
+                Ok(Matcher::Folded {
+                    needle: pattern.chars().map(fold).collect(),
+                })
+            }
+        };
+        let matcher = match query.mode {
+            SearchMode::Normal => literal(&query.pattern)?,
+            SearchMode::Extended => literal(&unescape_extended(&query.pattern))?,
+            SearchMode::Regex => {
+                let regex = RegexBuilder::new(&query.pattern)
+                    .case_insensitive(!query.match_case)
+                    .multi_line(true)
+                    .crlf(true)
+                    .dot_matches_new_line(query.dot_matches_newline)
+                    .backtrack_limit(BACKTRACK_LIMIT)
+                    .build()
+                    .map_err(|error| SearchError::InvalidRegex(error.to_string()))?;
+                Matcher::Regex(Arc::new(regex))
+            }
         };
         Ok(Self {
-            whole_word: query.whole_word,
+            whole_word: query.whole_word && query.mode != SearchMode::Regex,
+            mode: query.mode,
             matcher,
+            failure: Arc::default(),
         })
+    }
+
+    pub fn is_regex(&self) -> bool {
+        matches!(self.matcher, Matcher::Regex(_))
+    }
+
+    /// Why the last search found nothing although it should have looked further: a regular
+    /// expression that failed to match. `None` after a search that simply found nothing.
+    pub fn failure(&self) -> Option<SearchError> {
+        self.failure.lock().ok().and_then(|failure| failure.clone())
     }
 
     /// The first match starting at or after `from` and ending at or before `to`.
     pub fn find_in(&self, text: &Rope, range: Range<usize>) -> Option<Range<usize>> {
+        if let Matcher::Regex(regex) = &self.matcher {
+            let haystack = haystack(text);
+            let mut found = None;
+            self.regex_matches(regex, &haystack, range, |m| {
+                found = Some(m);
+                false
+            });
+            return found;
+        }
         let mut start = range.start;
         loop {
             let found = match &self.matcher {
                 Matcher::Exact { needle } => find_exact(text, needle, start..range.end)?,
                 Matcher::Folded { needle } => find_folded(text, needle, start..range.end)?,
+                Matcher::Regex(_) => unreachable!(),
             };
             if !self.whole_word || is_whole_word(text, &found) {
                 return Some(found);
@@ -94,6 +172,15 @@ impl Searcher {
 
     /// The last match inside `range`.
     pub fn find_last_in(&self, text: &Rope, range: Range<usize>) -> Option<Range<usize>> {
+        if let Matcher::Regex(regex) = &self.matcher {
+            let haystack = haystack(text);
+            let mut last = None;
+            self.regex_matches(regex, &haystack, range, |m| {
+                last = Some(m);
+                true
+            });
+            return last;
+        }
         // Search forward in windows that grow backwards from the end: matches near the end are
         // found without scanning the whole text.
         let mut window = 64 * 1024;
@@ -134,6 +221,9 @@ impl Searcher {
 
     /// Every match, in order, not overlapping.
     pub fn find_all(&self, text: &Rope) -> Vec<Range<usize>> {
+        if self.is_regex() {
+            return self.find_all_in(text, 0..text.len());
+        }
         let mut matches = Vec::new();
         let mut from = 0;
         while let Some(found) = self.find_in(text, from..text.len()) {
@@ -152,6 +242,15 @@ impl Searcher {
 
     /// Every match inside `range`, in order, not overlapping.
     pub fn find_all_in(&self, text: &Rope, range: Range<usize>) -> Vec<Range<usize>> {
+        if let Matcher::Regex(regex) = &self.matcher {
+            let haystack = haystack(text);
+            let mut matches = Vec::new();
+            self.regex_matches(regex, &haystack, range, |m| {
+                matches.push(m);
+                true
+            });
+            return matches;
+        }
         let mut scan = Scan::new(range);
         scan.run(self, text, || false);
         scan.into_matches()
@@ -159,7 +258,149 @@ impl Searcher {
 
     /// Whether `range` of `text` is a match (to decide what "Replace" replaces).
     pub fn is_match(&self, text: &Rope, range: Range<usize>) -> bool {
+        if let Matcher::Regex(regex) = &self.matcher {
+            let haystack = haystack(text);
+            return self.regex_match_at(regex, &haystack, range.clone()) == Some(range);
+        }
         self.find_in(text, range.clone()) == Some(range)
+    }
+
+    /// What replaces `range`, a match in `text`: `template` as written (Normal mode), with its
+    /// escapes (Extended), or with its references to groups expanded (regular expressions, see
+    /// [`expand_replacement`]).
+    pub fn replacement(&self, text: &Rope, range: Range<usize>, template: &str) -> String {
+        match &self.matcher {
+            Matcher::Regex(regex) => {
+                let haystack = haystack(text);
+                let input = RegexInput::new(haystack.as_str())
+                    .range(range.clone())
+                    .from_pos(range.start)
+                    .anchored(true);
+                match regex.captures_input(input) {
+                    Ok(Some(captures)) => expand_with(&captures, template),
+                    _ => String::new(),
+                }
+            }
+            _ => self.literal_replacement(template),
+        }
+    }
+
+    /// Every match inside `range` with what replaces it, for Replace All.
+    pub fn replacements(
+        &self,
+        text: &Rope,
+        range: Range<usize>,
+        template: &str,
+    ) -> Vec<(Range<usize>, String)> {
+        let Matcher::Regex(regex) = &self.matcher else {
+            let replacement = self.literal_replacement(template);
+            return self
+                .find_all_in(text, range)
+                .into_iter()
+                .map(|found| (found, replacement.clone()))
+                .collect();
+        };
+        let haystack = haystack(text);
+        let mut found = Vec::new();
+        self.regex_matches(regex, &haystack, range.clone(), |m| {
+            found.push(m);
+            true
+        });
+        found
+            .into_iter()
+            .map(|m| {
+                let input = RegexInput::new(haystack.as_str())
+                    .range(m.clone())
+                    .from_pos(m.start)
+                    .anchored(true);
+                let replacement = match regex.captures_input(input) {
+                    Ok(Some(captures)) => expand_with(&captures, template),
+                    _ => String::new(),
+                };
+                (m, replacement)
+            })
+            .collect()
+    }
+
+    fn literal_replacement(&self, template: &str) -> String {
+        if self.mode == SearchMode::Extended {
+            unescape_extended(template)
+        } else {
+            template.to_owned()
+        }
+    }
+
+    /// Calls `found` with each match of `regex` in `range` of `haystack`, in order and not
+    /// overlapping, until it returns false. An empty match right where the previous match
+    /// ended is skipped, as the `regex` crate does: `a*` in `aab` matches `aa` and the empty
+    /// text at the end, not also the empty text between.
+    fn regex_matches(
+        &self,
+        regex: &Regex,
+        haystack: &str,
+        range: Range<usize>,
+        mut found: impl FnMut(Range<usize>) -> bool,
+    ) {
+        self.set_failure(None);
+        let range = range.start.min(haystack.len())..range.end.min(haystack.len());
+        let mut pos = range.start;
+        let mut previous_end = None;
+        while pos <= range.end {
+            let input = RegexInput::new(haystack).range(range.clone()).from_pos(pos);
+            match regex.find_input(input) {
+                Ok(Some(m)) => {
+                    let m = m.start()..m.end();
+                    if m.is_empty() && previous_end == Some(m.start) {
+                        pos = next_char(haystack, m.start);
+                        continue;
+                    }
+                    if !found(m.clone()) {
+                        return;
+                    }
+                    previous_end = Some(m.end);
+                    pos = if m.is_empty() {
+                        next_char(haystack, m.end)
+                    } else {
+                        m.end
+                    };
+                }
+                Ok(None) => return,
+                Err(error) => {
+                    self.set_failure(Some(SearchError::RegexFailed(error.to_string())));
+                    return;
+                }
+            }
+            if pos > haystack.len() {
+                return;
+            }
+        }
+    }
+
+    /// The match of `regex` that starts exactly at `range.start`, within `range`.
+    fn regex_match_at(
+        &self,
+        regex: &Regex,
+        haystack: &str,
+        range: Range<usize>,
+    ) -> Option<Range<usize>> {
+        self.set_failure(None);
+        let input = RegexInput::new(haystack)
+            .range(range.clone())
+            .from_pos(range.start)
+            .anchored(true);
+        match regex.find_input(input) {
+            Ok(found) => found.map(|m| m.start()..m.end()),
+            Err(error) => {
+                self.set_failure(Some(SearchError::RegexFailed(error.to_string())));
+                None
+            }
+        }
+    }
+
+    fn set_failure(&self, failure: Option<SearchError>) {
+        if let Ok(mut slot) = self.failure.lock() {
+            *slot = failure;
+        }
     }
 
     /// The longest a match can be, in bytes. Case folding may change a character's length
@@ -169,8 +410,26 @@ impl Searcher {
         match &self.matcher {
             Matcher::Exact { needle } => needle.len(),
             Matcher::Folded { needle } => needle.len() * 4,
+            Matcher::Regex(_) => usize::MAX,
         }
     }
+}
+
+/// The text as one string, for regular expressions.
+fn haystack(text: &Rope) -> String {
+    let mut haystack = String::with_capacity(text.len());
+    for chunk in text.chunks() {
+        haystack.push_str(chunk);
+    }
+    haystack
+}
+
+/// The byte after the character at `pos` (`pos + 1` at the end, to stop an iteration).
+fn next_char(haystack: &str, pos: usize) -> usize {
+    haystack[pos..]
+        .chars()
+        .next()
+        .map_or(pos + 1, |ch| pos + ch.len_utf8())
 }
 
 /// Bytes a [`Scan`] searches between two checks of its caller's budget.
@@ -240,8 +499,14 @@ impl Scan {
         self.is_done()
     }
 
-    /// Finds the matches that start in the next `step` bytes.
+    /// Finds the matches that start in the next `step` bytes. A regular expression searches
+    /// the whole range at once: its matches have no length limit to cut steps by.
     fn step(&mut self, searcher: &Searcher, text: &Rope) {
+        if searcher.is_regex() {
+            self.matches = searcher.find_all_in(text, self.range.clone());
+            self.next = self.range.end;
+            return;
+        }
         let end = self.range.end;
         let limit = text.ceil_char_boundary((self.next + self.step).min(end));
         // Far enough to see a whole match that starts just before `limit`.
@@ -380,8 +645,176 @@ fn find_folded(text: &Rope, needle: &[char], range: Range<usize>) -> Option<Rang
     None
 }
 
+/// The text an Extended search or replacement stands for, as in Notepad++: `\n`, `\r`, `\t`,
+/// `\0` and `\\`; a character by its code as `\xHH` (hexadecimal), `\uHHHH`, `\oNNN` (octal),
+/// `\dNNN` (decimal) or `\bNNNNNNNN` (binary). Any other backslash stays as written.
+pub fn unescape_extended(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    let mut rest = text;
+    while let Some(at) = rest.find('\\') {
+        out.push_str(&rest[..at]);
+        rest = &rest[at + 1..];
+        let mut chars = rest.chars();
+        let Some(kind) = chars.next() else {
+            out.push('\\');
+            break;
+        };
+        let code = |digits: usize, radix: u32| -> Option<char> {
+            let number = rest.get(1..1 + digits)?;
+            if !number.chars().all(|ch| ch.is_digit(radix)) {
+                return None;
+            }
+            char::from_u32(u32::from_str_radix(number, radix).ok()?)
+        };
+        let (ch, used) = match kind {
+            'n' => (Some('\n'), 1),
+            'r' => (Some('\r'), 1),
+            't' => (Some('\t'), 1),
+            '0' => (Some('\0'), 1),
+            '\\' => (Some('\\'), 1),
+            'x' => (code(2, 16), 3),
+            'u' => (code(4, 16), 5),
+            'o' => (code(3, 8), 4),
+            'd' => (code(3, 10), 4),
+            'b' => (code(8, 2), 9),
+            _ => (None, 0),
+        };
+        match ch {
+            Some(ch) => {
+                out.push(ch);
+                rest = &rest[used..];
+            }
+            None => out.push('\\'),
+        }
+    }
+    out.push_str(rest);
+    out
+}
+
+/// Expands a regular expression replacement, as Notepad++ (Boost) does:
+///
+/// - `$&` or `$0` the whole match, `$1`…`$99` or `\1`…`\9` a group, `${2}` or `${name}` a
+///   group by number or name, `$$` a dollar sign;
+/// - `\n`, `\r`, `\t`, `\\` a line feed, carriage return, tab and backslash;
+/// - `\U` and `\L` turn what follows to uppercase or lowercase until `\E`; `\u` and `\l` only
+///   the next character.
+///
+/// A group that did not take part in the match is empty. Anything else is literal.
+pub fn expand_replacement<'a>(
+    template: &str,
+    group: impl Fn(usize) -> Option<&'a str>,
+    named: impl Fn(&str) -> Option<&'a str>,
+) -> String {
+    #[derive(Clone, Copy, PartialEq)]
+    enum Case {
+        Keep,
+        Upper,
+        Lower,
+    }
+    let mut out = String::new();
+    let mut case = Case::Keep;
+    // `\u` or `\l`: the next character only.
+    let mut next: Option<Case> = None;
+    let push = |out: &mut String, text: &str, case: Case, next: &mut Option<Case>| {
+        for ch in text.chars() {
+            let applied = next.take().unwrap_or(case);
+            match applied {
+                Case::Keep => out.push(ch),
+                Case::Upper => out.extend(ch.to_uppercase()),
+                Case::Lower => out.extend(ch.to_lowercase()),
+            }
+        }
+    };
+    let digits = |s: &str, max: usize| -> usize {
+        s.bytes()
+            .take(max)
+            .take_while(|b| b.is_ascii_digit())
+            .count()
+    };
+    let mut rest = template;
+    while let Some(ch) = rest.chars().next() {
+        match ch {
+            '$' => {
+                let after = &rest[1..];
+                if let Some(stripped) = after.strip_prefix('$') {
+                    push(&mut out, "$", case, &mut next);
+                    rest = stripped;
+                } else if let Some(stripped) = after.strip_prefix('&') {
+                    push(&mut out, group(0).unwrap_or_default(), case, &mut next);
+                    rest = stripped;
+                } else if let Some(inner) = after.strip_prefix('{')
+                    && let Some(close) = inner.find('}')
+                {
+                    let name = &inner[..close];
+                    let value = match name.parse::<usize>() {
+                        Ok(index) => group(index),
+                        Err(_) => named(name),
+                    };
+                    push(&mut out, value.unwrap_or_default(), case, &mut next);
+                    rest = &inner[close + 1..];
+                } else {
+                    let count = digits(after, 2);
+                    if count > 0 {
+                        let index: usize = after[..count].parse().unwrap_or(0);
+                        push(&mut out, group(index).unwrap_or_default(), case, &mut next);
+                        rest = &after[count..];
+                    } else {
+                        push(&mut out, "$", case, &mut next);
+                        rest = after;
+                    }
+                }
+            }
+            '\\' => {
+                let after = &rest[1..];
+                let Some(kind) = after.chars().next() else {
+                    push(&mut out, "\\", case, &mut next);
+                    break;
+                };
+                rest = &after[kind.len_utf8()..];
+                match kind {
+                    'n' => push(&mut out, "\n", Case::Keep, &mut None),
+                    'r' => push(&mut out, "\r", Case::Keep, &mut None),
+                    't' => push(&mut out, "\t", Case::Keep, &mut None),
+                    'U' => case = Case::Upper,
+                    'L' => case = Case::Lower,
+                    'E' => case = Case::Keep,
+                    'u' => next = Some(Case::Upper),
+                    'l' => next = Some(Case::Lower),
+                    '0'..='9' => {
+                        let index = kind as usize - '0' as usize;
+                        push(&mut out, group(index).unwrap_or_default(), case, &mut next);
+                    }
+                    other => {
+                        let mut buffer = [0; 4];
+                        push(&mut out, other.encode_utf8(&mut buffer), case, &mut next);
+                    }
+                }
+            }
+            _ => {
+                let len = ch.len_utf8();
+                push(&mut out, &rest[..len], case, &mut next);
+                rest = &rest[len..];
+            }
+        }
+    }
+    out
+}
+
+fn expand_with(captures: &fancy_regex::Captures<'_, str>, template: &str) -> String {
+    expand_replacement(
+        template,
+        |index| captures.get(index).map(|m| m.as_str()),
+        |name| captures.name(name).map(|m| m.as_str()),
+    )
+}
+
 #[cfg(test)]
 mod tests {
+    #![allow(
+        clippy::single_range_in_vec_init,
+        reason = "lists of one expected match"
+    )]
+
     use super::*;
 
     fn searcher(pattern: &str, match_case: bool, whole_word: bool) -> Searcher {
@@ -389,9 +822,168 @@ mod tests {
             pattern: pattern.into(),
             match_case,
             whole_word,
-            mode: SearchMode::Normal,
+            ..Query::default()
         })
         .unwrap()
+    }
+
+    fn mode(pattern: &str, mode: SearchMode) -> Searcher {
+        Searcher::new(&Query {
+            pattern: pattern.into(),
+            match_case: true,
+            mode,
+            ..Query::default()
+        })
+        .unwrap()
+    }
+
+    fn regex(pattern: &str) -> Searcher {
+        mode(pattern, SearchMode::Regex)
+    }
+
+    fn matched(searcher: &Searcher, text: &Rope) -> Vec<String> {
+        searcher
+            .find_all(text)
+            .into_iter()
+            .map(|range| text.slice(range).to_string())
+            .collect()
+    }
+
+    #[test]
+    fn extended_mode_reads_notepad_plus_plus_escapes() {
+        assert_eq!(
+            unescape_extended(r"a\tb\nc\\d\x41Ж\o101\d065\b01000001\q\"),
+            "a\tb\nc\\dAЖAAA\\q\\"
+        );
+        assert_eq!(
+            unescape_extended(r"\x4"),
+            r"\x4",
+            "too few digits stay as written"
+        );
+        let text = Rope::from_str("one\r\ntwo\tthree");
+        let s = mode(r"\r\ntwo\t", SearchMode::Extended);
+        assert_eq!(s.find_all(&text), [3..9]);
+        assert_eq!(s.replacement(&text, 3..9, r"\n-"), "\n-");
+        assert_eq!(
+            mode(r"\r\n", SearchMode::Normal).find_all(&text),
+            Vec::<Range<usize>>::new(),
+            "Normal mode is literal"
+        );
+    }
+
+    #[test]
+    fn regular_expressions_have_back_references_and_look_around() {
+        let text = Rope::from_str("the the cat sat on on the mat\nprice: $42, cost: $7");
+        assert_eq!(
+            matched(&regex(r"\b(\w+) \1\b"), &text),
+            ["the the", "on on"]
+        );
+        assert_eq!(matched(&regex(r"(?<=\$)\d+"), &text), ["42", "7"]);
+        assert_eq!(matched(&regex(r"\w+(?=:)"), &text), ["price", "cost"]);
+        let insensitive = Searcher::new(&Query {
+            pattern: "ПРИВЕТ|CAT".into(),
+            mode: SearchMode::Regex,
+            ..Query::default()
+        })
+        .unwrap();
+        assert_eq!(
+            matched(&insensitive, &Rope::from_str("привет, Cat")),
+            ["привет", "Cat"]
+        );
+    }
+
+    #[test]
+    fn regular_expressions_work_line_by_line_with_any_line_ending() {
+        let text = Rope::from_str("a1\r\nb2\r\nc3");
+        assert_eq!(matched(&regex(r"^\w"), &text), ["a", "b", "c"]);
+        assert_eq!(matched(&regex(r"\d$"), &text), ["1", "2", "3"]);
+        assert_eq!(matched(&regex(r"1.+b"), &text), Vec::<String>::new());
+        let across = Searcher::new(&Query {
+            pattern: r"1.+b".into(),
+            match_case: true,
+            mode: SearchMode::Regex,
+            dot_matches_newline: true,
+            ..Query::default()
+        })
+        .unwrap();
+        assert_eq!(matched(&across, &text), ["1\r\nb"]);
+    }
+
+    #[test]
+    fn empty_matches_replace_like_notepad_plus_plus() {
+        // Commenting out every line: `^` matches at each line start, the empty last line too.
+        let text = Rope::from_str("x\ny\n");
+        let replaced: Vec<(Range<usize>, String)> =
+            regex("^").replacements(&text, 0..text.len(), "// ");
+        assert_eq!(
+            replaced,
+            [
+                (0..0, "// ".to_owned()),
+                (2..2, "// ".to_owned()),
+                (4..4, "// ".to_owned())
+            ]
+        );
+        // No empty match right where a match ended.
+        assert_eq!(regex("a*").find_all(&Rope::from_str("aab")), [0..2, 3..3]);
+    }
+
+    #[test]
+    fn replacements_expand_groups_and_case() {
+        let group = |i: usize| ["me@host", "me", "host"].get(i).copied();
+        let named = |name: &str| (name == "user").then_some("me");
+        let expand = |template: &str| expand_replacement(template, group, named);
+        assert_eq!(expand(r"$2 at ${1}"), "host at me");
+        assert_eq!(expand(r"\2 \1 $& $0"), "host me me@host me@host");
+        assert_eq!(expand(r"${user}!"), "me!");
+        assert_eq!(expand(r"\U$1\E-$2 \u$2 \L\uHELLO"), "ME-host Host Hello");
+        assert_eq!(
+            expand(r"$$5 $9 \t\\"),
+            "$5  \t\\",
+            "a missing group is empty"
+        );
+        let text = Rope::from_str("me@host, you@there");
+        let s = regex(r"(?<user>\w+)@(\w+)");
+        assert_eq!(
+            s.replacements(&text, 0..text.len(), r"${user} at \U$2"),
+            [
+                (0..7, "me at HOST".to_owned()),
+                (9..18, "you at THERE".to_owned())
+            ]
+        );
+        assert_eq!(s.replacement(&text, 9..18, "[$1]"), "[you]");
+    }
+
+    #[test]
+    fn regular_expressions_in_a_selection_see_the_text_around_it() {
+        let text = Rope::from_str("a1 b2 c3");
+        let s = regex(r"\w\d");
+        assert_eq!(s.find_all_in(&text, 3..5), [3..5]);
+        assert_eq!(
+            s.find_all_in(&text, 3..4),
+            Vec::<Range<usize>>::new(),
+            "a match must end in the range"
+        );
+        // Look-behind sees what precedes the selection.
+        assert_eq!(regex(r"(?<=1 )\w").find_all_in(&text, 3..8), [3..4]);
+        assert_eq!(s.find(&text, 5, Direction::Backward, false), Some(3..5));
+        assert_eq!(s.find(&text, 1, Direction::Backward, true), Some(6..8));
+        assert!(regex(r"\d+").is_match(&Rope::from_str("ab123"), 2..5));
+        assert!(!regex(r"\d+").is_match(&Rope::from_str("ab123"), 1..5));
+        let mut scan = Scan::with_step(0..text.len(), 2);
+        while !scan.run(&s, &text, || true) {}
+        assert_eq!(scan.matches(), s.find_all(&text).as_slice());
+    }
+
+    #[test]
+    fn invalid_regular_expressions_are_errors() {
+        let error = Searcher::new(&Query {
+            pattern: "(unclosed".into(),
+            mode: SearchMode::Regex,
+            ..Query::default()
+        })
+        .unwrap_err();
+        assert!(matches!(error, SearchError::InvalidRegex(_)), "{error}");
+        assert_eq!(regex("a").failure(), None);
     }
 
     #[test]
@@ -453,6 +1045,149 @@ mod tests {
             Searcher::new(&Query::default()).unwrap_err(),
             SearchError::Empty
         );
+        // In every mode and with match case: an Extended pattern of nothing is empty too.
+        for mode in [SearchMode::Normal, SearchMode::Extended] {
+            for match_case in [false, true] {
+                let query = Query {
+                    mode,
+                    match_case,
+                    ..Query::default()
+                };
+                assert_eq!(Searcher::new(&query).unwrap_err(), SearchError::Empty);
+            }
+        }
+    }
+
+    /// A pattern fancy-regex can only run by backtracking (a back-reference), on a text where
+    /// that takes longer than the limit allows.
+    fn runaway() -> (Searcher, Rope) {
+        let text = Rope::from_str(&format!("{}!", "a".repeat(64)));
+        (regex(r"^(a|a)*\1b"), text)
+    }
+
+    #[test]
+    fn a_runaway_regular_expression_fails_instead_of_finding_nothing() {
+        let (s, text) = runaway();
+        assert_eq!(s.failure(), None, "nothing has run yet");
+        assert_eq!(s.find_in(&text, 0..text.len()), None);
+        assert!(matches!(s.failure(), Some(SearchError::RegexFailed(_))));
+        assert_eq!(s.find_last_in(&text, 0..text.len()), None);
+        assert!(s.failure().is_some());
+        assert!(s.replacements(&text, 0..text.len(), "x").is_empty());
+        assert!(!s.is_match(&text, 0..text.len()));
+        // A search that ends normally clears the failure.
+        let fine = regex("a");
+        assert!(fine.find_in(&text, 0..text.len()).is_some());
+        assert_eq!(fine.failure(), None);
+    }
+
+    #[test]
+    fn searching_backward_finds_a_match_far_before_the_end() {
+        // The backward search looks in growing windows from the end: the only match is at
+        // the very start, many windows away; another is cut by the end of the range.
+        let source = format!("needle{}needle", "-".repeat(100_000));
+        let text = Rope::from_str(&source);
+        let s = searcher("needle", true, false);
+        assert_eq!(s.find_last_in(&text, 0..text.len() - 1), Some(0..6));
+        assert_eq!(s.find_last_in(&text, 1..text.len() - 1), None);
+        assert_eq!(s.find_last_in(&text, 0..0), None, "an empty range");
+        assert_eq!(
+            s.find_last_in(&text, 0..text.len()),
+            Some(text.len() - 6..text.len())
+        );
+    }
+
+    #[test]
+    fn extended_escapes_at_their_limits() {
+        // A backslash at the very end, codes with too few or wrong digits, and the largest
+        // and smallest codes.
+        assert_eq!(unescape_extended("end\\"), "end\\");
+        assert_eq!(unescape_extended(r"\u41"), r"\u41");
+        assert_eq!(unescape_extended(r"\xZZ"), r"\xZZ");
+        assert_eq!(unescape_extended(r"\o9"), r"\o9");
+        assert_eq!(unescape_extended(r"\d25"), r"\d25");
+        assert_eq!(unescape_extended(r"\xff\x00"), "\u{ff}\0");
+        assert_eq!(unescape_extended(r"\uffff"), "\u{ffff}");
+        assert_eq!(unescape_extended(r"\o377\d255"), "\u{ff}\u{ff}");
+        // A surrogate is no character: it stays as written.
+        assert_eq!(unescape_extended(r"\ud800"), r"\ud800");
+        assert_eq!(unescape_extended(""), "");
+    }
+
+    #[test]
+    fn replacement_templates_at_their_limits() {
+        let group = |i: usize| ["whole", "one"].get(i).copied();
+        let named = |_: &str| None;
+        let expand = |template: &str| expand_replacement(template, group, named);
+        // A `$` or a backslash at the very end is kept; `$` before a non-group is literal.
+        assert_eq!(expand("cost $"), "cost $");
+        assert_eq!(expand("path\\"), "path\\");
+        assert_eq!(expand("$x"), "$x");
+        // An unknown name, an unclosed name, group 0 and the empty template.
+        assert_eq!(expand("${nope}"), "");
+        assert_eq!(expand("${one"), "${one");
+        assert_eq!(expand(r"\0"), "whole");
+        assert_eq!(expand(""), "");
+        // Line breaks are not case-converted, and \E ends a conversion.
+        assert_eq!(expand(r"\Ua\nb\Ec"), "A\nBc");
+        assert_eq!(expand(r"\l\U$1"), "oNE");
+    }
+
+    /// Where `needle` occurs in `haystack`, without overlaps, by the plainest means.
+    fn naive(haystack: &str, needle: &str, match_case: bool) -> Vec<Range<usize>> {
+        let (haystack, needle) = if match_case {
+            (haystack.to_owned(), needle.to_owned())
+        } else {
+            (haystack.to_lowercase(), needle.to_lowercase())
+        };
+        haystack
+            .match_indices(&needle)
+            .map(|(at, found)| at..at + found.len())
+            .collect()
+    }
+
+    proptest::proptest! {
+        #[test]
+        fn normal_search_finds_what_a_plain_search_finds(
+            pieces in proptest::collection::vec("[abAB \n]{0,40}", 1..60),
+            needle in "[abAB]{1,4}",
+            match_case: bool,
+        ) {
+            // Built from pieces so that chunk boundaries fall all over the text.
+            let source = pieces.concat();
+            let mut text = Rope::new();
+            for piece in &pieces {
+                let end = text.len();
+                text.insert(end, piece);
+            }
+            let found = searcher(&needle, match_case, false).find_all(&text);
+            proptest::prop_assert_eq!(found, naive(&source, &needle, match_case));
+        }
+
+        #[test]
+        fn a_backward_search_finds_the_last_forward_match(
+            source in "[ab \n]{0,300}",
+            needle in "[ab]{1,3}",
+        ) {
+            let text = Rope::from_str(&source);
+            let s = searcher(&needle, true, false);
+            let all = s.find_all(&text);
+            let last = s.find_last_in(&text, 0..text.len());
+            // The last match backward may overlap the last forward one ("aa" in "aaa").
+            match (all.last(), last) {
+                (None, None) => {}
+                (Some(forward), Some(backward)) => {
+                    proptest::prop_assert!(backward.start >= forward.start);
+                    proptest::prop_assert_eq!(&source[backward.clone()], needle.as_str());
+                }
+                (forward, backward) => proptest::prop_assert!(
+                    false,
+                    "forward {:?}, backward {:?}",
+                    forward,
+                    backward
+                ),
+            }
+        }
     }
 
     #[test]

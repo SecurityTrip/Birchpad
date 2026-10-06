@@ -358,7 +358,7 @@ async fn write_buffer(
     match written {
         Ok(disk) => {
             buffer.update(cx, |buffer, cx| {
-                buffer.did_save(path.clone(), revision, disk, cx);
+                buffer.did_save(path.clone(), revision, text.clone(), disk, cx);
             });
             cx.update(|_, cx| AppState::remove_recent(&path, cx))?;
             workspace.update(cx, |workspace, cx| workspace.refresh_menus(cx))?;

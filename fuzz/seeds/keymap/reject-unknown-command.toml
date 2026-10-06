@@ -1,0 +1,3 @@
+[[binding]]
+keys = "f12"
+command = "no.such-command"

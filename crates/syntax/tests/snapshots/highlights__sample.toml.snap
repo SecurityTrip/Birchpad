@@ -7,23 +7,30 @@ comment                  # Package
 punctuation.bracket      [
 type                     package
 punctuation.bracket      ]
-type                     name
-property                  
+property                 name
 operator                 =
-property                  
 string                   "birchpad"
-type                     version
-property                  
+property                 version
 operator                 =
-property                  
 string                   "0.1.0"
-type                     features
-property                  
+property                 features
 operator                 =
-property                  
 punctuation.bracket      [
 string                   "a"
 punctuation.delimiter    ,
-property                  
 string                   "b"
 punctuation.bracket      ]
+punctuation.bracket      [
+type                     package
+punctuation.delimiter    .
+type                     metadata
+punctuation.bracket      ]
+property                 publish
+operator                 =
+boolean                  false
+property                 retries
+operator                 =
+number                   3
+property                 ratio
+operator                 =
+number                   1.5

@@ -1,0 +1,21 @@
+# The least share of lines each crate's tests must run, in percent (.github/coverage_floors.py,
+# the coverage job of ci.yml). Floors only rise: when the job's summary says a crate is well
+# over its floor, raise it with the change that added the tests. They sit a point or two under
+# what was measured, as Linux runs other code than Windows and macOS.
+#
+# Measured on Windows on 2026-10-07: app 89.3, cli 92.1, commands 97.8, config 96.2, core 98.8,
+# fuzz 97.8, io 97.6, menu-bar 96.8, release-tool 94.8, syntax 96.3, update 96.0, view 99.5.
+
+[lines]
+app = 87
+cli = 90
+commands = 96
+config = 94
+core = 97
+fuzz = 96
+io = 95
+menu-bar = 95
+release-tool = 93
+syntax = 95
+update = 93
+view = 98

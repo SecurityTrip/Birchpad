@@ -5,7 +5,7 @@ use std::fmt::Write as _;
 use birchpad_config::UpdateChannel;
 use gpui_kit::component::WindowExt as _;
 use gpui_kit::component::button::{Button, ButtonVariants as _};
-use gpui_kit::component::dialog::{DialogClose, DialogFooter};
+use gpui_kit::component::dialog::DialogFooter;
 use gpui_kit::{App, ClipboardItem, SharedString, Window, div, prelude::*, px, rgb};
 
 use crate::app_state::AppState;
@@ -185,7 +185,7 @@ pub(crate) fn show_message_with(
         dialog
             .footer(
                 DialogFooter::new()
-                    .child(DialogClose::new().trigger(|button| button.label("Not Now")))
+                    .child(crate::workspace::dialog_close("Not Now"))
                     .child(crate::workspace::dialog_action(
                         Button::new("action").primary().label(label),
                     )),

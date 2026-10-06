@@ -171,6 +171,33 @@ mod tests {
     }
 
     #[test]
+    fn a_session_with_one_view_and_odd_entries() {
+        // No subView, an activeView past the second view, a File without a name or with an
+        // empty one, and numbers that are not numbers.
+        let xml = r#"<NotepadPlus><Session activeView="7">
+            <mainView activeIndex="x">
+                <File startPos="1" endPos="2" />
+                <File filename="" />
+                <File filename="C:\b.txt" startPos="-3" firstVisibleLine="many" />
+            </mainView>
+        </Session></NotepadPlus>"#;
+        let session = import(xml).unwrap();
+        assert_eq!(session.active_view, 1, "at most the second view");
+        assert_eq!(session.documents.len(), 1);
+        assert_eq!(session.main_view.tabs.len(), 1);
+        assert_eq!(session.main_view.active, 0);
+        assert_eq!(session.main_view.tabs[0].selections, [[0, 0]]);
+        assert!(session.second_view.tabs.is_empty());
+    }
+
+    #[test]
+    fn an_empty_session_has_no_documents() {
+        let session = import("<NotepadPlus><Session /></NotepadPlus>").unwrap();
+        assert!(session.documents.is_empty());
+        assert_eq!(session.active_view, 0);
+    }
+
+    #[test]
     fn rejects_other_xml() {
         assert!(import("<html></html>").is_err());
         assert!(import("not xml").is_err());

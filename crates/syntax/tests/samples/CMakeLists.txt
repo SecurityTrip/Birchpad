@@ -8,3 +8,19 @@ if(WIN32)
   target_compile_definitions(greeting PRIVATE UNICODE)
 endif()
 message(STATUS "Building ${PROJECT_NAME}")
+
+# Settings from the environment and the cache.
+set(ENV{GREETING} "Hello\tworld\n")
+set(DEMO_LEVEL 2 CACHE STRING "Demo level")
+
+macro(add_demo target)
+  add_executable(${target} ${ARGN})
+endmacro()
+
+function(show value)
+  message(STATUS "value: ${value}")
+endfunction()
+
+add_demo(second second.cpp)
+show(${DEMO_LEVEL})
+message(STATUS "home: $ENV{HOME}, level: $CACHE{DEMO_LEVEL}")

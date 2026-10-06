@@ -7,3 +7,5 @@ values <- c(1, 2.5, NA)
 if (!is.null(values)) {
   print(greet("world"))
 }
+
+total <- stats::median(values, na.rm = TRUE)

@@ -44,8 +44,8 @@ On Linux, to see Birchpad in the applications menu, put `birchpad` on your `PATH
 `io.github.securitytrip.birchpad.desktop` to `~/.local/share/applications/` and
 `io.github.securitytrip.birchpad.png` to `~/.local/share/icons/hicolor/512x512/apps/`.
 
-Windows releases are being set up for signing (see the [code signing policy](#code-signing-policy));
-until then Windows SmartScreen asks before the first start ("More info", "Run anyway"). macOS
+Windows releases are not signed yet (see the [code signing policy](#code-signing-policy)), so
+Windows SmartScreen asks before the first start ("More info", "Run anyway"). macOS
 needs Birchpad.app opened once with Control-click > Open until the app is notarized. Each release
 lists SHA-256 checksums and carries GitHub build provenance (`gh attestation verify <file>
 --repo SecurityTrip/Birchpad`).
@@ -58,17 +58,12 @@ get them as updates.
 
 ## Code signing policy
 
-Free code signing provided by [SignPath.io](https://signpath.io), certificate by
-[SignPath Foundation](https://signpath.org).
-
-- Committers and reviewers: [@SecurityTrip](https://github.com/SecurityTrip)
-- Approvers: [@SecurityTrip](https://github.com/SecurityTrip)
-
-What is signed: the Windows executable, the per-user installers and the MSI of each release
-(not nightly builds). Each is built by the release workflow from this repository's source on
-GitHub-hosted runners, and an approver approves each signing request. The installers contain
-Velopack's `Update.exe`, which comes unsigned from the Velopack project. See
-[ADR 0021](docs/adr/0021-authenticode-signing-with-signpath.md).
+Windows releases are not signed yet. The release workflow is ready to sign the Windows
+executable, the per-user installers and the MSI of each release (not nightly builds) through
+SignPath, and stays switched off until Birchpad has a code signing certificate; see
+[ADR 0021](docs/adr/0021-authenticode-signing-with-signpath.md). Until then, each release's
+SHA-256 checksums and GitHub build provenance show that a download is what the release workflow
+built from this repository's source on GitHub-hosted runners.
 
 Privacy policy: Birchpad collects no personal data, and connects to the network only to check
 for and download updates, which can be turned off; see [PRIVACY.md](PRIVACY.md).

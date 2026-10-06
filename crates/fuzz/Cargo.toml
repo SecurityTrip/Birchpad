@@ -1,0 +1,25 @@
+[package]
+name = "birchpad-fuzz"
+description = "What Birchpad's fuzz targets check, as functions that ordinary tests run too"
+publish = false
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[dependencies]
+base64 = "0.22"
+birchpad-cli.workspace = true
+birchpad-commands.workspace = true
+birchpad-config.workspace = true
+birchpad-core.workspace = true
+birchpad-io.workspace = true
+birchpad-update.workspace = true
+ed25519-dalek = "3"
+serde_json.workspace = true
+toml.workspace = true
+
+[lints]
+workspace = true

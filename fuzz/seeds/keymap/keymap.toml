@@ -1,0 +1,22 @@
+[[binding]]
+keys = "secondary-shift-d"
+command = "edit.duplicate-line"
+
+[[binding]]
+keys = "ctrl-k ctrl-c"
+command = "edit.toggle-comment"
+context = "Editor"
+
+[[binding]]
+keys = "alt-1"
+command = "language.set"
+args = { language = "rust" }
+platforms = ["windows", "linux"]
+
+[[binding]]
+keys = "ctrl--"
+command = "view.zoom-out"
+
+[[binding]]
+keys = "secondary-n"
+unbind = true

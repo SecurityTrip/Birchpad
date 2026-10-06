@@ -21,6 +21,18 @@ struct LevelArgs {
     level: usize,
 }
 
+impl LevelArgs {
+    /// The level, one of Notepad++'s eight (Alt+1 to Alt+8).
+    fn level(&self) -> anyhow::Result<usize> {
+        anyhow::ensure!(
+            (1..=8).contains(&self.level),
+            "fold levels go from 1 to 8, not {}",
+            self.level
+        );
+        Ok(self.level)
+    }
+}
+
 pub(super) fn register_commands(registry: &mut CommandRegistry) {
     registry.editor("view.fold-all", |this, (), _, cx| {
         this.fold_all(true, cx);
@@ -31,11 +43,11 @@ pub(super) fn register_commands(registry: &mut CommandRegistry) {
         Ok(())
     });
     registry.editor("view.fold-level", |this, args: LevelArgs, _, cx| {
-        this.fold_level(args.level, true, cx);
+        this.fold_level(args.level()?, true, cx);
         Ok(())
     });
     registry.editor("view.unfold-level", |this, args: LevelArgs, _, cx| {
-        this.fold_level(args.level, false, cx);
+        this.fold_level(args.level()?, false, cx);
         Ok(())
     });
     registry.editor("view.fold-current", |this, (), _, cx| {
@@ -289,6 +301,38 @@ mod tests {
             let line = line_of(text, head);
             (line, head - line_range(text, line).start)
         })
+    }
+
+    #[gpui_kit::test]
+    fn fold_levels_go_from_one_to_eight(cx: &mut TestAppContext) {
+        let (workspace, cx) = open_sample(cx);
+        let level = |command: &str, level: usize, cx: &mut VisualTestContext| {
+            let invocation = Invocation::with_args(command, json!({ "level": level }));
+            let result = workspace.update_in(cx, |workspace, window, cx| {
+                workspace.dispatch(&invocation, window, cx)
+            });
+            cx.run_until_parked();
+            result.map_err(|error| error.to_string())
+        };
+
+        // The lowest level, then the highest, which this sample does not reach.
+        assert_eq!(level("view.fold-level", 1, cx), Ok(()));
+        assert_eq!(hidden(&workspace, cx), [1..5, 6..8]);
+        assert_eq!(level("view.unfold-level", 1, cx), Ok(()));
+        assert!(hidden(&workspace, cx).is_empty());
+        assert_eq!(level("view.fold-level", 8, cx), Ok(()));
+        assert!(hidden(&workspace, cx).is_empty());
+
+        // One past each end is refused and folds nothing.
+        for past in [0, 9] {
+            for command in ["view.fold-level", "view.unfold-level"] {
+                assert_eq!(
+                    level(command, past, cx),
+                    Err(format!("fold levels go from 1 to 8, not {past}"))
+                );
+            }
+        }
+        assert!(hidden(&workspace, cx).is_empty());
     }
 
     #[gpui_kit::test]

@@ -258,6 +258,47 @@ mod velopack_installer {
             other.FileName = "other.nupkg".to_owned();
             assert!(good.download_release_entry(&other, &to, None).is_err());
             assert!(!to.exists());
+
+            // A server that sends fewer bytes than the manifest lists.
+            let short = source(b"package", b"pack");
+            assert!(short.download_release_entry(&asset, &to, None).is_err());
+            assert!(!to.exists());
+        }
+
+        #[test]
+        fn an_empty_package_reports_progress_without_dividing_by_zero() {
+            let dir = tempfile::tempdir().unwrap();
+            let to = dir.path().join("package.nupkg");
+            let empty = source(b"", b"");
+            let asset = feed(&empty).remove(0);
+            let (sender, progress) = mpsc::channel();
+            empty
+                .download_release_entry(&asset, &to, Some(sender))
+                .unwrap();
+            assert_eq!(std::fs::read(&to).unwrap(), b"");
+            assert!(progress.try_iter().all(|percent| percent == 0));
+        }
+
+        #[test]
+        fn restarting_without_a_download_is_refused() {
+            assert_eq!(
+                Velopack::default().restart(),
+                Err("nothing was downloaded".to_owned())
+            );
+        }
+
+        #[test]
+        fn a_development_build_is_no_installation() {
+            // Tests run from target/, which Velopack did not install: nothing to update with,
+            // and a download attempt fails cleanly instead of panicking.
+            assert!(detect().is_none());
+            let source = source(b"package", b"package");
+            let result = Velopack::default().download(
+                &Version::new(0, 2, 0),
+                &source.package,
+                source.transport.clone(),
+            );
+            assert!(result.is_err());
         }
     }
 }

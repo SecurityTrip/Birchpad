@@ -5,3 +5,6 @@ class Greeter
   end
 end
 Greeter.new.greet(:world)
+
+TIMES = 2
+puts "Tab:\tdone #{TIMES * 1.5}"

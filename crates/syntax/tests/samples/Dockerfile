@@ -9,3 +9,9 @@ ENV GREETING="Hello, world!"
 COPY --from=build /src/target/release/demo /usr/local/bin/demo
 EXPOSE 8080
 CMD ["demo", "--port", "8080"]
+
+ARG VERSION=1.0
+RUN <<EOF
+echo "building $VERSION"
+EOF
+ENV PATH="/opt/demo/bin:$PATH"

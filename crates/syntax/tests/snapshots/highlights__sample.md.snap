@@ -24,3 +24,6 @@ punctuation.bracket      {}
 markup.raw               \n
 punctuation.delimiter    ```
 markup.raw               \n
+string.escape            \*
+string.escape            \*
+string.escape            \\n

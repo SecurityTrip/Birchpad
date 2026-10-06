@@ -40,3 +40,9 @@ punctuation.special      }
 string                   `
 punctuation.bracket      }
 punctuation.delimiter    ;
+keyword                  const
+variable                 limit
+type                     Id
+operator                 =
+number                   42
+punctuation.delimiter    ;

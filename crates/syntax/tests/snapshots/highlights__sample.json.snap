@@ -3,11 +3,19 @@ source: crates/syntax/tests/highlights.rs
 expression: render(&path)
 ---
 language: json
-string                   "name"
+comment                  // Settings files often have comments.
+string.special.key       "name"
 string                   "birchpad"
-string                   "version"
+string.special.key       "version"
 number                   1
-string                   "tags"
+string.special.key       "tags"
 string                   "editor"
 constant.builtin         true
 constant.builtin         null
+string.special.key       "nested"
+string.special.key       "path"
+string                   "C:
+escape                   \\
+string                   Users"
+string.special.key       "ratio"
+number                   -1.5e3

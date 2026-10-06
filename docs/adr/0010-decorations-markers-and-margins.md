@@ -37,7 +37,8 @@ document, without costing more than the visible part of the text per frame.
 - **Margins** left of the text, in Notepad++'s order: line numbers, symbols (bookmarks),
   folding. Each can be turned off (`editor.line-numbers`, `editor.bookmark-margin`,
   `editor.fold-margin`). A click in the symbol margin toggles the bookmark of that line; a
-  click or drag in the line number margin selects whole lines.
+  click or drag in the line number margin selects whole lines. The change history margin
+  joined later, between symbols and folding ([ADR 0023](0023-change-history.md)).
 
 ## Consequences
 

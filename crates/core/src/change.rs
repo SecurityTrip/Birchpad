@@ -508,6 +508,49 @@ mod tests {
                 prev_end: 4
             }
         );
+        #[expect(
+            clippy::reversed_empty_ranges,
+            reason = "the reversed range is the test"
+        )]
+        let reversed = Edit::delete(4..2);
+        assert_eq!(
+            err(vec![reversed]),
+            InvalidEdit::Reversed { start: 4, end: 2 }
+        );
+        // One past the end, and overlapping edits.
+        assert_eq!(
+            err(vec![Edit::insert(7, "x")]),
+            InvalidEdit::OutOfBounds { end: 7, len: 6 }
+        );
+        assert_eq!(
+            err(vec![Edit::delete(0..4), Edit::delete(2..6)]),
+            InvalidEdit::Unordered {
+                start: 2,
+                prev_end: 4
+            }
+        );
+        // The end of a multi-byte character, not its middle, is a boundary.
+        assert_eq!(
+            err(vec![Edit::insert(5, "x")]),
+            InvalidEdit::NotCharBoundary { pos: 5 }
+        );
+    }
+
+    #[test]
+    fn accepts_edits_at_the_boundaries() {
+        let rope = Rope::from_str("жук");
+        let ok = |edits: Vec<Edit>| ChangeSet::from_edits(&rope, edits).unwrap();
+        // At the very start and the very end, and two edits that touch.
+        let changes = ok(vec![Edit::insert(0, "<"), Edit::insert(6, ">")]);
+        assert_eq!((changes.len_before(), changes.len_after()), (6, 8));
+        let changes = ok(vec![Edit::delete(0..2), Edit::replace(2..4, "Ж")]);
+        let mut text = rope.clone();
+        changes.apply(&mut text);
+        assert_eq!(text.to_string(), "Жк");
+        // No edits at all, and an empty text.
+        assert!(ok(Vec::new()).is_identity());
+        let empty = ChangeSet::from_edits(&Rope::new(), [Edit::insert(0, "a")]).unwrap();
+        assert_eq!((empty.len_before(), empty.len_after()), (0, 1));
     }
 
     #[test]

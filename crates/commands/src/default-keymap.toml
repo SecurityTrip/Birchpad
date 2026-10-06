@@ -61,6 +61,14 @@ keys = "secondary-h"
 command = "search.replace"
 
 [[binding]]
+keys = "secondary-shift-f"
+command = "search.find-in-files"
+
+[[binding]]
+keys = "secondary-alt-i"
+command = "search.incremental"
+
+[[binding]]
 keys = "f3"
 command = "search.find-next"
 
@@ -69,8 +77,56 @@ keys = "shift-f3"
 command = "search.find-previous"
 
 [[binding]]
+keys = "secondary-f3"
+command = "search.select-and-find-next"
+
+[[binding]]
+keys = "secondary-shift-f3"
+command = "search.select-and-find-previous"
+
+[[binding]]
+keys = "f7"
+command = "search.results-window"
+
+[[binding]]
+keys = "f4"
+command = "search.next-result"
+
+[[binding]]
+keys = "shift-f4"
+command = "search.previous-result"
+
+# macOS takes Cmd+M for Minimize.
+[[binding]]
+keys = "ctrl-m"
+command = "search.mark"
+platforms = ["windows", "linux"]
+
+[[binding]]
 keys = "secondary-g"
 command = "search.go-to"
+
+# Go Back and Go Forward: Alt+Left and Alt+Right as in browsers; macOS moves by word with
+# Option+arrows and takes Ctrl+- and Ctrl+Shift+- instead, as Xcode and Visual Studio Code do.
+[[binding]]
+keys = "alt-left"
+command = "navigate.back"
+platforms = ["windows", "linux"]
+
+[[binding]]
+keys = "alt-right"
+command = "navigate.forward"
+platforms = ["windows", "linux"]
+
+[[binding]]
+keys = "ctrl--"
+command = "navigate.back"
+platforms = ["macos"]
+
+[[binding]]
+keys = "ctrl-shift--"
+command = "navigate.forward"
+platforms = ["macos"]
 
 [[binding]]
 keys = "secondary-b"
@@ -86,6 +142,11 @@ context = "Editor"
 keys = "escape"
 command = "search.close"
 context = "FindBar"
+
+[[binding]]
+keys = "escape"
+command = "search.close-incremental"
+context = "IncrementalBar"
 
 # Token styles, as in Notepad++: Ctrl+Alt+N styles every occurrence of the token with style N,
 # Ctrl+Alt+Shift+N clears it, Ctrl+N and Ctrl+Shift+N jump to its next and previous occurrence.
@@ -1009,12 +1070,6 @@ context = "Editor"
 keys = "ctrl-alt-shift-u"
 command = "edit.convert-case"
 args = { to = "sentence-blend" }
-context = "Editor"
-
-[[binding]]
-keys = "ctrl-alt-i"
-command = "edit.convert-case"
-args = { to = "invert" }
 context = "Editor"
 
 [[binding]]

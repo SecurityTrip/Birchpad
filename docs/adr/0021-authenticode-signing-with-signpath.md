@@ -1,7 +1,12 @@
 # ADR 0021: Authenticode signing with SignPath Foundation
 
-- Status: accepted
+- Status: accepted, on hold
 - Date: 2026-10-06
+
+**On hold (2026-10-06).** SignPath Foundation did not take Birchpad for now. The workflow
+stays as decided here, switched off while `SIGNPATH_ORGANIZATION_ID` is unset, so releases are
+unsigned. Signing can come back through SignPath later, or with another certificate (such as
+one for open source developers, or Azure Trusted Signing) in place of the two signing jobs.
 
 ## Context
 

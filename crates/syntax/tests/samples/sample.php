@@ -1,4 +1,7 @@
 <?php
+namespace Demo\Greeting;
+
+const TIMES = 2;
 // Greets someone.
 function greet(string $name): string {
     return "Hello, $name!";

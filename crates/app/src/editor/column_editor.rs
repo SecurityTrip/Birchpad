@@ -6,7 +6,7 @@ use anyhow::{Result, anyhow, bail};
 use birchpad_core::ops::{Base, parse_number};
 use gpui_kit::component::button::Button;
 use gpui_kit::component::checkbox::Checkbox;
-use gpui_kit::component::dialog::{DialogClose, DialogFooter};
+use gpui_kit::component::dialog::DialogFooter;
 use gpui_kit::component::input::{Input, InputState};
 use gpui_kit::component::radio::RadioGroup;
 use gpui_kit::component::{Disableable as _, WindowExt as _};
@@ -40,7 +40,7 @@ pub(super) fn open(view: Entity<EditorView>, window: &mut Window, cx: &mut App) 
             .child(editor.clone())
             .footer(
                 DialogFooter::new()
-                    .child(DialogClose::new().trigger(|button| button.label("Cancel")))
+                    .child(crate::workspace::dialog_close("Cancel"))
                     .child(crate::workspace::dialog_action(
                         Button::new("column-ok").label("OK"),
                     )),

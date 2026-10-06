@@ -3,19 +3,16 @@ source: crates/syntax/tests/highlights.rs
 expression: render(&path)
 ---
 language: asm
-comment                  ; A greeting, on Linux x86-64.
-function.builtin         section
-function.builtin         message
-variable.builtin         db
+function.builtin         .intel_syntax
+variable.builtin         noprefix
+comment                  # A greeting on Linux x86-64, in GAS syntax
+function.builtin         .section
+label                    message
+punctuation.delimiter    :
+function.builtin         .string
 string                   "Hello, world!"
-punctuation.delimiter    ,
-number                   10
-function.builtin         length
-variable.builtin         equ
-operator                 -
-variable.builtin         message
-function.builtin         section
-function.builtin         global
+function.builtin         .section
+function.builtin         .globl
 variable.builtin         _start
 label                    _start
 punctuation.delimiter    :
@@ -23,25 +20,33 @@ function.builtin         mov
 variable.builtin         rax
 punctuation.delimiter    ,
 number                   1
+comment                  # write
 function.builtin         mov
 variable.builtin         rdi
 punctuation.delimiter    ,
 number                   1
-function.builtin         mov
+comment                  // to standard output
+function.builtin         lea
 variable.builtin         rsi
 punctuation.delimiter    ,
+punctuation.bracket      [
+variable.builtin         rip
+operator                 +
 variable.builtin         message
+punctuation.bracket      ]
 function.builtin         mov
 variable.builtin         rdx
 punctuation.delimiter    ,
-variable.builtin         length
+number                   13
 function.builtin         syscall
 function.builtin         mov
 variable.builtin         rax
 punctuation.delimiter    ,
 number                   60
+comment                  ; exit
 function.builtin         xor
 variable.builtin         rdi
 punctuation.delimiter    ,
 variable.builtin         rdi
 function.builtin         syscall
+comment                  /* done */

@@ -381,6 +381,53 @@ fn leftover_recovery_copies_are_found() {
 }
 
 #[test]
+fn saving_where_it_cannot_fails_and_leaves_files_alone() {
+    let dir = temp_dir();
+    // A folder that does not exist: nothing is created.
+    let nowhere = dir.path().join("missing").join("a.txt");
+    let error = save(&nowhere, b"text", None).unwrap_err();
+    assert!(matches!(error, SaveError::Io { .. }), "{error}");
+    assert!(!nowhere.exists() && !dir.path().join("missing").exists());
+
+    // A folder in place of the file.
+    let folder = dir.path().join("folder");
+    fs::create_dir(&folder).unwrap();
+    let error = save(&folder, b"text", None).unwrap_err();
+    assert!(matches!(error, SaveError::NotAFile(_)), "{error}");
+
+    // The recovery copy cannot be written (its folder is a file): the file is not touched.
+    let path = dir.path().join("keep.txt");
+    fs::write(&path, b"precious").unwrap();
+    let blocked = dir.path().join("recovery-is-a-file");
+    fs::write(&blocked, b"").unwrap();
+    assert!(save(&path, b"new text", Some(&blocked)).is_err());
+    assert_eq!(fs::read(&path).unwrap(), b"precious");
+}
+
+#[test]
+fn saving_nothing_empties_the_file() {
+    let dir = temp_dir();
+    let path = dir.path().join("a.txt");
+    fs::write(&path, b"something").unwrap();
+    save(&path, b"", None).unwrap();
+    assert_eq!(fs::read(&path).unwrap(), b"");
+    // And an empty new file, then the same length again.
+    let created = dir.path().join("empty.txt");
+    save(&created, b"", None).unwrap();
+    assert_eq!(fs::metadata(&created).unwrap().len(), 0);
+    save(&path, b"123456789", None).unwrap();
+    save(&path, b"abcdefghi", None).unwrap();
+    assert_eq!(fs::read(&path).unwrap(), b"abcdefghi");
+}
+
+#[test]
+fn recoveries_of_a_missing_folder_are_none() {
+    let dir = temp_dir();
+    assert!(pending_recoveries(&dir.path().join("never-created")).is_empty());
+    assert!(pending_recoveries(dir.path()).is_empty(), "an empty folder");
+}
+
+#[test]
 fn missing_and_directory_paths_fail_cleanly() {
     let dir = temp_dir();
     let options = LoadOptions {

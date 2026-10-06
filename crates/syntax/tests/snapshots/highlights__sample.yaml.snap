@@ -3,6 +3,8 @@ source: crates/syntax/tests/highlights.rs
 expression: render(&path)
 ---
 language: yaml
+attribute                %YAML 1.2
+punctuation.special      ---
 comment                  # Workflow
 property                 name
 punctuation.delimiter    :
@@ -25,3 +27,29 @@ property                 runs-on
 punctuation.delimiter    :
 string                   ubuntu-latest
 punctuation.bracket      }
+property                 defaults
+punctuation.delimiter    :
+punctuation.special      &
+label                    defaults
+property                 retries
+punctuation.delimiter    :
+number                   3
+property                 ratio
+punctuation.delimiter    :
+number                   1.5
+property                 enabled
+punctuation.delimiter    :
+boolean                  true
+property                 missing
+punctuation.delimiter    :
+constant.builtin         null
+property                 tagged
+punctuation.delimiter    :
+type                     !!str
+number                   42
+property                 production
+punctuation.delimiter    :
+property                 <<
+punctuation.delimiter    :
+punctuation.special      *
+label                    defaults

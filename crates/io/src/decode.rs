@@ -173,6 +173,12 @@ mod tests {
     }
 
     #[test]
+    fn a_problem_has_an_offset_of_either_kind() {
+        assert_eq!(DecodeProblem::Malformed { offset: 7 }.offset(), 7);
+        assert_eq!(DecodeProblem::NotReversible { offset: 0 }.offset(), 0);
+    }
+
+    #[test]
     fn locates_the_first_malformed_byte() {
         let decoded = decode(b"ok \xC3( rest".to_vec(), Encoding::Utf8);
         assert_eq!(

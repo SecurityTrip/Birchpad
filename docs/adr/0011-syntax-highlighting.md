@@ -72,6 +72,18 @@ features.
   (default 20) open as normal text unless a language is chosen by hand.
 - **Brace matching** uses the tree: only brackets that are tokens of the language match,
   partners come from the bracket's parent node; plain text counts brackets within 1 MB.
+- **Tests**: each language has a sample in `crates/syntax/tests/samples`, written like real
+  code of that language, whose highlights are a snapshot (all of them: checks query without
+  the screen's time budget, which a busy machine can run out of). Every sample must parse without
+  error or missing nodes, since error recovery colors whatever it guessed. And every color the
+  language's query can give must show up in its sample: a capture hidden by a later pattern
+  for the same node (JSON's keys colored as strings) or put on the wrong node (TOML's keys
+  colored as tables) fails, which a snapshot cannot show, as it only lists what the sample
+  has. Captures no sample can show (a grammar's `@error`, Scala 2's XML literals) are listed
+  with the reason, and the list fails when a query no longer has one of them. The check found
+  that SQL numbers were never colored: tree-sitter-sequel's query matches them with Lua's
+  `%d`, which a regular expression takes literally; `queries/sql.scm` repeats the patterns
+  with `\d`.
 
 ## Measurements (release, Windows x64)
 

@@ -125,11 +125,68 @@ What Phase 1 left for later is marked *(from Phase 1)* in the phases below.
 
 ## Phase 3: search and navigation
 
-- Find / Replace / Find in Files / Mark dialog: Normal, Extended (`\n`, `\t`, `\x..`), Regex
-  (back-references, look-around); in selection, wrap around, backwards, all open documents
-- Search results panel; incremental search
-- Function List, Document Map, Document List, Folder as Workspace, Project panels
-- Clipboard history, character panel, navigation history
+- [x] Find / Replace / Mark: Normal, Extended (`\n`, `\t`, `\x..`), Regex (back-references,
+      look-around); in selection, wrap around, backwards, all open documents; Count, Mark All
+      with Bookmark line and Purge, Copy Marked Text
+      ([ADR 0022](adr/0022-search-modes-and-the-find-panel.md))
+- [x] Find in Files: Notepad++'s filters (`*.rs !\target !+\node_modules`), sub-folders and
+      hidden folders, Follow current doc.; open documents searched and replaced in as they are,
+      other files written back in their own encoding; Stop
+      ([ADR 0024](adr/0024-find-in-files.md))
+- [x] Search results panel: Find All in Current Document and in All Opened Documents, searches
+      stacked and foldable, F4 / Shift+F4 through the results, F7 to show or hide it; Delete
+      removes the selected result, and a right-click menu copies, folds and clears
+      ([ADR 0022](adr/0022-search-modes-and-the-find-panel.md))
+- [x] Incremental search (Ctrl+Alt+I): the match grows as the text is typed, Enter and
+      Shift+Enter step through it, Highlight all marks and counts every match
+      ([ADR 0022](adr/0022-search-modes-and-the-find-panel.md))
+- [x] Side panels in docks beside the documents, with tabs, remembered for the next start
+      ([ADR 0026](adr/0026-side-panels.md)):
+  - [x] Document List
+  - [x] Function List, from tree-sitter tags queries for 28 languages
+  - [x] Document Map
+  - [x] Folder as Workspace
+  - [x] Project Panels 1 to 3, with Notepad++'s `.workspace` files
+- [x] Clipboard History and the Character Panel
+      ([ADR 0026](adr/0026-side-panels.md))
+- [x] Navigation history: Go Back and Go Forward through the places the caret jumped from,
+      across documents, reopening closed files ([ADR 0025](adr/0025-navigation-history.md))
+- [x] Issues reported on 0.1.2: a middle click closes a tab
+      ([#9](https://github.com/SecurityTrip/Birchpad/issues/9)), JSON keys colored as keys
+      ([#10](https://github.com/SecurityTrip/Birchpad/issues/10)); found on the way, the close
+      button of a tab closed unsaved documents without asking, and TOML keys had the color of
+      table names
+- [x] Change history in the margin, orange and green as in Notepad++
+      ([#11](https://github.com/SecurityTrip/Birchpad/issues/11),
+      [ADR 0023](adr/0023-change-history.md)); split view by dragging a tab to the side of the
+      text ([#12](https://github.com/SecurityTrip/Birchpad/issues/12),
+      [ADR 0016](adr/0016-split-view.md))
+- [x] Tests for every scenario. Birchpad has no testers, so its tests are its quality assurance:
+  - [x] A coverage report in CI (`cargo llvm-cov`) for each crate, with a floor that only rises
+        (`.github/coverage-floors.toml`), and the untested code it shows covered first
+  - [x] Every command of the registry run in every kind of document (empty, one long line,
+        multiple carets, a rectangular selection, read-only, word wrap, both views, a large
+        file), checking that it neither panics nor breaks the document
+  - [x] The mouse in GUI tests, not only the keyboard: tabs (click, middle click, close
+        button, drag), the menu bar, the status bar's menus, the find and search results
+        panels, the side panels, dialogs
+  - [x] Property tests (`proptest`) of the text model: edits, selections, undo and redo,
+        decorations following edits, and search checked against a plain reference
+  - [x] Fuzzing (`cargo fuzz`) of everything that reads outside input: decoders, settings, the
+        state and session files, Notepad++'s `session.xml` and `.workspace` files, the keymap,
+        the command line and its hand-off to a running instance, the update manifest; the same
+        checks run over seeds and their mutants in `cargo test`
+  - [x] Highlighting: a real-world file for each language, and a check that every capture of a
+        query that the theme colors shows up in its sample, so that a capture hidden by another
+        pattern (JSON's keys) or by a misplaced capture (TOML's keys) fails; every sample parses
+        without errors ([ADR 0011](adr/0011-syntax-highlighting.md))
+  - [x] End-to-end tests of the built application on Windows, Linux and macOS: start, open,
+        edit, save, quit and restore the session, in a real window driven by a script
+  - [x] Every bug fixed with a test that fails without the fix
+        ([CONTRIBUTING.md](../CONTRIBUTING.md#tests))
+  - [x] A short manual checklist before each release for what automation cannot see: input
+        methods, screen readers, high DPI, the installers and updates
+        ([release-checklist.md](release-checklist.md))
 
 ## Phase 4: customization
 
@@ -174,10 +231,10 @@ What Phase 1 left for later is marked *(from Phase 1)* in the phases below.
 - Per-machine MSI (x64, ARM64) for enterprises, updated by IT; portable ZIP; winget and Scoop
   manifests
 - [x] ed25519-signed update manifest
-- Authenticode signing of the Windows executable, installers and MSI through SignPath
-  Foundation: the release workflow is ready and waits for SignPath's approval of the project
-  ([ADR 0021](adr/0021-authenticode-signing-with-signpath.md)); Apple Developer ID signing and
-  notarization still to come
+- Authenticode signing of the Windows executable, installers and MSI: the release workflow can
+  sign through SignPath ([ADR 0021](adr/0021-authenticode-signing-with-signpath.md)), but
+  SignPath Foundation did not take the project for now, so signing waits for a certificate;
+  Apple Developer ID signing and notarization still to come
 - ADMX/ADML templates generated from the policy list in `birchpad-config`
 - [x] SBOM and build provenance attestations with every release
 - [x] Background update checks (`notify`) and automatic updates (`auto`) with the signed

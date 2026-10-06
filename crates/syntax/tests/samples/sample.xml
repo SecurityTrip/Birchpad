@@ -1,5 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE settings [
+  <!ELEMENT settings (editor)*>
+  <!ATTLIST editor tabWidth CDATA #IMPLIED>
+  <!ENTITY product "Birchpad">
+  <!NOTATION png SYSTEM "image/png">
+  <!ENTITY logo SYSTEM "logo.png" NDATA png>
+]>
 <!-- Settings -->
 <settings version="1">
   <editor tabWidth="4">text</editor>
+  <script><![CDATA[ raw <text> ]]></script>
+  <name>&product;</name>
 </settings>

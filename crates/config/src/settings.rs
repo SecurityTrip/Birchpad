@@ -27,6 +27,8 @@ pub struct EditorSettings {
     pub line_numbers: bool,
     pub bookmark_margin: bool,
     pub fold_margin: bool,
+    /// Lines changed since the document was opened, as Notepad++'s Change History shows them.
+    pub change_history: ChangeHistory,
     /// What Enter does with indentation.
     pub auto_indent: AutoIndent,
     /// View > Show Symbol as Birchpad starts; the menu toggles them (remembered in
@@ -45,6 +47,17 @@ pub struct EditorSettings {
     /// Split Lines breaks lines at the first one while the edge is shown, else at the width of
     /// the view.
     pub edge_columns: Vec<u16>,
+}
+
+/// Where Notepad++'s change history shows changed lines: orange while they differ from the
+/// saved file, green once saved.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum ChangeHistory {
+    Off,
+    /// A bar in a margin between the symbols and the folding.
+    #[default]
+    Margin,
 }
 
 /// Notepad++'s current line indicator.
@@ -94,6 +107,7 @@ impl Default for EditorSettings {
             line_numbers: true,
             bookmark_margin: true,
             fold_margin: true,
+            change_history: ChangeHistory::default(),
             auto_indent: AutoIndent::default(),
             show_whitespace: false,
             show_eol: false,

@@ -9,6 +9,8 @@
 # Test fixtures must stay byte-for-byte as committed: an editor is tested
 # on exact encodings, BOMs and line endings.
 **/tests/fixtures/** -text -diff
+# Fuzzing seeds are inputs byte for byte, like fixtures.
+fuzz/seeds/** -text -diff
 # Highlight samples are snapshot-tested byte for byte, whatever their extension. They are
 # not code of the project: GitHub (its language statistics, CodeQL) does not count them.
 **/tests/samples/** -text linguist-detectable=false

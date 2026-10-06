@@ -1,12 +1,19 @@
 # A greeting, twice.
 type Greeting {
   name: String!
-  times: Int = 2
+  times: Int
 }
 
-query Greet($name: String!) {
+query Greet($name: String!, $times: Int = 2) {
   greeting(name: $name) @cached {
     name
     times
   }
+}
+
+"""
+A greeting with a description.
+"""
+input GreetingInput {
+  name: String = "world"
 }

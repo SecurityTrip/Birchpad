@@ -1,0 +1,3 @@
+[[binding]]
+keys = "ctrl-ctrl-x"
+command = "file.new"

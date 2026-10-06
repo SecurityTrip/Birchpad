@@ -27,11 +27,22 @@ pub(crate) fn mark_style(index: usize) -> Paint {
     Paint::Fill(rgba(MARK_STYLES[index]))
 }
 
+/// The matches of Search > Mark: Notepad++'s "Find Mark Style", a translucent red.
+/// Text without a syntax color.
+pub(crate) const TEXT: u32 = 0x1f2328;
+pub(crate) const FIND_MARK: u32 = 0xff000055;
+/// Notepad++'s "Incremental highlight all", translucent.
+pub(crate) const INCREMENTAL_HIGHLIGHT: u32 = 0x0080ff55;
+
 /// Smart highlighting: Notepad++'s translucent green.
 pub(crate) const SMART_HIGHLIGHT: u32 = 0x00ff0064;
 
 /// The bookmark symbol in the symbol margin.
 pub(crate) const BOOKMARK: u32 = 0x2f6fde;
+/// Change history, in Notepad++'s colors: a line that differs from the saved file, and one
+/// changed and saved.
+pub(crate) const CHANGE_MODIFIED: u32 = 0xff8000;
+pub(crate) const CHANGE_SAVED: u32 = 0x00a000;
 pub(crate) const GUTTER_BACKGROUND: u32 = 0xf6f8fa;
 pub(crate) const GUTTER_TEXT: u32 = 0x8c959f;
 /// A thin line between the margins and the text.

@@ -18,3 +18,21 @@ string                   "Hello, %s!
 escape                   \n
 string                   "
 variable                 name
+comment                  // Point is a position on a grid.
+keyword                  type
+type                     Point
+keyword                  struct
+property                 X
+property                 Y
+type                     int
+keyword                  func
+variable                 p
+type                     Point
+property                 Sum
+type                     int
+keyword                  return
+variable                 p
+property                 X
+operator                 +
+variable                 p
+property                 Y

@@ -12,3 +12,16 @@ struct Greeting {
 
 let greeting = Greeting(name: "world")
 print(greeting.render())
+
+@available(macOS 13, *)
+func check(_ text: String) -> Bool {
+    #if DEBUG
+    print(#function)
+    #endif
+    let pattern = /[a-z]+/
+    return text.contains(pattern)
+}
+
+outer: for i in 0..<3 {
+    if i == 1 { continue outer }
+}

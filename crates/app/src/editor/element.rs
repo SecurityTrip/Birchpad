@@ -1,6 +1,7 @@
 //! The element that paints an editor view: margins, decorations, selections, text, carets,
 //! scrollbars.
 
+use birchpad_core::LineChange;
 use gpui_kit::{
     App, Bounds, ContentMask, CursorStyle, Element, ElementId, ElementInputHandler, Entity,
     GlobalElementId, Hitbox, HitboxBehavior, InspectorElementId, IntoElement, LayoutId, Pixels,
@@ -124,6 +125,13 @@ impl Element for EditorElement {
                 window.paint_quad(
                     fill(*symbol, rgb(theme::BOOKMARK)).corner_radii(symbol.size.width / 2.),
                 );
+            }
+            for (bar, change) in &layout.change_bars {
+                let color = match change {
+                    LineChange::Modified => theme::CHANGE_MODIFIED,
+                    LineChange::Saved => theme::CHANGE_SAVED,
+                };
+                window.paint_quad(fill(*bar, rgb(color)));
             }
             for line in &layout.fold_lines {
                 window.paint_quad(fill(*line, rgb(theme::FOLD_LINE)));

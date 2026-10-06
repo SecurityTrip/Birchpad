@@ -3,3 +3,8 @@
 name = "birchpad"
 version = "0.1.0"
 features = ["a", "b"]
+
+[package.metadata]
+publish = false
+retries = 3
+ratio = 1.5

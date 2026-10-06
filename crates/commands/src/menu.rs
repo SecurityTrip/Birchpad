@@ -104,6 +104,7 @@ pub fn main_menu() -> Vec<Menu> {
         vec![
             cmd("file.new"),
             cmd("file.open"),
+            cmd("file.open-folder-as-workspace"),
             Submenu(Menu::new(
                 "Recent Files",
                 vec![
@@ -331,6 +332,8 @@ pub fn main_menu() -> Vec<Menu> {
             cmd("edit.multi-select-skip"),
             Separator,
             cmd("edit.column-editor"),
+            cmd("panel.character-panel"),
+            cmd("panel.clipboard-history"),
         ],
     );
 
@@ -370,11 +373,23 @@ pub fn main_menu() -> Vec<Menu> {
         "Search",
         vec![
             cmd("search.find"),
+            cmd("search.find-in-files"),
             cmd("search.find-next"),
             cmd("search.find-previous"),
+            cmd("search.select-and-find-next"),
+            cmd("search.select-and-find-previous"),
             cmd("search.replace"),
+            cmd("search.incremental"),
+            Separator,
+            cmd("search.mark"),
+            Separator,
+            cmd("search.results-window"),
+            cmd("search.next-result"),
+            cmd("search.previous-result"),
             Separator,
             cmd("search.go-to"),
+            cmd("navigate.back"),
+            cmd("navigate.forward"),
             cmd("search.go-to-matching-brace"),
             cmd("search.select-to-matching-brace"),
             Separator,
@@ -464,6 +479,24 @@ pub fn main_menu() -> Vec<Menu> {
             cmd("view.sync-vertical-scroll"),
             cmd("view.sync-horizontal-scroll"),
             Separator,
+            Submenu(Menu::new(
+                "Project",
+                (1..=3)
+                    .map(|panel| {
+                        MenuItem::command_with(
+                            "panel.project",
+                            json!({ "panel": panel }),
+                            &format!("Project Panel {panel}"),
+                        )
+                    })
+                    .collect(),
+            )),
+            cmd("panel.folder-as-workspace"),
+            Separator,
+            cmd("panel.document-map"),
+            cmd("panel.document-list"),
+            cmd("panel.function-list"),
+            Separator,
             cmd("view.monitoring"),
         ],
     );
@@ -535,6 +568,27 @@ mod tests {
                 "File", "Edit", "Search", "View", "Encoding", "Language", "Help"
             ]
         );
+    }
+
+    #[test]
+    fn labels_come_from_the_item_or_the_catalog() {
+        let titled = MenuItem::Command {
+            invocation: Invocation::new("file.new"),
+            label: None,
+        };
+        assert_eq!(titled.label(), Some("New"));
+        let labelled = MenuItem::Command {
+            invocation: Invocation::new("file.new"),
+            label: Some("Another".into()),
+        };
+        assert_eq!(labelled.label(), Some("Another"));
+        // A command the catalog does not know has no label of its own; a separator none.
+        let unknown = MenuItem::Command {
+            invocation: Invocation::new("no.such"),
+            label: None,
+        };
+        assert_eq!(unknown.label(), None);
+        assert_eq!(MenuItem::Separator.label(), None);
     }
 
     #[test]

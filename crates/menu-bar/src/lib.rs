@@ -699,9 +699,11 @@ impl MenuBar {
                 .map(|(index, item)| {
                     let selected = path[level] == Some(index);
                     let id = ElementId::Name(format!("menu-item-{level}-{index}").into());
+                    let selector = move || format!("menu-item-{level}-{index}");
                     if item.is_separator() {
                         return div()
                             .id(id)
+                            .debug_selector(selector)
                             .flex_none()
                             .h(px(1.))
                             .my_1()
@@ -731,6 +733,7 @@ impl MenuBar {
                     let open_submenu = selected && submenu && path.len() > level + 1;
                     div()
                         .id(id)
+                        .debug_selector(selector)
                         .relative()
                         .flex_none()
                         .flex()
@@ -981,6 +984,7 @@ impl Render for MenuBar {
                     .child(
                         div()
                             .id(ElementId::Name(format!("menu-title-{index}").into()))
+                            .debug_selector(move || format!("menu-title-{index}"))
                             .px_2()
                             .py(px(3.))
                             .rounded(px(4.))
@@ -1276,6 +1280,156 @@ mod gpui_tests {
         cx.simulate_keystrokes("left down down right enter");
         assert_eq!(state(&root, cx), open(0, &[Some(2), Some(0)]));
         assert!(chosen(&root, cx).is_empty());
+    }
+
+    #[gpui_kit::test]
+    fn the_ends_of_the_bar_and_of_menus_wrap_around(cx: &mut TestAppContext) {
+        let (root, cx) = open_window(cx);
+        tap_alt(cx);
+        // From the first title left to the last, and right back.
+        cx.simulate_keystrokes("left");
+        assert_eq!(state(&root, cx), State::Selected(4));
+        cx.simulate_keystrokes("right");
+        assert_eq!(state(&root, cx), State::Selected(0));
+        // Up on a title opens its menu on the last item, down on the first.
+        cx.simulate_keystrokes("up");
+        assert_eq!(state(&root, cx), open(0, &[Some(4)]), "File, on Exit");
+        cx.simulate_keystrokes("home");
+        assert_eq!(state(&root, cx), open(0, &[Some(0)]));
+        cx.simulate_keystrokes("end");
+        assert_eq!(state(&root, cx), open(0, &[Some(4)]));
+        // The separator before Exit is skipped both ways.
+        cx.simulate_keystrokes("up");
+        assert_eq!(state(&root, cx), open(0, &[Some(2)]), "Recent Files");
+        cx.simulate_keystrokes("down");
+        assert_eq!(state(&root, cx), open(0, &[Some(4)]));
+        cx.simulate_keystrokes("down");
+        assert_eq!(state(&root, cx), open(0, &[Some(0)]), "around the end");
+        // Left on the first menu goes to the last; Enter on a title opens it.
+        cx.simulate_keystrokes("left");
+        assert_eq!(state(&root, cx), open(4, &[Some(0)]));
+        cx.simulate_keystrokes("escape enter");
+        assert_eq!(state(&root, cx), open(4, &[Some(0)]));
+    }
+
+    #[gpui_kit::test]
+    fn escape_closes_one_level_at_a_time(cx: &mut TestAppContext) {
+        let (root, cx) = open_window(cx);
+        cx.simulate_keystrokes("alt-f r");
+        assert_eq!(state(&root, cx), open(0, &[Some(2), Some(0)]));
+        cx.simulate_keystrokes("escape");
+        assert_eq!(state(&root, cx), open(0, &[Some(2)]));
+        cx.simulate_keystrokes("escape");
+        assert_eq!(state(&root, cx), State::Selected(0));
+        cx.simulate_keystrokes("escape");
+        assert_eq!(state(&root, cx), State::Closed);
+        assert!(editor_focused(&root, cx));
+        // Escape with the menu bar closed belongs to the editor.
+        cx.simulate_keystrokes("escape");
+        assert_eq!(state(&root, cx), State::Closed);
+    }
+
+    #[gpui_kit::test]
+    fn keys_without_a_meaning_change_nothing(cx: &mut TestAppContext) {
+        let (root, cx) = open_window(cx);
+        cx.simulate_keystrokes("alt-f");
+        // A letter no item has, a key with Ctrl, a named key that is no letter.
+        cx.simulate_keystrokes("z ctrl-n f5");
+        assert_eq!(state(&root, cx), open(0, &[Some(0)]));
+        assert!(chosen(&root, cx).is_empty());
+        // On a selected title, a letter of no menu does nothing either.
+        cx.simulate_keystrokes("escape z");
+        assert_eq!(state(&root, cx), State::Selected(0));
+        // Alt with a letter of no menu, from the editor.
+        cx.simulate_keystrokes("escape escape alt-z");
+        assert_eq!(state(&root, cx), State::Closed);
+    }
+
+    #[gpui_kit::test]
+    fn alt_letter_in_an_open_menu_opens_another_and_f10_closes(cx: &mut TestAppContext) {
+        let (root, cx) = open_window(cx);
+        cx.simulate_keystrokes("alt-f alt-e");
+        assert_eq!(state(&root, cx), open(1, &[Some(0)]));
+        cx.simulate_keystrokes("f10");
+        assert_eq!(state(&root, cx), State::Closed);
+        assert!(editor_focused(&root, cx));
+        // Alt tapped with a menu open closes it too.
+        cx.simulate_keystrokes("alt-v");
+        assert_eq!(state(&root, cx), open(3, &[Some(0)]));
+        tap_alt(cx);
+        assert_eq!(state(&root, cx), State::Closed);
+    }
+
+    #[gpui_kit::test]
+    fn the_mouse_moves_between_menus_and_chooses(cx: &mut TestAppContext) {
+        let (root, cx) = open_window(cx);
+        let center = |selector: &'static str, cx: &mut VisualTestContext| {
+            cx.debug_bounds(selector)
+                .unwrap_or_else(|| panic!("{selector} is drawn"))
+                .center()
+        };
+        let file = center("menu-title-0", cx);
+        cx.simulate_click(file, Modifiers::none());
+        assert_eq!(state(&root, cx), open(0, &[None]));
+        // Hovering another title moves the open menu there; hovering an item selects it.
+        let edit = center("menu-title-1", cx);
+        cx.simulate_mouse_move(edit, None, Modifiers::none());
+        assert_eq!(state(&root, cx), open(1, &[None]));
+        let redo = center("menu-item-0-1", cx);
+        cx.simulate_mouse_move(redo, None, Modifiers::none());
+        assert_eq!(state(&root, cx), open(1, &[Some(1)]));
+        // A click on the open menu's title closes it.
+        cx.simulate_click(edit, Modifiers::none());
+        assert_eq!(state(&root, cx), State::Closed);
+
+        // A submenu opens on hover, and a click on a command chooses it.
+        cx.simulate_click(file, Modifiers::none());
+        let recent = center("menu-item-0-2", cx);
+        cx.simulate_mouse_move(recent, None, Modifiers::none());
+        assert_eq!(state(&root, cx), open(0, &[Some(2), None]));
+        let new = center("menu-item-0-0", cx);
+        cx.simulate_mouse_move(new, None, Modifiers::none());
+        assert_eq!(state(&root, cx), open(0, &[Some(0)]), "the submenu closes");
+        cx.simulate_click(new, Modifiers::none());
+        assert_eq!(state(&root, cx), State::Closed);
+        assert_eq!(chosen(&root, cx), ["New"]);
+
+        // A click on a separator or a disabled item chooses nothing.
+        cx.simulate_click(file, Modifiers::none());
+        let separator = center("menu-item-0-3", cx);
+        cx.simulate_click(separator, Modifiers::none());
+        assert_eq!(chosen(&root, cx), ["New"]);
+        assert!(matches!(state(&root, cx), State::Open { menu: 0, .. }));
+    }
+
+    #[gpui_kit::test]
+    fn reloading_the_menus_keeps_what_still_exists(cx: &mut TestAppContext) {
+        let (root, cx) = open_window(cx);
+        let bar = root.read_with(cx, |root, _| root.menu_bar.clone());
+        let reload = |menus: Vec<OwnedMenu>, cx: &mut VisualTestContext| {
+            cx.update(|_, cx| {
+                GlobalState::global_mut(cx).set_app_menus(menus);
+                bar.update(cx, |bar, cx| bar.reload(cx));
+            });
+        };
+        // The same menus: the open submenu stays open.
+        cx.simulate_keystrokes("alt-f r");
+        reload(menus(), cx);
+        assert_eq!(state(&root, cx), open(0, &[Some(2), Some(0)]));
+
+        // File without Recent Files: the selection is gone, the menu stays open.
+        let mut fewer = menus();
+        fewer[0] = Menu::new("File")
+            .items([MenuItem::action("New", New), MenuItem::action("Exit", Exit)])
+            .owned();
+        reload(fewer, cx);
+        assert_eq!(state(&root, cx), open(0, &[None]));
+
+        // A selected title past the new end closes the menu bar.
+        cx.simulate_keystrokes("escape left");
+        assert_eq!(state(&root, cx), State::Selected(4));
+        reload(menus().into_iter().take(2).collect(), cx);
+        assert_eq!(state(&root, cx), State::Closed);
     }
 
     #[gpui_kit::test]

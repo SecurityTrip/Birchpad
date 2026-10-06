@@ -1,0 +1,43 @@
+version = 1
+active-view = 1
+
+[[documents]]
+path = 'C:\notes\a.txt'
+modified = true
+backup = "a.txt@1"
+encoding = "windows-1251"
+line-ending = "crlf"
+language = "rust"
+read-only = false
+bookmarks = [2, 8]
+file-len = 120
+file-modified = 1790000000
+
+[[documents]]
+untitled = 3
+backup = "new 3@2"
+modified = true
+read-only = false
+bookmarks = []
+
+[main-view]
+active = 0
+
+[[main-view.tabs]]
+document = 0
+selections = [[5, 9], [12, 12]]
+primary = 1
+first-row = 12.5
+scroll-x = 40.0
+folds = [4]
+
+[second-view]
+active = 0
+
+[[second-view.tabs]]
+document = 1
+selections = [[0, 0]]
+primary = 0
+first-row = 0.0
+scroll-x = 0.0
+folds = []

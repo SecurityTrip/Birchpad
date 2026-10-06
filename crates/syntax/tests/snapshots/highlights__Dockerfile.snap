@@ -22,3 +22,15 @@ keyword                  CMD
 string                   "demo"
 string                   "--port"
 string                   "8080"
+keyword                  ARG
+property                 VERSION
+keyword                  RUN
+label                    <<EOF
+string                   \necho "building $VERSION"\n
+label                    EOF
+keyword                  ENV
+property                 PATH
+string                   "/opt/demo/bin:
+punctuation.special      $
+constant                 PATH
+string                   "

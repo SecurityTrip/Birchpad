@@ -537,6 +537,50 @@ mod tests {
     }
 
     #[test]
+    fn problems_read_as_sentences() {
+        assert_eq!(Layer::Default.to_string(), "default keymap");
+        assert_eq!(Layer::User.to_string(), "user keymap");
+        let syntax = KeymapDiagnostic::Syntax {
+            layer: Layer::User,
+            message: "expected `]`".into(),
+        };
+        assert_eq!(syntax.to_string(), "user keymap: expected `]`");
+        let invalid = KeymapDiagnostic::Invalid {
+            layer: Layer::Default,
+            keys: "hyper-q".into(),
+            message: "unknown modifier or key `hyper`".into(),
+        };
+        assert_eq!(
+            invalid.to_string(),
+            "default keymap: `hyper-q`: unknown modifier or key `hyper`"
+        );
+        let duplicate = |context: Option<&str>| KeymapDiagnostic::Duplicate {
+            layer: Layer::User,
+            keys: "ctrl-k".into(),
+            context: context.map(str::to_owned),
+            replaced: Invocation::new("file.new"),
+            by: Invocation::new("file.open"),
+        };
+        assert_eq!(
+            duplicate(None).to_string(),
+            "user keymap: `ctrl-k` is bound twice; `file.open` replaces `file.new`"
+        );
+        assert_eq!(
+            duplicate(Some("Editor")).to_string(),
+            "user keymap: `ctrl-k` in Editor is bound twice; `file.open` replaces `file.new`"
+        );
+    }
+
+    #[test]
+    fn an_empty_user_keymap_changes_nothing() {
+        let defaults = Keymap::with_defaults(Platform::Windows);
+        let mut keymap = Keymap::with_defaults(Platform::Windows);
+        keymap.add_layer(Layer::User, "");
+        assert!(keymap.diagnostics().is_empty());
+        assert_eq!(keymap.bindings().len(), defaults.bindings().len());
+    }
+
+    #[test]
     fn platform_specific_bindings_are_filtered() {
         let linux = Keymap::with_defaults(Platform::Linux);
         let mac = Keymap::with_defaults(Platform::MacOs);

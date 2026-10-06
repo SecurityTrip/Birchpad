@@ -35,6 +35,52 @@ pub struct UserState {
     pub split: SplitOrientation,
     /// What update checks remember.
     pub updates: UpdateState,
+    /// The fields and options of Find in Files as last used.
+    pub find_in_files: FindInFilesState,
+    /// The side panels.
+    pub panels: PanelsState,
+}
+
+/// What the side panels remember between runs.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, rename_all = "kebab-case")]
+pub struct PanelsState {
+    /// The panels open when Birchpad last quit, in the order they were opened:
+    /// `function-list`, `project-1`, ...
+    pub open: Vec<String>,
+    /// The top folders of Folder as Workspace.
+    pub folders: Vec<PathBuf>,
+    /// The workspace file of each project panel, by its number ("1" to "3").
+    pub projects: std::collections::BTreeMap<String, PathBuf>,
+}
+
+/// What the Find in Files tab remembers between runs.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, rename_all = "kebab-case")]
+pub struct FindInFilesState {
+    /// Notepad++'s filters: `*.rs *.toml !\target`.
+    pub filters: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub directory: Option<PathBuf>,
+    /// In all sub-folders.
+    pub subfolders: bool,
+    /// In hidden folders.
+    pub hidden: bool,
+    /// Follow current doc.: the folder of the active document whenever the tab opens.
+    pub follow_current_document: bool,
+}
+
+impl Default for FindInFilesState {
+    fn default() -> Self {
+        Self {
+            filters: String::new(),
+            directory: None,
+            // Notepad++'s defaults.
+            subfolders: true,
+            hidden: false,
+            follow_current_document: false,
+        }
+    }
 }
 
 /// What update checks remember between runs (ADR 0020).
@@ -77,8 +123,13 @@ impl UserState {
     pub fn load(path: &Path) -> Self {
         fs::read_to_string(path)
             .ok()
-            .and_then(|text| toml::from_str(&text).ok())
+            .and_then(|text| Self::parse(&text))
             .unwrap_or_default()
+    }
+
+    /// The state in the text of a state file, `None` if it is damaged.
+    pub fn parse(text: &str) -> Option<Self> {
+        toml::from_str(text).ok()
     }
 
     /// Writes the state file, replacing it atomically.
@@ -150,5 +201,29 @@ mod tests {
             UserState::default()
         );
         fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn find_in_files_options_round_trip_and_default_when_missing() {
+        let defaults: UserState = toml::from_str("zoom = 1").unwrap();
+        assert_eq!(defaults.find_in_files, FindInFilesState::default());
+        assert!(defaults.find_in_files.subfolders, "Notepad++'s default");
+        // Some keys given: the others keep their defaults.
+        let partial: UserState = toml::from_str("[find-in-files]\nhidden = true").unwrap();
+        assert!(partial.find_in_files.hidden && partial.find_in_files.subfolders);
+        let state = UserState {
+            find_in_files: FindInFilesState {
+                filters: r"*.rs !+\target".into(),
+                directory: Some(PathBuf::from("/projects/birchpad")),
+                subfolders: false,
+                hidden: true,
+                follow_current_document: true,
+            },
+            ..UserState::default()
+        };
+        let text = toml::to_string(&state).unwrap();
+        assert_eq!(toml::from_str::<UserState>(&text).unwrap(), state);
+        // A wrong type is damage: the whole state is the default, as for any other key.
+        assert!(toml::from_str::<UserState>("[find-in-files]\nsubfolders = 3").is_err());
     }
 }

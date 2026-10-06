@@ -42,6 +42,10 @@ pub const COMMANDS: &[CommandSpec] = &[
     // File
     workspace("file.new", "New"),
     workspace("file.open", "Open..."),
+    workspace(
+        "file.open-folder-as-workspace",
+        "Open Folder as Workspace...",
+    ),
     // { "path": "C:\\notes.txt" }
     workspace("file.open-recent", "Open Recent File"),
     workspace("file.clear-recent", "Empty Recent Files List"),
@@ -173,7 +177,29 @@ pub const COMMANDS: &[CommandSpec] = &[
     workspace("search.replace", "Replace..."),
     workspace("search.find-next", "Find Next"),
     workspace("search.find-previous", "Find Previous"),
+    workspace("search.select-and-find-next", "Select and Find Next"),
+    workspace(
+        "search.select-and-find-previous",
+        "Select and Find Previous",
+    ),
+    workspace("search.find-in-files", "Find in Files..."),
+    workspace("search.incremental", "Incremental Search"),
+    workspace("search.close-incremental", "Close Incremental Search"),
+    workspace("search.mark", "Mark..."),
+    workspace("search.results-window", "Search Results Window"),
+    workspace("search.next-result", "Next Search Result"),
+    workspace("search.previous-result", "Previous Search Result"),
     workspace("search.go-to", "Go To..."),
+    workspace("navigate.back", "Go Back"),
+    workspace("navigate.forward", "Go Forward"),
+    // Side panels (View and Edit menus); { "panel": 1..3 } for the project panels
+    workspace("panel.folder-as-workspace", "Folder as Workspace"),
+    workspace("panel.project", "Project Panel"),
+    workspace("panel.document-map", "Document Map"),
+    workspace("panel.document-list", "Document List"),
+    workspace("panel.function-list", "Function List"),
+    workspace("panel.clipboard-history", "Clipboard History"),
+    workspace("panel.character-panel", "Character Panel"),
     editor("search.go-to-matching-brace", "Go to Matching Brace"),
     editor(
         "search.select-to-matching-brace",

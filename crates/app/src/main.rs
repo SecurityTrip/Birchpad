@@ -17,16 +17,23 @@ mod commands;
 mod disk;
 #[cfg(test)]
 mod disk_tests;
+#[cfg(feature = "e2e")]
+mod e2e;
 mod editor;
 mod encoding_ui;
 mod file_ops;
 mod find;
+mod find_in_files;
 mod help;
+mod incremental;
 #[cfg(test)]
 mod language_tests;
 mod menus;
+mod navigation;
 mod pane;
+mod panels;
 mod path_dialog;
+mod search_results;
 mod session;
 #[cfg(test)]
 mod session_tests;
@@ -121,6 +128,7 @@ fn main() {
                 cx.new(|cx| {
                     let mut workspace = Workspace::new(window, cx);
                     workspace.restore_last_session(window, cx);
+                    workspace.restore_panels(window, cx);
                     workspace.open_command_line(&command_line, window, cx);
                     workspace.report_pending_recoveries(window, cx);
                     workspace.start_backups(cx);
@@ -147,6 +155,8 @@ fn main() {
             })
             .detach();
             updates::start_background_checks(window, workspace.downgrade(), cx);
+            #[cfg(feature = "e2e")]
+            e2e::run_script(window, workspace.clone(), cx);
             if let Some(server) = server {
                 serve_later_launches(server, window, workspace, cx);
             }

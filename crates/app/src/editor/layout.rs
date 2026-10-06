@@ -6,8 +6,8 @@
 
 use std::ops::Range as ByteRange;
 
-use birchpad_core::Rope;
 use birchpad_core::motion::line_count;
+use birchpad_core::{LineChange, Rope};
 use birchpad_view::{BlockPoint, DisplayMap, DisplayText, LayoutConfig, Row};
 use gpui_kit::{
     App, AppContext as _, Bounds, Context, Font, FontStyle, FontWeight, Hsla, Pixels, Point,
@@ -116,13 +116,14 @@ pub(super) struct Scrollbar {
     pub(super) thumb: Bounds<Pixels>,
 }
 
-/// The margins left of the text, as in Notepad++: line numbers, symbols (bookmarks), folding.
-/// A margin that is turned off is `None`.
+/// The margins left of the text, as in Notepad++: line numbers, symbols (bookmarks), the change
+/// history, folding. A margin that is turned off is `None`.
 pub(super) struct Margins {
     /// All margins together.
     pub(super) gutter: Bounds<Pixels>,
     pub(super) line_numbers: Option<Bounds<Pixels>>,
     pub(super) symbols: Option<Bounds<Pixels>>,
+    pub(super) changes: Option<Bounds<Pixels>>,
     pub(super) folding: Option<Bounds<Pixels>>,
 }
 
@@ -145,12 +146,17 @@ impl Margins {
         let digits = line_count.to_string().len().max(3);
         let line_numbers = column(settings.line_numbers, metrics.cell * (digits as f32 + 2.));
         let symbols = column(settings.bookmark_margin, metrics.line_height);
+        let changes = column(
+            settings.change_history,
+            (metrics.line_height * 0.3).round().max(px(4.)),
+        );
         let folding = column(settings.fold_margin, (metrics.line_height * 0.8).round());
         let gutter = Bounds::from_corners(bounds.origin, point(x, bounds.bottom()));
         Self {
             gutter,
             line_numbers,
             symbols,
+            changes,
             folding,
         }
     }
@@ -166,6 +172,8 @@ pub(super) struct Layout {
     pub(super) line_numbers: Vec<(Point<Pixels>, ShapedLine)>,
     /// Bookmark symbols in the symbol margin.
     pub(super) bookmarks: Vec<Bounds<Pixels>>,
+    /// Bars of changed lines in the change history margin.
+    pub(super) change_bars: Vec<(Bounds<Pixels>, LineChange)>,
     /// Fold boxes in the folding margin, and whether each fold is collapsed.
     pub(super) fold_boxes: Vec<(Bounds<Pixels>, bool)>,
     /// The lines of expanded folds in the folding margin.
@@ -353,6 +361,7 @@ impl EditorView {
             rows,
             line_numbers,
             bookmarks: Vec::new(),
+            change_bars: Vec::new(),
             fold_boxes: Vec::new(),
             fold_lines: Vec::new(),
             fold_underlines: Vec::new(),
@@ -366,6 +375,7 @@ impl EditorView {
             full_rows,
         };
         layout.bookmarks = self.bookmark_symbols(&layout, &text, cx);
+        layout.change_bars = self.change_bars(&layout, &text, cx);
         self.fold_marks(&mut layout, &text);
         layout.decorations = self.decoration_bounds(&layout, &text, cx);
         layout.selections = self.selection_bounds(&layout, &text);
@@ -639,6 +649,49 @@ impl EditorView {
             .collect()
     }
 
+    /// A bar beside each visible row of a changed line, in the change history margin.
+    fn change_bars(
+        &self,
+        layout: &Layout,
+        text: &Rope,
+        cx: &App,
+    ) -> Vec<(Bounds<Pixels>, LineChange)> {
+        let Some(margin) = layout.margins.changes else {
+            return Vec::new();
+        };
+        let (Some(first), Some(last)) = (layout.rows.first(), layout.rows.last()) else {
+            return Vec::new();
+        };
+        let lines = first.row.line..last.row.line + 1;
+        let (modified, saved) = self.buffer.read(cx).changed_lines();
+        let modified = modified.lines_in(text, lines.clone());
+        let saved = saved.lines_in(text, lines);
+        if modified.is_empty() && saved.is_empty() {
+            return Vec::new();
+        }
+        // The bar leaves a pixel of the margin free on each side.
+        let width = (margin.size.width - px(2.)).max(px(1.));
+        layout
+            .rows
+            .iter()
+            .filter_map(|row| {
+                let line = row.row.line;
+                let change = if modified.binary_search(&line).is_ok() {
+                    LineChange::Modified
+                } else if saved.binary_search(&line).is_ok() {
+                    LineChange::Saved
+                } else {
+                    return None;
+                };
+                let bar = Bounds::new(
+                    point(margin.left() + px(1.), row.y),
+                    size(width, layout.metrics.line_height),
+                );
+                Some((bar, change))
+            })
+            .collect()
+    }
+
     /// Fold boxes, the lines of expanded folds, and underlines of collapsed headers, for the
     /// visible rows.
     fn fold_marks(&self, layout: &mut Layout, text: &Rope) {
@@ -755,6 +808,20 @@ impl EditorView {
                     .map(|(range, _)| (range, paint)),
             );
         }
+        let found = Paint::Fill(gpui_kit::rgba(theme::FIND_MARK));
+        ranges.extend(
+            marks
+                .found
+                .overlapping(visible.clone())
+                .map(|(range, _)| (range, found)),
+        );
+        let incremental = Paint::Fill(gpui_kit::rgba(theme::INCREMENTAL_HIGHLIGHT));
+        ranges.extend(
+            marks
+                .incremental
+                .overlapping(visible.clone())
+                .map(|(range, _)| (range, incremental)),
+        );
         let mut quads = Vec::new();
         for (range, paint) in ranges {
             for bounds in self.range_bounds(layout, text, range) {

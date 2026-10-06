@@ -509,6 +509,11 @@ mod tests {
 
     /// Answers one request with `body`; returns the request's lines.
     fn serve_once(body: Vec<u8>) -> (String, std::thread::JoinHandle<Vec<String>>) {
+        serve_status(200, body)
+    }
+
+    /// Answers one request with `status` and `body`; returns the request's lines.
+    fn serve_status(status: u16, body: Vec<u8>) -> (String, std::thread::JoinHandle<Vec<String>>) {
         let listener = TcpListener::bind("127.0.0.1:0").unwrap();
         let address = listener.local_addr().unwrap();
         let server = std::thread::spawn(move || {
@@ -523,11 +528,12 @@ mod tests {
             }
             write!(
                 stream,
-                "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+                "HTTP/1.1 {status} Status\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
                 body.len()
             )
             .unwrap();
-            stream.write_all(&body).unwrap();
+            // The client may hang up early on a body that is too large.
+            stream.write_all(&body).ok();
             request
         });
         (format!("http://{address}"), server)
@@ -580,5 +586,69 @@ mod tests {
             server.join().ok();
         }
         std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn manifests_up_to_the_limit_are_read_and_larger_ones_refused() {
+        let transport = HttpTransport::build("Birchpad/0.1.0 (test)", None);
+        let limit = MAX_MANIFEST_SIZE as usize;
+        let (base, server) = serve_once(vec![b'{'; limit]);
+        assert_eq!(transport.get(&format!("{base}/m")).unwrap().len(), limit);
+        server.join().unwrap();
+        let (base, server) = serve_once(vec![b'{'; limit + 1]);
+        let error = transport.get(&format!("{base}/m")).unwrap_err();
+        assert!(error.contains("larger than"), "{error}");
+        server.join().ok();
+        // Empty is a body too (the manifest check refuses it later).
+        let (base, server) = serve_once(Vec::new());
+        assert_eq!(transport.get(&format!("{base}/m")).unwrap(), b"");
+        server.join().unwrap();
+    }
+
+    #[test]
+    fn http_errors_and_absent_servers_are_errors() {
+        let transport = HttpTransport::new("Birchpad/0.1.0 (test)");
+        let transport_without_proxy = HttpTransport::build("Birchpad/0.1.0 (test)", None);
+        let (base, server) = serve_status(404, b"not here".to_vec());
+        assert!(transport_without_proxy.get(&format!("{base}/m")).is_err());
+        server.join().unwrap();
+        // Nobody listens on a port that was just freed.
+        let address = TcpListener::bind("127.0.0.1:0")
+            .unwrap()
+            .local_addr()
+            .unwrap();
+        assert!(
+            transport_without_proxy
+                .get(&format!("http://{address}/m"))
+                .is_err()
+        );
+        drop(transport);
+    }
+
+    /// A transport that answers with the same bytes, downloading the default way.
+    struct Fixed(Vec<u8>);
+
+    impl Transport for Fixed {
+        fn get(&self, _url: &str) -> Result<Vec<u8>, String> {
+            Ok(self.0.clone())
+        }
+    }
+
+    #[test]
+    fn the_default_download_keeps_to_the_limit() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("p");
+        let transport = Fixed(b"12345".to_vec());
+        let received = Mutex::new(0);
+        transport
+            .download("u", &path, 5, &|bytes| *received.lock().unwrap() = bytes)
+            .unwrap();
+        assert_eq!(std::fs::read(&path).unwrap(), b"12345");
+        assert_eq!(*received.lock().unwrap(), 5);
+        let error = transport.download("u", &path, 4, &|_| {}).unwrap_err();
+        assert_eq!(error, "larger than 4 bytes");
+        // A folder that does not exist cannot be written to.
+        let nowhere = dir.path().join("missing").join("p");
+        assert!(transport.download("u", &nowhere, 5, &|_| {}).is_err());
     }
 }

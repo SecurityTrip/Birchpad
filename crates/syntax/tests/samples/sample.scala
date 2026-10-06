@@ -8,3 +8,9 @@ object Main:
   def main(args: Array[String]): Unit =
     val greeting = Greeting("world")
     println(greeting.render)
+
+import scala.annotation.tailrec
+
+object Count:
+  @tailrec
+  def down(n: Int): Int = if n <= 0 then 0 else down(n - 1)

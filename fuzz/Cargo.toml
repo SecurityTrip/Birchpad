@@ -1,0 +1,85 @@
+# libFuzzer entries for the checks in crates/fuzz. They need a nightly compiler:
+#
+#     cargo +nightly fuzz run open_file fuzz/corpus/open_file fuzz/seeds/open_file
+#
+# `cargo test -p birchpad-fuzz` runs the same checks over the seeds on stable.
+
+[package]
+name = "birchpad-fuzz-targets"
+version = "0.0.0"
+publish = false
+edition = "2024"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+birchpad-fuzz = { path = "../crates/fuzz" }
+libfuzzer-sys = "0.4"
+
+# Not a member of the main workspace: it builds only with cargo-fuzz.
+[workspace]
+members = ["."]
+
+[[bin]]
+name = "open_file"
+path = "fuzz_targets/open_file.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "settings"
+path = "fuzz_targets/settings.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "state"
+path = "fuzz_targets/state.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "session"
+path = "fuzz_targets/session.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "workspace_file"
+path = "fuzz_targets/workspace_file.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "keymap"
+path = "fuzz_targets/keymap.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "command_line"
+path = "fuzz_targets/command_line.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "instance_message"
+path = "fuzz_targets/instance_message.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "manifest"
+path = "fuzz_targets/manifest.rs"
+test = false
+doc = false
+bench = false

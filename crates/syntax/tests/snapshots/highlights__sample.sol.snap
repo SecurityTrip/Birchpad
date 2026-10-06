@@ -8,6 +8,8 @@ keyword                  pragma
 tag                       solidity
 operator                  ^
 tag                      0.8.24;
+keyword.directive        import
+string                   "./Base.sol"
 comment                  /// A greeting, stored on chain.
 keyword                  contract
 type                     Greeting

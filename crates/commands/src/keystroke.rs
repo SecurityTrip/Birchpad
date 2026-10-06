@@ -278,6 +278,18 @@ mod tests {
     }
 
     #[test]
+    fn the_current_platform_is_the_one_built_for() {
+        let expected = if cfg!(target_os = "macos") {
+            Platform::MacOs
+        } else if cfg!(windows) {
+            Platform::Windows
+        } else {
+            Platform::Linux
+        };
+        assert_eq!(Platform::current(), expected);
+    }
+
+    #[test]
     fn rejects_invalid_keystrokes() {
         let err = |s| Keystroke::parse(s, Platform::Linux).unwrap_err();
         assert_eq!(err(""), KeystrokeError::Empty);
@@ -291,6 +303,13 @@ mod tests {
             KeystrokeError::MissingKey("ctrl-shift".into())
         );
         assert_eq!(err("ctrl-f99"), KeystrokeError::UnknownKey("f99".into()));
+        // A trailing separator leaves no key; the error says which keystroke.
+        assert_eq!(err("ctrl-"), KeystrokeError::MissingKey("ctrl-".into()));
+        assert_eq!(
+            err("ctrl-").to_string(),
+            "keystroke `ctrl-` has no key, only modifiers"
+        );
+        assert_eq!(err("").to_string(), "empty keystroke");
         assert_eq!(err("ctrl-pgup"), KeystrokeError::UnknownKey("pgup".into()));
     }
 

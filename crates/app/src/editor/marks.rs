@@ -6,7 +6,7 @@ use std::ops::Range as ByteRange;
 
 use anyhow::{Result, bail};
 use birchpad_core::motion::{line_count, line_of, line_range};
-use birchpad_core::search::{Query, SearchMode, Searcher, token_at};
+use birchpad_core::search::{Query, Searcher, token_at};
 use birchpad_core::{Assoc, Rope, ops};
 use gpui_kit::{ClipboardItem, Context};
 use serde::Deserialize;
@@ -154,7 +154,7 @@ impl EditorView {
                 pattern: text.slice(token).to_string(),
                 match_case: matching.match_case,
                 whole_word: matching.whole_word,
-                mode: SearchMode::Normal,
+                ..Query::default()
             };
             let Ok(searcher) = Searcher::new(&query) else {
                 return;

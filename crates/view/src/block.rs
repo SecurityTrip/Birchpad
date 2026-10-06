@@ -150,6 +150,31 @@ mod tests {
     }
 
     #[test]
+    fn a_thin_rectangle_is_a_caret_on_each_line() {
+        let thin = Block::new(BlockPoint::new(0, 2), BlockPoint::new(2, 2));
+        assert!(thin.is_thin());
+        assert!(!Block::new(BlockPoint::new(0, 2), BlockPoint::new(2, 3)).is_thin());
+        assert_eq!(
+            ranges("abcd\nab\nabcd", thin),
+            [Range::point(2), Range::point(7), Range::point(10)]
+        );
+    }
+
+    #[test]
+    fn a_rectangle_past_the_last_line_stops_there() {
+        let text = "ab\ncd";
+        // From the last line down past it: only the lines that exist.
+        let block = Block::new(BlockPoint::new(1, 0), BlockPoint::new(5, 1));
+        assert_eq!(ranges(text, block), [Range::new(3, 4)]);
+        // Entirely below the text: a caret at its end.
+        let block = Block::new(BlockPoint::new(3, 0), BlockPoint::new(4, 1));
+        assert_eq!(ranges(text, block), [Range::point(5)]);
+        // In an empty text: the one empty line, with virtual space.
+        let block = Block::new(BlockPoint::new(0, 0), BlockPoint::new(0, 2));
+        assert_eq!(ranges("", block), [Range::new(0, 0).with_virtual(0, 2)]);
+    }
+
+    #[test]
     fn hidden_lines_are_skipped() {
         let rope = Rope::from_str("a\nb\nc\nd");
         let mut display = DisplayMap::new(&rope, LayoutConfig::default());
