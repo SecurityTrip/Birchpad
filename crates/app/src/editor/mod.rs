@@ -7,6 +7,8 @@
 #[cfg(test)]
 mod change_history_tests;
 mod column_editor;
+#[cfg(test)]
+mod command_sweep_tests;
 mod element;
 mod folding;
 mod layout;
