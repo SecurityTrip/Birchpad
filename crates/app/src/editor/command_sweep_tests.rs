@@ -245,6 +245,12 @@ fn reset(
 ) -> Entity<EditorView> {
     answer_prompts(cx);
     dispatch(workspace, &Invocation::new("search.close"), cx);
+    // Every command starts with the side panels closed, as the window opens.
+    workspace.update(cx, |workspace, cx| {
+        for kind in crate::panels::PanelKind::ALL {
+            workspace.close_panel(kind, cx);
+        }
+    });
     cx.update(|_, cx| AppState::update_state(cx, |state, _| *state = UserState::default()));
     workspace.update_in(cx, |workspace, window, cx| {
         // Closing the last view leaves an empty "new 1", which opening the scenario's

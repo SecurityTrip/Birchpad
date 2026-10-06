@@ -7,6 +7,8 @@
 //! and close each panel, with a check mark on those open. The open panels are remembered in
 //! `state.toml` and come back on the next start.
 
+mod character_panel;
+mod clipboard_history;
 mod document_list;
 mod document_map;
 mod folder_workspace;
@@ -28,6 +30,8 @@ use crate::app_state::AppState;
 use crate::commands::CommandRegistry;
 use crate::workspace::Workspace;
 
+pub(crate) use character_panel::CharacterPanel;
+pub(crate) use clipboard_history::ClipboardHistory;
 pub(crate) use document_list::DocumentList;
 pub(crate) use document_map::DocumentMap;
 pub(crate) use folder_workspace::FolderWorkspace;
@@ -249,6 +253,9 @@ impl Workspace {
     }
 
     pub(crate) fn close_panel(&mut self, kind: PanelKind, cx: &mut Context<Self>) {
+        if !self.docks.is_open(kind) {
+            return;
+        }
         self.docks.open.retain(|open| *open != kind);
         let side = kind.side();
         if self.docks.shown(side) == Some(kind) {
@@ -300,11 +307,15 @@ impl Workspace {
             PanelKind::FolderWorkspace => cx
                 .new(|cx| FolderWorkspace::new(workspace, window, cx))
                 .into(),
+            PanelKind::ClipboardHistory => cx
+                .new(|cx| ClipboardHistory::new(workspace, window, cx))
+                .into(),
+            PanelKind::CharacterPanel => cx
+                .new(|cx| CharacterPanel::new(workspace, window, cx))
+                .into(),
             PanelKind::Project(panel) => cx
                 .new(|cx| ProjectPanel::new(panel, workspace, window, cx))
                 .into(),
-            // Panels still to come show their name.
-            _ => cx.new(|_| Placeholder(kind.title())).into(),
         }
     }
 
@@ -323,7 +334,7 @@ impl Workspace {
         let id = format!("docks-{}-{}", left.is_some(), right.is_some());
         let dock = |element: AnyElement| {
             resizable_panel()
-                .size(px(260.))
+                .size(px(300.))
                 .size_range(px(120.)..px(1200.))
                 .child(element)
         };
@@ -421,6 +432,20 @@ impl Workspace {
         }
     }
 
+    /// Puts `text` into the active document as a paste would, and goes back to the text
+    /// (Clipboard History, Character Panel).
+    pub(crate) fn insert_text(&mut self, text: &str, window: &mut Window, cx: &mut Context<Self>) {
+        let invocation =
+            Invocation::with_args("edit.insert-text", serde_json::json!({ "text": text }));
+        if let Err(error) = self.dispatch(&invocation, window, cx) {
+            crate::workspace::report_error(&error, window, cx);
+        }
+        if let Some(view) = self.active_view(cx) {
+            let focus = view.read(cx).focus_handle.clone();
+            window.focus(&focus, cx);
+        }
+    }
+
     /// File > Open Folder as Workspace...: the folder dialog.
     fn open_folder_as_workspace(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let start = self.default_directory(cx);
@@ -456,15 +481,6 @@ impl FollowView {
         }
         self.followed =
             view.map(|view| (view.entity_id(), cx.observe(view, |_, _, cx| cx.notify())));
-    }
-}
-
-/// A panel not written yet.
-struct Placeholder(&'static str);
-
-impl Render for Placeholder {
-    fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
-        div().p_2().text_color(rgb(0x57606a)).child(self.0)
     }
 }
 

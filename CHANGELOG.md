@@ -43,6 +43,10 @@ version's release notes from its section here.
 - Project Panels 1 to 3 (View > Project): projects of folders and files, kept in Notepad++'s
   `.workspace` files so that workspaces move between the two editors, built from each item's
   right-click menu and saved as soon as they change.
+- Clipboard History (Edit > Clipboard History): the texts copied in Birchpad and other programs,
+  newest first; double-click one to paste it.
+- Character Panel (Edit > Character Panel): the 256 values of the document's code page with
+  their characters and HTML entities; double-click to insert one.
 - Document Map (View > Document Map): the whole document in miniature in its syntax colors,
   with the part on screen framed; click or drag on it to scroll there.
 - Find in Files (Ctrl+Shift+F): Find All and Replace in Files in the files of a folder, with

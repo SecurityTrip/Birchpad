@@ -147,7 +147,8 @@ What Phase 1 left for later is marked *(from Phase 1)* in the phases below.
   - [x] Document Map
   - [x] Folder as Workspace
   - [x] Project Panels 1 to 3, with Notepad++'s `.workspace` files
-- Clipboard history, character panel
+- [x] Clipboard History and the Character Panel
+      ([ADR 0026](adr/0026-side-panels.md))
 - [x] Navigation history: Go Back and Go Forward through the places the caret jumped from,
       across documents, reopening closed files ([ADR 0025](adr/0025-navigation-history.md))
 - [x] Issues reported on 0.1.2: a middle click closes a tab

@@ -112,6 +112,25 @@ dock anywhere by dragging.
   A file that cannot be read or written shows why above the tree. The file of each panel is
   remembered in `state.toml` (`[panels.projects]`).
 
+### Clipboard History
+
+- The texts copied while the panel is open, newest first, from Birchpad and other programs. GPUI
+  reports no clipboard changes, so the panel reads the clipboard every second; a text copied
+  again moves to the top. At most 30 texts of up to 1 MB each are kept, until Birchpad quits.
+- A row shows its text on one line (`⏎` for line breaks, `…` past 120 characters) and its
+  length. A double-click or Enter inserts it as a paste would (`edit.insert-text`, at every
+  caret) and returns to the text; Delete forgets it.
+
+### Character Panel
+
+- Notepad++'s ASCII Codes Insertion Panel: the 256 values with Value, Hex, the character, the
+  HTML entity name, decimal and hexadecimal reference. Values 128 to 255 are the characters of
+  the active document's legacy encoding, or of the ANSI code page for a Unicode document, as in
+  Notepad++; values a code page leaves undefined have no character. The C0 controls and DEL show
+  their names. HTML names are HTML 4's: Latin-1, and the characters Windows-1252 adds.
+- A double-click on a row's value, hex or character inserts the character; on an HTML column,
+  that reference. The columns fit the dock's 300 pixels.
+
 ## Consequences
 
 - The docks' widths last for the session only.
