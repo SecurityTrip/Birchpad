@@ -81,8 +81,9 @@ jobs:
           key: debian-${{ matrix.release }}
       - run: cargo test --workspace --locked
 
-  # Which code no test runs: a report per file in the run's summary, an lcov file for tools,
-  # and a floor under the share of lines run that only ever rises (CONTRIBUTING.md, Tests).
+  # Which code no test runs: a report per crate and per file in the run's summary, an lcov file
+  # for tools, and for each crate a floor under the share of lines run that only ever rises
+  # (.github/coverage-floors.toml; CONTRIBUTING.md, Tests).
   coverage:
     runs-on: ubuntu-latest
     steps:
@@ -101,15 +102,20 @@ jobs:
             libssl-dev libzstd-dev
       - name: Tests with coverage
         run: cargo llvm-cov --workspace --locked --lcov --output-path lcov.info
+      - name: Test the floor check
+        run: python3 -m unittest discover -s .github -p "*_test.py"
       - name: Report
         run: |
+          cargo llvm-cov report --json --summary-only > coverage.json
           {
-            echo '## Test coverage'
+            echo '## Test coverage by crate'
+            python3 .github/coverage_floors.py < coverage.json || failed=1
+            echo '## By file'
             echo '```'
             cargo llvm-cov report --summary-only
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
-          cargo llvm-cov report --summary-only --fail-under-lines 88
+          exit "${failed:-0}"
       - uses: actions/upload-artifact@v7
         with:
           name: coverage-lcov

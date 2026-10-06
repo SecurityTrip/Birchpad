@@ -43,7 +43,9 @@ change touches, the tests cover:
   wide and combining characters, very long lines.
 
 A bug fix comes with a test that fails without the fix. `cargo llvm-cov --workspace` shows the
-code no test runs yet.
+code no test runs yet; cover that first. CI fails when a crate's share of lines run falls under
+its floor in `.github/coverage-floors.toml`, and floors only rise: raise one in the change whose
+tests lift the crate well over it.
 
 Everything that reads input from outside (files and their encodings, settings, the state file,
 sessions and Notepad++'s `session.xml`, `.workspace` files, the keymap, the command line and the

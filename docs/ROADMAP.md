@@ -161,9 +161,9 @@ What Phase 1 left for later is marked *(from Phase 1)* in the phases below.
       [ADR 0023](adr/0023-change-history.md)); split view by dragging a tab to the side of the
       text ([#12](https://github.com/SecurityTrip/Birchpad/issues/12),
       [ADR 0016](adr/0016-split-view.md))
-- Tests for every scenario. Birchpad has no testers, so its tests are its quality assurance:
-  - A coverage report in CI (`cargo llvm-cov`) for each crate, with a floor that only rises,
-    and the untested code it shows covered first
+- [x] Tests for every scenario. Birchpad has no testers, so its tests are its quality assurance:
+  - [x] A coverage report in CI (`cargo llvm-cov`) for each crate, with a floor that only rises
+        (`.github/coverage-floors.toml`), and the untested code it shows covered first
   - [x] Every command of the registry run in every kind of document (empty, one long line,
         multiple carets, a rectangular selection, read-only, word wrap, both views, a large
         file), checking that it neither panics nor breaks the document
