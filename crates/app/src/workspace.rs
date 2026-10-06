@@ -292,7 +292,11 @@ impl Workspace {
                 self.refresh_menus(cx);
                 cx.notify();
             }
-            PaneEvent::CloseRequested(view) => self.close_view(view, window, cx),
+            PaneEvent::CloseRequested(view) => {
+                // As File > Close: unsaved changes are asked about.
+                self.close_with_confirmation(vec![view.clone()], window, cx)
+                    .detach();
+            }
             PaneEvent::Dropped { view, index } => {
                 let target = usize::from(pane == &self.panes[1]);
                 if self.pane_of(view, cx) == Some(target) {
@@ -944,7 +948,7 @@ impl Focusable for Workspace {
 #[cfg(test)]
 pub(crate) mod tests {
     use super::*;
-    use gpui_kit::{TestAppContext, VisualTestContext};
+    use gpui_kit::{Modifiers, MouseButton, TestAppContext, VisualTestContext};
 
     /// `secondary-<key>` in the spelling GPUI's test harness expects on this platform.
     pub(crate) fn secondary(key: &str) -> String {
@@ -1138,6 +1142,43 @@ pub(crate) mod tests {
         cx.run_until_parked();
         assert_eq!(tab_names(&workspace, cx), ["new 1"]);
         assert_eq!(active_text(&workspace, cx), "");
+    }
+
+    /// Clicks the element drawn with this debug selector, with `button`.
+    fn click_on(selector: &'static str, button: MouseButton, cx: &mut VisualTestContext) {
+        let center = cx
+            .debug_bounds(selector)
+            .unwrap_or_else(|| panic!("{selector} is not drawn"))
+            .center();
+        cx.simulate_mouse_down(center, button, Modifiers::none());
+        cx.simulate_mouse_up(center, button, Modifiers::none());
+        cx.run_until_parked();
+    }
+
+    #[gpui_kit::test]
+    fn the_close_button_of_a_tab_asks_about_unsaved_changes(cx: &mut TestAppContext) {
+        let (workspace, cx) = open_workspace(cx);
+        cx.simulate_input("changed");
+        cx.simulate_keystrokes(&secondary("n"));
+
+        // "new 1" has unsaved changes: it comes forward and is asked about.
+        click_on("close-tab-0", MouseButton::Left, cx);
+        assert!(cx.has_pending_prompt());
+        assert_eq!(active_text(&workspace, cx), "changed");
+        cx.simulate_prompt_answer("Cancel");
+        cx.run_until_parked();
+        assert_eq!(tab_names(&workspace, cx), ["new 1", "new 2"]);
+        click_on("close-tab-0", MouseButton::Left, cx);
+        cx.simulate_prompt_answer("Don't Save");
+        cx.run_until_parked();
+        assert_eq!(tab_names(&workspace, cx), ["new 2"]);
+
+        // Without changes, it closes at once.
+        cx.simulate_keystrokes(&secondary("n"));
+        assert_eq!(tab_names(&workspace, cx), ["new 2", "new 1"]);
+        click_on("close-tab-1", MouseButton::Left, cx);
+        assert!(!cx.has_pending_prompt());
+        assert_eq!(tab_names(&workspace, cx), ["new 2"]);
     }
 
     #[gpui_kit::test]

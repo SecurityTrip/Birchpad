@@ -227,6 +227,7 @@ impl Pane {
                         .ghost()
                         .xsmall()
                         .icon(IconName::Close)
+                        .debug_selector(|| format!("close-tab-{index}"))
                         .on_click(cx.listener(move |_, _, _, cx| {
                             cx.stop_propagation();
                             cx.emit(PaneEvent::CloseRequested(close_item.clone()));
