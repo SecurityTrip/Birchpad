@@ -29,6 +29,7 @@ mod language_tests;
 mod menus;
 mod navigation;
 mod pane;
+mod panels;
 mod path_dialog;
 mod search_results;
 mod session;
@@ -125,6 +126,7 @@ fn main() {
                 cx.new(|cx| {
                     let mut workspace = Workspace::new(window, cx);
                     workspace.restore_last_session(window, cx);
+                    workspace.restore_panels(window, cx);
                     workspace.open_command_line(&command_line, window, cx);
                     workspace.report_pending_recoveries(window, cx);
                     workspace.start_backups(cx);

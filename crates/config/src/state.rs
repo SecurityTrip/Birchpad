@@ -37,6 +37,17 @@ pub struct UserState {
     pub updates: UpdateState,
     /// The fields and options of Find in Files as last used.
     pub find_in_files: FindInFilesState,
+    /// The side panels.
+    pub panels: PanelsState,
+}
+
+/// What the side panels remember between runs.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, rename_all = "kebab-case")]
+pub struct PanelsState {
+    /// The panels open when Birchpad last quit, in the order they were opened:
+    /// `function-list`, `project-1`, ...
+    pub open: Vec<String>,
 }
 
 /// What the Find in Files tab remembers between runs.

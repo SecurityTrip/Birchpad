@@ -30,6 +30,7 @@ use crate::incremental::IncrementalBar;
 use crate::menus::{self, MenuState};
 use crate::navigation::{History, Place};
 use crate::pane::{Pane, PaneEvent};
+use crate::panels::Docks;
 use crate::search_results::SearchResults;
 use crate::session::SessionState;
 use crate::status_bar::StatusInfo;
@@ -135,6 +136,7 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
     crate::help::register_commands(registry);
     crate::incremental::register_commands(registry);
     crate::navigation::register_commands(registry);
+    crate::panels::register_commands(registry);
     crate::session::register_commands(registry);
     crate::disk::register_commands(registry);
 }
@@ -222,6 +224,8 @@ pub(crate) struct Workspace {
     pub(crate) disk_state: DiskState,
     /// Go Back and Go Forward.
     pub(crate) navigation: History<Place>,
+    /// The side panels.
+    pub(crate) docks: Docks,
     _subscriptions: Vec<Subscription>,
 }
 
@@ -258,6 +262,7 @@ impl Workspace {
             session_state: SessionState::default(),
             disk_state: DiskState::default(),
             navigation: History::default(),
+            docks: Docks::default(),
             _subscriptions: subscriptions,
         };
         // Back in front: files may have changed meanwhile.
@@ -823,6 +828,9 @@ impl Workspace {
             if invocation.command == "language.set" {
                 return invocation.args.get("language").and_then(|id| id.as_str()) == language;
             }
+            if let Some(open) = crate::panels::is_checked(&self.docks, invocation) {
+                return open;
+            }
             let Some(format) = format else {
                 return false;
             };
@@ -895,12 +903,13 @@ impl Render for Workspace {
                         .child(menu_bar),
                 )
             })
-            .child(
+            .child({
+                let center = self.render_main_area(cx);
                 div()
                     .flex_1()
                     .min_h(px(0.))
-                    .child(self.render_main_area(cx)),
-            )
+                    .child(self.render_with_docks(center, cx))
+            })
             .when(self.find_bar.read(cx).visible, |this| {
                 this.child(self.find_bar.clone())
             })

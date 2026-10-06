@@ -28,6 +28,10 @@ version's release notes from its section here.
 - Go Back and Go Forward (Search menu; Alt+Left and Alt+Right, Ctrl+- and Ctrl+Shift+- on
   macOS) return to the places the caret jumped from: other documents, search results, Go To.
   A closed file opens again.
+- Side panels docked beside the documents, as in Notepad++: several on one side share it as
+  tabs, the View and Edit menus open and close them, and the open ones come back on the next
+  start. The first is Document List (View > Document List): the open documents with their
+  paths; click to show one, middle-click to close it, click a heading to sort.
 - Find in Files (Ctrl+Shift+F): Find All and Replace in Files in the files of a folder, with
   Notepad++'s filters (`*.rs *.toml !*.bak !\target !+\node_modules`), In all sub-folders, In
   hidden folders and Follow current doc. Open documents are searched with their unsaved changes

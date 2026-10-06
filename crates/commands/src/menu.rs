@@ -331,6 +331,8 @@ pub fn main_menu() -> Vec<Menu> {
             cmd("edit.multi-select-skip"),
             Separator,
             cmd("edit.column-editor"),
+            cmd("panel.character-panel"),
+            cmd("panel.clipboard-history"),
         ],
     );
 
@@ -475,6 +477,24 @@ pub fn main_menu() -> Vec<Menu> {
             Separator,
             cmd("view.sync-vertical-scroll"),
             cmd("view.sync-horizontal-scroll"),
+            Separator,
+            Submenu(Menu::new(
+                "Project",
+                (1..=3)
+                    .map(|panel| {
+                        MenuItem::command_with(
+                            "panel.project",
+                            json!({ "panel": panel }),
+                            &format!("Project Panel {panel}"),
+                        )
+                    })
+                    .collect(),
+            )),
+            cmd("panel.folder-as-workspace"),
+            Separator,
+            cmd("panel.document-map"),
+            cmd("panel.document-list"),
+            cmd("panel.function-list"),
             Separator,
             cmd("view.monitoring"),
         ],

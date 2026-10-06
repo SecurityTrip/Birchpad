@@ -140,7 +140,10 @@ What Phase 1 left for later is marked *(from Phase 1)* in the phases below.
 - [x] Incremental search (Ctrl+Alt+I): the match grows as the text is typed, Enter and
       Shift+Enter step through it, Highlight all marks and counts every match
       ([ADR 0022](adr/0022-search-modes-and-the-find-panel.md))
-- Function List, Document Map, Document List, Folder as Workspace, Project panels
+- Side panels in docks beside the documents, with tabs, remembered for the next start
+  ([ADR 0026](adr/0026-side-panels.md)):
+  - [x] Document List
+  - Function List, Document Map, Folder as Workspace, Project panels
 - Clipboard history, character panel
 - [x] Navigation history: Go Back and Go Forward through the places the caret jumped from,
       across documents, reopening closed files ([ADR 0025](adr/0025-navigation-history.md))

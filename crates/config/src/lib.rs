@@ -25,4 +25,6 @@ pub use settings::{
     PluginSettings, SessionSettings, Settings, SmartHighlighting, TokenMatching, UpdateChannel,
     UpdateMode, UpdateSettings,
 };
-pub use state::{FindInFilesState, MAX_RECENT_FILES, SplitOrientation, UpdateState, UserState};
+pub use state::{
+    FindInFilesState, MAX_RECENT_FILES, PanelsState, SplitOrientation, UpdateState, UserState,
+};

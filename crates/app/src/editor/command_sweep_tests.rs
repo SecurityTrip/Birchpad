@@ -147,6 +147,11 @@ fn invocations(id: &'static str) -> Vec<Invocation> {
                 list.push(with(json!({ "language": language })));
             }
         }
+        "panel.project" => {
+            for panel in [1, 3] {
+                list.push(with(json!({ "panel": panel })));
+            }
+        }
         _ => {}
     }
     list
@@ -183,6 +188,11 @@ fn invalid_invocations(id: &'static str) -> Vec<Invocation> {
             vec![Invocation::new(id), with(json!({ "encoding": "klingon" }))]
         }
         "language.set" => vec![Invocation::new(id), with(json!({ "language": "klingon" }))],
+        "panel.project" => vec![
+            Invocation::new(id),
+            with(json!({ "panel": 0 })),
+            with(json!({ "panel": 4 })),
+        ],
         _ => Vec::new(),
     }
 }

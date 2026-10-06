@@ -188,6 +188,14 @@ pub const COMMANDS: &[CommandSpec] = &[
     workspace("search.go-to", "Go To..."),
     workspace("navigate.back", "Go Back"),
     workspace("navigate.forward", "Go Forward"),
+    // Side panels (View and Edit menus); { "panel": 1..3 } for the project panels
+    workspace("panel.folder-as-workspace", "Folder as Workspace"),
+    workspace("panel.project", "Project Panel"),
+    workspace("panel.document-map", "Document Map"),
+    workspace("panel.document-list", "Document List"),
+    workspace("panel.function-list", "Function List"),
+    workspace("panel.clipboard-history", "Clipboard History"),
+    workspace("panel.character-panel", "Character Panel"),
     editor("search.go-to-matching-brace", "Go to Matching Brace"),
     editor(
         "search.select-to-matching-brace",
