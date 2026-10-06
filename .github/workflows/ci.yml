@@ -84,8 +84,6 @@ jobs:
   # Which code no test runs: a report per file in the run's summary, an lcov file for tools,
   # and a floor under the share of lines run that only ever rises (CONTRIBUTING.md, Tests).
   coverage:
-    # As for fmt.
-    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7

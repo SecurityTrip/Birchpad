@@ -56,7 +56,7 @@ struct Env {
     /// `BIRCHPAD_UPDATE_KEY`: the secret signing keys.
     update_key: Option<String>,
     /// `BIRCHPAD_TRUSTED_KEYS`: the public keys release builds trust.
-    trusted_keys: Option<String>,
+    public_keys: Option<String>,
     /// Seconds since 1970.
     now: u64,
 }
@@ -65,7 +65,7 @@ impl Env {
     fn from_process() -> Self {
         Self {
             update_key: std::env::var("BIRCHPAD_UPDATE_KEY").ok(),
-            trusted_keys: std::env::var("BIRCHPAD_TRUSTED_KEYS").ok(),
+            public_keys: std::env::var("BIRCHPAD_TRUSTED_KEYS").ok(),
             now: SystemTime::now()
                 .duration_since(UNIX_EPOCH)
                 .expect("the clock is after 1970")
@@ -178,7 +178,7 @@ fn public_key(env: &Env) -> Result<()> {
 }
 
 /// The keys a manifest must be signed with: `--keys-file`, or `BIRCHPAD_TRUSTED_KEYS`.
-fn trusted(options: &Options, env: &Env) -> Result<Vec<VerifyingKey>> {
+fn verifying_keys(options: &Options, env: &Env) -> Result<Vec<VerifyingKey>> {
     let keys = match options.get("keys-file") {
         Some(path) => {
             let text = fs::read_to_string(path).with_context(|| format!("cannot read {path}"))?;
@@ -186,7 +186,7 @@ fn trusted(options: &Options, env: &Env) -> Result<Vec<VerifyingKey>> {
                 .map_err(anyhow::Error::msg)
                 .with_context(|| path.to_owned())?
         }
-        None => manifest::parse_keys(env.trusted_keys.as_deref().unwrap_or_default())
+        None => manifest::parse_keys(env.public_keys.as_deref().unwrap_or_default())
             .map_err(anyhow::Error::msg)
             .context("BIRCHPAD_TRUSTED_KEYS")?,
     };
@@ -216,11 +216,11 @@ fn secret_keys(env: &Env) -> Result<Vec<SigningKey>> {
 }
 
 /// The secret keys from `BIRCHPAD_UPDATE_KEY`; at least one must be trusted.
-fn signing_keys(trusted: &[VerifyingKey], env: &Env) -> Result<Vec<SigningKey>> {
+fn signing_keys(verifying: &[VerifyingKey], env: &Env) -> Result<Vec<SigningKey>> {
     let keys = secret_keys(env)?;
     ensure!(
         keys.iter()
-            .any(|key| trusted.contains(&key.verifying_key())),
+            .any(|key| verifying.contains(&key.verifying_key())),
         "none of the keys in BIRCHPAD_UPDATE_KEY is trusted (BIRCHPAD_TRUSTED_KEYS), so Birchpad \
          would refuse what they sign"
     );
@@ -232,7 +232,7 @@ fn signing_keys(trusted: &[VerifyingKey], env: &Env) -> Result<Vec<SigningKey>> 
 fn current(options: &Options, env: &Env) -> Result<Manifest> {
     let path = options.required("manifest")?;
     match fs::read(path) {
-        Ok(bytes) => manifest::verify_signature(&bytes, &trusted(options, env)?)
+        Ok(bytes) => manifest::verify_signature(&bytes, &verifying_keys(options, env)?)
             .with_context(|| format!("{path} is not a manifest Birchpad trusts")),
         Err(error) if error.kind() == std::io::ErrorKind::NotFound && options.new => Ok(Manifest {
             schema: SCHEMA,
@@ -247,7 +247,7 @@ fn current(options: &Options, env: &Env) -> Result<Manifest> {
 
 /// Signs `manifest` as of now and writes it to `--out`.
 fn write_signed(mut manifest: Manifest, options: &Options, env: &Env) -> Result<()> {
-    let keys = signing_keys(&trusted(options, env)?, env)?;
+    let keys = signing_keys(&verifying_keys(options, env)?, env)?;
     let now = env.now;
     // Never older than the manifest it replaces, even with a clock that went back.
     manifest.timestamp = now.max(manifest.timestamp + 1);
@@ -404,7 +404,7 @@ fn refresh(options: &Options, env: &Env) -> Result<()> {
 fn verify(options: &Options, env: &Env) -> Result<()> {
     let path = options.required("manifest")?;
     let bytes = fs::read(path).with_context(|| format!("cannot read {path}"))?;
-    let manifest = manifest::verify(&bytes, &trusted(options, env)?, env.now, 0)
+    let manifest = manifest::verify(&bytes, &verifying_keys(options, env)?, env.now, 0)
         .with_context(|| format!("{path} would be refused"))?;
     summarize(&manifest);
     Ok(())
@@ -423,8 +423,8 @@ mod tests {
         SigningKey::from_bytes(&[byte; 32])
     }
 
-    /// An environment with `secret` keys to sign with and `trusted` keys to check against.
-    fn env(secret: &[u8], trusted: &[u8]) -> Env {
+    /// An environment with `secret` keys to sign with and `public` keys to check against.
+    fn env(secret: &[u8], public: &[u8]) -> Env {
         let text = |keys: Vec<String>| keys.join(",");
         Env {
             update_key: Some(text(
@@ -433,8 +433,8 @@ mod tests {
                     .map(|&b| manifest::signing_key_text(&key(b)))
                     .collect(),
             )),
-            trusted_keys: Some(text(
-                trusted
+            public_keys: Some(text(
+                public
                     .iter()
                     .map(|&b| manifest::public_key_text(&key(b).verifying_key()))
                     .collect(),
@@ -460,8 +460,8 @@ mod tests {
 
     fn read(dir: &Path, env: &Env) -> Manifest {
         let bytes = fs::read(dir.join("manifest.json")).unwrap();
-        let trusted = trusted(&Options::parse(&[]).unwrap(), env).unwrap();
-        manifest::verify(&bytes, &trusted, env.now, 0).unwrap()
+        let keys = verifying_keys(&Options::parse(&[]).unwrap(), env).unwrap();
+        manifest::verify(&bytes, &keys, env.now, 0).unwrap()
     }
 
     fn versions(manifest: &Manifest) -> Vec<String> {
@@ -724,7 +724,7 @@ mod tests {
     fn env_of(env: &Env) -> Env {
         Env {
             update_key: env.update_key.clone(),
-            trusted_keys: env.trusted_keys.clone(),
+            public_keys: env.public_keys.clone(),
             now: env.now,
         }
     }
@@ -761,18 +761,18 @@ mod tests {
         // No trusted keys at all.
         let mut untrusting = self::env(&[1], &[]);
         assert!(add(&untrusting).unwrap_err().contains("no trusted keys"));
-        untrusting.trusted_keys = None;
+        untrusting.public_keys = None;
         assert!(add(&untrusting).is_err());
         assert!(!dir.path().join("manifest.json").exists());
 
         // While a key is being replaced: the old and the new one sign, the old one is trusted.
         add(&self::env(&[1, 2], &[1])).unwrap();
         let bytes = fs::read(dir.path().join("manifest.json")).unwrap();
-        for trusted in [1, 2] {
-            let keys = [key(trusted).verifying_key()];
+        for signer in [1, 2] {
+            let keys = [key(signer).verifying_key()];
             assert!(
                 manifest::verify(&bytes, &keys, NOW, 0).is_ok(),
-                "key {trusted}"
+                "key {signer}"
             );
         }
     }
@@ -786,15 +786,18 @@ mod tests {
         let options =
             Options::parse(&args(&format!("--keys-file {}", keys_file.display()))).unwrap();
         let mut env = env(&[1], &[]);
-        env.trusted_keys = None;
-        assert_eq!(trusted(&options, &env).unwrap(), [key(1).verifying_key()]);
+        env.public_keys = None;
+        assert_eq!(
+            verifying_keys(&options, &env).unwrap(),
+            [key(1).verifying_key()]
+        );
         // A missing file, one with no key, one with a broken key.
         let missing = Options::parse(&args("--keys-file nowhere.txt")).unwrap();
-        assert!(trusted(&missing, &env).is_err());
+        assert!(verifying_keys(&missing, &env).is_err());
         fs::write(&keys_file, "# nothing yet\n").unwrap();
-        assert!(trusted(&options, &env).is_err());
+        assert!(verifying_keys(&options, &env).is_err());
         fs::write(&keys_file, "not-a-key").unwrap();
-        assert!(trusted(&options, &env).is_err());
+        assert!(verifying_keys(&options, &env).is_err());
     }
 
     #[test]
