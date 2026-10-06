@@ -1205,16 +1205,30 @@ pub(crate) mod tests {
         assert_eq!(active_text(&workspace, cx), "");
     }
 
-    /// Clicks the element drawn with this debug selector, with `button`.
+    /// Clicks the element drawn with this debug selector, with `button`, once it stands still:
+    /// dialogs slide in over a quarter of a second of real time, and a frame drawn between
+    /// finding the element and clicking it would move it from under the mouse on a slow run.
     #[track_caller]
     pub(crate) fn click_on(
         selector: &'static str,
         button: MouseButton,
         cx: &mut VisualTestContext,
     ) {
-        let Some(bounds) = cx.debug_bounds(selector) else {
+        let Some(mut bounds) = cx.debug_bounds(selector) else {
             panic!("{selector} is not drawn");
         };
+        for _ in 0..100 {
+            std::thread::sleep(std::time::Duration::from_millis(10));
+            cx.update(|window, _| window.refresh());
+            cx.run_until_parked();
+            let Some(now) = cx.debug_bounds(selector) else {
+                panic!("{selector} is no longer drawn");
+            };
+            if now == bounds {
+                break;
+            }
+            bounds = now;
+        }
         let center = bounds.center();
         cx.simulate_mouse_down(center, button, Modifiers::none());
         cx.simulate_mouse_up(center, button, Modifiers::none());
