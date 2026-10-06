@@ -140,10 +140,17 @@ impl Session {
             path: path.to_owned(),
             source,
         })?;
+        Self::from_text(&text)
+    }
+
+    /// Parses the text of a session file in either format, after a byte order mark if an
+    /// editor added one.
+    pub fn from_text(text: &str) -> Result<Self, SessionError> {
+        let text = text.strip_prefix('\u{feff}').unwrap_or(text);
         if text.trim_start().starts_with('<') {
-            crate::notepad_session::import(&text)
+            crate::notepad_session::import(text)
         } else {
-            Self::parse(&text)
+            Self::parse(text)
         }
     }
 
@@ -284,6 +291,24 @@ mod tests {
             session.backup_names().collect::<Vec<_>>(),
             ["notes.txt@1", "new 3@2"]
         );
+    }
+
+    #[test]
+    fn either_format_reads_with_or_without_a_byte_order_mark() {
+        let toml = sample().to_toml();
+        let xml = r#"<NotepadPlus><Session activeView="0"><mainView activeIndex="0">
+            <File filename="C:\a.txt" /></mainView></Session></NotepadPlus>"#;
+        for text in [toml.clone(), format!("\u{feff}{toml}")] {
+            assert_eq!(Session::from_text(&text).unwrap(), sample());
+        }
+        for text in [xml.to_owned(), format!("\u{feff}  {xml}")] {
+            let session = Session::from_text(&text).unwrap();
+            assert_eq!(session.documents.len(), 1);
+        }
+        // One mark only: a second is text, which neither format starts with.
+        assert!(Session::from_text(&format!("\u{feff}\u{feff}{xml}")).is_err());
+        assert!(Session::from_text("").is_err());
+        assert!(Session::from_text("\u{feff}").is_err());
     }
 
     #[test]

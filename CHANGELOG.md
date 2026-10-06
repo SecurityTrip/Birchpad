@@ -77,6 +77,8 @@ version's release notes from its section here.
 - JSON keys are colored as keys, no longer like the strings
   ([#10](https://github.com/SecurityTrip/Birchpad/issues/10)), and TOML keys no longer take the
   color of table names.
+- File > Load Session... and `-openSession` read a Notepad++ `session.xml` that an editor saved
+  with a byte order mark; it was taken for Birchpad's format and refused as damaged.
 - SQL numbers are colored as numbers; they never were, as the grammar's query looked for them
   with a pattern that matches no number.
 
