@@ -767,7 +767,7 @@ fn shift(byte: usize, edit: &InputEdit) -> usize {
 
 /// Neovim queries match with Lua patterns (`#lua-match? @x "^[%u_]+$"`); tree-sitter has
 /// regular expressions (`#match?`). Rewrites the first into the second.
-fn lua_matches_to_regex(source: &str) -> String {
+pub(crate) fn lua_matches_to_regex(source: &str) -> String {
     let mut out = String::with_capacity(source.len());
     let mut rest = source;
     while let Some(at) = rest.find("lua-match?") {
@@ -854,7 +854,7 @@ fn lua_pattern_to_regex(pattern: &str) -> String {
 }
 
 /// Lets queries read node text (for `#eq?` and `#match?` predicates) straight from the rope.
-struct RopeText<'a>(&'a Rope);
+pub(crate) struct RopeText<'a>(pub(crate) &'a Rope);
 
 impl<'a> TextProvider<&'a [u8]> for RopeText<'a> {
     type I = std::iter::Map<ropey::iter::Chunks<'a>, fn(&'a str) -> &'a [u8]>;

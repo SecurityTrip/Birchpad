@@ -8,6 +8,7 @@
 //! `state.toml` and come back on the next start.
 
 mod document_list;
+mod function_list;
 
 use std::collections::HashMap;
 
@@ -25,6 +26,7 @@ use crate::commands::CommandRegistry;
 use crate::workspace::Workspace;
 
 pub(crate) use document_list::DocumentList;
+pub(crate) use function_list::FunctionList;
 
 /// The project panels, as Notepad++'s Project Panel 1 to 3.
 pub(crate) const PROJECT_PANELS: u8 = 3;
@@ -283,6 +285,7 @@ impl Workspace {
         let workspace = cx.entity().downgrade();
         match kind {
             PanelKind::DocumentList => cx.new(|cx| DocumentList::new(workspace, window, cx)).into(),
+            PanelKind::FunctionList => cx.new(|cx| FunctionList::new(workspace, window, cx)).into(),
             // Panels still to come show their name.
             _ => cx.new(|_| Placeholder(kind.title())).into(),
         }

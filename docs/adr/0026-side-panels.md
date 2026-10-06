@@ -39,6 +39,27 @@ dock anywhere by dragging.
   Close does. A click on a column's heading sorts by it, without regard to case, in reverse on
   a second click and back to the order of the tabs on a third.
 
+### Function List
+
+- **From the syntax tree, not regular expressions.** Notepad++ describes each language's
+  functions with regular expressions in XML files. Birchpad already has a tree-sitter tree of
+  every document, so the list comes from tags queries, which GitHub's code navigation uses
+  too: `@definition.function`, `.class`, `.method` and their kin capture a definition, `@name`
+  its name (`birchpad_syntax::outline`). Seventeen grammar crates ship one; Birchpad writes its
+  own, a few patterns each, for Bash, Batch, Haskell, INI, Kotlin, Make, Markdown (headings),
+  PowerShell, Scala and TOML (tables), and adds Rust's `impl` blocks to Rust's.
+- **What is listed:** classes and their kin, interfaces, modules, functions, methods, macros,
+  type aliases and sections. The queries' references, constants and variables are left out. A
+  definition inside another one's range is its child: methods under their class or `impl`,
+  sections under their heading. A definition two patterns match keeps the more telling kind.
+- **Kept current:** the outline is read again whenever the document's tree changes (it is
+  reparsed in the background after edits), with a time budget for huge files. The definition
+  the caret is in is highlighted.
+- **Using it:** a click selects the definition's name in the text; the arrows fold a level;
+  the search field filters by name, keeping the parents of what matches and opening folded
+  levels; the A-Z button orders each level by name instead of by position. Plain text, a
+  language without a query, and files over the large file limit say why the list is empty.
+
 ## Consequences
 
 - The docks' widths last for the session only.
