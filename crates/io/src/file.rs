@@ -64,6 +64,15 @@ pub enum ReadError {
 /// Reads a whole file, refusing files over [`MAX_FILE_SIZE`]. `progress` receives the number of
 /// bytes read so far.
 pub fn read_file(path: &Path, progress: &AtomicU64) -> Result<(Vec<u8>, FileInfo), ReadError> {
+    read_file_within(path, progress, MAX_FILE_SIZE)
+}
+
+/// [`read_file`] with another size limit, so that tests need no file of gigabytes.
+fn read_file_within(
+    path: &Path,
+    progress: &AtomicU64,
+    limit: u64,
+) -> Result<(Vec<u8>, FileInfo), ReadError> {
     let io_error = |source: io::Error| match source.kind() {
         io::ErrorKind::NotFound => ReadError::NotFound(path.to_owned()),
         _ => ReadError::Io {
@@ -79,15 +88,15 @@ pub fn read_file(path: &Path, progress: &AtomicU64) -> Result<(Vec<u8>, FileInfo
     let too_large = |size| ReadError::TooLarge {
         path: path.to_owned(),
         size,
-        limit: MAX_FILE_SIZE,
+        limit,
     };
-    if metadata.len() > MAX_FILE_SIZE {
+    if metadata.len() > limit {
         return Err(too_large(metadata.len()));
     }
 
     let mut bytes = Vec::with_capacity(metadata.len() as usize);
     // The file may grow while we read it; read at most one byte past the limit to notice.
-    let mut reader = file.take(MAX_FILE_SIZE + 1);
+    let mut reader = file.take(limit + 1);
     loop {
         let read = (&mut reader)
             .take(READ_CHUNK as u64)
@@ -98,7 +107,7 @@ pub fn read_file(path: &Path, progress: &AtomicU64) -> Result<(Vec<u8>, FileInfo
             break;
         }
     }
-    if bytes.len() as u64 > MAX_FILE_SIZE {
+    if bytes.len() as u64 > limit {
         return Err(too_large(bytes.len() as u64));
     }
     Ok((bytes, FileInfo::from_metadata(&metadata)))
@@ -361,4 +370,48 @@ pub fn pending_recoveries(dir: &Path) -> Vec<Recovery> {
 /// Forgets a recovery copy the user has dealt with.
 pub fn discard_recovery(recovery: &Recovery) {
     remove_recovery(recovery);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn files_up_to_the_limit_are_read_and_larger_ones_refused() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("a.bin");
+        let progress = AtomicU64::new(0);
+
+        // Empty, exactly at the limit, and one byte over it.
+        fs::write(&path, b"").unwrap();
+        let (bytes, info) = read_file_within(&path, &progress, 10).unwrap();
+        assert!(bytes.is_empty());
+        assert!(!info.read_only);
+        fs::write(&path, b"0123456789").unwrap();
+        let (bytes, _) = read_file_within(&path, &progress, 10).unwrap();
+        assert_eq!(bytes, b"0123456789");
+        assert_eq!(
+            progress.load(Ordering::Relaxed),
+            10,
+            "progress counts every byte"
+        );
+        fs::write(&path, b"0123456789!").unwrap();
+        let error = read_file_within(&path, &progress, 10).unwrap_err();
+        assert!(
+            matches!(
+                error,
+                ReadError::TooLarge {
+                    size: 11,
+                    limit: 10,
+                    ..
+                }
+            ),
+            "{error}"
+        );
+    }
+
+    #[test]
+    fn the_real_limit_is_two_gigabytes() {
+        assert_eq!(MAX_FILE_SIZE, 1 << 31);
+    }
 }
