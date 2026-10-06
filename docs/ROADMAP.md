@@ -144,7 +144,8 @@ What Phase 1 left for later is marked *(from Phase 1)* in the phases below.
   ([ADR 0026](adr/0026-side-panels.md)):
   - [x] Document List
   - [x] Function List, from tree-sitter tags queries for 28 languages
-  - Document Map, Folder as Workspace, Project panels
+  - [x] Document Map
+  - Folder as Workspace, Project panels
 - Clipboard history, character panel
 - [x] Navigation history: Go Back and Go Forward through the places the caret jumped from,
       across documents, reopening closed files ([ADR 0025](adr/0025-navigation-history.md))

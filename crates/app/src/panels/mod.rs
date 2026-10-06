@@ -8,6 +8,7 @@
 //! `state.toml` and come back on the next start.
 
 mod document_list;
+mod document_map;
 mod function_list;
 
 use std::collections::HashMap;
@@ -26,6 +27,7 @@ use crate::commands::CommandRegistry;
 use crate::workspace::Workspace;
 
 pub(crate) use document_list::DocumentList;
+pub(crate) use document_map::DocumentMap;
 pub(crate) use function_list::FunctionList;
 
 /// The project panels, as Notepad++'s Project Panel 1 to 3.
@@ -286,6 +288,7 @@ impl Workspace {
         match kind {
             PanelKind::DocumentList => cx.new(|cx| DocumentList::new(workspace, window, cx)).into(),
             PanelKind::FunctionList => cx.new(|cx| FunctionList::new(workspace, window, cx)).into(),
+            PanelKind::DocumentMap => cx.new(|cx| DocumentMap::new(workspace, window, cx)).into(),
             // Panels still to come show their name.
             _ => cx.new(|_| Placeholder(kind.title())).into(),
         }
@@ -376,6 +379,28 @@ impl Workspace {
                 .child(div().flex_1().min_h(px(0.)).child(view))
                 .into_any_element(),
         )
+    }
+}
+
+/// Redraws a panel whenever the active document's view changes: its caret, its scroll, its
+/// text. Panels call [`FollowView::follow`] with the active view each time they draw.
+#[derive(Default)]
+pub(crate) struct FollowView {
+    followed: Option<(gpui_kit::EntityId, gpui_kit::Subscription)>,
+}
+
+impl FollowView {
+    pub(crate) fn follow<T: 'static>(
+        &mut self,
+        view: Option<&gpui_kit::Entity<crate::editor::EditorView>>,
+        cx: &mut Context<T>,
+    ) {
+        let id = view.map(|view| view.entity_id());
+        if self.followed.as_ref().map(|(followed, _)| *followed) == id {
+            return;
+        }
+        self.followed =
+            view.map(|view| (view.entity_id(), cx.observe(view, |_, _, cx| cx.notify())));
     }
 }
 

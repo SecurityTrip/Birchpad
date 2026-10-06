@@ -165,6 +165,7 @@ pub(crate) struct FunctionList {
     /// Folded symbols, by their paths.
     collapsed: HashSet<String>,
     outline: Option<Outline>,
+    follow: super::FollowView,
     scroll: UniformListScrollHandle,
     focus_handle: FocusHandle,
     _subscriptions: Vec<Subscription>,
@@ -206,6 +207,7 @@ impl FunctionList {
             sorted: false,
             collapsed: HashSet::new(),
             outline: None,
+            follow: super::FollowView::default(),
             scroll: UniformListScrollHandle::new(),
             focus_handle: cx.focus_handle(),
             _subscriptions: vec![changes],
@@ -360,6 +362,11 @@ impl FunctionList {
 
 impl Render for FunctionList {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let active = self
+            .workspace
+            .upgrade()
+            .and_then(|workspace| workspace.read(cx).active_view(cx));
+        self.follow.follow(active.as_ref(), cx);
         let toolbar = div()
             .flex()
             .flex_row()

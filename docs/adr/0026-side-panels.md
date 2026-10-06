@@ -60,6 +60,19 @@ dock anywhere by dragging.
   levels; the A-Z button orders each level by name instead of by position. Plain text, a
   language without a query, and files over the large file limit say why the list is empty.
 
+### Document Map
+
+- **Bars, not text.** Notepad++ draws a second Scintilla view zoomed out. Text a few pixels high
+  is unreadable anyway, so the map paints each line as a strip three pixels high in which every
+  run of characters that is not blank is a bar in its syntax color, a pixel and a half per
+  column (tabs to their stops, wide characters two columns). Only the lines on the map are
+  painted, with the highlights of just those lines.
+- **The frame** marks the lines the view shows. A map longer than the panel scrolls with the
+  view so that the frame sits as far down the map as the view sits in the document.
+- **Using it:** a click or a drag centers the view on that line, the wheel scrolls the view.
+- Panels that show the active view (Function List, Document Map) observe it, so a moved caret,
+  a scroll or an edit redraws them.
+
 ## Consequences
 
 - The docks' widths last for the session only.

@@ -36,6 +36,8 @@ version's release notes from its section here.
   document as a tree, from its syntax tree, for 28 languages including Markdown headings. It
   follows edits, highlights the definition the caret is in, goes to a definition on a click,
   and can be filtered, sorted by name and folded.
+- Document Map (View > Document Map): the whole document in miniature in its syntax colors,
+  with the part on screen framed; click or drag on it to scroll there.
 - Find in Files (Ctrl+Shift+F): Find All and Replace in Files in the files of a folder, with
   Notepad++'s filters (`*.rs *.toml !*.bak !\target !+\node_modules`), In all sub-folders, In
   hidden folders and Follow current doc. Open documents are searched with their unsaved changes

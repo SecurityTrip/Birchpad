@@ -834,6 +834,28 @@ impl EditorView {
         self.select_range(from..to.max(from), cx);
     }
 
+    /// The lines the last frame showed, the last one partly perhaps.
+    pub(crate) fn visible_lines(&self) -> Option<std::ops::Range<usize>> {
+        let layout = self.layout.as_ref()?;
+        let first = layout.rows.first()?.row.line;
+        let last = layout.rows.last()?.row.line;
+        Some(first..last + 1)
+    }
+
+    /// Scrolls so that `line` is the first one shown, or the first shown of its fold (the
+    /// Document Map).
+    pub(crate) fn scroll_to_line(&mut self, line: usize, cx: &mut Context<Self>) {
+        let text = self.text(cx).clone();
+        let line = line.min(motion::line_count(&text).saturating_sub(1));
+        let visible = self.display.visible_line(line);
+        self.scroll_top = self.display.first_row_of_line(visible) as f64;
+        cx.notify();
+    }
+
+    pub(crate) fn tab_width(&self) -> usize {
+        self.display.config().tab_width
+    }
+
     /// Puts a single caret at `pos` and scrolls to it (Go To).
     pub(crate) fn go_to(&mut self, pos: usize, cx: &mut Context<Self>) {
         self.select_range(pos..pos, cx);
