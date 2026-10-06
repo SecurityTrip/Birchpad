@@ -376,7 +376,7 @@ pub static LANGUAGES: &[Language] = &[
         ],
         C_LIKE,
         grammar!(tree_sitter_json::LANGUAGE),
-        &[tree_sitter_json::HIGHLIGHTS_QUERY],
+        &[include_str!("../queries/json.scm")],
     ),
     Language {
         interpreters: &["kotlin"],
@@ -646,7 +646,7 @@ pub static LANGUAGES: &[Language] = &[
             &["toml"],
             HASH,
             grammar!(tree_sitter_toml_ng::LANGUAGE),
-            &[tree_sitter_toml_ng::HIGHLIGHTS_QUERY],
+            &[include_str!("../queries/toml.scm")],
         )
     },
     Language {
