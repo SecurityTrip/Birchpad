@@ -77,6 +77,8 @@ version's release notes from its section here.
 - JSON keys are colored as keys, no longer like the strings
   ([#10](https://github.com/SecurityTrip/Birchpad/issues/10)), and TOML keys no longer take the
   color of table names.
+- SQL numbers are colored as numbers; they never were, as the grammar's query looked for them
+  with a pattern that matches no number.
 
 ## [0.1.2] - 2026-10-05
 

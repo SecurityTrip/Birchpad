@@ -45,3 +45,17 @@ punctuation.delimiter    .
 property                 id
 punctuation.bracket      )
 punctuation.bracket      }
+keyword                  resource
+string                   "aws_instance"
+string                   "demo"
+punctuation.bracket      {
+property                 count
+number                   3
+property                 instance_type
+string                   "t3.micro"
+type                     lifecycle
+punctuation.bracket      {
+property                 create_before_destroy
+boolean                  true
+punctuation.bracket      }
+punctuation.bracket      }

@@ -16,4 +16,4 @@ pub use highlight::{HIGHLIGHT_NAMES, Highlight, resolve};
 pub use language::{LANGUAGES, Language, by_id, detect, injected};
 pub use outline::{Symbol, SymbolKind, has_outline, outline};
 pub use syntax::{LanguageConfig, Layer, ParseJob, Parsed, Syntax, config};
-pub use tree_sitter::Tree;
+pub use tree_sitter::{Node, Tree};

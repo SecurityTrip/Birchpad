@@ -9,3 +9,10 @@ private:
     T value_;
 };
 }
+
+int countdown() {
+    int n = 42;
+loop:
+    if (--n > 0) goto loop;
+    return n;
+}

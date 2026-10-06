@@ -59,3 +59,15 @@ punctuation.bracket      (
 string                   "world"
 punctuation.bracket      ))
 punctuation.bracket      }
+variable                 total
+operator                 <-
+module                   stats
+operator                 ::
+function                 median
+punctuation.bracket      (
+variable                 values
+punctuation.delimiter    ,
+variable.parameter       na.rm
+operator                 =
+boolean                  TRUE
+punctuation.bracket      )

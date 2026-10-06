@@ -8,5 +8,5 @@ struct Greeter<'a> {
 
 fn main() {
     let count = 42_u8;
-    println!("Hello, {}!", count);
+    println!("Hello, {}!\n", count);
 }

@@ -6,3 +6,5 @@ let
   greet = times: builtins.concatStringsSep " " (builtins.genList (_: "Hello, ${name}!") times);
 in
 pkgs.writeText "greeting" (greet 2)
+
+// { meta.description = builtins.toString (1 + 2); }

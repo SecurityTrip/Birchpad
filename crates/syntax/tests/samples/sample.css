@@ -4,3 +4,6 @@ body > .content {
   margin: 0 auto !important;
 }
 @media (max-width: 600px) { body { font-size: 14px; } }
+
+@import url("theme.css");
+a[target="_blank"]::after { content: "\2197"; }

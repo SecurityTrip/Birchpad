@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
+import "./Base.sol";
+
 /// A greeting, stored on chain.
 contract Greeting {
     string public name = "world";

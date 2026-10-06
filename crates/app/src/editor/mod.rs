@@ -5,6 +5,8 @@
 //! comes from `birchpad-view`; [`element::EditorElement`] turns it into pixels and paints it.
 
 #[cfg(test)]
+mod capture_coverage_tests;
+#[cfg(test)]
 mod change_history_tests;
 mod column_editor;
 #[cfg(test)]

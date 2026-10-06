@@ -608,7 +608,10 @@ pub static LANGUAGES: &[Language] = &[
         &["sql", "ddl", "dml"],
         (Some("--"), Some(("/*", "*/"))),
         grammar!(tree_sitter_sequel::LANGUAGE),
-        &[tree_sitter_sequel::HIGHLIGHTS_QUERY],
+        &[
+            tree_sitter_sequel::HIGHLIGHTS_QUERY,
+            include_str!("../queries/sql.scm"),
+        ],
     ),
     Language {
         injections: &[include_str!("../queries/svelte-injections.scm")],

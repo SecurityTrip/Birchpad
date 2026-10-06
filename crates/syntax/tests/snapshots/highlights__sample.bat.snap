@@ -21,3 +21,19 @@ function                 build.cmd
 keyword                   
 variable                 %TARGET%
 keyword                  goto :eof
+label                    :build
+keyword                  set
+constant                 /a
+string                   COUNT=3
+keyword                  if 
+variable                 %COUNT%
+keyword                   
+operator                 GTR
+keyword                   
+string                   2
+keyword                   
+function                 echo
+keyword                   
+string                   many
+keyword                  exit /b 
+number                   0

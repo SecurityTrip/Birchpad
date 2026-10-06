@@ -8,3 +8,6 @@ Some *text* with `code`.
 ```rust
 fn main() {}
 ```
+
+Escaped \*not italic\* and a line\
+break.

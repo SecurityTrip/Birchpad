@@ -3,6 +3,7 @@ source: crates/syntax/tests/highlights.rs
 expression: render(&path)
 ---
 language: haskell
+keyword.directive        {-# LANGUAGE OverloadedStrings #-}
 keyword                  module
 module                   Main
 keyword                  where

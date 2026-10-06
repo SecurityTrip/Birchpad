@@ -27,3 +27,25 @@ punctuation.delimiter    ;
 keyword                  return
 number                   0
 punctuation.delimiter    ;
+comment                  /* Retries until it gives up. */
+keyword                  static
+type                     int
+function                 retry
+type                     int
+variable                 times
+type                     int
+variable                 tries
+operator                 =
+number                   0
+punctuation.delimiter    ;
+label                    again
+keyword                  if
+variable                 tries
+operator                 ++
+operator                 <
+variable                 times
+label                    again
+punctuation.delimiter    ;
+keyword                  return
+variable                 tries
+punctuation.delimiter    ;

@@ -36,7 +36,9 @@ constant.builtin         42_u8
 punctuation.delimiter    ;
 function.macro           println!
 punctuation.bracket      (
-string                   "Hello, {}!"
+string                   "Hello, {}!
+escape                   \n
+string                   "
 punctuation.delimiter    ,
 punctuation.bracket      )
 punctuation.delimiter    ;

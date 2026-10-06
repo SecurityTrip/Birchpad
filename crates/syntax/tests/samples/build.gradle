@@ -13,3 +13,8 @@ def greet(String name, int times = 2) {
 }
 
 println greet('world')
+
+@groovy.transform.CompileStatic
+def shout(String text) {
+    return text.toUpperCase()
+}

@@ -140,8 +140,8 @@ What Phase 1 left for later is marked *(from Phase 1)* in the phases below.
 - [x] Incremental search (Ctrl+Alt+I): the match grows as the text is typed, Enter and
       Shift+Enter step through it, Highlight all marks and counts every match
       ([ADR 0022](adr/0022-search-modes-and-the-find-panel.md))
-- Side panels in docks beside the documents, with tabs, remembered for the next start
-  ([ADR 0026](adr/0026-side-panels.md)):
+- [x] Side panels in docks beside the documents, with tabs, remembered for the next start
+      ([ADR 0026](adr/0026-side-panels.md)):
   - [x] Document List
   - [x] Function List, from tree-sitter tags queries for 28 languages
   - [x] Document Map
@@ -173,9 +173,10 @@ What Phase 1 left for later is marked *(from Phase 1)* in the phases below.
     decorations following edits, and search checked against a plain reference
   - Fuzzing (`cargo fuzz`) of everything that reads outside input: decoders, settings and
     session files, Notepad++'s `session.xml`, the command line, the update manifest
-  - Highlighting: a real-world file for each language, and a check that every capture of a
-    query that the theme colors shows up in its sample, so that a capture hidden by another
-    pattern (JSON's keys) or by a misplaced capture (TOML's keys) fails
+  - [x] Highlighting: a real-world file for each language, and a check that every capture of a
+        query that the theme colors shows up in its sample, so that a capture hidden by another
+        pattern (JSON's keys) or by a misplaced capture (TOML's keys) fails; every sample parses
+        without errors ([ADR 0011](adr/0011-syntax-highlighting.md))
   - End-to-end tests of the built application on Windows, Linux and macOS: start, open, edit,
     save, quit and restore the session
   - Every bug fixed with a test that fails without the fix

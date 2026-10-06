@@ -72,6 +72,19 @@ impl std::fmt::Debug for LanguageConfig {
     }
 }
 
+impl LanguageConfig {
+    /// The highlights the language's query can give, one per capture that has one (for
+    /// checking that a sample shows each).
+    pub fn capture_highlights(&self) -> Vec<(String, Highlight)> {
+        self.highlights
+            .capture_names()
+            .iter()
+            .zip(&self.capture_highlights)
+            .filter_map(|(name, highlight)| Some(((*name).to_owned(), (*highlight)?)))
+            .collect()
+    }
+}
+
 type ConfigResult = Result<Arc<LanguageConfig>, String>;
 
 /// The compiled configuration of `language`. Compiling a large query takes a few milliseconds,
@@ -172,6 +185,10 @@ pub struct Layer {
 impl Layer {
     pub fn language(&self) -> &'static Language {
         self.config.language
+    }
+
+    pub fn tree(&self) -> &Tree {
+        &self.tree
     }
 
     /// Whether the last parse kept its tree, nothing in its text having changed.

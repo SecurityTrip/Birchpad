@@ -20,3 +20,17 @@ string                   "a"
 punctuation.delimiter    ,
 string                   "b"
 punctuation.bracket      ]
+punctuation.bracket      [
+type                     package
+punctuation.delimiter    .
+type                     metadata
+punctuation.bracket      ]
+property                 publish
+operator                 =
+boolean                  false
+property                 retries
+operator                 =
+number                   3
+property                 ratio
+operator                 =
+number                   1.5

@@ -15,3 +15,4 @@ constant.builtin         CC
 punctuation.bracket      )
 constant                 .PHONY
 punctuation.delimiter    :
+keyword.directive        include

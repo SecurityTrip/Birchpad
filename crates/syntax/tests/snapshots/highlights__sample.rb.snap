@@ -27,3 +27,16 @@ function.method          greet
 punctuation.bracket      (
 string.special           :world
 punctuation.bracket      )
+constant                 TIMES
+operator                 =
+number                   2
+function.method          puts
+string                   "Tab:
+escape                   \t
+string                   done 
+punctuation.special      #{
+constant                 TIMES
+embedded                  * 
+number                   1.5
+punctuation.bracket      }
+string                   "

@@ -13,3 +13,10 @@ class Greeting {
 void main() {
   print(const Greeting('world').render());
 }
+
+class Loud extends Greeting {
+  const Loud(String name) : super(name);
+
+  @override
+  String render() => super.render().toUpperCase();
+}

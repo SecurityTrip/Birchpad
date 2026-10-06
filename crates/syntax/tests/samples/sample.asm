@@ -1,16 +1,16 @@
-; A greeting, on Linux x86-64.
-section .data
-    message db "Hello, world!", 10
-    length  equ $ - message
+.intel_syntax noprefix  # A greeting on Linux x86-64, in GAS syntax
+.section .rodata
+message:
+.string "Hello, world!"
 
-section .text
-global _start
+.section .text
+.globl _start
 _start:
-    mov rax, 1
-    mov rdi, 1
-    mov rsi, message
-    mov rdx, length
+    mov rax, 1          # write
+    mov rdi, 1          // to standard output
+    lea rsi, [rip + message]
+    mov rdx, 13
     syscall
-    mov rax, 60
+    mov rax, 60         ; exit
     xor rdi, rdi
-    syscall
+    syscall             /* done */
