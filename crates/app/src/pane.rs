@@ -2,14 +2,15 @@
 //!
 //! The workspace has two panes, Notepad++'s main and second views; a pane without tabs is
 //! hidden. Both may show the same buffer, each in its own view ("Clone to Other View"). Tabs are
-//! dragged to another place in their pane or to the other pane.
+//! dragged to another place in their pane or to the other pane, and closed with their close
+//! button or the middle mouse button, as in Notepad++.
 
 use gpui_kit::component::button::{Button, ButtonVariants};
 use gpui_kit::component::tab::{Tab, TabBar};
 use gpui_kit::component::{Icon, IconName, Sizable};
 use gpui_kit::{
-    Context, Entity, EventEmitter, ScrollHandle, SharedString, Subscription, Window, div,
-    prelude::*, px, rgb,
+    Context, Entity, EventEmitter, MouseButton, ScrollHandle, SharedString, Subscription, Window,
+    div, prelude::*, px, rgb,
 };
 
 use crate::buffer::{BufferEvent, ReadOnly};
@@ -18,7 +19,7 @@ use crate::editor::EditorView;
 pub(crate) enum PaneEvent {
     /// Another tab became active, or the active tab's state changed.
     ActiveItemChanged,
-    /// The user clicked a tab's close button.
+    /// The user clicked a tab's close button, or the tab with the middle mouse button.
     CloseRequested(Entity<EditorView>),
     /// A tab was dropped on this pane, to go at `index`. It may come from the other pane.
     Dropped {
@@ -201,6 +202,7 @@ impl Pane {
             );
             let label = buffer.display_name();
             let close_item = item.clone();
+            let middle_item = item.clone();
             let dragged = DraggedTab {
                 view: item.clone(),
                 label: label.clone().into(),
@@ -233,6 +235,14 @@ impl Pane {
                             cx.emit(PaneEvent::CloseRequested(close_item.clone()));
                         })),
                 )
+                .on_mouse_up(
+                    MouseButton::Middle,
+                    cx.listener(move |_, _, _, cx| {
+                        cx.stop_propagation();
+                        cx.emit(PaneEvent::CloseRequested(middle_item.clone()));
+                    }),
+                )
+                .debug_selector(|| format!("tab-{index}"))
                 .on_drag(dragged, |tab, _, _, cx| cx.new(|_| tab.clone()))
                 .drag_over::<DraggedTab>(|style, _, _, _| style.bg(rgb(DROP_TARGET)))
                 .on_drop(cx.listener(move |_, tab: &DraggedTab, _, cx| {

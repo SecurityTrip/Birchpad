@@ -1182,6 +1182,37 @@ pub(crate) mod tests {
     }
 
     #[gpui_kit::test]
+    fn the_middle_mouse_button_closes_a_tab(cx: &mut TestAppContext) {
+        let (workspace, cx) = open_workspace(cx);
+        cx.simulate_keystrokes(&secondary("n"));
+        cx.simulate_input("changed");
+        cx.simulate_keystrokes(&secondary("n"));
+        assert_eq!(tab_names(&workspace, cx), ["new 1", "new 2", "new 3"]);
+
+        // A tab that is not the active one closes; the active one stays active.
+        click_on("tab-0", MouseButton::Middle, cx);
+        assert_eq!(tab_names(&workspace, cx), ["new 2", "new 3"]);
+        assert_eq!(active_text(&workspace, cx), "");
+
+        // Unsaved changes are asked about, as with the close button.
+        click_on("tab-0", MouseButton::Middle, cx);
+        assert!(cx.has_pending_prompt());
+        cx.simulate_prompt_answer("Don't Save");
+        cx.run_until_parked();
+        assert_eq!(tab_names(&workspace, cx), ["new 3"]);
+
+        // A left click only activates.
+        cx.simulate_keystrokes(&secondary("n"));
+        click_on("tab-0", MouseButton::Left, cx);
+        assert_eq!(tab_names(&workspace, cx), ["new 3", "new 1"]);
+        let active = workspace.read_with(cx, |workspace, cx| {
+            let view = workspace.active_view(cx).unwrap();
+            view.read(cx).buffer.read(cx).display_name()
+        });
+        assert_eq!(active, "new 3");
+    }
+
+    #[gpui_kit::test]
     fn command_line_opens_files_at_a_line_read_only(cx: &mut TestAppContext) {
         let dir = tempfile::tempdir().unwrap();
         std::fs::write(dir.path().join("a b.txt"), "one\n\ttwo\nthree\n").unwrap();
