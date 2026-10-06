@@ -113,18 +113,19 @@ async fn run(
     Ok(())
 }
 
-/// Waits for a frame or two, then until no document is still being read (at most ten seconds).
+/// Waits for a frame or two, then until no document is still being read or written (at most ten
+/// seconds): a save runs in the background, and a slow disk can take longer than a frame.
 async fn settle(window: AnyWindowHandle, workspace: &Entity<Workspace>, cx: &mut AsyncApp) {
     cx.background_executor().timer(SETTLE).await;
     for _ in 0..200 {
-        let loading = cx.update_window(window, |_, _, cx| {
+        let busy = cx.update_window(window, |_, _, cx| {
             let workspace = workspace.read(cx);
-            workspace
-                .all_views(cx)
-                .iter()
-                .any(|view| view.read(cx).buffer.read(cx).loading_progress().is_some())
+            workspace.all_views(cx).iter().any(|view| {
+                let buffer = view.read(cx).buffer.read(cx);
+                buffer.loading_progress().is_some() || buffer.is_saving()
+            })
         });
-        if !matches!(loading, Ok(true)) {
+        if !matches!(busy, Ok(true)) {
             return;
         }
         cx.background_executor()
