@@ -29,6 +29,22 @@ macOS, plus [`cargo-deny`](https://github.com/EmbarkStudios/cargo-deny) for lice
   never let an editor "fix" their encoding or line endings.
 - No `unsafe` without a comment explaining why it is sound, and a reviewer who agrees.
 
+### Tests
+
+Birchpad has no testers: its tests are its quality assurance. For every function or feature a
+change touches, the tests cover:
+
+- **the positive scenario**: it does what it should with ordinary input;
+- **the negative scenario**: invalid input, a missing or wrong argument, a refused action (a
+  read-only document, a file that cannot be read or written), an error path. It fails cleanly,
+  without a panic and without changing what it must not;
+- **boundary values**: empty text, the first and the last line or character, the end of the
+  text without a final line break, zero, one and the maximum, each limit and one past it, CRLF,
+  wide and combining characters, very long lines.
+
+A bug fix comes with a test that fails without the fix. `cargo llvm-cov --workspace` shows the
+code no test runs yet.
+
 ## Commits and pull requests
 
 - Use [Conventional Commits](https://www.conventionalcommits.org/) (`feat:`, `fix:`, `docs:`,
