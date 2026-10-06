@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 use futures::channel::oneshot;
 use gpui_kit::component::WindowExt as _;
 use gpui_kit::component::button::Button;
-use gpui_kit::component::dialog::{DialogClose, DialogFooter};
+use gpui_kit::component::dialog::DialogFooter;
 use gpui_kit::component::input::{Input, InputState};
 use gpui_kit::{AppContext as _, AsyncWindowContext, PathPromptOptions, Window, prelude::*};
 
@@ -126,7 +126,7 @@ fn open_text_dialog(
             .child(Input::new(&input).id("path"))
             .footer(
                 DialogFooter::new()
-                    .child(DialogClose::new().trigger(|button| button.label("Cancel")))
+                    .child(crate::workspace::dialog_close("Cancel"))
                     .child(crate::workspace::dialog_action(
                         Button::new("ok").label(title),
                     )),
@@ -145,10 +145,10 @@ fn open_text_dialog(
 
 #[cfg(test)]
 mod tests {
-    use gpui_kit::{TestAppContext, VisualTestContext};
+    use gpui_kit::{MouseButton, TestAppContext, VisualTestContext};
 
     use super::*;
-    use crate::workspace::tests::open_workspace;
+    use crate::workspace::tests::{click_on, open_workspace};
 
     fn open(initial: &str, cx: &mut VisualTestContext) -> oneshot::Receiver<Option<String>> {
         let (sender, receiver) = oneshot::channel();
@@ -189,6 +189,33 @@ mod tests {
         assert!(cx.update(|window, cx| window.has_active_dialog(cx)));
         cx.simulate_keystrokes("escape");
         assert_eq!(receiver.try_recv().unwrap(), Some(None));
+    }
+
+    #[gpui_kit::test]
+    fn its_buttons_answer_or_cancel_on_a_click(cx: &mut TestAppContext) {
+        let (_workspace, cx) = open_workspace(cx);
+        let mut receiver = open("C:/notes/a.txt", cx);
+        click_on("dialog-action", MouseButton::Left, cx);
+        assert_eq!(
+            receiver.try_recv().unwrap(),
+            Some(Some("C:/notes/a.txt".to_owned()))
+        );
+        assert!(!cx.update(|window, cx| window.has_active_dialog(cx)));
+
+        // An empty path is no answer for the mouse either; Cancel then answers nothing.
+        let mut receiver = open("", cx);
+        click_on("dialog-action", MouseButton::Left, cx);
+        assert_eq!(receiver.try_recv().unwrap(), None, "still asking");
+        click_on("dialog-close", MouseButton::Left, cx);
+        assert_eq!(receiver.try_recv().unwrap(), Some(None));
+        assert!(!cx.update(|window, cx| window.has_active_dialog(cx)));
+
+        // Only the left button presses them.
+        let mut receiver = open("C:/b.txt", cx);
+        click_on("dialog-action", MouseButton::Right, cx);
+        click_on("dialog-close", MouseButton::Middle, cx);
+        assert_eq!(receiver.try_recv().unwrap(), None);
+        assert!(cx.update(|window, cx| window.has_active_dialog(cx)));
     }
 
     #[gpui_kit::test]

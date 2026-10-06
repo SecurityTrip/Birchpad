@@ -12,7 +12,7 @@ use birchpad_core::Document;
 use birchpad_menu_bar::MenuBar;
 use gpui_kit::component::WindowExt as _;
 use gpui_kit::component::button::Button;
-use gpui_kit::component::dialog::DialogAction;
+use gpui_kit::component::dialog::{DialogAction, DialogClose};
 use gpui_kit::component::notification::Notification;
 use gpui_kit::component::{h_resizable, resizable_panel, v_resizable};
 use gpui_kit::{
@@ -193,7 +193,15 @@ pub(crate) fn report_error(error: &anyhow::Error, window: &mut Window, cx: &mut 
 /// The confirming button of a dialog footer, at its natural width (`DialogAction` alone fills
 /// the footer).
 pub(crate) fn dialog_action(button: Button) -> impl IntoElement {
-    div().child(DialogAction::new().child(button))
+    div()
+        .debug_selector(|| "dialog-action".into())
+        .child(DialogAction::new().child(button))
+}
+
+/// A button that closes a dialog without its action ("Cancel", "Not Now").
+pub(crate) fn dialog_close(label: &'static str) -> DialogClose {
+    DialogClose::new()
+        .trigger(move |button| button.label(label).debug_selector(|| "dialog-close".into()))
 }
 
 /// Shows a warning to the user without interrupting them.
@@ -1198,11 +1206,16 @@ pub(crate) mod tests {
     }
 
     /// Clicks the element drawn with this debug selector, with `button`.
-    fn click_on(selector: &'static str, button: MouseButton, cx: &mut VisualTestContext) {
-        let center = cx
-            .debug_bounds(selector)
-            .unwrap_or_else(|| panic!("{selector} is not drawn"))
-            .center();
+    #[track_caller]
+    pub(crate) fn click_on(
+        selector: &'static str,
+        button: MouseButton,
+        cx: &mut VisualTestContext,
+    ) {
+        let Some(bounds) = cx.debug_bounds(selector) else {
+            panic!("{selector} is not drawn");
+        };
+        let center = bounds.center();
         cx.simulate_mouse_down(center, button, Modifiers::none());
         cx.simulate_mouse_up(center, button, Modifiers::none());
         cx.run_until_parked();

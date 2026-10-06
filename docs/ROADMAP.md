@@ -167,8 +167,9 @@ What Phase 1 left for later is marked *(from Phase 1)* in the phases below.
   - [x] Every command of the registry run in every kind of document (empty, one long line,
         multiple carets, a rectangular selection, read-only, word wrap, both views, a large
         file), checking that it neither panics nor breaks the document
-  - The mouse in GUI tests, not only the keyboard: tabs (click, middle click, close button,
-    drag), the menu bar, the status bar's menus, the find and search results panels, prompts
+  - [x] The mouse in GUI tests, not only the keyboard: tabs (click, middle click, close
+        button, drag), the menu bar, the status bar's menus, the find and search results
+        panels, the side panels, dialogs
   - Property tests (`proptest`) of the text model: edits, selections, undo and redo,
     decorations following edits, and search checked against a plain reference
   - Fuzzing (`cargo fuzz`) of everything that reads outside input: decoders, settings and

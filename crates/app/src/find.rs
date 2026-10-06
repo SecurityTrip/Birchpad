@@ -16,7 +16,7 @@ use birchpad_core::search::{Direction, Query, SearchMode, Searcher, token_at};
 use birchpad_core::{Edit, Rope, Transaction, ops};
 use gpui_kit::component::button::{Button, ButtonVariants as _};
 use gpui_kit::component::checkbox::Checkbox;
-use gpui_kit::component::dialog::{DialogClose, DialogFooter};
+use gpui_kit::component::dialog::DialogFooter;
 use gpui_kit::component::input::{Input, InputEvent, InputState};
 use gpui_kit::component::radio::{Radio, RadioGroup};
 use gpui_kit::component::tab::{Tab, TabBar};
@@ -405,6 +405,7 @@ impl FindBar {
             .label(label)
             .checked(checked)
             .small()
+            .debug_selector(move || id.to_owned())
             .on_click(move |checked, _, cx| {
                 let checked = *checked;
                 this.update(cx, |this, cx| this.set_options(|o| set(o, checked), cx))
@@ -425,6 +426,7 @@ impl FindBar {
             .label(label)
             .checked(checked)
             .small()
+            .debug_selector(move || id.to_owned())
             .on_click(move |checked, _, cx| {
                 let checked = *checked;
                 this.update(cx, |this, cx| {
@@ -445,7 +447,11 @@ impl Render for FindBar {
             cx.listener(move |_, _, _, cx: &mut Context<Self>| cx.emit(event()))
         };
         let button = |id: &'static str, label: &'static str, event: fn() -> FindBarEvent| {
-            Button::new(id).small().label(label).on_click(emit(event))
+            Button::new(id)
+                .small()
+                .label(label)
+                .debug_selector(move || id.to_owned())
+                .on_click(emit(event))
         };
 
         let tabs = TabBar::new("find-tabs")
@@ -458,14 +464,31 @@ impl Render for FindBar {
                 cx.emit(FindBarEvent::TabChanged);
                 cx.notify();
             }))
-            .child(Tab::new().label("Find"))
-            .child(Tab::new().label("Replace"))
-            .child(Tab::new().label("Find in Files"))
-            .child(Tab::new().label("Mark"))
+            .child(
+                Tab::new()
+                    .label("Find")
+                    .debug_selector(|| "tab-find".into()),
+            )
+            .child(
+                Tab::new()
+                    .label("Replace")
+                    .debug_selector(|| "tab-replace".into()),
+            )
+            .child(
+                Tab::new()
+                    .label("Find in Files")
+                    .debug_selector(|| "tab-find-in-files".into()),
+            )
+            .child(
+                Tab::new()
+                    .label("Mark")
+                    .debug_selector(|| "tab-mark".into()),
+            )
             .suffix(
                 Button::new("close-find")
                     .small()
                     .icon(IconName::Close)
+                    .debug_selector(|| "close-find".into())
                     .on_click(emit(|| FindBarEvent::Close)),
             );
 
@@ -682,12 +705,21 @@ impl Render for FindBar {
                             let mode = modes[*index];
                             this.set_options(|o| o.mode = mode, cx);
                         }))
-                        .child(Radio::new("mode-normal").label("Normal"))
+                        .child(
+                            Radio::new("mode-normal")
+                                .label("Normal")
+                                .debug_selector(|| "mode-normal".into()),
+                        )
                         .child(
                             Radio::new("mode-extended")
-                                .label("Extended (\\n, \\r, \\t, \\0, \\x...)"),
+                                .label("Extended (\\n, \\r, \\t, \\0, \\x...)")
+                                .debug_selector(|| "mode-extended".into()),
                         )
-                        .child(Radio::new("mode-regex").label("Regular expression")),
+                        .child(
+                            Radio::new("mode-regex")
+                                .label("Regular expression")
+                                .debug_selector(|| "mode-regex".into()),
+                        ),
                 ),
             )
             .child(
@@ -1388,7 +1420,7 @@ impl Workspace {
                 .child(go_to)
                 .footer(
                     DialogFooter::new()
-                        .child(DialogClose::new().trigger(|button| button.label("Cancel")))
+                        .child(crate::workspace::dialog_close("Cancel"))
                         .child(crate::workspace::dialog_action(
                             Button::new("go").label("Go"),
                         )),
@@ -1528,6 +1560,10 @@ impl Render for GoTo {
             )
     }
 }
+
+#[cfg(test)]
+#[path = "find_mouse_tests.rs"]
+mod mouse_tests;
 
 #[cfg(test)]
 mod tests {
