@@ -331,6 +331,72 @@ mod tests {
     }
 
     #[test]
+    fn garbage_is_refused_and_later_launches_still_get_through() {
+        let dir = tempfile::tempdir().unwrap();
+        let address = address(dir.path());
+        let Instance::Primary(server) = start(&address, &CommandLine::default()) else {
+            panic!("the first launch should become the primary instance");
+        };
+        let (sender, received) = mpsc::channel();
+        server.serve(move |request| {
+            sender.send(request).unwrap();
+        });
+        // Not JSON, and a message past the size limit: no answer, nothing handed over.
+        for message in [
+            b"not json\n".to_vec(),
+            vec![b'['; MAX_MESSAGE as usize + 10],
+        ] {
+            let mut stream = BufReader::new(Stream::connect(address.name().unwrap()).unwrap());
+            let _ = stream.get_mut().write_all(&message);
+            let _ = stream.get_mut().write_all(b"\n");
+            let mut answer = String::new();
+            let _ = stream.read_line(&mut answer);
+            assert_eq!(answer, "", "no ok for garbage");
+        }
+        assert!(received.recv_timeout(Duration::from_millis(200)).is_err());
+        assert!(matches!(
+            start(&address, &CommandLine::default()),
+            Instance::Secondary
+        ));
+        assert!(received.recv_timeout(Duration::from_secs(5)).is_ok());
+    }
+
+    #[test]
+    fn an_answer_other_than_ok_is_an_error() {
+        let dir = tempfile::tempdir().unwrap();
+        let address = address(dir.path());
+        let listener = ListenerOptions::new()
+            .name(address.name().unwrap())
+            .create_sync()
+            .unwrap();
+        thread::spawn(move || {
+            let mut stream = BufReader::new(listener.incoming().next().unwrap().unwrap());
+            let mut line = String::new();
+            stream.read_line(&mut line).unwrap();
+            stream.get_mut().write_all(b"busy\n").unwrap();
+        });
+        let error = hand_off(&address, &CommandLine::default()).unwrap_err();
+        assert!(error.to_string().contains("unexpected answer"), "{error}");
+    }
+
+    #[test]
+    fn nothing_listens_at_a_new_address() {
+        let dir = tempfile::tempdir().unwrap();
+        let error = hand_off(&address(dir.path()), &CommandLine::default()).unwrap_err();
+        assert!(is_unoccupied(&address(dir.path()), &error), "{error}");
+        // Other failures do not mean that nobody listens.
+        let timed_out = io::Error::from(io::ErrorKind::TimedOut);
+        assert!(!is_unoccupied(&address(dir.path()), &timed_out));
+    }
+
+    #[test]
+    fn the_hash_of_socket_names_is_fnv1a() {
+        assert_eq!(fnv1a(b""), 0xcbf2_9ce4_8422_2325, "the offset basis");
+        assert_eq!(fnv1a(b"a"), 0xaf63_dc4c_8601_ec8c);
+        assert_ne!(fnv1a(b"ab"), fnv1a(b"ba"));
+    }
+
+    #[test]
     fn socket_paths_respect_the_length_limit() {
         let deep = PathBuf::from(format!("/home/u/{}", "nested/".repeat(20)));
         let dirs = [deep.clone(), PathBuf::from("/home/u/.local/share/birchpad")];
@@ -339,6 +405,22 @@ mod tests {
             PathBuf::from("/home/u/.local/share/birchpad/b.sock")
         );
         assert_eq!(socket_path("b.sock", &dirs[..1]), deep.join("b.sock"));
+        // Exactly at the limit fits, one byte more does not. Without folders there is nowhere
+        // to listen: an empty path, which fails and leaves Birchpad standalone.
+        let name = "b.sock";
+        let fits = PathBuf::from("/".repeat(MAX_SOCKET_PATH - name.len()));
+        assert_eq!(fits.join(name).as_os_str().len(), MAX_SOCKET_PATH);
+        let longer = PathBuf::from("/".repeat(MAX_SOCKET_PATH - name.len() + 1));
+        let fallback = PathBuf::from("/tmp");
+        assert_eq!(
+            socket_path(name, &[fits.clone(), fallback.clone()]),
+            fits.join(name)
+        );
+        assert_eq!(
+            socket_path(name, &[longer, fallback.clone()]),
+            fallback.join(name)
+        );
+        assert_eq!(socket_path(name, &[]), PathBuf::new());
     }
 
     #[test]

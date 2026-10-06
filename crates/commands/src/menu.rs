@@ -546,6 +546,27 @@ mod tests {
     }
 
     #[test]
+    fn labels_come_from_the_item_or_the_catalog() {
+        let titled = MenuItem::Command {
+            invocation: Invocation::new("file.new"),
+            label: None,
+        };
+        assert_eq!(titled.label(), Some("New"));
+        let labelled = MenuItem::Command {
+            invocation: Invocation::new("file.new"),
+            label: Some("Another".into()),
+        };
+        assert_eq!(labelled.label(), Some("Another"));
+        // A command the catalog does not know has no label of its own; a separator none.
+        let unknown = MenuItem::Command {
+            invocation: Invocation::new("no.such"),
+            label: None,
+        };
+        assert_eq!(unknown.label(), None);
+        assert_eq!(MenuItem::Separator.label(), None);
+    }
+
+    #[test]
     fn every_menu_command_exists_and_has_a_label() {
         for menu in main_menu() {
             for invocation in menu.invocations() {
