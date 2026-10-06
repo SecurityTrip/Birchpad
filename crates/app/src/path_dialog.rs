@@ -116,6 +116,7 @@ fn open_text_dialog(
         }
     };
     let on_cancel = respond.clone();
+    let field = input.clone();
     window.open_dialog(cx, move |dialog, _, _| {
         let input = input.clone();
         let respond = respond.clone();
@@ -140,6 +141,11 @@ fn open_text_dialog(
                 true
             })
             .on_close(move |_, _, _| on_cancel(None))
+    });
+    // Typing replaces the suggestion at once, as in Notepad++'s dialogs.
+    field.update(cx, |input, cx| {
+        input.focus(window, cx);
+        input.select_all(window, cx);
     });
 }
 
@@ -178,6 +184,34 @@ mod tests {
         let mut receiver = open("C:/notes/a.txt", cx);
         cx.simulate_keystrokes("escape");
         assert_eq!(receiver.try_recv().unwrap(), Some(None));
+    }
+
+    #[gpui_kit::test]
+    fn typing_replaces_the_suggestion(cx: &mut TestAppContext) {
+        let (_workspace, cx) = open_workspace(cx);
+        let mut receiver = open("Project Name", cx);
+        cx.simulate_input("Editor");
+        cx.simulate_keystrokes("enter");
+        assert_eq!(
+            receiver.try_recv().unwrap(),
+            Some(Some("Editor".to_owned()))
+        );
+
+        // The field keeps the focus: arrows and Backspace edit the suggestion itself.
+        let mut receiver = open("notes.txt", cx);
+        cx.simulate_keystrokes("end backspace backspace backspace backspace");
+        cx.simulate_input(".md");
+        cx.simulate_keystrokes("enter");
+        assert_eq!(
+            receiver.try_recv().unwrap(),
+            Some(Some("notes.md".to_owned()))
+        );
+
+        // An empty suggestion takes the typing as it is.
+        let mut receiver = open("", cx);
+        cx.simulate_input("x");
+        cx.simulate_keystrokes("enter");
+        assert_eq!(receiver.try_recv().unwrap(), Some(Some("x".to_owned())));
     }
 
     #[gpui_kit::test]

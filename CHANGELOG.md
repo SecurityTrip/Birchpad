@@ -77,6 +77,9 @@ version's release notes from its section here.
 - JSON keys are colored as keys, no longer like the strings
   ([#10](https://github.com/SecurityTrip/Birchpad/issues/10)), and TOML keys no longer take the
   color of table names.
+- Dialogs that ask for a name or a path (the Project Panels' Add New Project, Rename and Add
+  Folder, and the dialog used when the system's file dialog is not available) put the focus in
+  their field with its suggestion selected; typing went nowhere until a click in the field.
 - File > Load Session... and `-openSession` read a Notepad++ `session.xml` that an editor saved
   with a byte order mark; it was taken for Birchpad's format and refused as damaged.
 - SQL numbers are colored as numbers; they never were, as the grammar's query looked for them
