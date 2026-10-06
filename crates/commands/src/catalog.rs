@@ -186,6 +186,8 @@ pub const COMMANDS: &[CommandSpec] = &[
     workspace("search.next-result", "Next Search Result"),
     workspace("search.previous-result", "Previous Search Result"),
     workspace("search.go-to", "Go To..."),
+    workspace("navigate.back", "Go Back"),
+    workspace("navigate.forward", "Go Forward"),
     editor("search.go-to-matching-brace", "Go to Matching Brace"),
     editor(
         "search.select-to-matching-brace",

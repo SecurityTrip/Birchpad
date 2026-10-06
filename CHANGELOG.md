@@ -25,6 +25,9 @@ version's release notes from its section here.
 - Incremental search, as in Notepad++ (Search > Incremental Search, Ctrl+Alt+I): a bar that
   finds the text while it is typed, Enter and Shift+Enter for the next and previous match,
   Match case, Whole word, and Highlight all, which marks and counts every match.
+- Go Back and Go Forward (Search menu; Alt+Left and Alt+Right, Ctrl+- and Ctrl+Shift+- on
+  macOS) return to the places the caret jumped from: other documents, search results, Go To.
+  A closed file opens again.
 - Find in Files (Ctrl+Shift+F): Find All and Replace in Files in the files of a folder, with
   Notepad++'s filters (`*.rs *.toml !*.bak !\target !+\node_modules`), In all sub-folders, In
   hidden folders and Follow current doc. Open documents are searched with their unsaved changes

@@ -106,6 +106,28 @@ platforms = ["windows", "linux"]
 keys = "secondary-g"
 command = "search.go-to"
 
+# Go Back and Go Forward: Alt+Left and Alt+Right as in browsers; macOS moves by word with
+# Option+arrows and takes Ctrl+- and Ctrl+Shift+- instead, as Xcode and Visual Studio Code do.
+[[binding]]
+keys = "alt-left"
+command = "navigate.back"
+platforms = ["windows", "linux"]
+
+[[binding]]
+keys = "alt-right"
+command = "navigate.forward"
+platforms = ["windows", "linux"]
+
+[[binding]]
+keys = "ctrl--"
+command = "navigate.back"
+platforms = ["macos"]
+
+[[binding]]
+keys = "ctrl-shift--"
+command = "navigate.forward"
+platforms = ["macos"]
+
 [[binding]]
 keys = "secondary-b"
 command = "search.go-to-matching-brace"

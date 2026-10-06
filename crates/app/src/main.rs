@@ -27,6 +27,7 @@ mod incremental;
 #[cfg(test)]
 mod language_tests;
 mod menus;
+mod navigation;
 mod pane;
 mod path_dialog;
 mod search_results;

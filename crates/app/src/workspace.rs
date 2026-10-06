@@ -28,6 +28,7 @@ use crate::editor::{EditorEvent, EditorView, ViewSettings};
 use crate::find::FindBar;
 use crate::incremental::IncrementalBar;
 use crate::menus::{self, MenuState};
+use crate::navigation::{History, Place};
 use crate::pane::{Pane, PaneEvent};
 use crate::search_results::SearchResults;
 use crate::session::SessionState;
@@ -133,6 +134,7 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
     crate::find::register_commands(registry);
     crate::help::register_commands(registry);
     crate::incremental::register_commands(registry);
+    crate::navigation::register_commands(registry);
     crate::session::register_commands(registry);
     crate::disk::register_commands(registry);
 }
@@ -214,10 +216,12 @@ pub(crate) struct Workspace {
     pub(crate) search_results: Entity<SearchResults>,
     title: String,
     buffer_subscriptions: HashMap<EntityId, Subscription>,
-    /// Focus and scroll events of each view.
-    view_subscriptions: HashMap<EntityId, [Subscription; 2]>,
+    /// Focus and scroll events of each view, and its changes for the navigation history.
+    view_subscriptions: HashMap<EntityId, [Subscription; 3]>,
     pub(crate) session_state: SessionState,
     pub(crate) disk_state: DiskState,
+    /// Go Back and Go Forward.
+    pub(crate) navigation: History<Place>,
     _subscriptions: Vec<Subscription>,
 }
 
@@ -253,6 +257,7 @@ impl Workspace {
             view_subscriptions: HashMap::new(),
             session_state: SessionState::default(),
             disk_state: DiskState::default(),
+            navigation: History::default(),
             _subscriptions: subscriptions,
         };
         // Back in front: files may have changed meanwhile.
@@ -299,6 +304,7 @@ impl Workspace {
     ) {
         match event {
             PaneEvent::ActiveItemChanged => {
+                self.note_place(cx);
                 self.refresh_menus(cx);
                 cx.notify();
             }
@@ -406,8 +412,10 @@ impl Workspace {
             }
         });
         let events = cx.subscribe_in(view, window, Self::on_editor_event);
+        // Wherever its caret goes, for Go Back.
+        let changes = cx.observe(view, |this, _, cx| this.note_place(cx));
         self.view_subscriptions
-            .insert(view.entity_id(), [focused, events]);
+            .insert(view.entity_id(), [focused, events, changes]);
     }
 
     /// View > Move/Clone Current Document.
@@ -683,10 +691,8 @@ impl Workspace {
                 self.refresh_menus(cx);
                 cx.notify();
             }
-            BufferEvent::Edited { .. }
-            | BufferEvent::MarksChanged
-            | BufferEvent::SyntaxChanged
-            | BufferEvent::FollowEnd => {}
+            BufferEvent::Edited { transaction, .. } => self.map_places(buffer, transaction),
+            BufferEvent::MarksChanged | BufferEvent::SyntaxChanged | BufferEvent::FollowEnd => {}
         }
     }
 

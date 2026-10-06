@@ -141,7 +141,9 @@ What Phase 1 left for later is marked *(from Phase 1)* in the phases below.
       Shift+Enter step through it, Highlight all marks and counts every match
       ([ADR 0022](adr/0022-search-modes-and-the-find-panel.md))
 - Function List, Document Map, Document List, Folder as Workspace, Project panels
-- Clipboard history, character panel, navigation history
+- Clipboard history, character panel
+- [x] Navigation history: Go Back and Go Forward through the places the caret jumped from,
+      across documents, reopening closed files ([ADR 0025](adr/0025-navigation-history.md))
 - [x] Issues reported on 0.1.2: a middle click closes a tab
       ([#9](https://github.com/SecurityTrip/Birchpad/issues/9)), JSON keys colored as keys
       ([#10](https://github.com/SecurityTrip/Birchpad/issues/10)); found on the way, the close

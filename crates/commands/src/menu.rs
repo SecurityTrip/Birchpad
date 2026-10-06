@@ -385,6 +385,8 @@ pub fn main_menu() -> Vec<Menu> {
             cmd("search.previous-result"),
             Separator,
             cmd("search.go-to"),
+            cmd("navigate.back"),
+            cmd("navigate.forward"),
             cmd("search.go-to-matching-brace"),
             cmd("search.select-to-matching-brace"),
             Separator,
