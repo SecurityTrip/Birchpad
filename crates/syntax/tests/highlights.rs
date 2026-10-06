@@ -21,7 +21,7 @@ fn render(path: &Path) -> String {
         .unwrap();
     syntax.install(tree);
     let mut out = format!("language: {}\n", language.id);
-    for (range, highlight) in syntax.highlights(&text, 0..text.len()) {
+    for (range, highlight) in syntax.all_highlights(&text, 0..text.len()) {
         let token = source[range].replace('\n', "\\n");
         writeln!(out, "{:<24} {token}", highlight.name()).unwrap();
     }

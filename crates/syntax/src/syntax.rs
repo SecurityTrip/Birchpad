@@ -307,6 +307,28 @@ impl Syntax {
     /// earlier one, as the grammars' queries expect (general patterns first, specific ones
     /// after). An embedded language's highlights win over its host's.
     pub fn highlights(&self, text: &Rope, range: Range<usize>) -> Vec<(Range<usize>, Highlight)> {
+        // Queries are fast (well under a millisecond for a screen) except on trees that error
+        // recovery made very deep, such as a whole file turned into one nested expression
+        // after a typo. Those get a time budget and partial highlights instead of a stall.
+        self.highlights_until(text, range, Some(Instant::now() + HIGHLIGHT_BUDGET))
+    }
+
+    /// Every highlight of `range`, however long the query takes: for checks and exports, where
+    /// a partial result is wrong, not the screen.
+    pub fn all_highlights(
+        &self,
+        text: &Rope,
+        range: Range<usize>,
+    ) -> Vec<(Range<usize>, Highlight)> {
+        self.highlights_until(text, range, None)
+    }
+
+    fn highlights_until(
+        &self,
+        text: &Rope,
+        range: Range<usize>,
+        deadline: Option<Instant>,
+    ) -> Vec<(Range<usize>, Highlight)> {
         let Some(tree) = &self.tree else {
             return Vec::new();
         };
@@ -314,10 +336,6 @@ impl Syntax {
         if range.is_empty() {
             return Vec::new();
         }
-        // Queries are fast (well under a millisecond for a screen) except on trees that error
-        // recovery made very deep, such as a whole file turned into one nested expression
-        // after a typo. Those get a time budget and partial highlights instead of a stall.
-        let started = Instant::now();
         let mut found = Vec::new();
         capture(
             &self.config,
@@ -326,7 +344,7 @@ impl Syntax {
             0,
             text,
             &range,
-            started,
+            deadline,
             &mut found,
         );
         for layer in &self.layers {
@@ -342,7 +360,7 @@ impl Syntax {
                     layer.depth,
                     text,
                     &range,
-                    started,
+                    deadline,
                     &mut found,
                 );
             }
@@ -402,11 +420,11 @@ fn capture(
     depth: u8,
     text: &Rope,
     range: &Range<usize>,
-    started: Instant,
+    deadline: Option<Instant>,
     found: &mut Vec<Capture>,
 ) {
     let mut over_budget = |_: &tree_sitter::QueryCursorState| {
-        if started.elapsed() > HIGHLIGHT_BUDGET {
+        if deadline.is_some_and(|deadline| Instant::now() > deadline) {
             ControlFlow::Break(())
         } else {
             ControlFlow::Continue(())
@@ -1259,6 +1277,37 @@ mod tests {
         // A range running past the end is cut there.
         let whole = syntax.highlights(&text, 0..text.len());
         assert_eq!(syntax.highlights(&text, 0..1000), whole);
+        // The same without the time budget.
+        assert!(syntax.all_highlights(&text, 3..3).is_empty());
+        assert!(syntax.all_highlights(&text, 50..60).is_empty());
+        let all = syntax.all_highlights(&text, 0..text.len());
+        assert_eq!(syntax.all_highlights(&text, 0..1000), all);
+        assert!(!all.is_empty());
+    }
+
+    #[test]
+    fn all_highlights_reach_the_end_of_a_deep_tree() {
+        // A file of thousands of nested parentheses, as a typo can make one: the screen's
+        // query may stop at its budget, never with more than the query without one.
+        let source = format!(
+            "let x = {}1{};\nlet s = \"end\\n\";\n",
+            "(".repeat(5000),
+            ")".repeat(5000)
+        );
+        let text = Rope::from_str(&source);
+        let syntax = parse("javascript", &text);
+        let all = syntax.all_highlights(&text, 0..text.len());
+        let budgeted = syntax.highlights(&text, 0..text.len());
+        assert!(budgeted.len() <= all.len());
+        let end = source.find("\"end").unwrap();
+        let named = named(&all, &source);
+        assert!(
+            named
+                .iter()
+                .any(|(text, name)| text.starts_with("\"end") && *name == "string"),
+            "no string at {end}: {:?}",
+            &named[named.len().saturating_sub(5)..]
+        );
     }
 
     #[test]

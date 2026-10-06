@@ -69,7 +69,7 @@ fn sample_colors(
         .unwrap();
     syntax.install(parsed);
     let shown: BTreeSet<u32> = syntax
-        .highlights(&text, 0..text.len())
+        .all_highlights(&text, 0..text.len())
         .into_iter()
         .filter_map(|(_, highlight)| theme::syntax_style(highlight).map(|style| style.color))
         .collect();
