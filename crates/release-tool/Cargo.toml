@@ -25,7 +25,7 @@ sha2 = "0.11"
 
 # The `icons` example renders the application icon (the version GPUI uses).
 [dev-dependencies]
-resvg = { version = "0.46", default-features = false }
+resvg = { version = "0.48", default-features = false }
 tempfile = "3"
 
 [lints]
