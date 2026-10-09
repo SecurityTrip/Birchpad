@@ -22,10 +22,10 @@ pub use session::{
     create_private_dir, write_private,
 };
 pub use settings::{
-    AutoIndent, ChangeDetection, ChangeHistory, CurrentLine, DiagnosticsSettings, Edge,
-    EditorSettings, FileSettings, HighlightingSettings, NetworkSettings, PluginInstall,
-    PluginSettings, SessionSettings, Settings, SmartHighlighting, TokenMatching, UpdateChannel,
-    UpdateMode, UpdateSettings,
+    AppearanceSettings, AutoIndent, ChangeDetection, ChangeHistory, CurrentLine,
+    DiagnosticsSettings, Edge, EditorSettings, FileSettings, HighlightingSettings, NetworkSettings,
+    PluginInstall, PluginSettings, SessionSettings, Settings, SmartHighlighting, TokenMatching,
+    UpdateChannel, UpdateMode, UpdateSettings,
 };
 pub use state::{
     FindInFilesState, MAX_RECENT_FILES, PanelsState, SplitOrientation, UpdateState, UserState,

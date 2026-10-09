@@ -107,9 +107,9 @@ pub(crate) fn loading(progress: f32) -> AnyElement {
                 .px_4()
                 .py_2()
                 .rounded_md()
-                .bg(rgb(0xf6f8fa))
+                .bg(crate::theme::paint(crate::theme::ui().surface))
                 .border_1()
-                .border_color(rgb(0xd0d7de))
+                .border_color(crate::theme::paint(crate::theme::ui().border))
                 .child(format!("Loading… {:.0}%", progress * 100.)),
         )
         .into_any_element()

@@ -601,6 +601,7 @@ dependencies = [
  "birchpad-io",
  "birchpad-menu-bar",
  "birchpad-syntax",
+ "birchpad-theme",
  "birchpad-update",
  "birchpad-view",
  "embed-resource",

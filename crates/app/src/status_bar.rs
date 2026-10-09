@@ -10,7 +10,7 @@ use birchpad_core::{Encoding, Format, LineEnding};
 use gpui_kit::component::Sizable as _;
 use gpui_kit::component::button::{Button, ButtonVariants as _};
 use gpui_kit::component::menu::{DropdownMenu as _, PopupMenu};
-use gpui_kit::{App, Context, Window, div, prelude::*, px, rgb};
+use gpui_kit::{App, Context, Window, div, prelude::*, px};
 use serde_json::json;
 
 use crate::commands::RunCommand;
@@ -95,7 +95,7 @@ fn section(child: impl IntoElement) -> gpui_kit::Div {
         .h_full()
         .px_3()
         .border_l_1()
-        .border_color(rgb(0xd0d7de))
+        .border_color(crate::theme::paint(crate::theme::ui().border))
         .child(child)
 }
 
@@ -111,8 +111,8 @@ pub(crate) fn render<V: 'static>(
         .flex_none()
         .items_center()
         .border_t_1()
-        .border_color(rgb(0xd0d7de))
-        .bg(rgb(0xf6f8fa))
+        .border_color(crate::theme::paint(crate::theme::ui().border))
+        .bg(crate::theme::paint(crate::theme::ui().surface))
         .text_size(px(12.));
     let Some(info) = info else {
         return bar.child(div().px_3().flex_1().child("Normal text file"));
@@ -232,7 +232,9 @@ fn add_items(
                 }
             }
             // The status bar's menus show line endings and encodings only.
-            MenuItem::Placeholder(Placeholder::RecentFiles | Placeholder::Languages) => {}
+            MenuItem::Placeholder(
+                Placeholder::RecentFiles | Placeholder::Languages | Placeholder::Themes,
+            ) => {}
         }
     }
     menu

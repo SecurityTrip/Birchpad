@@ -799,8 +799,10 @@ impl ProjectPanel {
             .whitespace_nowrap()
             .overflow_hidden()
             .cursor_pointer()
-            .when(selected, |div| div.bg(rgb(0xddf4ff)))
-            .hover(|div| div.bg(rgb(0xf3f4f6)))
+            .when(selected, |div| {
+                div.bg(crate::theme::paint(crate::theme::ui().selected))
+            })
+            .hover(|div| div.bg(crate::theme::paint(crate::theme::ui().hovered)))
             .child(div().w(px(INDENT)).flex_none().child(arrow))
             .child(
                 div()
@@ -838,7 +840,7 @@ impl Render for ProjectPanel {
                 .flex()
                 .flex_col()
                 .gap_2()
-                .text_color(rgb(0x57606a))
+                .text_color(crate::theme::paint(crate::theme::ui().muted))
                 .child("No workspace")
                 .child(
                     div()
@@ -900,7 +902,7 @@ impl Render for ProjectPanel {
                 div()
                     .p_1()
                     .flex_none()
-                    .text_color(rgb(0xcf222e))
+                    .text_color(crate::theme::paint(crate::theme::ui().error))
                     .child(error)
             }))
             .child(div().flex_1().min_h(px(0.)).child(body))

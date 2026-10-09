@@ -40,8 +40,11 @@ mod session_tests;
 #[cfg(test)]
 mod split_tests;
 mod status_bar;
+mod themes;
 mod updates;
 mod workspace;
+
+pub(crate) use editor::theme;
 
 use std::fmt::Write as _;
 
@@ -103,6 +106,7 @@ fn main() {
             let mut app_state = AppState::new(settings, paths);
             app_state.no_session = command_line.no_session;
             cx.set_global(app_state);
+            themes::init(cx);
             updates::Updates::install(
                 updates::Updates::http(),
                 updates::trusted_keys(),

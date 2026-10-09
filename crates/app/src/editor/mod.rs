@@ -32,7 +32,7 @@ use birchpad_view::{Block, BlockPoint, DisplayMap, LayoutConfig, tab_advance};
 use gpui_kit::{
     App, Bounds, ClipboardItem, Context, Entity, EntityInputHandler, EventEmitter, FocusHandle,
     Focusable, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, Pixels, Point,
-    ScrollWheelEvent, Subscription, Task, UTF16Selection, Window, div, point, prelude::*, px, rgb,
+    ScrollWheelEvent, Subscription, Task, UTF16Selection, Window, div, point, prelude::*, px,
 };
 use serde::Deserialize;
 
@@ -1490,8 +1490,8 @@ impl Render for EditorView {
             .size_full()
             .flex()
             .flex_col()
-            .bg(rgb(0xffffff))
-            .text_color(rgb(0x1f2328))
+            .bg(theme::paint(theme::editor().background))
+            .text_color(theme::paint(theme::editor().text))
             .children(banner)
             .child(
                 div()

@@ -35,6 +35,8 @@ pub enum Placeholder {
     CharacterSets { command: &'static str },
     /// The languages, grouped by first letter as in Notepad++, each invoking `language.set`.
     Languages,
+    /// The built-in themes and those of the `themes` folder, each invoking `settings.theme`.
+    Themes,
 }
 
 impl MenuItem {
@@ -547,12 +549,20 @@ pub fn main_menu() -> Vec<Menu> {
         ],
     );
 
+    let settings = Menu::new(
+        "Settings",
+        vec![
+            Submenu(Menu::new("Theme", vec![Dynamic(Placeholder::Themes)])),
+            Submenu(Menu::new("Import", vec![cmd("settings.import-theme")])),
+        ],
+    );
+
     let help = Menu::new(
         "Help",
         vec![cmd("help.check-updates"), Separator, cmd("help.about")],
     );
 
-    vec![file, edit, search, view, encoding, language, help]
+    vec![file, edit, search, view, encoding, language, settings, help]
 }
 
 #[cfg(test)]
@@ -565,7 +575,7 @@ mod tests {
         assert_eq!(
             titles,
             [
-                "File", "Edit", "Search", "View", "Encoding", "Language", "Help"
+                "File", "Edit", "Search", "View", "Encoding", "Language", "Settings", "Help"
             ]
         );
     }

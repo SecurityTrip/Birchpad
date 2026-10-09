@@ -6,6 +6,15 @@ version's release notes from its section here.
 
 ## [Unreleased]
 
+### Added
+
+- Color themes (Settings > Theme): the built-in Default and Dark, and theme files in the
+  `themes` folder next to the settings. A dark theme darkens the whole window: tabs, panels,
+  bars, menus and dialogs. Theme files are TOML and set only the colors they change; Notepad++
+  themes (`.xml`) work as they are, with their colors matched to Birchpad's highlighting, and
+  Settings > Import > Import Style Themes... copies them in. `appearance.theme` sets the theme
+  Birchpad starts with.
+
 ### Changed
 
 - Nightly builds come from the branch of the next version (`v0.1.4` after 0.1.3) instead of

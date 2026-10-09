@@ -5,7 +5,7 @@
 use birchpad_config::{CurrentLine, Edge};
 use birchpad_core::motion::line_of;
 use birchpad_core::{LineEnding, Rope};
-use gpui_kit::{Bounds, Hsla, Pixels, ShapedLine, TextRun, Window, point, px, rgb, size};
+use gpui_kit::{Bounds, Hsla, Pixels, ShapedLine, TextRun, Window, point, px, size};
 
 use super::layout::{Layout, VisibleRow};
 use super::{EditorView, ViewSettings, theme};
@@ -172,7 +172,7 @@ impl EditorView {
         let font_size = (metrics.font_size * 0.7).round();
         let height = (font_size * 1.3).round().min(metrics.line_height);
         let padding = (font_size * 0.25).round();
-        let color: Hsla = rgb(theme::EOL_TEXT).into();
+        let color: Hsla = theme::paint(theme::editor().eol_text).into();
         let mut labels: [Option<ShapedLine>; 3] = Default::default();
         let mut marks = Vec::new();
         for row in layout.rows.iter().filter(|row| row.row.last_in_line) {

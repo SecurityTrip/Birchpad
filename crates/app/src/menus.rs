@@ -15,6 +15,8 @@ use crate::commands::{CommandRegistry, RunCommand};
 /// Live state the menus reflect.
 pub(crate) struct MenuState<'a> {
     pub(crate) recent_files: &'a [PathBuf],
+    /// The themes Settings > Theme lists.
+    pub(crate) themes: &'a [String],
     /// Whether a command item shows a check mark (word wrap, current encoding, ...).
     pub(crate) checked: &'a dyn Fn(&Invocation) -> bool,
 }
@@ -113,6 +115,16 @@ fn build_menu(
                     items.push(GpuiMenuItem::submenu(
                         gpui_kit::Menu::new(letter.to_string()).items(entries),
                     ));
+                }
+            }
+            MenuItem::Placeholder(Placeholder::Themes) => {
+                for name in state.themes {
+                    let invocation =
+                        Invocation::with_args("settings.theme", json!({ "name": name }));
+                    let checked = (state.checked)(&invocation);
+                    items.push(
+                        GpuiMenuItem::action(name.clone(), RunCommand(invocation)).checked(checked),
+                    );
                 }
             }
         }

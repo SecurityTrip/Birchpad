@@ -13,7 +13,7 @@ use std::time::Duration;
 
 use gpui_kit::{
     App, ClickEvent, Context, FocusHandle, Focusable, KeyDownEvent, ScrollStrategy, Task,
-    UniformListScrollHandle, WeakEntity, Window, div, prelude::*, px, rgb, uniform_list,
+    UniformListScrollHandle, WeakEntity, Window, div, prelude::*, px, uniform_list,
 };
 
 use crate::workspace::Workspace;
@@ -157,7 +157,7 @@ impl Render for ClipboardHistory {
         let body = if self.entries.is_empty() {
             div()
                 .p_2()
-                .text_color(rgb(0x57606a))
+                .text_color(crate::theme::paint(crate::theme::ui().muted))
                 .child("Copied texts show here")
                 .into_any_element()
         } else {
@@ -186,8 +186,12 @@ impl Render for ClipboardHistory {
                                 .whitespace_nowrap()
                                 .overflow_hidden()
                                 .cursor_pointer()
-                                .when(this.selected == Some(index), |row| row.bg(rgb(0xddf4ff)))
-                                .hover(|row| row.bg(rgb(0xf3f4f6)))
+                                .when(this.selected == Some(index), |row| {
+                                    row.bg(crate::theme::paint(crate::theme::ui().selected))
+                                })
+                                .hover(|row| {
+                                    row.bg(crate::theme::paint(crate::theme::ui().hovered))
+                                })
                                 .child(
                                     div()
                                         .flex_1()
@@ -198,7 +202,7 @@ impl Render for ClipboardHistory {
                                 .child(
                                     div()
                                         .flex_none()
-                                        .text_color(rgb(0x8c959f))
+                                        .text_color(crate::theme::paint(crate::theme::ui().faint))
                                         .child(length.to_string()),
                                 )
                                 .on_click(cx.listener(

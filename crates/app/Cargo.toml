@@ -17,6 +17,7 @@ birchpad-core.workspace = true
 birchpad-io.workspace = true
 birchpad-menu-bar.workspace = true
 birchpad-syntax.workspace = true
+birchpad-theme.workspace = true
 birchpad-update = { workspace = true, features = ["installer"] }
 birchpad-view.workspace = true
 futures = "0.3"

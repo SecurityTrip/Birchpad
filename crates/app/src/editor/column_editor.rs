@@ -10,7 +10,7 @@ use gpui_kit::component::dialog::DialogFooter;
 use gpui_kit::component::input::{Input, InputState};
 use gpui_kit::component::radio::RadioGroup;
 use gpui_kit::component::{Disableable as _, WindowExt as _};
-use gpui_kit::{App, AppContext as _, Context, Entity, Window, div, prelude::*, px, rgb};
+use gpui_kit::{App, AppContext as _, Context, Entity, Window, div, prelude::*, px};
 
 use super::EditorView;
 use super::multi::{ColumnInsertArgs, FormatName, LeadingName, NumberArgs};
@@ -256,11 +256,11 @@ impl Render for ColumnEditor {
                         );
                     }),
             )
-            .children(
-                self.error
-                    .clone()
-                    .map(|error| div().text_color(rgb(0xcf222e)).child(error)),
-            )
+            .children(self.error.clone().map(|error| {
+                div()
+                    .text_color(crate::theme::paint(crate::theme::ui().error))
+                    .child(error)
+            }))
     }
 }
 

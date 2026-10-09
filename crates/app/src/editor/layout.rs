@@ -11,7 +11,7 @@ use birchpad_core::{LineChange, Rope};
 use birchpad_view::{BlockPoint, DisplayMap, DisplayText, LayoutConfig, Row};
 use gpui_kit::{
     App, AppContext as _, Bounds, Context, Font, FontStyle, FontWeight, Hsla, Pixels, Point,
-    ShapedLine, TextRun, UnderlineStyle, Window, font, point, px, rgb, size,
+    ShapedLine, TextRun, UnderlineStyle, Window, font, point, px, rgba, size,
 };
 
 use super::symbols::Symbols;
@@ -47,6 +47,8 @@ const QUERY_GAP: usize = 4096;
 pub(super) struct HighlightCache {
     language: &'static str,
     version: u64,
+    /// The theme's generation: a new theme colors the text again.
+    theme: u64,
     ranges: Vec<ByteRange<usize>>,
     spans: Vec<(ByteRange<usize>, TextStyle)>,
 }
@@ -193,8 +195,6 @@ pub(super) struct Layout {
     pub(super) full_rows: usize,
 }
 
-pub(super) const TEXT_COLOR: u32 = 0x1f2328;
-
 impl EditorView {
     /// Computes the frame's layout for `bounds`, applying pending scroll requests.
     pub(super) fn compute_layout(
@@ -320,8 +320,12 @@ impl EditorView {
                 && let Some(margin) = margins.line_numbers
             {
                 let number = (row.line + 1).to_string();
-                let shaped_number =
-                    shape(window, &number, &metrics, rgb(theme::GUTTER_TEXT).into());
+                let shaped_number = shape(
+                    window,
+                    &number,
+                    &metrics,
+                    theme::paint(theme::editor().gutter_text).into(),
+                );
                 let x = margin.right() - cell - shaped_number.width();
                 line_numbers.push((point(x, y), shaped_number));
             }
@@ -451,10 +455,10 @@ impl EditorView {
         {
             match found.partner {
                 Some(partner) => {
-                    styles.braces.push((found.bracket, theme::BRACE_MATCH));
-                    styles.braces.push((partner, theme::BRACE_MATCH));
+                    styles.braces.push((found.bracket, theme::brace_match()));
+                    styles.braces.push((partner, theme::brace_match()));
                 }
-                None => styles.braces.push((found.bracket, theme::BRACE_BAD)),
+                None => styles.braces.push((found.bracket, theme::brace_bad())),
             }
         }
         let Some(syntax) = buffer.syntax() else {
@@ -463,14 +467,18 @@ impl EditorView {
         };
         let language = syntax.language().id;
         let version = syntax.version();
+        let generation = theme::generation();
         let cached = self.highlight_cache.as_ref().is_some_and(|cache| {
-            cache.language == language && cache.version == version && cache.ranges == ranges
+            cache.language == language
+                && cache.version == version
+                && cache.theme == generation
+                && cache.ranges == ranges
         });
         if !cached {
             let mut spans = Vec::new();
             for range in ranges {
                 for (span, highlight) in syntax.highlights(text, range.clone()) {
-                    if let Some(style) = theme::syntax_style(highlight) {
+                    if let Some(style) = theme::syntax_style(Some(language), highlight) {
                         spans.push((span, style));
                     }
                 }
@@ -478,6 +486,7 @@ impl EditorView {
             self.highlight_cache = Some(HighlightCache {
                 language,
                 version,
+                theme: generation,
                 ranges: ranges.to_vec(),
                 spans,
             });
@@ -497,7 +506,7 @@ impl EditorView {
         styles: &FrameStyles,
         window: &mut Window,
     ) -> ShapedLine {
-        let color: Hsla = rgb(TEXT_COLOR).into();
+        let color: Hsla = theme::paint(theme::editor().text).into();
         let base = TextRun {
             len: display.text.len(),
             font: metrics.font.clone(),
@@ -531,7 +540,17 @@ impl EditorView {
                     ..base.clone()
                 };
                 if let Some(style) = styles.at(pos) {
-                    run.color = rgb(style.color).into();
+                    if let Some(color) = style.color {
+                        run.color = rgba(color).into();
+                    }
+                    run.background_color = style.background.map(|color| rgba(color).into());
+                    if style.underline {
+                        run.underline = Some(UnderlineStyle {
+                            color: Some(run.color),
+                            thickness: px(1.),
+                            wavy: false,
+                        });
+                    }
                     if style.bold {
                         run.font.weight = FontWeight::BOLD;
                     }
@@ -791,7 +810,7 @@ impl EditorView {
         let visible = Self::visible_range(layout);
         let mut ranges = Vec::new();
         if let Some(smart) = &self.smart_highlight {
-            let paint = Paint::Fill(gpui_kit::rgba(theme::SMART_HIGHLIGHT));
+            let paint = Paint::Fill(theme::paint(theme::editor().smart_highlight));
             ranges.extend(
                 smart
                     .matches
@@ -808,14 +827,14 @@ impl EditorView {
                     .map(|(range, _)| (range, paint)),
             );
         }
-        let found = Paint::Fill(gpui_kit::rgba(theme::FIND_MARK));
+        let found = Paint::Fill(theme::paint(theme::editor().find_mark));
         ranges.extend(
             marks
                 .found
                 .overlapping(visible.clone())
                 .map(|(range, _)| (range, found)),
         );
-        let incremental = Paint::Fill(gpui_kit::rgba(theme::INCREMENTAL_HIGHLIGHT));
+        let incremental = Paint::Fill(theme::paint(theme::editor().incremental_highlight));
         ranges.extend(
             marks
                 .incremental

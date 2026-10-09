@@ -190,7 +190,10 @@ What Phase 1 left for later is marked *(from Phase 1)* in the phases below.
 
 ## Phase 4: customization
 
-- Preferences, Style Configurator, themes (importing Notepad++ XML themes)
+- [x] Color themes for the editor and the whole window: built-in Default and Dark, theme files
+      in TOML, Notepad++ XML themes read as they are; Settings > Theme and Import Style
+      Themes... ([ADR 0027](adr/0027-themes.md))
+- Preferences, Style Configurator
 - Shortcut mapper; macros (record, play N times, save) on top of the command registry
 - User Defined Languages (importing Notepad++ UDL files)
 - Word and API-file auto-completion, call tips, auto-closing brackets

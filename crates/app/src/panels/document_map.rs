@@ -15,7 +15,7 @@ use birchpad_view::cells_at;
 use gpui_kit::{
     App, Bounds, Context, Entity, FocusHandle, Focusable, Hsla, MouseButton, MouseDownEvent,
     MouseMoveEvent, Pixels, ScrollWheelEvent, WeakEntity, Window, canvas, div, fill, point,
-    prelude::*, px, rgb, rgba, size,
+    prelude::*, px, rgb, size,
 };
 
 use super::FollowView;
@@ -29,10 +29,6 @@ pub(crate) const LINE_HEIGHT: f32 = 3.;
 const BAR_HEIGHT: f32 = 2.;
 /// Width of a column.
 const COLUMN_WIDTH: f32 = 1.5;
-/// The frame around what the view shows.
-const FRAME_FILL: u32 = 0x0969da22;
-const FRAME_BORDER: u32 = 0x0969da88;
-
 /// The first document line the map shows: 0 while the whole document fits, else so that the
 /// frame of the `visible` lines sits as far down the map as they sit in the document.
 pub(crate) fn first_map_line(total: usize, visible: Range<usize>, map_lines: usize) -> usize {
@@ -86,7 +82,7 @@ pub(crate) fn line_bars(
 }
 
 fn theme_text() -> u32 {
-    theme::TEXT
+    theme::editor().text.to_rgb()
 }
 
 /// What the map draws for one frame.
@@ -147,6 +143,7 @@ impl DocumentMap {
         let tab_width = view.tab_width();
         let start = line_range(text, first).start;
         let end = line_range(text, last.saturating_sub(1).max(first)).end;
+        let language = buffer.syntax().map(|syntax| syntax.language().id);
         let highlights = buffer
             .syntax()
             .map(|syntax| syntax.highlights(text, start..end))
@@ -166,7 +163,7 @@ impl DocumentMap {
                     .iter()
                     .take_while(|(range, _)| range.start < cut)
                     .filter_map(|(range, highlight)| {
-                        let color = theme::syntax_style(*highlight)?.color;
+                        let color = theme::syntax_style(language, *highlight)?.color? >> 8;
                         Some((
                             range.start.max(bounds.start) - bounds.start
                                 ..range.end.min(cut) - bounds.start,
@@ -206,7 +203,7 @@ impl Render for DocumentMap {
         let Some(view) = view else {
             return div()
                 .p_2()
-                .text_color(rgb(0x57606a))
+                .text_color(crate::theme::paint(crate::theme::ui().muted))
                 .child("No document")
                 .into_any_element();
         };
@@ -218,7 +215,7 @@ impl Render for DocumentMap {
             .track_focus(&self.focus_handle)
             .size_full()
             .overflow_hidden()
-            .bg(rgb(0xffffff))
+            .bg(theme::paint(theme::editor().background))
             .on_mouse_down(
                 MouseButton::Left,
                 cx.listener(|this, event: &MouseDownEvent, _, cx| {
@@ -269,9 +266,9 @@ impl Render for DocumentMap {
                         let frame =
                             Bounds::new(point(bounds.left(), top), size(bounds.size.width, height));
                         window.paint_quad(
-                            fill(frame, rgba(FRAME_FILL))
+                            fill(frame, theme::paint(theme::ui().accent.with_alpha(0x22)))
                                 .border_widths(px(1.))
-                                .border_color(rgba(FRAME_BORDER)),
+                                .border_color(theme::paint(theme::ui().accent.with_alpha(0x88))),
                         );
                     },
                 )
