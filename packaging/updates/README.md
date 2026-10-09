@@ -57,7 +57,7 @@ gh variable set BIRCHPAD_TRUSTED_KEYS --body "<the public key>"
 
 | Workflow | When | What |
 |---|---|---|
-| `nightly.yml` | 02:17 UTC daily, or by hand | if `main` changed: builds `v<version>-nightly.<date>.<run>`, publishes it as a pre-release with portable ZIPs, the Windows installer (`…-setup.exe`) and update packages (`…-full.nupkg`), adds it to the manifest, deletes nightly releases beyond the ten newest; otherwise signs the manifest again when it is a week old |
+| `nightly.yml` | 03:00 Moscow time (00:00 UTC) daily, or by hand (on `main`) | if the branch of the next version changed (the lowest `v<major>.<minor>.<patch>` branch without a release tag): builds `v<version>-nightly.<date>.<run>`, publishes it as a pre-release with portable ZIPs, the Windows installer (`…-setup.exe`) and update packages (`…-full.nupkg`), adds it to the manifest, deletes nightly releases beyond the ten newest; otherwise signs the manifest again when it is a week old |
 | `release.yml` | a `v*` tag is pushed | builds the same for a stable or beta version, plus the MSI, as a **draft** release |
 | `update-manifest.yml` | a maintainer publishes a draft release; called by the nightly workflow; or by hand | adds the release to `birchpad-updates.json`, signs it and uploads it to the `updates` release |
 
@@ -65,8 +65,10 @@ The manifest lives at
 `https://github.com/SecurityTrip/Birchpad/releases/download/updates/birchpad-updates.json`. It
 keeps the five newest releases of each channel and expires 30 days after it was signed.
 
-The nightly version is a pre-release of the workspace version on `main`, so after releasing
-`v0.2.0`, raise `main` to `0.3.0` (the nightly workflow stops with an error until then).
+Nightly builds come from the branch of the next version: after releasing `v0.2.0`, create the
+branch `v0.2.1` (or `v0.3.0`) and raise its workspace version to match its name (the nightly
+workflow stops with an error until then). Without such a branch, nothing is built and the
+manifest is only signed again.
 
 ## 3. By hand
 
