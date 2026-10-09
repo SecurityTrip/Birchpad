@@ -275,6 +275,66 @@ pub fn keymap(data: &[u8]) -> bool {
             }
         }
     }
+    // The Shortcut Mapper's changes to a keymap that reads cleanly: what it binds is bound,
+    // what it unbinds is not, and resetting gives a command its default keys.
+    if !accepted {
+        return false;
+    }
+    let platform = Platform::Windows;
+    let save = birchpad_commands::Invocation::new("file.save");
+    let effective = |text: &str| {
+        let mut keymap = Keymap::with_defaults(platform);
+        keymap.add_layer(Layer::User, text);
+        keymap
+    };
+    if let Ok(bound) = birchpad_commands::bind(text, platform, "ctrl-alt-shift-f12", None, &save) {
+        let keymap = effective(&bound);
+        let keys = Keystroke::parse_sequence("ctrl-alt-shift-f12", platform).unwrap();
+        let found = keymap
+            .resolve(&keys, &[])
+            .map(|binding| &binding.invocation);
+        assert_eq!(
+            found,
+            Some(&save),
+            "bound:
+{bound}"
+        );
+        let unbound = birchpad_commands::unbind(&bound, platform, "ctrl-alt-shift-f12", None)
+            .expect("what was bound unbinds");
+        assert!(
+            effective(&unbound).resolve(&keys, &[]).is_none(),
+            "unbound:
+{unbound}"
+        );
+    }
+    if let Ok(reset) = birchpad_commands::reset(text, platform, &save) {
+        let defaults = Keymap::with_defaults(platform);
+        let keys = |keymap: &Keymap| -> Vec<String> {
+            keymap
+                .bindings_for(&save)
+                .map(|binding| binding.keys_string())
+                .collect()
+        };
+        let keymap = effective(&reset);
+        for default in keys(&defaults) {
+            let parsed = Keystroke::parse_sequence(&default, platform).unwrap();
+            // Unless the file binds those keys to something else.
+            if keymap
+                .resolve(&parsed, &[])
+                .is_some_and(|binding| binding.invocation == save)
+            {
+                continue;
+            }
+            assert!(
+                keymap
+                    .bindings()
+                    .iter()
+                    .any(|binding| binding.keys == parsed),
+                "{default} after reset:
+{reset}"
+            );
+        }
+    }
     accepted
 }
 

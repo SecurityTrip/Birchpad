@@ -38,6 +38,7 @@ mod search_results;
 mod session;
 #[cfg(test)]
 mod session_tests;
+mod shortcut_mapper;
 #[cfg(test)]
 mod split_tests;
 mod status_bar;
