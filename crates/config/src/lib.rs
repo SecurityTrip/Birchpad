@@ -12,6 +12,7 @@ mod project;
 mod session;
 mod settings;
 mod state;
+mod write;
 
 pub use layers::{Diagnostic, Layer, ResolvedSettings, Sources, resolve};
 pub use load::{ConfigPaths, PORTABLE_DATA_DIR, PORTABLE_MARKER, load, load_platform_settings};
@@ -30,3 +31,4 @@ pub use settings::{
 pub use state::{
     FindInFilesState, MAX_RECENT_FILES, PanelsState, SplitOrientation, UpdateState, UserState,
 };
+pub use write::{SettingError, check_setting, edit_settings, write_setting};

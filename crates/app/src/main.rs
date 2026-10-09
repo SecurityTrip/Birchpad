@@ -33,6 +33,7 @@ mod navigation;
 mod pane;
 mod panels;
 mod path_dialog;
+mod preferences;
 mod search_results;
 mod session;
 #[cfg(test)]

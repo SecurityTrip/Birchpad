@@ -140,6 +140,7 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
     crate::session::register_commands(registry);
     crate::disk::register_commands(registry);
     crate::themes::register_commands(registry);
+    crate::preferences::register_commands(registry);
 }
 
 /// View menu switches kept in `state.toml`: command, current value, how to remember a new one.
@@ -792,7 +793,7 @@ impl Workspace {
     }
 
     /// Redraws every editor after a view setting (zoom, word wrap, Show Symbol) changed.
-    fn refresh_views(&mut self, cx: &mut Context<Self>) {
+    pub(crate) fn refresh_views(&mut self, cx: &mut Context<Self>) {
         for view in self.all_views(cx) {
             view.update(cx, |view, cx| view.settings_changed(cx));
         }

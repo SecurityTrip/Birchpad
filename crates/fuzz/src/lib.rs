@@ -140,6 +140,26 @@ pub fn settings(data: &[u8]) -> bool {
     });
     assert_eq!(again.settings, user.settings);
     assert!(again.diagnostics.is_empty(), "{:?}", again.diagnostics);
+
+    // Preferences changes one setting in the file and leaves the others as they were.
+    let two = toml::Value::Integer(2);
+    if let Ok(edited) = birchpad_config::edit_settings(text, "editor.tab-width", Some(&two)) {
+        let table = toml::from_str::<toml::Table>(&edited).expect("an edited file reads");
+        let edited = resolve(Sources {
+            user: Some(table),
+            ..Sources::default()
+        });
+        assert_eq!(
+            edited.settings.editor.tab_width, 2,
+            "edited:
+{edited:?}"
+        );
+        let mut expected = user.settings.clone();
+        expected.editor.tab_width = 2;
+        if user.diagnostics.is_empty() {
+            assert_eq!(edited.settings, expected);
+        }
+    }
     user.diagnostics.is_empty()
 }
 

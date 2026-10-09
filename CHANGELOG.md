@@ -18,6 +18,10 @@ version's release notes from its section here.
   editor's global styles, the interface, and highlighting for all languages or one: foreground,
   background, bold, italic, underline), seen as they change. Save & Close keeps the theme in the
   `themes` folder; Cancel goes back.
+- Settings > Preferences...: tab size, auto-indent, the current line, margins and the edge,
+  smart highlighting, recent files, the ANSI encoding, the large file limit, change detection,
+  backups and updates. Each change applies at once and is written to `settings.toml`, keeping
+  its comments; settings an administrator's policy sets are shown but cannot be changed.
 
 ### Changed
 

@@ -30,21 +30,26 @@ pub(crate) struct SessionPaths {
 
 impl Global for AppState {}
 
+/// The legacy encoding `files.ansi-encoding` names, else the system's.
+fn ansi_of(settings: &Settings) -> Encoding {
+    let system = birchpad_io::system_ansi();
+    match settings.files.ansi_encoding.as_deref() {
+        None => system,
+        Some(name) => match birchpad_io::parse_encoding(name, system) {
+            Some((encoding, _)) if !encoding.is_unicode() => encoding,
+            _ => {
+                eprintln!("settings: files.ansi-encoding {name:?} is not a legacy encoding");
+                system
+            }
+        },
+    }
+}
+
 impl AppState {
     pub(crate) fn new(settings: ResolvedSettings, paths: ConfigPaths) -> Self {
         let policies = settings.policies();
         let settings = settings.settings;
-        let system = birchpad_io::system_ansi();
-        let ansi = match settings.files.ansi_encoding.as_deref() {
-            None => system,
-            Some(name) => match birchpad_io::parse_encoding(name, system) {
-                Some((encoding, _)) if !encoding.is_unicode() => encoding,
-                _ => {
-                    eprintln!("settings: files.ansi-encoding {name:?} is not a legacy encoding");
-                    system
-                }
-            },
-        };
+        let ansi = ansi_of(&settings);
         let state = paths
             .user_data
             .as_ref()
@@ -77,6 +82,18 @@ impl AppState {
     /// quitting (`session.backup-unsaved`, which needs a remembered session).
     pub(crate) fn backs_up_unsaved(&self) -> bool {
         self.settings.session.backup_unsaved && self.session_paths().is_some()
+    }
+
+    /// Takes settings read again, after Preferences changed one.
+    pub(crate) fn set_settings(&mut self, settings: ResolvedSettings) {
+        self.policies = settings.policies();
+        self.settings = settings.settings;
+        self.ansi = ansi_of(&self.settings);
+    }
+
+    /// Whether an administrator's policy sets `key`, which the user then cannot change.
+    pub(crate) fn is_locked(&self, key: &str) -> bool {
+        self.policies.iter().any(|(locked, _)| locked == key)
     }
 
     pub(crate) fn global(cx: &App) -> &Self {

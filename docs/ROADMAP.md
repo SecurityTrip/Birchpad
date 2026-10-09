@@ -196,7 +196,9 @@ What Phase 1 left for later is marked *(from Phase 1)* in the phases below.
 - [x] Style Configurator: a theme's editor, interface and highlighting colors, for all
       languages or one, shown as they change and saved as a theme file
       ([ADR 0027](adr/0027-themes.md))
-- Preferences
+- [x] Preferences: the settings by section, each change written to `settings.toml` keeping its
+      comments and applied at once; settings set by policy shown but locked
+      ([ADR 0028](adr/0028-preferences.md))
 - Shortcut mapper; macros (record, play N times, save) on top of the command registry
 - User Defined Languages (importing Notepad++ UDL files)
 - Word and API-file auto-completion, call tips, auto-closing brackets
