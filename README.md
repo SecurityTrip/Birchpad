@@ -53,8 +53,8 @@ lists SHA-256 checksums and carries GitHub build provenance (`gh attestation ver
 To uninstall, use Installed apps in Windows Settings for the installer and the MSI, or delete the
 folder of a portable copy.
 
-Nightly builds of `main` are published as pre-releases; set `updates.channel = "nightly"` to
-get them as updates.
+Nightly builds of the next version's branch (`v0.1.4` after 0.1.3) are published as
+pre-releases; set `updates.channel = "nightly"` to get them as updates.
 
 ## Code signing policy
 

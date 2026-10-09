@@ -10,8 +10,10 @@ name: Build
 # asks and the repository is set up for it: first the executables, which the packages then
 # contain, then the installers. Each signing request waits for a maintainer's approval.
 #
-# It builds the commit that started the calling workflow (`github.sha`), never one passed in:
-# release jobs run with access to the default branch's context and must not run other code.
+# It builds the commit that started the calling workflow (`github.sha`), or the one the nightly
+# workflow found at the head of a branch of this repository (`ref`), never one typed in by hand or
+# taken from a pull request: release jobs run with access to the default branch's context and must
+# not run other code.
 on:
   workflow_call:
     inputs:
@@ -31,6 +33,10 @@ on:
         description: Build the per-machine MSI (Windows x64).
         type: boolean
         default: false
+      ref:
+        description: The commit to build, from a branch of this repository; empty for `github.sha`.
+        type: string
+        default: ""
   # By hand, to try the packaging on a branch: the files stay in the run's artifacts.
   workflow_dispatch:
     inputs:
@@ -123,11 +129,13 @@ jobs:
       # Read by crates/app/build.rs.
       BIRCHPAD_VERSION: ${{ inputs.version }}
       BIRCHPAD_CHANNEL: ${{ inputs.channel }}
-      BIRCHPAD_COMMIT: ${{ github.sha }}
+      BIRCHPAD_COMMIT: ${{ inputs.ref || github.sha }}
       # The public keys update manifests must be signed with (crates/update/build.rs).
       BIRCHPAD_TRUSTED_KEYS: ${{ vars.BIRCHPAD_TRUSTED_KEYS }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref || github.sha }}
       - name: Build time
         shell: bash
         # Update manifests signed before this commit are refused by this build (ADR 0020).
@@ -254,6 +262,8 @@ jobs:
       CHANNEL: ${{ inputs.channel }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref || github.sha }}
       - name: The signed executables
         if: needs.sign-executables.result == 'success'
         uses: actions/download-artifact@v8
@@ -361,6 +371,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref || github.sha }}
       - uses: actions-rust-lang/setup-rust-toolchain@v2
         with:
           cache: false

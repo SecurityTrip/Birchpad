@@ -6,6 +6,11 @@ version's release notes from its section here.
 
 ## [Unreleased]
 
+### Changed
+
+- Nightly builds come from the branch of the next version (`v0.1.4` after 0.1.3) instead of
+  `main`, so that the nightly channel gets what is being developed for the next release.
+
 ## [0.1.3] - 2026-10-07
 
 ### Added
