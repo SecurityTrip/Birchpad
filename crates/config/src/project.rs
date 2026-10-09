@@ -164,11 +164,11 @@ fn normalize(path: &Path) -> PathBuf {
     out
 }
 
-/// `path` relative to `base` if it is inside it, written with `\` as Notepad++ does; else as
-/// it is.
+/// `path` relative to `base` if it is inside it, written with `\` as Notepad++ does; else, or
+/// when it is `base` itself (an empty name reads as no file), as it is.
 fn relative(path: &Path, base: &Path) -> String {
     match path.strip_prefix(base) {
-        Ok(inside) if !base.as_os_str().is_empty() => inside
+        Ok(inside) if !base.as_os_str().is_empty() && !inside.as_os_str().is_empty() => inside
             .components()
             .map(|component| component.as_os_str().to_string_lossy().into_owned())
             .collect::<Vec<_>>()
@@ -326,6 +326,24 @@ mod tests {
         assert_eq!(
             ProjectWorkspace::default().to_xml(&base()),
             "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>\n<NotepadPlus>\n</NotepadPlus>\n"
+        );
+    }
+
+    #[test]
+    fn a_file_named_as_the_workspace_folder_round_trips() {
+        // `.` names the workspace's own folder; written relative it would be an empty name,
+        // which reads as no file.
+        let workspace = ProjectWorkspace::parse(
+            r#"<NotepadPlus><Project name="P"><File name="." /></Project></NotepadPlus>"#,
+            &base(),
+        )
+        .unwrap();
+        assert_eq!(workspace.projects[0].items, vec![ProjectItem::File(base())]);
+        let xml = workspace.to_xml(&base());
+        assert_eq!(
+            ProjectWorkspace::parse(&xml, &base()).unwrap(),
+            workspace,
+            "{xml}"
         );
     }
 

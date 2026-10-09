@@ -221,7 +221,7 @@ What Phase 1 left for later is marked *(from Phase 1)* in the phases below.
 
 | Channel | Built from | Cadence |
 |---|---|---|
-| Nightly | `main` | nightly, when there are changes |
+| Nightly | the next version's branch `vX.Y.Z` | nightly, when there are changes |
 | Beta | `release/x.y` | every 1–2 weeks |
 | Stable | tags on the release branch | every 4–8 weeks |
 

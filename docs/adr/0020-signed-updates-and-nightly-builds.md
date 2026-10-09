@@ -79,11 +79,15 @@ was signed. Phase 2 adds the nightly channel, background checks and automatic up
 
 ### Nightly builds
 
-- `nightly.yml` runs every night and builds `main` if it changed since the last nightly build:
-  version `<workspace version>-nightly.<YYYYMMDD>.<run>`, a pre-release of the version being
-  developed (so after releasing 0.2.0, `main` must move to 0.3.0; the workflow checks it). The
-  version reaches the binary through `BIRCHPAD_VERSION`, because changing `Cargo.toml` would
-  change `Cargo.lock`.
+- `nightly.yml` runs every night and builds the branch of the next version if it changed since
+  the last nightly build: version `<workspace version>-nightly.<YYYYMMDD>.<run>`, a pre-release
+  of the version being developed. The branch of the next version is the lowest
+  `v<major>.<minor>.<patch>` branch without a release tag, and its workspace version must match
+  its name (the workflow checks it). (First `main`, until 0.1.3: versions are developed on their
+  own branches and merged into `main` when they are released.) The workflow runs on `main` and
+  only its build jobs check out the branch's commit, so that the manifest is still signed in the
+  default branch's context. The version reaches the binary through `BIRCHPAD_VERSION`, because
+  changing `Cargo.toml` would change `Cargo.lock`.
 - It publishes a GitHub pre-release with the same artifacts as a release (except the MSI), adds
   it to the manifest, and keeps the ten newest nightly releases.
 - `release.yml` and `nightly.yml` share `build.yml`. Stable and beta releases stay drafts until a
