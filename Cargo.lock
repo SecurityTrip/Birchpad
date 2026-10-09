@@ -666,7 +666,7 @@ dependencies = [
 name = "birchpad-fuzz"
 version = "0.1.4"
 dependencies = [
- "base64 0.22.1",
+ "base64 0.23.1",
  "birchpad-cli",
  "birchpad-commands",
  "birchpad-config",
@@ -792,7 +792,7 @@ dependencies = [
 name = "birchpad-update"
 version = "0.1.4"
 dependencies = [
- "base64 0.22.1",
+ "base64 0.23.1",
  "birchpad-config",
  "ed25519-dalek",
  "rustls",
