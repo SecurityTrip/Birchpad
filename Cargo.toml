@@ -3,7 +3,7 @@ resolver = "3"
 members = ["crates/*"]
 
 [workspace.package]
-version = "0.1.3"
+version = "0.1.4"
 edition = "2024"
 rust-version = "1.98"
 license = "MIT OR Apache-2.0"
@@ -11,15 +11,15 @@ repository = "https://github.com/SecurityTrip/Birchpad"
 authors = ["The Birchpad Contributors"]
 
 [workspace.dependencies]
-birchpad-cli = { path = "crates/cli", version = "0.1.3" }
-birchpad-commands = { path = "crates/commands", version = "0.1.3" }
-birchpad-config = { path = "crates/config", version = "0.1.3" }
-birchpad-core = { path = "crates/core", version = "0.1.3" }
-birchpad-io = { path = "crates/io", version = "0.1.3" }
-birchpad-menu-bar = { path = "crates/menu-bar", version = "0.1.3" }
-birchpad-syntax = { path = "crates/syntax", version = "0.1.3" }
-birchpad-update = { path = "crates/update", version = "0.1.3" }
-birchpad-view = { path = "crates/view", version = "0.1.3" }
+birchpad-cli = { path = "crates/cli", version = "0.1.4" }
+birchpad-commands = { path = "crates/commands", version = "0.1.4" }
+birchpad-config = { path = "crates/config", version = "0.1.4" }
+birchpad-core = { path = "crates/core", version = "0.1.4" }
+birchpad-io = { path = "crates/io", version = "0.1.4" }
+birchpad-menu-bar = { path = "crates/menu-bar", version = "0.1.4" }
+birchpad-syntax = { path = "crates/syntax", version = "0.1.4" }
+birchpad-update = { path = "crates/update", version = "0.1.4" }
+birchpad-view = { path = "crates/view", version = "0.1.4" }
 
 anyhow = "1"
 proptest = "1.11"
