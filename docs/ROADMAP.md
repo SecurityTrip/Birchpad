@@ -193,7 +193,10 @@ What Phase 1 left for later is marked *(from Phase 1)* in the phases below.
 - [x] Color themes for the editor and the whole window: built-in Default and Dark, theme files
       in TOML, Notepad++ XML themes read as they are; Settings > Theme and Import Style
       Themes... ([ADR 0027](adr/0027-themes.md))
-- Preferences, Style Configurator
+- [x] Style Configurator: a theme's editor, interface and highlighting colors, for all
+      languages or one, shown as they change and saved as a theme file
+      ([ADR 0027](adr/0027-themes.md))
+- Preferences
 - Shortcut mapper; macros (record, play N times, save) on top of the command registry
 - User Defined Languages (importing Notepad++ UDL files)
 - Word and API-file auto-completion, call tips, auto-closing brackets

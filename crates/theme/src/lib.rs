@@ -26,6 +26,27 @@ pub const DARK: &str = "Dark";
 /// `function.method`).
 pub type SyntaxStyles = BTreeMap<String, Style>;
 
+/// A field name as theme files write it: `current_line` as `current-line`.
+macro_rules! kebab {
+    ($field:ident) => {{
+        const NAME: &str = stringify!($field);
+        const BYTES: [u8; NAME.len()] = {
+            let mut bytes = [0; NAME.len()];
+            let mut index = 0;
+            while index < NAME.len() {
+                let byte = NAME.as_bytes()[index];
+                bytes[index] = if byte == b'_' { b'-' } else { byte };
+                index += 1;
+            }
+            bytes
+        };
+        match std::str::from_utf8(&BYTES) {
+            Ok(name) => name,
+            Err(_) => panic!("field names are ASCII"),
+        }
+    }};
+}
+
 /// Declares a set of colors twice: complete, as the application uses it, and partial, as a file
 /// writes it, with every color optional.
 macro_rules! palette {
@@ -45,6 +66,28 @@ macro_rules! palette {
         #[serde(default, rename_all = "kebab-case")]
         struct $partial {
             $(#[serde(skip_serializing_if = "Option::is_none")] $field: Option<Color>,)*
+        }
+
+        impl $name {
+            /// The keys of these colors, as theme files write them (`current-line`), in order.
+            pub const KEYS: &[&str] = &[$(kebab!($field),)*];
+
+            /// The color of `key` (`current-line`).
+            pub fn get(&self, key: &str) -> Option<Color> {
+                $(if key == kebab!($field) {
+                    return Some(self.$field);
+                })*
+                None
+            }
+
+            /// Sets the color of `key`; false if there is no such key.
+            pub fn set(&mut self, key: &str, color: Color) -> bool {
+                $(if key == kebab!($field) {
+                    self.$field = color;
+                    return true;
+                })*
+                false
+            }
         }
 
         impl $partial {

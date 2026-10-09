@@ -44,6 +44,11 @@ themes color only the text area; the rest of its window follows Windows, or its 
 - **The window follows the theme:** a dark theme switches gpui-component's controls (buttons,
   inputs, dialogs) to their dark mode, and Birchpad's own panels and bars take the theme's `ui`
   colors, which Notepad++ themes do not set and the built-in theme of their brightness provides.
+- **The Style Configurator** edits a copy of a theme and shows each change at once. Saving
+  writes the whole theme as `<name>.toml` in the `themes` folder: it comes before a Notepad++
+  file of the same name and replaces a built-in theme of that name, so the built-in files stay
+  untouched. Highlighting styles are set for all languages or one; a style with nothing set is
+  removed, so the name takes its prefix's style, or that of all languages, again.
 
 ## Consequences
 

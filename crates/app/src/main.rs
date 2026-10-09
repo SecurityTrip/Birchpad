@@ -40,6 +40,7 @@ mod session_tests;
 #[cfg(test)]
 mod split_tests;
 mod status_bar;
+mod style_configurator;
 mod themes;
 mod updates;
 mod workspace;

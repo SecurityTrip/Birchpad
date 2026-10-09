@@ -269,6 +269,7 @@ pub const COMMANDS: &[CommandSpec] = &[
     // Language; { "language": "rust" | "cpp" | ... | "text" }
     workspace("language.set", "Language"),
     // Settings; settings.theme takes { "name": "Default" | "Dark" | <a theme file's name> }
+    workspace("settings.style-configurator", "Style Configurator..."),
     workspace("settings.theme", "Theme"),
     workspace("settings.import-theme", "Import Style Themes..."),
     // Help

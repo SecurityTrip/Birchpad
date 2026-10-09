@@ -14,6 +14,10 @@ version's release notes from its section here.
   themes (`.xml`) work as they are, with their colors matched to Birchpad's highlighting, and
   Settings > Import > Import Style Themes... copies them in. `appearance.theme` sets the theme
   Birchpad starts with.
+- Settings > Style Configurator..., as in Notepad++: choose a theme and change its colors (the
+  editor's global styles, the interface, and highlighting for all languages or one: foreground,
+  background, bold, italic, underline), seen as they change. Save & Close keeps the theme in the
+  `themes` folder; Cancel goes back.
 
 ### Changed
 

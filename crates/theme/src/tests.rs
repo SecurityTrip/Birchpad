@@ -245,3 +245,28 @@ fn a_style_without_colors_stays_one() {
     let theme = read("[syntax.type]\n");
     assert_eq!(theme.syntax_style(None, "type"), Some(Style::default()));
 }
+
+#[test]
+fn colors_by_key() {
+    let mut editor = Theme::default_theme().editor;
+    assert_eq!(EditorColors::KEYS.len(), 30);
+    assert_eq!(EditorColors::KEYS[0], "text");
+    assert!(EditorColors::KEYS.contains(&"current-line"));
+    assert!(UiColors::KEYS.contains(&"error-background"));
+    assert_eq!(editor.get("current-line"), Some(editor.current_line));
+    assert!(editor.set("mark-5", Color(0x01020304)));
+    assert_eq!(editor.mark_5, Color(0x01020304));
+    // Keys as files write them, not as Rust does.
+    assert_eq!(editor.get("current_line"), None);
+    assert!(!editor.set("", Color::rgb(0)));
+    assert!(!editor.set("nothing", Color::rgb(0)));
+    let mut ui = Theme::default_theme().ui;
+    assert!(ui.set("accent", Color::rgb(1)));
+    assert_eq!(ui.get("accent"), Some(Color::rgb(1)));
+    // Every key reads and writes the color the file format names it by.
+    let file = toml::to_string(&PartialEditorColors::from(&editor)).unwrap();
+    for key in EditorColors::KEYS {
+        assert!(file.contains(&format!("{key} = ")), "{key}");
+        assert!(editor.get(key).is_some());
+    }
+}

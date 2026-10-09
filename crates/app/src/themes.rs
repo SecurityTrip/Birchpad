@@ -140,6 +140,10 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
         choose(this, theme, cx);
         Ok(())
     });
+    registry.workspace("settings.style-configurator", |_, (), window, cx| {
+        crate::style_configurator::open(cx.entity().downgrade(), window, cx);
+        Ok(())
+    });
     registry.workspace("settings.import-theme", |this, (), window, cx| {
         this.import_themes(window, cx);
         Ok(())
@@ -147,7 +151,7 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
 }
 
 /// Uses `theme` and remembers it.
-fn choose(workspace: &mut Workspace, theme: Theme, cx: &mut Context<Workspace>) {
+pub(crate) fn choose(workspace: &mut Workspace, theme: Theme, cx: &mut Context<Workspace>) {
     let name = theme.name.clone();
     apply(theme, cx);
     AppState::update_state(cx, |state, _| state.theme = Some(name));
