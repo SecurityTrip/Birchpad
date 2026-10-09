@@ -749,8 +749,8 @@ impl Render for FindBar {
             .px_3()
             .pb_2()
             .border_t_1()
-            .border_color(rgb(0xd0d7de))
-            .bg(rgb(0xf6f8fa))
+            .border_color(crate::theme::paint(crate::theme::ui().border))
+            .bg(crate::theme::paint(crate::theme::ui().surface))
             .text_size(px(13.))
             .child(tabs)
             .child(find_row)
@@ -1553,11 +1553,11 @@ impl Render for GoTo {
             .child(format!("You are here: {here}"))
             .child(Input::new(&self.input).id("go-to-input"))
             .child(format!("You can't go further than: {limit}"))
-            .children(
-                self.error
-                    .clone()
-                    .map(|error| div().text_color(rgb(0xcf222e)).child(error)),
-            )
+            .children(self.error.clone().map(|error| {
+                div()
+                    .text_color(crate::theme::paint(crate::theme::ui().error))
+                    .child(error)
+            }))
     }
 }
 

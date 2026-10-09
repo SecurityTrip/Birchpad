@@ -13,6 +13,7 @@ roxmltree = "0.21"
 serde.workspace = true
 thiserror.workspace = true
 toml.workspace = true
+toml_edit = "0.25"
 
 [target.'cfg(windows)'.dependencies]
 windows-registry = "0.6"

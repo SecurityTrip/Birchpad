@@ -6,7 +6,7 @@ use birchpad_config::UpdateChannel;
 use gpui_kit::component::WindowExt as _;
 use gpui_kit::component::button::{Button, ButtonVariants as _};
 use gpui_kit::component::dialog::DialogFooter;
-use gpui_kit::{App, ClipboardItem, SharedString, Window, div, prelude::*, px, rgb};
+use gpui_kit::{App, ClipboardItem, SharedString, Window, div, prelude::*, px};
 
 use crate::app_state::AppState;
 use crate::commands::CommandRegistry;
@@ -109,7 +109,7 @@ fn show_about(window: &mut Window, cx: &mut App) {
                         div()
                             .w(px(72.))
                             .flex_none()
-                            .text_color(rgb(0x57606a))
+                            .text_color(crate::theme::paint(crate::theme::ui().muted))
                             .child(*label),
                     )
                     .child(div().flex_1().min_w_0().child(value.clone()))

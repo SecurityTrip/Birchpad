@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default, rename_all = "kebab-case")]
 pub struct Settings {
+    pub appearance: AppearanceSettings,
     pub editor: EditorSettings,
     pub highlighting: HighlightingSettings,
     pub files: FileSettings,
@@ -14,6 +15,24 @@ pub struct Settings {
     pub plugins: PluginSettings,
     pub network: NetworkSettings,
     pub diagnostics: DiagnosticsSettings,
+}
+
+/// How Birchpad looks.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, rename_all = "kebab-case")]
+pub struct AppearanceSettings {
+    /// The color theme as Birchpad starts: a built-in one (`Default`, `Dark`) or the name of a
+    /// file in the `themes` folder next to the settings, without its extension. Settings > Theme
+    /// chooses another (remembered in `state.toml`).
+    pub theme: String,
+}
+
+impl Default for AppearanceSettings {
+    fn default() -> Self {
+        Self {
+            theme: "Default".to_owned(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

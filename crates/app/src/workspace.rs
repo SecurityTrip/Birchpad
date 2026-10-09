@@ -17,7 +17,7 @@ use gpui_kit::component::notification::Notification;
 use gpui_kit::component::{h_resizable, resizable_panel, v_resizable};
 use gpui_kit::{
     AnyElement, App, AppContext as _, Context, Entity, EntityId, ExternalPaths, FocusHandle,
-    Focusable, Subscription, Window, div, prelude::*, px, rgb,
+    Focusable, Subscription, Window, div, prelude::*, px,
 };
 
 use crate::app_state::AppState;
@@ -139,6 +139,9 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
     crate::panels::register_commands(registry);
     crate::session::register_commands(registry);
     crate::disk::register_commands(registry);
+    crate::themes::register_commands(registry);
+    crate::preferences::register_commands(registry);
+    crate::shortcut_mapper::register_commands(registry);
 }
 
 /// View menu switches kept in `state.toml`: command, current value, how to remember a new one.
@@ -208,9 +211,6 @@ pub(crate) fn dialog_close(label: &'static str) -> DialogClose {
 pub(crate) fn report_warning(message: impl Into<String>, window: &mut Window, cx: &mut App) {
     window.push_notification(Notification::warning(message.into()), cx);
 }
-
-/// The line over the active view in split view.
-const ACTIVE_VIEW: u32 = 0x0969da;
 
 pub(crate) struct Workspace {
     focus_handle: FocusHandle,
@@ -794,7 +794,7 @@ impl Workspace {
     }
 
     /// Redraws every editor after a view setting (zoom, word wrap, Show Symbol) changed.
-    fn refresh_views(&mut self, cx: &mut Context<Self>) {
+    pub(crate) fn refresh_views(&mut self, cx: &mut Context<Self>) {
         for view in self.all_views(cx) {
             view.update(cx, |view, cx| view.settings_changed(cx));
         }
@@ -819,6 +819,7 @@ impl Workspace {
         let monitoring = self
             .active_view(cx)
             .is_some_and(|view| view.read(cx).buffer.read(cx).is_monitoring());
+        let theme_name = crate::theme::current().name.clone();
         let checked = |invocation: &Invocation| {
             if let Some((_, read, _)) = VIEW_SWITCHES
                 .iter()
@@ -838,6 +839,13 @@ impl Workspace {
             if invocation.command == "view.sync-horizontal-scroll" {
                 return self.sync_horizontal;
             }
+            if invocation.command == "settings.theme" {
+                return invocation
+                    .args
+                    .get("name")
+                    .and_then(|name| name.as_str())
+                    .is_some_and(|name| name.eq_ignore_ascii_case(&theme_name));
+            }
             if invocation.command == "language.set" {
                 return invocation.args.get("language").and_then(|id| id.as_str()) == language;
             }
@@ -850,8 +858,10 @@ impl Workspace {
             crate::encoding_ui::is_current(invocation, format, ansi)
         };
         let recent_files = AppState::global(cx).state.recent_files.clone();
+        let themes = crate::themes::names(crate::themes::themes_dir(cx).as_deref());
         let state = MenuState {
             recent_files: &recent_files,
+            themes: &themes,
             checked: &checked,
         };
         menus::install(&state, cx);
@@ -907,8 +917,8 @@ impl Render for Workspace {
             .size_full()
             .flex()
             .flex_col()
-            .bg(rgb(0xffffff))
-            .text_color(rgb(0x1f2328))
+            .bg(crate::theme::paint(crate::theme::ui().background))
+            .text_color(crate::theme::paint(crate::theme::ui().text))
             .when_some(self.menu_bar.clone(), birchpad_menu_bar::route_input)
             .when_some(self.menu_bar.clone(), |this, menu_bar| {
                 this.child(
@@ -917,7 +927,7 @@ impl Render for Workspace {
                         .h(px(30.))
                         .px_1()
                         .border_b_1()
-                        .border_color(rgb(0xd0d7de))
+                        .border_color(crate::theme::paint(crate::theme::ui().border))
                         .child(menu_bar),
                 )
             })
@@ -954,7 +964,7 @@ impl Workspace {
                         div()
                             .size_full()
                             .border_t_1()
-                            .border_color(rgb(0xd0d7de))
+                            .border_color(crate::theme::paint(crate::theme::ui().border))
                             .child(self.search_results.clone()),
                     ),
             )
@@ -978,9 +988,9 @@ impl Workspace {
         // A line over the active view, as Notepad++ marks the tab of the focused view.
         let panel = |index: usize| {
             let line = if index == self.active_pane {
-                rgb(ACTIVE_VIEW)
+                crate::theme::paint(crate::theme::ui().accent)
             } else {
-                rgb(0xffffff)
+                crate::theme::paint(crate::theme::ui().background)
             };
             resizable_panel().child(
                 div()

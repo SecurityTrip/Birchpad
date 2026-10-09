@@ -12,6 +12,7 @@ mod project;
 mod session;
 mod settings;
 mod state;
+mod write;
 
 pub use layers::{Diagnostic, Layer, ResolvedSettings, Sources, resolve};
 pub use load::{ConfigPaths, PORTABLE_DATA_DIR, PORTABLE_MARKER, load, load_platform_settings};
@@ -22,11 +23,12 @@ pub use session::{
     create_private_dir, write_private,
 };
 pub use settings::{
-    AutoIndent, ChangeDetection, ChangeHistory, CurrentLine, DiagnosticsSettings, Edge,
-    EditorSettings, FileSettings, HighlightingSettings, NetworkSettings, PluginInstall,
-    PluginSettings, SessionSettings, Settings, SmartHighlighting, TokenMatching, UpdateChannel,
-    UpdateMode, UpdateSettings,
+    AppearanceSettings, AutoIndent, ChangeDetection, ChangeHistory, CurrentLine,
+    DiagnosticsSettings, Edge, EditorSettings, FileSettings, HighlightingSettings, NetworkSettings,
+    PluginInstall, PluginSettings, SessionSettings, Settings, SmartHighlighting, TokenMatching,
+    UpdateChannel, UpdateMode, UpdateSettings,
 };
 pub use state::{
     FindInFilesState, MAX_RECENT_FILES, PanelsState, SplitOrientation, UpdateState, UserState,
 };
+pub use write::{SettingError, check_setting, edit_settings, write_setting};

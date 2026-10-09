@@ -190,8 +190,18 @@ What Phase 1 left for later is marked *(from Phase 1)* in the phases below.
 
 ## Phase 4: customization
 
-- Preferences, Style Configurator, themes (importing Notepad++ XML themes)
-- Shortcut mapper; macros (record, play N times, save) on top of the command registry
+- [x] Color themes for the editor and the whole window: built-in Default and Dark, theme files
+      in TOML, Notepad++ XML themes read as they are; Settings > Theme and Import Style
+      Themes... ([ADR 0027](adr/0027-themes.md))
+- [x] Style Configurator: a theme's editor, interface and highlighting colors, for all
+      languages or one, shown as they change and saved as a theme file
+      ([ADR 0027](adr/0027-themes.md))
+- [x] Preferences: the settings by section, each change written to `settings.toml` keeping its
+      comments and applied at once; settings set by policy shown but locked
+      ([ADR 0028](adr/0028-preferences.md))
+- [x] Shortcut Mapper: add, remove and reset the shortcuts of every command, written to
+      `keymap.toml` and applied at once ([ADR 0029](adr/0029-shortcut-mapper.md))
+- Macros (record, play N times, save) on top of the command registry
 - User Defined Languages (importing Notepad++ UDL files)
 - Word and API-file auto-completion, call tips, auto-closing brackets
 - Run menu with `$(FULL_CURRENT_PATH)`-style variables

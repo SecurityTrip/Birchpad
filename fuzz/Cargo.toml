@@ -83,3 +83,17 @@ path = "fuzz_targets/manifest.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "theme"
+path = "fuzz_targets/theme.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "notepad_theme"
+path = "fuzz_targets/notepad_theme.rs"
+test = false
+doc = false
+bench = false

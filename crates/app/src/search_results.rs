@@ -22,7 +22,7 @@ use gpui_kit::component::{IconName, Sizable};
 use gpui_kit::{
     App, ClickEvent, ClipboardItem, Context, EventEmitter, FocusHandle, Focusable, FontWeight,
     HighlightStyle, KeyDownEvent, MouseButton, ScrollStrategy, SharedString, StyledText,
-    UniformListScrollHandle, WeakEntity, Window, div, prelude::*, px, rgb, uniform_list,
+    UniformListScrollHandle, WeakEntity, Window, div, prelude::*, px, uniform_list,
 };
 
 use crate::buffer::Buffer;
@@ -471,7 +471,9 @@ impl SearchResults {
             .items_center()
             .whitespace_nowrap()
             .overflow_hidden()
-            .when(selected, |row| row.bg(rgb(0xddf4ff)))
+            .when(selected, |row| {
+                row.bg(crate::theme::paint(crate::theme::ui().selected))
+            })
             // A right click selects the row its menu works on.
             .on_mouse_down(
                 MouseButton::Right,
@@ -499,9 +501,9 @@ impl SearchResults {
                 let run = &self.runs[r];
                 base.pl_1()
                     .bg(if selected {
-                        rgb(0xddf4ff)
+                        crate::theme::paint(crate::theme::ui().selected)
                     } else {
-                        rgb(0xe8eef6)
+                        crate::theme::paint(crate::theme::ui().heading)
                     })
                     .font_weight(FontWeight::SEMIBOLD)
                     .child(format!("{}{}", fold(run.collapsed), run.title()))
@@ -512,7 +514,7 @@ impl SearchResults {
                 let file = &self.runs[r].files[f];
                 let plural = if file.hits == 1 { "hit" } else { "hits" };
                 base.pl(px(16.))
-                    .text_color(rgb(0x1a7f37))
+                    .text_color(crate::theme::paint(crate::theme::ui().line_number))
                     .child(format!(
                         "{}{} ({} {plural})",
                         fold(file.collapsed),
@@ -527,7 +529,9 @@ impl SearchResults {
                 let prefix = format!("Line {}: ", hit.line + 1);
                 let text = format!("{prefix}{}", hit.text);
                 let highlight = HighlightStyle {
-                    background_color: Some(rgb(0xfff8c5).into()),
+                    background_color: Some(
+                        crate::theme::paint(crate::theme::ui().match_background).into(),
+                    ),
                     font_weight: Some(FontWeight::BOLD),
                     ..HighlightStyle::default()
                 };
@@ -562,8 +566,8 @@ impl Render for SearchResults {
             .h(px(28.))
             .flex_none()
             .border_b_1()
-            .border_color(rgb(0xd0d7de))
-            .bg(rgb(0xf6f8fa))
+            .border_color(crate::theme::paint(crate::theme::ui().border))
+            .bg(crate::theme::paint(crate::theme::ui().surface))
             .child(div().flex_1().child("Search results"))
             .child(
                 Button::new("clear-results")
@@ -599,7 +603,7 @@ impl Render for SearchResults {
             .size_full()
             .flex()
             .flex_col()
-            .bg(rgb(0xffffff))
+            .bg(crate::theme::paint(crate::theme::ui().background))
             .child(header)
             .child(list)
     }

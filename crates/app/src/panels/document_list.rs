@@ -6,7 +6,7 @@
 
 use gpui_kit::{
     App, Context, Entity, FocusHandle, Focusable, FontWeight, MouseButton, SharedString,
-    WeakEntity, Window, div, prelude::*, px, rgb,
+    WeakEntity, Window, div, prelude::*, px,
 };
 
 use crate::editor::EditorView;
@@ -161,14 +161,18 @@ impl Render for DocumentList {
                 .whitespace_nowrap()
                 .overflow_hidden()
                 .cursor_pointer()
-                .when(entry.active, |row| row.bg(rgb(0xddf4ff)))
-                .hover(|row| row.bg(rgb(0xf3f4f6)))
+                .when(entry.active, |row| {
+                    row.bg(crate::theme::paint(crate::theme::ui().selected))
+                })
+                .hover(|row| row.bg(crate::theme::paint(crate::theme::ui().hovered)))
                 .child(
                     div()
                         .flex_1()
                         .px_2()
                         .overflow_hidden()
-                        .when(entry.modified, |name| name.text_color(rgb(0xbc4c00)))
+                        .when(entry.modified, |name| {
+                            name.text_color(crate::theme::paint(crate::theme::ui().modified))
+                        })
                         .child(name),
                 )
                 .child(
@@ -176,7 +180,7 @@ impl Render for DocumentList {
                         .flex_1()
                         .px_2()
                         .overflow_hidden()
-                        .text_color(rgb(0x57606a))
+                        .text_color(crate::theme::paint(crate::theme::ui().muted))
                         .child(entry.path.clone()),
                 )
                 .on_click(move |_, window, cx| {
@@ -212,7 +216,7 @@ impl Render for DocumentList {
                     .h(px(24.))
                     .items_center()
                     .border_b_1()
-                    .border_color(rgb(0xd0d7de))
+                    .border_color(crate::theme::paint(crate::theme::ui().border))
                     .child(self.heading(Column::Name, "Name", cx))
                     .child(self.heading(Column::Path, "Path", cx)),
             )

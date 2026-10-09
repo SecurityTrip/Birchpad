@@ -6,6 +6,27 @@ version's release notes from its section here.
 
 ## [Unreleased]
 
+### Added
+
+- Color themes (Settings > Theme): the built-in Default and Dark, and theme files in the
+  `themes` folder next to the settings. A dark theme darkens the whole window: tabs, panels,
+  bars, menus and dialogs. Theme files are TOML and set only the colors they change; Notepad++
+  themes (`.xml`) work as they are, with their colors matched to Birchpad's highlighting, and
+  Settings > Import > Import Style Themes... copies them in. `appearance.theme` sets the theme
+  Birchpad starts with.
+- Settings > Style Configurator..., as in Notepad++: choose a theme and change its colors (the
+  editor's global styles, the interface, and highlighting for all languages or one: foreground,
+  background, bold, italic, underline), seen as they change. Save & Close keeps the theme in the
+  `themes` folder; Cancel goes back.
+- Settings > Preferences...: tab size, auto-indent, the current line, margins and the edge,
+  smart highlighting, recent files, the ANSI encoding, the large file limit, change detection,
+  backups and updates. Each change applies at once and is written to `settings.toml`, keeping
+  its comments; settings an administrator's policy sets are shown but cannot be changed.
+- Settings > Shortcut Mapper...: every command with its shortcuts, with a filter. Add Shortcut
+  takes the keys pressed (without running them), Remove takes one off, Reset gives the
+  defaults back; it warns when the keys run another command. Changes are written to
+  `keymap.toml`, keeping its comments, and apply at once.
+
 ### Changed
 
 - Nightly builds come from the branch of the next version (`v0.1.4` after 0.1.3) instead of

@@ -9,7 +9,7 @@ repository.workspace = true
 authors.workspace = true
 
 [dependencies]
-base64 = "0.22"
+base64 = "0.23"
 birchpad-config.workspace = true
 ed25519-dalek = "3"
 rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
@@ -34,7 +34,7 @@ tempfile = "3"
 
 # build.rs checks the trusted keys with the library's own code (src/keys.rs).
 [build-dependencies]
-base64 = "0.22"
+base64 = "0.23"
 ed25519-dalek = "3"
 
 [lints]

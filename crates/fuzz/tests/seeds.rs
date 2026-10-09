@@ -316,6 +316,8 @@ fuzz_tests!(
     state,
     session,
     workspace_file,
+    theme,
+    notepad_theme,
     keymap,
     command_line,
     instance_message,

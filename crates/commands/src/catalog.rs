@@ -268,6 +268,12 @@ pub const COMMANDS: &[CommandSpec] = &[
     editor("encoding.edit-anyway", "Edit Anyway..."),
     // Language; { "language": "rust" | "cpp" | ... | "text" }
     workspace("language.set", "Language"),
+    // Settings; settings.theme takes { "name": "Default" | "Dark" | <a theme file's name> }
+    workspace("settings.preferences", "Preferences..."),
+    workspace("settings.style-configurator", "Style Configurator..."),
+    workspace("settings.shortcut-mapper", "Shortcut Mapper..."),
+    workspace("settings.theme", "Theme"),
+    workspace("settings.import-theme", "Import Style Themes..."),
     // Help
     workspace("help.check-updates", "Check for Updates..."),
     // From the update dialogs and notifications.

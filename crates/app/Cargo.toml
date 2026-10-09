@@ -17,6 +17,7 @@ birchpad-core.workspace = true
 birchpad-io.workspace = true
 birchpad-menu-bar.workspace = true
 birchpad-syntax.workspace = true
+birchpad-theme.workspace = true
 birchpad-update = { workspace = true, features = ["installer"] }
 birchpad-view.workspace = true
 futures = "0.3"
@@ -25,12 +26,12 @@ semver = "1"
 serde.workspace = true
 serde_json.workspace = true
 notify = "8"
-toml = { workspace = true, optional = true }
+toml.workspace = true
 
 [features]
 # Runs the script named by BIRCHPAD_E2E_SCRIPT once started, for the end-to-end tests
 # (`cargo test -p birchpad --features e2e --test e2e`). Release builds leave it out.
-e2e = ["dep:toml"]
+e2e = []
 
 # The Windows icon and version resources (build.rs); the version GPUI uses.
 [build-dependencies]
