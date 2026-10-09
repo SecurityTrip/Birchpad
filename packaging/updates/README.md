@@ -57,7 +57,7 @@ gh variable set BIRCHPAD_TRUSTED_KEYS --body "<the public key>"
 
 | Workflow | When | What |
 |---|---|---|
-| `nightly.yml` | 02:17 UTC daily, or by hand (on `main`) | if the branch of the next version changed (the lowest `v<major>.<minor>.<patch>` branch without a release tag): builds `v<version>-nightly.<date>.<run>`, publishes it as a pre-release with portable ZIPs, the Windows installer (`…-setup.exe`) and update packages (`…-full.nupkg`), adds it to the manifest, deletes nightly releases beyond the ten newest; otherwise signs the manifest again when it is a week old |
+| `nightly.yml` | 03:00 Moscow time (00:00 UTC) daily, or by hand (on `main`) | if the branch of the next version changed (the lowest `v<major>.<minor>.<patch>` branch without a release tag): builds `v<version>-nightly.<date>.<run>`, publishes it as a pre-release with portable ZIPs, the Windows installer (`…-setup.exe`) and update packages (`…-full.nupkg`), adds it to the manifest, deletes nightly releases beyond the ten newest; otherwise signs the manifest again when it is a week old |
 | `release.yml` | a `v*` tag is pushed | builds the same for a stable or beta version, plus the MSI, as a **draft** release |
 | `update-manifest.yml` | a maintainer publishes a draft release; called by the nightly workflow; or by hand | adds the release to `birchpad-updates.json`, signs it and uploads it to the `updates` release |
 

@@ -12,7 +12,8 @@ name: Nightly
 # context of the default branch; only the build jobs check out the branch's commit.
 on:
   schedule:
-    - cron: "17 2 * * *"
+    # 03:00 Moscow time (UTC+3); GitHub reads schedules in UTC.
+    - cron: "0 0 * * *"
   workflow_dispatch:
     inputs:
       force:
