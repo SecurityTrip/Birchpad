@@ -18,6 +18,7 @@ birchpad-core = { path = "crates/core", version = "0.1.4" }
 birchpad-io = { path = "crates/io", version = "0.1.4" }
 birchpad-menu-bar = { path = "crates/menu-bar", version = "0.1.4" }
 birchpad-syntax = { path = "crates/syntax", version = "0.1.4" }
+birchpad-theme = { path = "crates/theme", version = "0.1.4" }
 birchpad-update = { path = "crates/update", version = "0.1.4" }
 birchpad-view = { path = "crates/view", version = "0.1.4" }
 

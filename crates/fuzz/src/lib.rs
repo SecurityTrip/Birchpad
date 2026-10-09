@@ -16,6 +16,7 @@ use birchpad_commands::{Keymap, Keystroke, Layer, Platform};
 use birchpad_config::{ProjectWorkspace, Session, Sources, UpdateChannel, UserState, resolve};
 use birchpad_core::Encoding;
 use birchpad_io::{CHARACTER_SETS, FileInfo, LoadOptions, decode_appended, decode_file, encode};
+use birchpad_theme::Theme;
 use birchpad_update::SigningKey;
 use birchpad_update::manifest::{self, Envelope, Signature};
 use ed25519_dalek::Signer as _;
@@ -30,6 +31,8 @@ pub const TARGETS: &[(&str, Check)] = &[
     ("state", state),
     ("session", session),
     ("workspace_file", workspace_file),
+    ("theme", theme),
+    ("notepad_theme", notepad_theme),
     ("keymap", keymap),
     ("command_line", command_line),
     ("instance_message", instance_message),
@@ -188,6 +191,41 @@ pub fn workspace_file(data: &[u8]) -> bool {
     let again = ProjectWorkspace::parse(&saved, base).expect("a saved workspace reads");
     assert_eq!(again, workspace, "saved as:\n{saved}");
     true
+}
+
+/// A theme file: one that reads writes back as a complete file that reads as the same theme.
+pub fn theme(data: &[u8]) -> bool {
+    let Ok(text) = std::str::from_utf8(data) else {
+        return false;
+    };
+    let Ok(theme) = Theme::from_toml("Fuzzed", text) else {
+        return false;
+    };
+    check_theme(&theme);
+    true
+}
+
+/// A Notepad++ XML theme: what it imports saves as a Birchpad theme that reads the same.
+pub fn notepad_theme(data: &[u8]) -> bool {
+    let Ok(text) = std::str::from_utf8(data) else {
+        return false;
+    };
+    let Ok(theme) = Theme::from_notepad_xml("Fuzzed", text) else {
+        return false;
+    };
+    check_theme(&theme);
+    true
+}
+
+fn check_theme(theme: &Theme) {
+    let saved = theme.to_toml();
+    let again = Theme::from_toml(&theme.name, &saved).expect("a saved theme reads");
+    assert_eq!(
+        &again, theme,
+        "saved as:
+{saved}"
+    );
+    assert_eq!(again.to_toml(), saved);
 }
 
 /// The user's `keymap.toml`, on each platform: the defaults stay whatever it holds, and every

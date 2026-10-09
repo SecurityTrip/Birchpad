@@ -1,0 +1,97 @@
+# Birchpad's built-in light theme, in the spirit of Notepad++'s default style (stylers.xml):
+# blue bold keywords, purple types, green comments, grey strings, orange numbers, navy bold
+# operators, brown preprocessor.
+#
+# A theme file in the `themes` folder of the settings sets any of these keys; the others come
+# from this theme, or from the Dark theme when its editor background is dark.
+
+[editor]
+text = "#1f2328"
+background = "#ffffff"
+selection = "#3390ff40"
+caret = "#1f2328"
+current-line = "#e8e8ff"
+gutter-background = "#f6f8fa"
+gutter-text = "#8c959f"
+gutter-border = "#e4e7eb"
+bookmark = "#2f6fde"
+change-modified = "#ff8000"
+change-saved = "#00a000"
+fold-mark = "#6e7781"
+fold-line = "#c4c9cf"
+fold-underline = "#9aa1a9"
+whitespace = "#ffb56a"
+eol-box = "#dadada"
+eol-text = "#57606a"
+indent-guide = "#c0c0c0"
+edge = "#80ffff"
+brace-match = "#ff0000"
+brace-bad = "#800000"
+smart-highlight = "#00ff0064"
+find-mark = "#ff000055"
+incremental-highlight = "#0080ff55"
+# Style All Occurrences of Token: cyan, orange, yellow, purple, green, translucent like
+# Notepad++'s round boxes.
+mark-1 = "#00ffff66"
+mark-2 = "#ff800066"
+mark-3 = "#ffff0099"
+mark-4 = "#8000ff55"
+mark-5 = "#00800066"
+scrollbar-thumb = "#c4c9cf"
+
+[ui]
+background = "#ffffff"
+surface = "#f6f8fa"
+border = "#d0d7de"
+text = "#1f2328"
+muted = "#57606a"
+faint = "#8c959f"
+selected = "#ddf4ff"
+hovered = "#eaeef2"
+accent = "#0969da"
+error = "#cf222e"
+error-background = "#ffebe9"
+modified = "#d1242f"
+directory = "#9a6700"
+heading = "#e8eef6"
+line-number = "#1a7f37"
+match-background = "#fff8c5"
+
+# Highlight names fall back to their prefix: `function.method` takes `function`'s style unless
+# it has its own. Names with a dot are quoted, or written as nested tables.
+[syntax]
+attribute = "#804000"
+boolean = { color = "#0000ff", bold = true }
+character = "#808080"
+comment = "#008000"
+constant = "#8000ff"
+"constant.builtin" = { color = "#0000ff", bold = true }
+constructor = "#8000ff"
+"diff.delta" = "#8000ff"
+"diff.minus" = "#d1242f"
+"diff.plus" = "#1a7f37"
+error = "#ff0000"
+escape = "#ff8000"
+function = "#000080"
+"function.macro" = "#804000"
+keyword = { color = "#0000ff", bold = true }
+"keyword.directive" = "#804000"
+label = "#008080"
+"markup.heading" = { color = "#0000ff", bold = true }
+"markup.italic" = { color = "#1f2328", italic = true }
+"markup.link" = "#0000ff"
+"markup.list" = "#ff8000"
+"markup.quote" = { color = "#808080", italic = true }
+"markup.raw" = "#808080"
+"markup.strong" = { color = "#1f2328", bold = true }
+module = "#008080"
+number = "#ff8000"
+operator = { color = "#000080", bold = true }
+string = "#808080"
+"string.escape" = "#ff8000"
+"string.regexp" = "#c00000"
+"string.special.key" = "#000080"
+tag = "#0000ff"
+"tag.attribute" = "#ff0000"
+type = "#8000ff"
+"variable.builtin" = "#0000ff"
