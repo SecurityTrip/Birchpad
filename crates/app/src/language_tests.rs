@@ -31,10 +31,7 @@ fn has_tree(workspace: &Entity<Workspace>, cx: &mut VisualTestContext) -> bool {
     })
 }
 
-fn status_language(
-    workspace: &Entity<Workspace>,
-    cx: &mut VisualTestContext,
-) -> Option<&'static str> {
+fn status_language(workspace: &Entity<Workspace>, cx: &mut VisualTestContext) -> Option<String> {
     workspace.update(cx, |workspace, cx| {
         let view = workspace.active_view(cx).unwrap();
         view.update(cx, |view, cx| StatusInfo::of(view, cx).language)
@@ -77,7 +74,10 @@ fn files_get_their_language_and_a_syntax_tree(cx: &mut TestAppContext) {
     });
     cx.run_until_parked();
     assert_eq!(language(&workspace, cx), Some("rust"));
-    assert_eq!(status_language(&workspace, cx), Some("Rust file"));
+    assert_eq!(
+        status_language(&workspace, cx).as_deref(),
+        Some("Rust file")
+    );
     assert!(has_tree(&workspace, cx), "parsed in the background");
 
     workspace.update_in(cx, |workspace, window, cx| {

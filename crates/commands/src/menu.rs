@@ -41,6 +41,8 @@ pub enum Placeholder {
     Macros,
     /// The saved command lines of the Run menu, each invoking `run.run`.
     RunCommands,
+    /// The user defined languages, each invoking `language.set` with `udl:<name>`.
+    UserLanguages,
 }
 
 impl MenuItem {
@@ -550,6 +552,15 @@ pub fn main_menu() -> Vec<Menu> {
             MenuItem::command_with("language.set", json!({ "language": "text" }), "Normal Text"),
             Separator,
             Dynamic(Placeholder::Languages),
+            Separator,
+            Submenu(Menu::new(
+                "User Defined Language",
+                vec![
+                    Dynamic(Placeholder::UserLanguages),
+                    Separator,
+                    cmd("language.import-udl"),
+                ],
+            )),
         ],
     );
 

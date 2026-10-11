@@ -13,7 +13,7 @@ use birchpad_core::{
 use birchpad_io::{
     ByteChanges, DecodeProblem, DiskStamp, Head, LoadOptions, LoadedFile, ReadError,
 };
-use birchpad_syntax::{Language, Parsed, Syntax};
+use birchpad_syntax::{Language, Parsed, Syntax, UdlKind, UserLanguage};
 use gpui_kit::{AppContext as _, Context, EntityId, EventEmitter, Task};
 
 use crate::app_state::AppState;
@@ -121,6 +121,17 @@ struct SyntaxState {
     /// A language was installed and its first parse has not finished: there are no folds yet,
     /// but there will be.
     folds_pending: bool,
+    /// A Notepad++ user defined language, in place of `language`.
+    user_language: Option<std::rc::Rc<UserLanguage>>,
+    /// Its pieces of text up to an offset, for a revision of the text.
+    udl_cache: std::cell::RefCell<Option<UdlCache>>,
+}
+
+/// What a user defined language colored, up to `end`, in revision `revision` of the text.
+struct UdlCache {
+    revision: birchpad_core::RevisionId,
+    end: usize,
+    pieces: std::rc::Rc<Vec<(ByteRange<usize>, UdlKind)>>,
 }
 
 /// A parse running in the background.
@@ -584,6 +595,51 @@ impl Buffer {
         self.syntax.language
     }
 
+    /// The user defined language, if the buffer has one.
+    pub(crate) fn user_language(&self) -> Option<&std::rc::Rc<UserLanguage>> {
+        self.syntax.user_language.as_ref()
+    }
+
+    /// The pieces the user defined language colors up to `end` at least, lexed from the start
+    /// of the text (comments may begin far above) and kept until the text changes.
+    pub(crate) fn udl_pieces(&self, end: usize) -> std::rc::Rc<Vec<(ByteRange<usize>, UdlKind)>> {
+        let Some(language) = &self.syntax.user_language else {
+            return std::rc::Rc::default();
+        };
+        let revision = self.doc.revision();
+        let text = self.doc.text();
+        let end = end.min(text.len());
+        if let Some(cache) = &*self.syntax.udl_cache.borrow()
+            && cache.revision == revision
+            && cache.end >= end
+        {
+            return cache.pieces.clone();
+        }
+        // Lex a little past what is asked, so that scrolling down reuses it.
+        let end = text.ceil_char_boundary((end + 64 * 1024).min(text.len()));
+        let pieces = std::rc::Rc::new(language.highlight(&text.slice(..end).to_string(), 0));
+        *self.syntax.udl_cache.borrow_mut() = Some(UdlCache {
+            revision,
+            end,
+            pieces: pieces.clone(),
+        });
+        pieces
+    }
+
+    /// Uses a user defined language (`None`: normal text), as chosen in the Language menu.
+    pub(crate) fn set_user_language(
+        &mut self,
+        language: Option<std::rc::Rc<UserLanguage>>,
+        cx: &mut Context<Self>,
+    ) {
+        self.syntax.chosen = true;
+        self.install_language(None, cx);
+        self.syntax.user_language = language;
+        cx.emit(BufferEvent::SyntaxChanged);
+        cx.emit(BufferEvent::StateChanged);
+        cx.notify();
+    }
+
     /// The syntax tree, unless the buffer is plain text or over the large file limit.
     pub(crate) fn syntax(&self) -> Option<&Syntax> {
         self.syntax.syntax.as_ref()
@@ -630,7 +686,9 @@ impl Buffer {
     /// Recognizes the language from the file name and the first line, unless one was chosen.
     fn detect_language(&mut self, cx: &mut Context<Self>) {
         if self.syntax.chosen {
+            let user_language = self.syntax.user_language.clone();
             self.install_language(self.syntax.language, cx);
+            self.syntax.user_language = user_language;
             return;
         }
         let text = self.doc.text();
@@ -644,10 +702,20 @@ impl Buffer {
             .unwrap_or_default();
         let language = birchpad_syntax::detect(self.path.as_deref(), &first_line);
         self.install_language(language, cx);
+        if language.is_none()
+            && let Some(name) = self
+                .path
+                .as_deref()
+                .and_then(|path| path.file_name()?.to_str())
+        {
+            self.syntax.user_language = crate::user_languages::for_file(name, cx);
+        }
     }
 
     fn install_language(&mut self, language: Option<&'static Language>, cx: &mut Context<Self>) {
         self.syntax.parsing = None;
+        self.syntax.user_language = None;
+        *self.syntax.udl_cache.borrow_mut() = None;
         let limit = u64::from(AppState::global(cx).settings.files.large_file_limit_mb) << 20;
         let too_large = self.doc.text().len() as u64 > limit && !self.syntax.chosen;
         let language = language.filter(|_| !too_large);

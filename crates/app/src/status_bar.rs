@@ -31,7 +31,7 @@ pub(crate) struct StatusInfo {
     pub(crate) format: Format,
     pub(crate) overwrite: bool,
     /// The language's description ("Rust file"), or `None` for normal text.
-    pub(crate) language: Option<&'static str>,
+    pub(crate) language: Option<String>,
 }
 
 impl StatusInfo {
@@ -56,11 +56,17 @@ impl StatusInfo {
             selected_lines,
             format: view.buffer.read(cx).doc().format(),
             overwrite: view.overwrite,
-            language: view
-                .buffer
-                .read(cx)
-                .language()
-                .map(|language| language.description),
+            language: {
+                let buffer = view.buffer.read(cx);
+                buffer
+                    .language()
+                    .map(|language| language.description.to_owned())
+                    .or_else(|| {
+                        buffer
+                            .user_language()
+                            .map(|found| format!("User defined language file - {}", found.name))
+                    })
+            },
         }
     }
 
@@ -118,10 +124,11 @@ pub(crate) fn render<V: 'static>(
         return bar.child(div().px_3().flex_1().child("Normal text file"));
     };
     bar = bar.child(
-        div()
-            .px_3()
-            .flex_1()
-            .child(info.language.unwrap_or("Normal text file")),
+        div().px_3().flex_1().child(
+            info.language
+                .clone()
+                .unwrap_or_else(|| "Normal text file".into()),
+        ),
     );
     let [length, position, selection, eol, encoding, mode] = info.sections();
     let format = info.format;
@@ -237,7 +244,8 @@ fn add_items(
                 | Placeholder::Languages
                 | Placeholder::Themes
                 | Placeholder::Macros
-                | Placeholder::RunCommands,
+                | Placeholder::RunCommands
+                | Placeholder::UserLanguages,
             ) => {}
         }
     }
@@ -332,7 +340,7 @@ mod tests {
             Invocation::with_args("language.set", json!({ "language": "rust" })),
             cx,
         );
-        assert_eq!(info(cx).language, Some("Rust file"));
+        assert_eq!(info(cx).language.as_deref(), Some("Rust file"));
         run(
             Invocation::with_args("encoding.convert-to", json!({ "encoding": "utf-16be-bom" })),
             cx,

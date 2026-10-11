@@ -463,6 +463,20 @@ impl EditorView {
         }
         let Some(syntax) = buffer.syntax() else {
             self.highlight_cache = None;
+            if let Some(language) = buffer.user_language() {
+                let end = ranges.iter().map(|range| range.end).max().unwrap_or(0);
+                let pieces = buffer.udl_pieces(end);
+                for (piece, kind) in pieces.iter() {
+                    let visible = ranges
+                        .iter()
+                        .any(|range| piece.start < range.end && piece.end > range.start);
+                    if let (true, Some(style)) =
+                        (visible, crate::user_languages::style_of(language, *kind))
+                    {
+                        styles.spans.push((piece.clone(), style));
+                    }
+                }
+            }
             return styles;
         };
         let language = syntax.language().id;

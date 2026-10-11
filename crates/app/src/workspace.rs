@@ -117,6 +117,15 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
         });
     }
     registry.workspace("language.set", |this, args: LanguageArgs, _, cx| {
+        if let Some(name) = args.language.strip_prefix(crate::user_languages::ID_PREFIX) {
+            let found = crate::user_languages::find(name, cx)
+                .ok_or_else(|| anyhow::anyhow!("there is no user defined language {name}"))?;
+            if let Some(view) = this.active_view(cx) {
+                let buffer = view.read(cx).buffer.clone();
+                buffer.update(cx, |buffer, cx| buffer.set_user_language(Some(found), cx));
+            }
+            return Ok(());
+        }
         let language = match args.language.as_str() {
             "text" | "normal" => None,
             id => Some(
@@ -145,6 +154,7 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
     crate::macros::register_commands(registry);
     crate::tools::register_commands(registry);
     crate::run_menu::register_commands(registry);
+    crate::user_languages::register_commands(registry);
 }
 
 /// View menu switches kept in `state.toml`: command, current value, how to remember a new one.
@@ -815,11 +825,14 @@ impl Workspace {
             .active_view(cx)
             .map(|view| view.read(cx).buffer.read(cx).doc().format());
         let language = self.active_view(cx).map(|view| {
-            view.read(cx)
-                .buffer
-                .read(cx)
-                .language()
-                .map_or("text", |l| l.id)
+            let buffer = view.read(cx).buffer.read(cx);
+            match (buffer.language(), buffer.user_language()) {
+                (Some(language), _) => language.id.to_owned(),
+                (None, Some(found)) => {
+                    format!("{}{}", crate::user_languages::ID_PREFIX, found.name)
+                }
+                (None, None) => "text".to_owned(),
+            }
         });
         let ansi = AppState::global(cx).ansi;
         let view = ViewSettings::read(cx);
@@ -854,7 +867,8 @@ impl Workspace {
                     .is_some_and(|name| name.eq_ignore_ascii_case(&theme_name));
             }
             if invocation.command == "language.set" {
-                return invocation.args.get("language").and_then(|id| id.as_str()) == language;
+                return invocation.args.get("language").and_then(|id| id.as_str())
+                    == language.as_deref();
             }
             if let Some(open) = crate::panels::is_checked(&self.docks, invocation) {
                 return open;
@@ -880,7 +894,9 @@ impl Workspace {
             .try_global::<crate::run_menu::RunMenu>()
             .map(|menu| menu.saved.iter().map(|entry| entry.name.clone()).collect())
             .unwrap_or_default();
+        let user_languages = crate::user_languages::names(cx);
         let state = MenuState {
+            user_languages: &user_languages,
             recent_files: &recent_files,
             themes: &themes,
             macros: &macros,

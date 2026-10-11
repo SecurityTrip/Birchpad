@@ -15,6 +15,8 @@ use crate::commands::{CommandRegistry, RunCommand};
 /// Live state the menus reflect.
 pub(crate) struct MenuState<'a> {
     pub(crate) recent_files: &'a [PathBuf],
+    /// The user defined languages the Language menu lists.
+    pub(crate) user_languages: &'a [String],
     /// The themes Settings > Theme lists.
     pub(crate) themes: &'a [String],
     /// The saved macros the Macro menu lists.
@@ -119,6 +121,18 @@ fn build_menu(
                     items.push(GpuiMenuItem::submenu(
                         gpui_kit::Menu::new(letter.to_string()).items(entries),
                     ));
+                }
+            }
+            MenuItem::Placeholder(Placeholder::UserLanguages) => {
+                for name in state.user_languages {
+                    let invocation = Invocation::with_args(
+                        "language.set",
+                        json!({ "language": format!("{}{name}", crate::user_languages::ID_PREFIX) }),
+                    );
+                    let checked = (state.checked)(&invocation);
+                    items.push(
+                        GpuiMenuItem::action(name.clone(), RunCommand(invocation)).checked(checked),
+                    );
                 }
             }
             MenuItem::Placeholder(Placeholder::RunCommands) => {

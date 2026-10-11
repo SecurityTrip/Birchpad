@@ -36,6 +36,7 @@ pub const TARGETS: &[(&str, Check)] = &[
     ("macros", macros),
     ("run_commands", run_commands),
     ("api_file", api_file),
+    ("udl", udl),
     ("keymap", keymap),
     ("command_line", command_line),
     ("instance_message", instance_message),
@@ -291,6 +292,31 @@ pub fn api_file(data: &[u8]) -> bool {
                 keyword.name
             );
         }
+    }
+    true
+}
+
+/// A Notepad++ user defined language file: every language it holds colors its own text, and
+/// the file itself, with pieces in order, apart, and on character boundaries.
+pub fn udl(data: &[u8]) -> bool {
+    let Ok(text) = std::str::from_utf8(data) else {
+        return false;
+    };
+    let Ok(languages) = birchpad_syntax::parse_udl(text) else {
+        return false;
+    };
+    for language in &languages {
+        assert!(!language.name.trim().is_empty());
+        let pieces = language.highlight(text, 0);
+        let mut end = 0;
+        for (range, _) in &pieces {
+            assert!(range.start >= end && range.start < range.end && range.end <= text.len());
+            assert!(text.is_char_boundary(range.start) && text.is_char_boundary(range.end));
+            end = range.end;
+        }
+        let from = text.len() / 2;
+        let later = language.highlight(text, text.floor_char_boundary(from));
+        assert!(later.iter().all(|piece| pieces.contains(piece)));
     }
     true
 }

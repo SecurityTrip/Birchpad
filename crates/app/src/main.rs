@@ -48,6 +48,7 @@ mod style_configurator;
 mod themes;
 mod tools;
 mod updates;
+mod user_languages;
 mod workspace;
 
 pub(crate) use editor::theme;
@@ -115,6 +116,7 @@ fn main() {
             themes::init(cx);
             macros::init(cx);
             run_menu::init(cx);
+            user_languages::init(cx);
             updates::Updates::install(
                 updates::Updates::http(),
                 updates::trusted_keys(),

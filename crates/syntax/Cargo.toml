@@ -10,7 +10,9 @@ authors.workspace = true
 
 [dependencies]
 birchpad-core.workspace = true
+roxmltree = "0.21"
 ropey.workspace = true
+thiserror.workspace = true
 tree-sitter = "0.27"
 tree-sitter-language = "0.1"
 

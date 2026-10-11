@@ -321,6 +321,7 @@ fuzz_tests!(
     macros,
     run_commands,
     api_file,
+    udl,
     keymap,
     command_line,
     instance_message,

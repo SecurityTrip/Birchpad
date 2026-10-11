@@ -203,7 +203,8 @@ What Phase 1 left for later is marked *(from Phase 1)* in the phases below.
       `keymap.toml` and applied at once ([ADR 0029](adr/0029-shortcut-mapper.md))
 - [x] Macros: record commands and typing, play back once, N times or until the end of the
       file, save by name in `macros.toml` ([ADR 0030](adr/0030-macros.md))
-- User Defined Languages (importing Notepad++ UDL files)
+- [x] User Defined Languages: Notepad++ UDL files read as they are, colored by a small lexer,
+      chosen by extension or in the Language menu, imported ([ADR 0032](adr/0032-user-defined-languages.md))
 - [x] Auto-completion: brackets and quotes closed as typed, the document's words and Notepad++
       API files' keywords while typing, call tips with every overload
       ([ADR 0031](adr/0031-auto-completion.md))

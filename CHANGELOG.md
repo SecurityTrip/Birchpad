@@ -37,6 +37,10 @@ version's release notes from its section here.
 - DOS (OEM) code pages in Encoding > Character Sets: OEM-US (437), 737, 775, 850, 852, 855,
   857, 858, 860, 861, 862, 863, 864, 865 and 869, and EBCDIC 037, 1140, 500 and 1026; `cp437`
   and `IBM437` name them in settings and on the command line.
+- Notepad++'s User Defined Languages: UDL files in `userDefineLangs` next to the settings are
+  listed in Language > User Defined Language (Import... copies them in), color their keywords,
+  comments, operators, numbers and delimiters in the language's own colors, and apply to files
+  with their extensions.
 - Auto-completion, as in Notepad++: brackets and quotes get their closing partner as they are
   typed (typing it steps over it, Backspace deletes an empty pair); a list of the document's
   words and the language's keywords shows while typing (Ctrl+Space asks for it); a function's
