@@ -1,0 +1,75 @@
+/// The Birchpad plugin API (ADR 0036).
+///
+/// A plugin is a WebAssembly component of the `plugin` world. It sees the document it works on
+/// through the `host` interface: positions are byte offsets into the UTF-8 text. Its edits
+/// during one call are one undo step; the commands it runs and the messages it shows take
+/// effect once the call returns.
+package birchpad:plugin@0.1.0;
+
+interface types {
+    /// A command a plugin adds to its submenu of the Plugins menu.
+    record command {
+        /// Unique within the plugin: `[a-z0-9-]+`.
+        id: string,
+        /// The menu item's title.
+        title: string,
+    }
+
+    /// A selection range: the anchor stays, the head is where the caret is.
+    record selection {
+        anchor: u64,
+        head: u64,
+    }
+
+    /// Something that happened to a document; the document is the one the call works on.
+    enum event {
+        opened,
+        saved,
+        closed,
+        activated,
+    }
+}
+
+interface host {
+    use types.{selection};
+
+    /// The whole text of the document.
+    text: func() -> string;
+    /// The length of the text in bytes.
+    length: func() -> u64;
+    /// The text from `start` to `end`.
+    text-range: func(start: u64, end: u64) -> result<string, string>;
+    /// Replaces the text from `start` to `end` with `text`.
+    replace: func(start: u64, end: u64, text: string) -> result<_, string>;
+    /// Replaces every selection with `text`, as typing does.
+    insert: func(text: string);
+    /// The selections, the primary one first.
+    selections: func() -> list<selection>;
+    /// Sets the selections, the primary one first; at least one.
+    set-selections: func(selections: list<selection>) -> result<_, string>;
+    /// The document's file, if it has one.
+    path: func() -> option<string>;
+    /// The id of the document's language (`rust`, `json`, `text`, ...).
+    language: func() -> string;
+    /// Runs a command of Birchpad (`edit.select-all`) with arguments in JSON (`{}`), once the
+    /// call returns.
+    run-command: func(id: string, arguments: string) -> result<_, string>;
+    /// Shows a message to the user.
+    message: func(text: string);
+    /// Shows the plugin's panel with these lines; clicking a line calls `on-panel-click`.
+    show-panel: func(title: string, lines: list<string>);
+}
+
+world plugin {
+    use types.{command, event};
+    import host;
+
+    /// The plugin's commands, asked once when it loads.
+    export commands: func() -> list<command>;
+    /// Runs one of the plugin's commands.
+    export run: func(command: string) -> result<_, string>;
+    /// Called for the events the plugin's manifest asks for.
+    export on-event: func(event: event);
+    /// Called when a line of the plugin's panel is clicked (0-based).
+    export on-panel-click: func(line: u32);
+}

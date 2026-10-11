@@ -332,12 +332,24 @@ pub enum UpdateChannel {
     Nightly,
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default, rename_all = "kebab-case")]
 pub struct PluginSettings {
     pub install: PluginInstall,
     /// Plugin ids that may be installed when `install` is `allowlist`.
     pub allowed: Vec<String>,
+    /// Whether the scripts in the `scripts` folder may run.
+    pub scripts: bool,
+}
+
+impl Default for PluginSettings {
+    fn default() -> Self {
+        Self {
+            install: PluginInstall::default(),
+            allowed: Vec::new(),
+            scripts: true,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
