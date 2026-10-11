@@ -702,7 +702,9 @@ impl Buffer {
             .unwrap_or_default();
         let language = birchpad_syntax::detect(self.path.as_deref(), &first_line);
         self.install_language(language, cx);
+        let limit = u64::from(AppState::global(cx).settings.files.large_file_limit_mb) << 20;
         if language.is_none()
+            && self.doc.text().len() as u64 <= limit
             && let Some(name) = self
                 .path
                 .as_deref()
