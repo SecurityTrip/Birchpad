@@ -28,6 +28,7 @@ mod help;
 mod incremental;
 #[cfg(test)]
 mod language_tests;
+mod macros;
 mod menus;
 mod navigation;
 mod pane;
@@ -110,6 +111,7 @@ fn main() {
             app_state.no_session = command_line.no_session;
             cx.set_global(app_state);
             themes::init(cx);
+            macros::init(cx);
             updates::Updates::install(
                 updates::Updates::http(),
                 updates::trusted_keys(),

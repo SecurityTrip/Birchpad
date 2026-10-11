@@ -233,7 +233,10 @@ fn add_items(
             }
             // The status bar's menus show line endings and encodings only.
             MenuItem::Placeholder(
-                Placeholder::RecentFiles | Placeholder::Languages | Placeholder::Themes,
+                Placeholder::RecentFiles
+                | Placeholder::Languages
+                | Placeholder::Themes
+                | Placeholder::Macros,
             ) => {}
         }
     }

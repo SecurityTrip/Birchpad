@@ -73,6 +73,8 @@ pub const COMMANDS: &[CommandSpec] = &[
     editor("edit.tab", "Insert Tab"),
     // { "text": "..." }
     editor("edit.insert-text", "Insert Text"),
+    // { "text": "..." }: typed text, overwriting in overwrite mode (what macros record)
+    editor("edit.type", "Type Text"),
     editor("edit.toggle-overwrite", "Toggle Insert/Overwrite"),
     // { "eol": "crlf" | "lf" | "cr" }
     editor("edit.convert-eol", "EOL Conversion"),
@@ -268,6 +270,13 @@ pub const COMMANDS: &[CommandSpec] = &[
     editor("encoding.edit-anyway", "Edit Anyway..."),
     // Language; { "language": "rust" | "cpp" | ... | "text" }
     workspace("language.set", "Language"),
+    // Macro; macro.run takes { "name": <a saved macro>, "times": 1 } or { "until-end": true }
+    workspace("macro.start-recording", "Start Recording"),
+    workspace("macro.stop-recording", "Stop Recording"),
+    workspace("macro.playback", "Playback"),
+    workspace("macro.save", "Save Current Recorded Macro..."),
+    workspace("macro.run-multiple", "Run a Macro Multiple Times..."),
+    workspace("macro.run", "Run Macro"),
     // Settings; settings.theme takes { "name": "Default" | "Dark" | <a theme file's name> }
     workspace("settings.preferences", "Preferences..."),
     workspace("settings.style-configurator", "Style Configurator..."),

@@ -184,6 +184,10 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
         this.insert(&args.text, LastEdit::None, cx);
         Ok(())
     });
+    registry.editor("edit.type", |this, args: InsertTextArgs, _, cx| {
+        this.type_text(&args.text, cx);
+        Ok(())
+    });
     registry.editor("edit.toggle-overwrite", |this, (), _, cx| {
         this.overwrite = !this.overwrite;
         this.pause_blink(cx);
@@ -623,11 +627,10 @@ impl EditorView {
         let invocation = &action.0;
         let handler = cx.global::<CommandRegistry>().get(&invocation.command);
         match handler {
-            Some(Handler::Editor(run)) => {
-                if let Err(error) = run(self, invocation, window, cx) {
-                    crate::workspace::report_error(&error, window, cx);
-                }
-            }
+            Some(Handler::Editor(run)) => match run(self, invocation, window, cx) {
+                Ok(()) => crate::macros::record(invocation, cx),
+                Err(error) => crate::workspace::report_error(&error, window, cx),
+            },
             _ => cx.propagate(),
         }
     }
@@ -1572,6 +1575,7 @@ impl EntityInputHandler for EditorView {
             Some(range) => self.replace_range(range, text, cx),
             None => self.type_text(text, cx),
         }
+        crate::macros::record_typing(text, cx);
     }
 
     fn replace_and_mark_text_in_range(

@@ -37,6 +37,8 @@ pub enum Placeholder {
     Languages,
     /// The built-in themes and those of the `themes` folder, each invoking `settings.theme`.
     Themes,
+    /// The saved macros, each invoking `macro.run`.
+    Macros,
 }
 
 impl MenuItem {
@@ -549,6 +551,19 @@ pub fn main_menu() -> Vec<Menu> {
         ],
     );
 
+    let macros = Menu::new(
+        "Macro",
+        vec![
+            cmd("macro.start-recording"),
+            cmd("macro.stop-recording"),
+            cmd("macro.playback"),
+            cmd("macro.save"),
+            cmd("macro.run-multiple"),
+            Separator,
+            Dynamic(Placeholder::Macros),
+        ],
+    );
+
     let settings = Menu::new(
         "Settings",
         vec![
@@ -565,7 +580,9 @@ pub fn main_menu() -> Vec<Menu> {
         vec![cmd("help.check-updates"), Separator, cmd("help.about")],
     );
 
-    vec![file, edit, search, view, encoding, language, settings, help]
+    vec![
+        file, edit, search, view, encoding, language, settings, macros, help,
+    ]
 }
 
 #[cfg(test)]
@@ -578,7 +595,8 @@ mod tests {
         assert_eq!(
             titles,
             [
-                "File", "Edit", "Search", "View", "Encoding", "Language", "Settings", "Help"
+                "File", "Edit", "Search", "View", "Encoding", "Language", "Settings", "Macro",
+                "Help"
             ]
         );
     }

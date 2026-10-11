@@ -11,6 +11,7 @@ mod invocation;
 mod keymap;
 mod keymap_edit;
 mod keystroke;
+mod macros;
 mod menu;
 
 pub use catalog::{COMMANDS, CommandSpec, Scope, find};
@@ -18,4 +19,5 @@ pub use invocation::{ArgsError, Invocation};
 pub use keymap::{Binding, DEFAULT_KEYMAP, Keymap, KeymapDiagnostic, KeymapError, Layer};
 pub use keymap_edit::{bind, reset, unbind};
 pub use keystroke::{Keystroke, KeystrokeError, Modifiers, Platform};
+pub use macros::{Macro, is_recordable, parse_macros, record, write_macros};
 pub use menu::{Menu, MenuItem, Placeholder, main_menu};

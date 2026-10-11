@@ -33,6 +33,7 @@ pub const TARGETS: &[(&str, Check)] = &[
     ("workspace_file", workspace_file),
     ("theme", theme),
     ("notepad_theme", notepad_theme),
+    ("macros", macros),
     ("keymap", keymap),
     ("command_line", command_line),
     ("instance_message", instance_message),
@@ -210,6 +211,24 @@ pub fn workspace_file(data: &[u8]) -> bool {
     let saved = workspace.to_xml(base);
     let again = ProjectWorkspace::parse(&saved, base).expect("a saved workspace reads");
     assert_eq!(again, workspace, "saved as:\n{saved}");
+    true
+}
+
+/// `macros.toml`: macros that read write back as a file that reads the same.
+pub fn macros(data: &[u8]) -> bool {
+    let Ok(text) = std::str::from_utf8(data) else {
+        return false;
+    };
+    let Ok(macros) = birchpad_commands::parse_macros(text) else {
+        return false;
+    };
+    let written = birchpad_commands::write_macros(&macros);
+    let again = birchpad_commands::parse_macros(&written).expect("written macros read");
+    assert_eq!(
+        again, macros,
+        "written:
+{written}"
+    );
     true
 }
 

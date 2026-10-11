@@ -142,6 +142,7 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
     crate::themes::register_commands(registry);
     crate::preferences::register_commands(registry);
     crate::shortcut_mapper::register_commands(registry);
+    crate::macros::register_commands(registry);
 }
 
 /// View menu switches kept in `state.toml`: command, current value, how to remember a new one.
@@ -777,7 +778,7 @@ impl Workspace {
             anyhow::bail!("{} is turned off", invocation.command);
         }
         let handler = registry.get(&invocation.command);
-        match handler {
+        let result = match handler {
             Some(Handler::Workspace(run)) => run(self, invocation, window, cx),
             Some(Handler::Editor(run)) => match self.active_view(cx) {
                 Some(view) => view.update(cx, |view, cx| run(view, invocation, window, cx)),
@@ -790,7 +791,11 @@ impl Workspace {
                 anyhow::bail!("{} is not available yet", invocation.command)
             }
             None => anyhow::bail!("unknown command {}", invocation.command),
+        };
+        if result.is_ok() {
+            crate::macros::record(invocation, cx);
         }
+        result
     }
 
     /// Redraws every editor after a view setting (zoom, word wrap, Show Symbol) changed.
@@ -859,9 +864,20 @@ impl Workspace {
         };
         let recent_files = AppState::global(cx).state.recent_files.clone();
         let themes = crate::themes::names(crate::themes::themes_dir(cx).as_deref());
+        let macros: Vec<String> = cx
+            .try_global::<crate::macros::Macros>()
+            .map(|macros| {
+                macros
+                    .saved
+                    .iter()
+                    .map(|found| found.name.clone())
+                    .collect()
+            })
+            .unwrap_or_default();
         let state = MenuState {
             recent_files: &recent_files,
             themes: &themes,
+            macros: &macros,
             checked: &checked,
         };
         menus::install(&state, cx);

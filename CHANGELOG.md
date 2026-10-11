@@ -26,6 +26,10 @@ version's release notes from its section here.
   takes the keys pressed (without running them), Remove takes one off, Reset gives the
   defaults back; it warns when the keys run another command. Changes are written to
   `keymap.toml`, keeping its comments, and apply at once.
+- The Macro menu, as in Notepad++: Start/Stop Recording (Ctrl+Shift+R) records the commands run
+  and the text typed, Playback (Ctrl+Shift+P) plays them, Run a Macro Multiple Times... plays a
+  number of times or until the end of the file, and saved macros (`macros.toml`) are listed in
+  the menu.
 
 ### Changed
 

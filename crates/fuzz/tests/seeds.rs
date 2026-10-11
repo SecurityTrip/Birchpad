@@ -318,6 +318,7 @@ fuzz_tests!(
     workspace_file,
     theme,
     notepad_theme,
+    macros,
     keymap,
     command_line,
     instance_message,
