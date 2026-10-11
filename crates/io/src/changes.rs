@@ -6,7 +6,7 @@ use birchpad_core::{Encoding, Rope};
 use encoding_rs::{DecoderResult, EncoderResult};
 
 use crate::encode::encode;
-use crate::encoding::to_encoding_rs;
+use crate::encoding::to_codec;
 
 /// How many changes are kept to be listed.
 pub const LISTED: usize = 8;
@@ -71,13 +71,13 @@ pub fn byte_changes(bytes: &[u8], skip: usize, encoding: Encoding) -> ByteChange
                 pos = end;
             }
         }
-        Encoding::Legacy(_) if !to_encoding_rs(encoding).is_single_byte() => {
+        Encoding::Legacy(_) if !to_codec(encoding).is_single_byte() => {
             multi_byte(bytes, skip, encoding, &mut changes);
         }
         // UTF-16 and single-byte encodings map bytes to characters one to one: only malformed
         // bytes change.
         _ => {
-            let mut decoder = to_encoding_rs(encoding).new_decoder_without_bom_handling();
+            let mut decoder = to_codec(encoding).new_decoder_without_bom_handling();
             let mut text = String::with_capacity(64 * 1024);
             let mut pos = 0;
             loop {
@@ -105,8 +105,8 @@ pub fn byte_changes(bytes: &[u8], skip: usize, encoding: Encoding) -> ByteChange
 /// ISO-2022-JP switches modes with escape sequences that carry over lines, so it is decoded
 /// byte by byte throughout.
 fn multi_byte(bytes: &[u8], skip: usize, encoding: Encoding, changes: &mut ByteChanges) {
-    let target = to_encoding_rs(encoding);
-    if target == encoding_rs::ISO_2022_JP {
+    let target = to_codec(encoding);
+    if target.is_iso_2022_jp() {
         by_character(bytes, skip, encoding, changes);
         return;
     }
@@ -116,7 +116,7 @@ fn multi_byte(bytes: &[u8], skip: usize, encoding: Encoding, changes: &mut ByteC
         let same = target
             .decode_without_bom_handling_and_without_replacement(line)
             .is_some_and(|text| {
-                let (again, _, unmappable) = target.encode(&text);
+                let (again, unmappable) = target.encode(&text);
                 !unmappable && again == line
             });
         if !same {
@@ -129,7 +129,7 @@ fn multi_byte(bytes: &[u8], skip: usize, encoding: Encoding, changes: &mut ByteC
 /// Decodes `bytes` (at file offset `base`) one byte at a time, and compares the bytes of each
 /// character with how it encodes.
 fn by_character(bytes: &[u8], base: usize, encoding: Encoding, changes: &mut ByteChanges) {
-    let target = to_encoding_rs(encoding);
+    let target = to_codec(encoding);
     let mut decoder = target.new_decoder_without_bom_handling();
     let mut encoder = target.new_encoder();
     let mut text = String::with_capacity(32);

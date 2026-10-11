@@ -3,14 +3,18 @@
 
 use birchpad_core::Encoding;
 
+use crate::code_pages::CODE_PAGES;
+use crate::codec::{Codec, code_page, code_page_for_label};
+
 /// Legacy encodings offered in Encoding > Character Sets, grouped like Notepad++'s menu.
-/// Each entry is `(WHATWG name, label)`.
+/// Each entry is `(name, label)`: a WHATWG name, or one of [`crate::code_pages`] (`IBM437`).
 pub const CHARACTER_SETS: &[(&str, &[(&str, &str)])] = &[
     (
         "Arabic",
         &[
             ("ISO-8859-6", "ISO 8859-6"),
             ("windows-1256", "Windows-1256"),
+            ("IBM864", "OEM 864"),
         ],
     ),
     (
@@ -19,6 +23,7 @@ pub const CHARACTER_SETS: &[(&str, &[(&str, &str)])] = &[
             ("ISO-8859-4", "ISO 8859-4"),
             ("ISO-8859-13", "ISO 8859-13"),
             ("windows-1257", "Windows-1257"),
+            ("IBM775", "OEM 775"),
         ],
     ),
     ("Celtic", &[("ISO-8859-14", "ISO 8859-14")]),
@@ -27,6 +32,7 @@ pub const CHARACTER_SETS: &[(&str, &[(&str, &str)])] = &[
         &[
             ("ISO-8859-2", "ISO 8859-2"),
             ("windows-1250", "Windows-1250"),
+            ("IBM852", "OEM 852"),
         ],
     ),
     (
@@ -44,16 +50,28 @@ pub const CHARACTER_SETS: &[(&str, &[(&str, &str)])] = &[
             ("KOI8-R", "KOI8-R"),
             ("KOI8-U", "KOI8-U"),
             ("windows-1251", "Windows-1251"),
+            ("IBM855", "OEM 855"),
             ("IBM866", "OEM 866"),
             ("x-mac-cyrillic", "Mac Cyrillic"),
         ],
     ),
     ("Eastern European", &[("ISO-8859-16", "ISO 8859-16")]),
     (
+        "EBCDIC",
+        &[
+            ("IBM037", "EBCDIC 037 (US, Canada)"),
+            ("IBM1140", "EBCDIC 1140 (US, Canada, Euro)"),
+            ("IBM500", "EBCDIC 500 (International)"),
+            ("IBM1026", "EBCDIC 1026 (Turkish)"),
+        ],
+    ),
+    (
         "Greek",
         &[
             ("ISO-8859-7", "ISO 8859-7"),
             ("windows-1253", "Windows-1253"),
+            ("IBM737", "OEM 737"),
+            ("IBM869", "OEM 869"),
         ],
     ),
     (
@@ -62,6 +80,7 @@ pub const CHARACTER_SETS: &[(&str, &[(&str, &str)])] = &[
             ("ISO-8859-8", "ISO 8859-8"),
             ("ISO-8859-8-I", "ISO 8859-8-I"),
             ("windows-1255", "Windows-1255"),
+            ("IBM862", "OEM 862"),
         ],
     ),
     (
@@ -73,13 +92,21 @@ pub const CHARACTER_SETS: &[(&str, &[(&str, &str)])] = &[
         ],
     ),
     ("Korean", &[("EUC-KR", "EUC-KR (Windows-949)")]),
-    ("North European", &[("ISO-8859-10", "ISO 8859-10")]),
+    (
+        "North European",
+        &[
+            ("ISO-8859-10", "ISO 8859-10"),
+            ("IBM861", "OEM 861 (Icelandic)"),
+            ("IBM865", "OEM 865 (Nordic)"),
+        ],
+    ),
     ("Thai", &[("windows-874", "Windows-874")]),
     (
         "Turkish",
         &[
             ("ISO-8859-3", "ISO 8859-3"),
             ("windows-1254", "Windows-1254"),
+            ("IBM857", "OEM 857"),
         ],
     ),
     (
@@ -88,24 +115,34 @@ pub const CHARACTER_SETS: &[(&str, &[(&str, &str)])] = &[
             ("windows-1252", "Windows-1252"),
             ("ISO-8859-15", "ISO 8859-15"),
             ("macintosh", "Macintosh"),
+            ("IBM437", "OEM-US (437)"),
+            ("IBM850", "OEM 850"),
+            ("IBM858", "OEM 858"),
+            ("IBM860", "OEM 860 (Portuguese)"),
+            ("IBM863", "OEM 863 (French Canadian)"),
         ],
     ),
     ("Vietnamese", &[("windows-1258", "Windows-1258")]),
 ];
 
-/// The encoding_rs encoding for an [`Encoding`].
+/// The decoder and encoder of an [`Encoding`].
 ///
 /// # Panics
 ///
-/// Panics if a legacy name is not one encoding_rs knows; [`Encoding::Legacy`] values are only
-/// created from encoding_rs names.
-pub(crate) fn to_encoding_rs(encoding: Encoding) -> &'static encoding_rs::Encoding {
+/// Panics if a legacy name is neither one encoding_rs knows nor one of [`crate::code_pages`];
+/// [`Encoding::Legacy`] values are only created from those names.
+pub(crate) fn to_codec(encoding: Encoding) -> Codec {
     match encoding {
-        Encoding::Utf8 => encoding_rs::UTF_8,
-        Encoding::Utf16Le => encoding_rs::UTF_16LE,
-        Encoding::Utf16Be => encoding_rs::UTF_16BE,
-        Encoding::Legacy(name) => encoding_rs::Encoding::for_label(name.as_bytes())
-            .unwrap_or_else(|| panic!("unknown legacy encoding {name}")),
+        Encoding::Utf8 => Codec::Rs(encoding_rs::UTF_8),
+        Encoding::Utf16Le => Codec::Rs(encoding_rs::UTF_16LE),
+        Encoding::Utf16Be => Codec::Rs(encoding_rs::UTF_16BE),
+        Encoding::Legacy(name) => match code_page(name) {
+            Some(page) => Codec::Page(page),
+            None => Codec::Rs(
+                encoding_rs::Encoding::for_label(name.as_bytes())
+                    .unwrap_or_else(|| panic!("unknown legacy encoding {name}")),
+            ),
+        },
     }
 }
 
@@ -139,10 +176,13 @@ pub fn parse_encoding(name: &str, ansi: Encoding) -> Option<(Encoding, bool)> {
         "utf-16be" => (Encoding::Utf16Be, false),
         "utf-16be-bom" => (Encoding::Utf16Be, true),
         "ansi" => (ansi, false),
-        label => {
-            let encoding = encoding_rs::Encoding::for_label(label.as_bytes())?;
-            (from_encoding_rs(encoding)?, false)
-        }
+        label => match code_page_for_label(label) {
+            Some(page) => (Encoding::Legacy(page.name), false),
+            None => {
+                let encoding = encoding_rs::Encoding::for_label(label.as_bytes())?;
+                (from_encoding_rs(encoding)?, false)
+            }
+        },
     };
     Some(parsed)
 }
@@ -182,6 +222,9 @@ pub fn display_name(encoding: Encoding, bom: bool) -> String {
 
 /// The legacy encoding of a Windows code page number, e.g. 1251 → `windows-1251`.
 pub fn from_code_page(code_page: u32) -> Option<Encoding> {
+    if let Some(page) = CODE_PAGES.iter().find(|page| page.number == code_page) {
+        return Some(Encoding::Legacy(page.name));
+    }
     let name = match code_page {
         866 => "IBM866",
         874 => "windows-874",
@@ -251,15 +294,34 @@ mod tests {
     use super::*;
 
     #[test]
-    fn every_character_set_is_known_to_encoding_rs() {
+    fn every_character_set_is_known() {
+        for page in CODE_PAGES {
+            let listed = CHARACTER_SETS
+                .iter()
+                .flat_map(|(_, sets)| sets.iter())
+                .any(|(name, _)| *name == page.name);
+            assert!(listed, "{} is in no group", page.name);
+            assert_eq!(
+                from_code_page(page.number),
+                Some(Encoding::Legacy(page.name))
+            );
+            assert_eq!(
+                parse_encoding(&format!("cp{}", page.number), Encoding::Utf8),
+                Some((Encoding::Legacy(page.name), false))
+            );
+            assert!(to_codec(Encoding::Legacy(page.name)).is_single_byte());
+        }
         for (_, sets) in CHARACTER_SETS {
             for (name, _) in *sets {
+                if code_page(name).is_some() {
+                    continue;
+                }
                 let encoding = encoding_rs::Encoding::for_label(name.as_bytes())
                     .unwrap_or_else(|| panic!("{name}"));
                 assert_eq!(encoding.name(), *name, "use the canonical name");
                 let ours = from_encoding_rs(encoding).unwrap();
                 assert!(!ours.is_unicode());
-                assert_eq!(to_encoding_rs(ours), encoding);
+                assert!(matches!(to_codec(ours), Codec::Rs(found) if found == encoding));
             }
         }
     }
@@ -344,6 +406,10 @@ mod tests {
             (20866, "KOI8-R"),
             (21866, "KOI8-U"),
             (54936, "gb18030"),
+            // DOS and EBCDIC code pages (Birchpad's own tables).
+            (437, "IBM437"),
+            (37, "IBM037"),
+            (1140, "IBM1140"),
         ] {
             assert_eq!(
                 from_code_page(code_page),
@@ -351,7 +417,7 @@ mod tests {
                 "{code_page}"
             );
         }
-        for nothing in [0, 1, 437, 65000, u32::MAX] {
+        for nothing in [0, 1, 436, 65000, u32::MAX] {
             assert_eq!(from_code_page(nothing), None, "{nothing}");
         }
     }
@@ -411,7 +477,10 @@ mod tests {
             Encoding::Utf16Be,
             Encoding::Legacy("windows-1251"),
         ] {
-            assert_eq!(from_encoding_rs(to_encoding_rs(encoding)), Some(encoding));
+            let Codec::Rs(found) = to_codec(encoding) else {
+                panic!("{encoding:?} is encoding_rs's");
+            };
+            assert_eq!(from_encoding_rs(found), Some(encoding));
         }
         assert_eq!(from_encoding_rs(encoding_rs::REPLACEMENT), None);
         assert_eq!(from_encoding_rs(encoding_rs::X_USER_DEFINED), None);
@@ -420,6 +489,6 @@ mod tests {
     #[test]
     #[should_panic(expected = "unknown legacy encoding klingon")]
     fn an_unknown_legacy_encoding_is_a_bug() {
-        to_encoding_rs(Encoding::Legacy("klingon"));
+        to_codec(Encoding::Legacy("klingon"));
     }
 }

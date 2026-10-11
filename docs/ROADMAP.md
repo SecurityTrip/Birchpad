@@ -211,8 +211,9 @@ What Phase 1 left for later is marked *(from Phase 1)* in the phases below.
 - [x] Tools: MD5, SHA-1, SHA-256 and SHA-512 of the selection (into the clipboard) or of files
       (into a new document); Base64 and URL encoding and decoding, ASCII to HEX and back, of
       every selection as one undo step
-- Character sets that `encoding_rs` lacks: OEM 437/850 and other DOS code pages, EBCDIC
-  *(from Phase 1)*
+- [x] Character sets that `encoding_rs` lacks: OEM 437, 737, 775, 850, 852, 855, 857, 858,
+      860–865, 869, and EBCDIC 037, 500, 1026, 1140, from tables of Birchpad's own behind the
+      same decoder and encoder as encoding_rs's *(from Phase 1)*
 - Localization (English, Russian first), printing, right-to-left text
 
 ## Phase 5: plugins

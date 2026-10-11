@@ -7,7 +7,7 @@ use birchpad_core::{Encoding, Rope};
 use encoding_rs::EncoderResult;
 
 use crate::decode::bom_bytes;
-use crate::encoding::{display_name, to_encoding_rs};
+use crate::encoding::{display_name, to_codec};
 
 /// How many offending characters [`Unencodable`] keeps for the error message.
 const SAMPLES: usize = 10;
@@ -88,7 +88,7 @@ pub fn check_encodable(text: &Rope, encoding: Encoding) -> Result<(), Unencodabl
 }
 
 fn encode_legacy(text: &Rope, encoding: Encoding, out: &mut Vec<u8>) -> Result<(), Unencodable> {
-    let mut encoder = to_encoding_rs(encoding).new_encoder();
+    let mut encoder = to_codec(encoding).new_encoder();
     let mut problem = Unencodable {
         encoding,
         count: 0,

@@ -5,7 +5,7 @@ use encoding_rs::DecoderResult;
 
 use crate::changes::{ByteChanges, byte_changes};
 use crate::encode;
-use crate::encoding::to_encoding_rs;
+use crate::encoding::to_codec;
 
 /// Why a decoded file cannot be edited safely.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -109,7 +109,7 @@ pub fn decode(mut bytes: Vec<u8>, encoding: Encoding) -> Decoded {
 /// Decodes with encoding_rs, replacing malformed sequences. Returns the offset of the first
 /// malformed byte, if any.
 fn decode_with(encoding: Encoding, bytes: &[u8]) -> (String, Option<usize>) {
-    let target = to_encoding_rs(encoding);
+    let target = to_codec(encoding);
     let (text, had_errors) = target.decode_without_bom_handling(bytes);
     if !had_errors {
         return (text.into_owned(), None);
@@ -134,7 +134,7 @@ fn decode_with(encoding: Encoding, bytes: &[u8]) -> (String, Option<usize>) {
 /// without errors always encodes back to the same bytes. Multi-byte legacy encodings do not.
 fn needs_round_trip_check(encoding: Encoding) -> bool {
     match encoding {
-        Encoding::Legacy(_) => !to_encoding_rs(encoding).is_single_byte(),
+        Encoding::Legacy(_) => !to_codec(encoding).is_single_byte(),
         _ => false,
     }
 }

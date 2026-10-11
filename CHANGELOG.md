@@ -34,6 +34,9 @@ version's release notes from its section here.
   `$(CURRENT_LINE)`, `$(CURRENT_COLUMN)`, `$(CURRENT_LINESTR)`, `$(NPP_DIRECTORY)`,
   `$(NPP_FULL_FILE_PATH)`, `$(SYS.NAME)`) through the system's shell, or opens a web address in
   the browser; Save keeps it by name in `run.toml`, listed in the menu.
+- DOS (OEM) code pages in Encoding > Character Sets: OEM-US (437), 737, 775, 850, 852, 855,
+  857, 858, 860, 861, 862, 863, 864, 865 and 869, and EBCDIC 037, 1140, 500 and 1026; `cp437`
+  and `IBM437` name them in settings and on the command line.
 - The Macro menu, as in Notepad++: Start/Stop Recording (Ctrl+Shift+R) records the commands run
   and the text typed, Playback (Ctrl+Shift+P) plays them, Run a Macro Multiple Times... plays a
   number of times or until the end of the file, and saved macros (`macros.toml`) are listed in
