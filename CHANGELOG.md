@@ -26,6 +26,9 @@ version's release notes from its section here.
   takes the keys pressed (without running them), Remove takes one off, Reset gives the
   defaults back; it warns when the keys run another command. Changes are written to
   `keymap.toml`, keeping its comments, and apply at once.
+- The Tools menu: MD5, SHA-1, SHA-256 and SHA-512 of the selection, copied to the clipboard, or
+  of files, listed in a new document as `sha256sum` does; Base64 Encode and Decode, URL Encode
+  and Decode, ASCII to HEX and HEX to ASCII on every selection, as one undo step.
 - The Macro menu, as in Notepad++: Start/Stop Recording (Ctrl+Shift+R) records the commands run
   and the text typed, Playback (Ctrl+Shift+P) plays them, Run a Macro Multiple Times... plays a
   number of times or until the end of the file, and saved macros (`macros.toml`) are listed in

@@ -551,6 +551,43 @@ pub fn main_menu() -> Vec<Menu> {
         ],
     );
 
+    let hash = |id: &str, title: &str| {
+        Submenu(Menu::new(
+            title,
+            vec![
+                MenuItem::command_with(
+                    "tools.hash-files",
+                    json!({ "hash": id }),
+                    "Generate from Files...",
+                ),
+                MenuItem::command_with(
+                    "tools.hash-selection",
+                    json!({ "hash": id }),
+                    "Generate from Selection into Clipboard",
+                ),
+            ],
+        ))
+    };
+    let convert =
+        |to: &str, label: &str| MenuItem::command_with("edit.convert", json!({ "to": to }), label);
+    let tools = Menu::new(
+        "Tools",
+        vec![
+            hash("md5", "MD5"),
+            hash("sha1", "SHA-1"),
+            hash("sha256", "SHA-256"),
+            hash("sha512", "SHA-512"),
+            Separator,
+            convert("base64-encode", "Base64 Encode"),
+            convert("base64-decode", "Base64 Decode"),
+            convert("url-encode", "URL Encode"),
+            convert("url-decode", "URL Decode"),
+            Separator,
+            convert("ascii-to-hex", "ASCII to HEX"),
+            convert("hex-to-ascii", "HEX to ASCII"),
+        ],
+    );
+
     let macros = Menu::new(
         "Macro",
         vec![
@@ -581,7 +618,7 @@ pub fn main_menu() -> Vec<Menu> {
     );
 
     vec![
-        file, edit, search, view, encoding, language, settings, macros, help,
+        file, edit, search, view, encoding, language, settings, tools, macros, help,
     ]
 }
 
@@ -595,8 +632,8 @@ mod tests {
         assert_eq!(
             titles,
             [
-                "File", "Edit", "Search", "View", "Encoding", "Language", "Settings", "Macro",
-                "Help"
+                "File", "Edit", "Search", "View", "Encoding", "Language", "Settings", "Tools",
+                "Macro", "Help"
             ]
         );
     }

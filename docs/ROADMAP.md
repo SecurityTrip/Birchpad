@@ -206,7 +206,9 @@ What Phase 1 left for later is marked *(from Phase 1)* in the phases below.
 - User Defined Languages (importing Notepad++ UDL files)
 - Word and API-file auto-completion, call tips, auto-closing brackets
 - Run menu with `$(FULL_CURRENT_PATH)`-style variables
-- Hashes, Base64/URL encoding, HEX converter
+- [x] Tools: MD5, SHA-1, SHA-256 and SHA-512 of the selection (into the clipboard) or of files
+      (into a new document); Base64 and URL encoding and decoding, ASCII to HEX and back, of
+      every selection as one undo step
 - Character sets that `encoding_rs` lacks: OEM 437/850 and other DOS code pages, EBCDIC
   *(from Phase 1)*
 - Localization (English, Russian first), printing, right-to-left text

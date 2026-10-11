@@ -268,6 +268,15 @@ impl EditorView {
         let _ = self.try_op(cx, |text, selection, eol| Ok(op(text, selection, eol)));
     }
 
+    /// [`Self::try_op`] for operations elsewhere that need neither the line ending nor more.
+    pub(crate) fn try_op_public(
+        &mut self,
+        cx: &mut Context<Self>,
+        op: impl FnOnce(&Rope, &Selection) -> Result<Option<Transaction>>,
+    ) -> Result<()> {
+        self.try_op(cx, |text, selection, _| op(text, selection))
+    }
+
     /// Like `run_op`, for operations that can refuse (Sort as Integers on a line without a
     /// number); the error reaches the user as a notification.
     fn try_op(

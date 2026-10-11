@@ -270,6 +270,14 @@ pub const COMMANDS: &[CommandSpec] = &[
     editor("encoding.edit-anyway", "Edit Anyway..."),
     // Language; { "language": "rust" | "cpp" | ... | "text" }
     workspace("language.set", "Language"),
+    // Tools; { "hash": "md5" | "sha1" | "sha256" | "sha512" }
+    workspace("tools.hash-files", "Generate from Files..."),
+    editor(
+        "tools.hash-selection",
+        "Generate from Selection into Clipboard",
+    ),
+    // { "to": "base64-encode" | "base64-decode" | "url-encode" | "url-decode" | "ascii-to-hex" | "hex-to-ascii" }
+    editor("edit.convert", "Convert"),
     // Macro; macro.run takes { "name": <a saved macro>, "times": 1 } or { "until-end": true }
     workspace("macro.start-recording", "Start Recording"),
     workspace("macro.stop-recording", "Stop Recording"),

@@ -7,6 +7,7 @@ mod blank;
 mod case;
 mod column;
 mod comment;
+mod encode;
 mod lines;
 mod marks;
 mod multi;
@@ -26,6 +27,7 @@ pub use blank::{Trim, eol_to_space, spaces_to_tabs, tabs_to_spaces, trim};
 pub use case::{Case, convert_case};
 pub use column::{Base, Leading, NumberSequence, format_number, insert_rows, parse_number};
 pub use comment::{CommentTokens, block_comment, comment_lines, toggle_comment, uncomment_lines};
+pub use encode::{Conversion, EncodeError, encode_selections, encode_text};
 pub use lines::{delete_lines, duplicate, insert_blank_line, join_lines, move_lines, split_lines};
 pub use marks::{
     copy_lines, copy_ranges, other_lines, remove_lines, remove_other_lines, replace_lines,

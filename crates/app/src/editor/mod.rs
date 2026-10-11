@@ -1157,7 +1157,7 @@ impl EditorView {
         self.request_autoscroll(cx);
     }
 
-    fn selected_text(&self, cx: &App) -> Option<String> {
+    pub(crate) fn selected_text(&self, cx: &App) -> Option<String> {
         let doc = self.buffer.read(cx).doc();
         let parts: Vec<String> = self
             .selection
