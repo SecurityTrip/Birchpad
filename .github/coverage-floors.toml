@@ -10,7 +10,7 @@
 app = 87
 cli = 90
 commands = 96
-config = 94
+config = 96
 core = 97
 fuzz = 96
 io = 95

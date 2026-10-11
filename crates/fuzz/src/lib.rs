@@ -153,11 +153,7 @@ pub fn settings(data: &[u8]) -> bool {
             user: Some(table),
             ..Sources::default()
         });
-        assert_eq!(
-            edited.settings.editor.tab_width, 2,
-            "edited:
-{edited:?}"
-        );
+        assert_eq!(edited.settings.editor.tab_width, 2, "edited:\n{edited:?}");
         let mut expected = user.settings.clone();
         expected.editor.tab_width = 2;
         if user.diagnostics.is_empty() {
@@ -227,11 +223,7 @@ pub fn macros(data: &[u8]) -> bool {
     };
     let written = birchpad_commands::write_macros(&macros);
     let again = birchpad_commands::parse_macros(&written).expect("written macros read");
-    assert_eq!(
-        again, macros,
-        "written:
-{written}"
-    );
+    assert_eq!(again, macros, "written:\n{written}");
     true
 }
 
@@ -269,14 +261,15 @@ pub fn api_file(data: &[u8]) -> bool {
     let Ok(api) = birchpad_config::ApiFile::parse(text) else {
         return false;
     };
-    for pair in api.keywords.windows(2) {
-        assert!(
-            pair[0].name < pair[1].name,
-            "{} before {}",
-            pair[0].name,
-            pair[1].name
-        );
-    }
+    let names: Vec<&str> = api
+        .keywords
+        .iter()
+        .map(|keyword| keyword.name.as_str())
+        .collect();
+    assert!(
+        names.is_sorted() && names.windows(2).all(|pair| pair[0] != pair[1]),
+        "{names:?}"
+    );
     for keyword in &api.keywords {
         assert!(!keyword.name.trim().is_empty());
         if !keyword.overloads.is_empty() {
@@ -348,11 +341,7 @@ pub fn notepad_theme(data: &[u8]) -> bool {
 fn check_theme(theme: &Theme) {
     let saved = theme.to_toml();
     let again = Theme::from_toml(&theme.name, &saved).expect("a saved theme reads");
-    assert_eq!(
-        &again, theme,
-        "saved as:
-{saved}"
-    );
+    assert_eq!(&again, theme, "saved as:\n{saved}");
     assert_eq!(again.to_toml(), saved);
 }
 
@@ -401,18 +390,12 @@ pub fn keymap(data: &[u8]) -> bool {
         let found = keymap
             .resolve(&keys, &[])
             .map(|binding| &binding.invocation);
-        assert_eq!(
-            found,
-            Some(&save),
-            "bound:
-{bound}"
-        );
+        assert_eq!(found, Some(&save), "bound:\n{bound}");
         let unbound = birchpad_commands::unbind(&bound, platform, "ctrl-alt-shift-f12", None)
             .expect("what was bound unbinds");
         assert!(
             effective(&unbound).resolve(&keys, &[]).is_none(),
-            "unbound:
-{unbound}"
+            "unbound:\n{unbound}"
         );
     }
     if let Ok(reset) = birchpad_commands::reset(text, platform, &save) {
@@ -424,23 +407,14 @@ pub fn keymap(data: &[u8]) -> bool {
                 .collect()
         };
         let keymap = effective(&reset);
+        // Each default key of the command is bound again: to it, or to what the file binds.
         for default in keys(&defaults) {
             let parsed = Keystroke::parse_sequence(&default, platform).unwrap();
-            // Unless the file binds those keys to something else.
-            if keymap
-                .resolve(&parsed, &[])
-                .is_some_and(|binding| binding.invocation == save)
-            {
-                continue;
-            }
-            assert!(
-                keymap
-                    .bindings()
-                    .iter()
-                    .any(|binding| binding.keys == parsed),
-                "{default} after reset:
-{reset}"
-            );
+            let bound = keymap
+                .bindings()
+                .iter()
+                .any(|binding| binding.keys == parsed);
+            assert!(bound, "{default} after reset:\n{reset}");
         }
     }
     accepted
