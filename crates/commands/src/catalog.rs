@@ -276,6 +276,8 @@ pub const COMMANDS: &[CommandSpec] = &[
     workspace("encoding.convert-to", "Convert to"),
     editor("encoding.edit-anyway", "Edit Anyway..."),
     // Language; { "language": "rust" | "cpp" | ... | "text" }
+    workspace("file.print", "Print..."),
+    workspace("file.export-html", "Export to HTML..."),
     workspace("language.set", "Language"),
     workspace("language.import-udl", "Import..."),
     // Tools; { "hash": "md5" | "sha1" | "sha256" | "sha512" }

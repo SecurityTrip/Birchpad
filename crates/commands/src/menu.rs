@@ -133,6 +133,9 @@ pub fn main_menu() -> Vec<Menu> {
             cmd("file.load-session"),
             cmd("file.save-session"),
             Separator,
+            cmd("file.export-html"),
+            cmd("file.print"),
+            Separator,
             cmd("file.exit"),
         ],
     );

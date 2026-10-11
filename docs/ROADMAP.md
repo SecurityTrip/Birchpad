@@ -219,7 +219,9 @@ What Phase 1 left for later is marked *(from Phase 1)* in the phases below.
       same decoder and encoder as encoding_rs's *(from Phase 1)*
 - [x] Localization: English and Russian, the interface's language from the system or
       `appearance.language` ([ADR 0033](adr/0033-localization.md))
-- Printing, right-to-left text
+- [x] Printing: the document as an HTML page in its colors with line numbers, printed
+      through the browser's print dialog, or exported ([ADR 0034](adr/0034-printing.md))
+- Right-to-left text
 
 ## Phase 5: plugins
 

@@ -155,6 +155,7 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
     crate::tools::register_commands(registry);
     crate::run_menu::register_commands(registry);
     crate::user_languages::register_commands(registry);
+    crate::print::register_commands(registry);
 }
 
 /// View menu switches kept in `state.toml`: command, current value, how to remember a new one.

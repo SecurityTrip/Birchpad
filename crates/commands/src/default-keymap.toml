@@ -1165,3 +1165,7 @@ context = "Completion"
 keys = "escape"
 command = "completion.cancel"
 context = "CallTip"
+
+[[binding]]
+keys = "secondary-p"
+command = "file.print"

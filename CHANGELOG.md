@@ -37,6 +37,8 @@ version's release notes from its section here.
 - DOS (OEM) code pages in Encoding > Character Sets: OEM-US (437), 737, 775, 850, 852, 855,
   857, 858, 860, 861, 862, 863, 864, 865 and 869, and EBCDIC 037, 1140, 500 and 1026; `cp437`
   and `IBM437` name them in settings and on the command line.
+- File > Print... (Ctrl+P) opens the document, in its colors with line numbers, in the browser's
+  print dialog; File > Export to HTML... saves the same page.
 - The interface in Russian: menus, dialogs, Preferences and the status bar follow the system's
   language, or `appearance.language` (`en`, `ru`, `auto`) in Preferences > Appearance.
 - Notepad++'s User Defined Languages: UDL files in `userDefineLangs` next to the settings are
