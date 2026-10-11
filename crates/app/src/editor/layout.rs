@@ -94,6 +94,8 @@ pub(super) struct VisibleRow {
     pub(super) x: Pixels,
     pub(super) display: DisplayText,
     pub(super) shaped: ShapedLine,
+    /// The order the characters show in, when it is not the order they are stored in.
+    pub(super) bidi: Option<super::bidi::BidiRow>,
 }
 
 impl VisibleRow {
@@ -103,8 +105,14 @@ impl VisibleRow {
     }
 
     pub(super) fn x_for(&self, pos: usize) -> Option<Pixels> {
-        self.covers(pos)
-            .then(|| self.x + self.shaped.x_for_index(self.display.to_display(pos)))
+        self.covers(pos).then(|| {
+            let index = self.display.to_display(pos);
+            let index = self
+                .bidi
+                .as_ref()
+                .map_or(index, |bidi| bidi.visual_caret(index));
+            self.x + self.shaped.x_for_index(index)
+        })
     }
 
     fn contains_caret(&self, pos: usize) -> bool {
@@ -338,10 +346,22 @@ impl EditorView {
         }
         let styles = self.frame_styles(&shown, &text, cx);
         let mut rows = Vec::with_capacity(pending.len());
-        for (row, y, x, display) in pending {
-            let shaped = self.shape_row(&display, &metrics, &styles, window);
+        for (row, y, mut x, display) in pending {
+            // Rows shaped only in part (very long ones) keep the stored order.
+            let bidi = (row.range.len() <= LONG_ROW)
+                .then(|| super::bidi::BidiRow::new(&display.text, self.rtl))
+                .flatten();
+            let shaped = match &bidi {
+                Some(bidi) => self.shape_bidi_row(&display, bidi, &metrics, &styles, window),
+                None => self.shape_row(&display, &metrics, &styles, window),
+            };
             if row.range.len() <= LONG_ROW {
                 widest = widest.max(shaped.width());
+            }
+            // Right to left: rows that fit end at the right edge.
+            let room = text_bounds.size.width - TEXT_PADDING * 2.;
+            if self.rtl && row.range.len() <= LONG_ROW && shaped.width() <= room {
+                x = text_bounds.right() - TEXT_PADDING - shaped.width();
             }
             rows.push(VisibleRow {
                 row,
@@ -349,6 +369,7 @@ impl EditorView {
                 x,
                 display,
                 shaped,
+                bidi,
             });
         }
         if wrap_width.is_none() {
@@ -513,6 +534,61 @@ impl EditorView {
         styles
     }
 
+    /// Shapes a row in the order its characters show, each colored as where it is stored.
+    fn shape_bidi_row(
+        &self,
+        display: &DisplayText,
+        bidi: &super::bidi::BidiRow,
+        metrics: &Metrics,
+        styles: &FrameStyles,
+        window: &mut Window,
+    ) -> ShapedLine {
+        let color: Hsla = theme::paint(theme::editor().text).into();
+        let mut runs: Vec<TextRun> = Vec::new();
+        let mut last: Option<Option<TextStyle>> = None;
+        for range in bidi.visual_chars() {
+            let style = styles.at(display.to_doc(range.start));
+            if last == Some(style)
+                && let Some(run) = runs.last_mut()
+            {
+                run.len += range.len();
+                continue;
+            }
+            let mut run = TextRun {
+                len: range.len(),
+                font: metrics.font.clone(),
+                color,
+                background_color: None,
+                underline: None,
+                strikethrough: None,
+            };
+            if let Some(style) = style {
+                if let Some(color) = style.color {
+                    run.color = rgba(color).into();
+                }
+                run.background_color = style.background.map(|color| rgba(color).into());
+                if style.bold {
+                    run.font.weight = FontWeight::BOLD;
+                }
+                if style.italic {
+                    run.font.style = FontStyle::Italic;
+                }
+                if style.underline {
+                    run.underline = Some(UnderlineStyle {
+                        color: Some(run.color),
+                        thickness: px(1.),
+                        wavy: false,
+                    });
+                }
+            }
+            runs.push(run);
+            last = Some(style);
+        }
+        window
+            .text_system()
+            .shape_line(bidi.visual.clone().into(), metrics.font_size, &runs, None)
+    }
+
     fn shape_row(
         &self,
         display: &DisplayText,
@@ -645,8 +721,11 @@ impl EditorView {
             if from >= to {
                 continue;
             }
-            let left = self.x_in_row(layout, row, from, text);
-            let right = self.x_in_row(layout, row, to, text);
+            let (a, b) = (
+                self.x_in_row(layout, row, from, text),
+                self.x_in_row(layout, row, to, text),
+            );
+            let (left, right) = (a.min(b), a.max(b));
             quads.push(Bounds::from_corners(
                 point(left, row.y),
                 point(right, row.y + layout.metrics.line_height),
@@ -893,6 +972,8 @@ impl EditorView {
                     // A selected line break shows as half a cell after the text.
                     right += layout.metrics.cell * 0.5;
                 }
+                // Right-to-left text puts the end of a range left of its start.
+                let (left, right) = (left.min(right), left.max(right));
                 if right <= left {
                     continue;
                 }
@@ -968,6 +1049,10 @@ impl Layout {
         let pos = if row.covers(row.row.range.end) && row.display.doc_start() == row.row.range.start
         {
             let index = row.shaped.closest_index_for_x(point.x - row.x);
+            let index = row
+                .bidi
+                .as_ref()
+                .map_or(index, |bidi| bidi.logical_caret(index));
             row.display.to_doc(index)
         } else {
             // A long row shaped only in part: go by columns.

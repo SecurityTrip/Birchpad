@@ -82,6 +82,8 @@ pub const COMMANDS: &[CommandSpec] = &[
     editor("completion.cancel", "Close Completion"),
     // { "text": "..." }: typed text, overwriting in overwrite mode (what macros record)
     editor("edit.type", "Type Text"),
+    editor("edit.text-direction-rtl", "Text Direction RTL"),
+    editor("edit.text-direction-ltr", "Text Direction LTR"),
     editor("edit.toggle-overwrite", "Toggle Insert/Overwrite"),
     // { "eol": "crlf" | "lf" | "cr" }
     editor("edit.convert-eol", "EOL Conversion"),

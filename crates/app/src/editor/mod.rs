@@ -4,6 +4,7 @@
 //! selection through the changes the others make. Layout in cells (tab stops, word wrap, rows)
 //! comes from `birchpad-view`; [`element::EditorElement`] turns it into pixels and paints it.
 
+mod bidi;
 #[cfg(test)]
 mod capture_coverage_tests;
 #[cfg(test)]
@@ -199,6 +200,16 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
         this.type_text(&args.text, cx);
         Ok(())
     });
+    registry.editor("edit.text-direction-rtl", |this, (), _, cx| {
+        this.rtl = true;
+        this.settings_changed(cx);
+        Ok(())
+    });
+    registry.editor("edit.text-direction-ltr", |this, (), _, cx| {
+        this.rtl = false;
+        this.settings_changed(cx);
+        Ok(())
+    });
     registry.editor("edit.toggle-overwrite", |this, (), _, cx| {
         this.overwrite = !this.overwrite;
         this.pause_blink(cx);
@@ -350,6 +361,8 @@ pub(crate) struct EditorView {
     /// Text being composed by an input method, as a byte range.
     pub(crate) marked: Option<ByteRange<usize>>,
     pub(crate) overwrite: bool,
+    /// Edit > Text Direction RTL: rows run right to left and end at the right edge.
+    pub(crate) rtl: bool,
     /// The completion list, while it shows.
     pub(crate) completion: Option<completion::Popup>,
     /// A function's parameters, while they show.
@@ -492,6 +505,7 @@ impl EditorView {
             selection: Selection::point(0),
             marked: None,
             overwrite: false,
+            rtl: false,
             completion: None,
             call_tip: None,
             display,

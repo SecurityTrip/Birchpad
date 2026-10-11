@@ -221,7 +221,9 @@ What Phase 1 left for later is marked *(from Phase 1)* in the phases below.
       `appearance.language` ([ADR 0033](adr/0033-localization.md))
 - [x] Printing: the document as an HTML page in its colors with line numbers, printed
       through the browser's print dialog, or exported ([ADR 0034](adr/0034-printing.md))
-- Right-to-left text
+- [x] Right-to-left text: rows with Hebrew or Arabic reordered by the Unicode Bidirectional
+      Algorithm, carets and clicks mapped both ways; Edit > Text Direction RTL and LTR
+      ([ADR 0035](adr/0035-right-to-left-text.md))
 
 ## Phase 5: plugins
 

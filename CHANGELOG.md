@@ -37,6 +37,9 @@ version's release notes from its section here.
 - DOS (OEM) code pages in Encoding > Character Sets: OEM-US (437), 737, 775, 850, 852, 855,
   857, 858, 860, 861, 862, 863, 864, 865 and 869, and EBCDIC 037, 1140, 500 and 1026; `cp437`
   and `IBM437` name them in settings and on the command line.
+- Hebrew and Arabic show in their order, by the Unicode Bidirectional Algorithm, with carets and
+  clicks where they belong; Edit > Text Direction RTL makes a view run right to left, its rows
+  ending at the right edge, and Text Direction LTR goes back.
 - File > Print... (Ctrl+P) opens the document, in its colors with line numbers, in the browser's
   print dialog; File > Export to HTML... saves the same page.
 - The interface in Russian: menus, dialogs, Preferences and the status bar follow the system's

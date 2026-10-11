@@ -188,6 +188,9 @@ pub fn main_menu() -> Vec<Menu> {
             cmd("edit.begin-end-select"),
             cmd("edit.begin-end-select-column"),
             Separator,
+            cmd("edit.text-direction-rtl"),
+            cmd("edit.text-direction-ltr"),
+            Separator,
             Submenu(Menu::new(
                 "Comment/Uncomment",
                 vec![
