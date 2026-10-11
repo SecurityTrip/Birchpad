@@ -1,7 +1,8 @@
 # Birchpad roadmap
 
-Birchpad first reaches feature parity with Notepad++, then goes beyond it. Phases are ordered by
-dependency, not by calendar. Architecture decisions live in [`adr/`](adr).
+Birchpad first reaches feature parity with Notepad++ (Phases 1 to 6), then goes beyond it
+(Phase 7). Phases are ordered by dependency, not by calendar. Architecture decisions live in
+[`adr/`](adr).
 
 ## Phase 0: foundation
 
@@ -232,7 +233,53 @@ What Phase 1 left for later is marked *(from Phase 1)* in the phases below.
 - Plugin manager; enterprise allowlist
 - Built-in versions of popular Notepad++ plugins: Compare, JSON/XML tools, hex view, spell check
 
-## Phase 6: beyond Notepad++
+## Phase 6: full parity with Notepad++
+
+What Phases 1 to 4 built differently from Notepad++, or left out, is brought in line here; what
+Phase 5 leaves for later is added once it is done. Birchpad goes beyond Notepad++ only after
+this phase.
+
+- Themes and Style Configurator: fonts (family, size, bold/italic per style) in themes, the
+  Style Configurator and Notepad++ theme import; saving changes to a Notepad++ theme back to its
+  XML; a closer match from Scintilla's style names to highlights, with a per-language table
+  where names differ; Notepad++'s separate Dark Mode for the interface, independent of the
+  editor theme
+- Preferences: the remaining sections and options of Notepad++'s dialog (tab bar,
+  multi-instance, delimiters, search engine, MISC and the rest), with OK/Close semantics where
+  Notepad++ has them
+- Shortcut Mapper: key sequences (`ctrl-k ctrl-c`) recorded in the dialog; bindings limited to
+  platforms shown and editable; command titles translated
+- Macros: Notepad++'s built-in "Trim Trailing Space and Save"; recording what dialogs a command
+  opens (Find, Replace) with their fields, as Notepad++ records search parameters
+- Run: Notepad++'s own Run menu entries as built-in items, not only saved command lines
+- Tools: hashes of files in a dialog with Copy, as Notepad++ shows them, besides the listing in a
+  new document
+- Code pages: EBCDIC 875 (Greek), whose standard table maps two bytes to one character; NEL as a
+  line break in EBCDIC documents
+- Auto-completion: closing HTML and XML tags; API files for languages embedded in a document
+  (scripts in HTML); cycling through a function's overloads in the call tip; Notepad++'s
+  auto-completion options (ignore numbers, ignore case, completion from a number of characters
+  per source); bundled API files for common languages
+- User Defined Languages: the UDL editor dialog; folding (code and comment folders); number
+  prefixes, suffixes, extras and ranges; comments that must start a line; nested delimiters;
+  colors from the theme where the UDL leaves them unset
+- Localization: more interface languages, including Notepad++'s `nativeLang` XML files; command
+  titles, messages and composed strings translated
+- Printing: a print preview and page setup of Birchpad's own (margins, header and footer with
+  Notepad++'s variables, colors or black on white, line numbers), printing the selection;
+  native printing where the platform offers it
+- Right-to-left text: selections drawn piece by piece over mixed text; margins on the right in
+  right-to-left mode; keys for Text Direction RTL and LTR; the direction remembered per document
+  in sessions; very long rows reordered too
+- Everything Notepad++ has that Birchpad still lacks: the Window menu and its dialog, tab colors,
+  pinned and multi-line or vertical tabs, the text's context menu (editable, as Notepad++'s
+  Edit Popup ContextMenu), Insert date and time, Copy full path / file name / folder, Rename and
+  Delete file, Edit > Set Read-Only, and other menu commands not listed in the phases above
+- Verified on real systems: input methods (Windows TSF, macOS, IBus/Fcitx), screen readers
+  *(from Phase 1)*
+- After Phase 5: what the plugins phase leaves out of Notepad++'s plugin behavior
+
+## Phase 7: beyond Notepad++
 
 - LSP client; command palette and fuzzy file finder
 - Git: gutter changes, blame, diff
