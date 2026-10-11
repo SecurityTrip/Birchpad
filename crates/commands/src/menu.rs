@@ -39,6 +39,8 @@ pub enum Placeholder {
     Themes,
     /// The saved macros, each invoking `macro.run`.
     Macros,
+    /// The saved command lines of the Run menu, each invoking `run.run`.
+    RunCommands,
 }
 
 impl MenuItem {
@@ -601,6 +603,11 @@ pub fn main_menu() -> Vec<Menu> {
         ],
     );
 
+    let run = Menu::new(
+        "Run",
+        vec![cmd("run.run"), Separator, Dynamic(Placeholder::RunCommands)],
+    );
+
     let settings = Menu::new(
         "Settings",
         vec![
@@ -618,7 +625,7 @@ pub fn main_menu() -> Vec<Menu> {
     );
 
     vec![
-        file, edit, search, view, encoding, language, settings, tools, macros, help,
+        file, edit, search, view, encoding, language, settings, tools, macros, run, help,
     ]
 }
 
@@ -633,7 +640,7 @@ mod tests {
             titles,
             [
                 "File", "Edit", "Search", "View", "Encoding", "Language", "Settings", "Tools",
-                "Macro", "Help"
+                "Macro", "Run", "Help"
             ]
         );
     }

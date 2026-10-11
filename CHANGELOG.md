@@ -29,6 +29,11 @@ version's release notes from its section here.
 - The Tools menu: MD5, SHA-1, SHA-256 and SHA-512 of the selection, copied to the clipboard, or
   of files, listed in a new document as `sha256sum` does; Base64 Encode and Decode, URL Encode
   and Decode, ASCII to HEX and HEX to ASCII on every selection, as one undo step.
+- The Run menu, as in Notepad++: Run... runs a command line with variables (`$(FULL_CURRENT_PATH)`,
+  `$(CURRENT_DIRECTORY)`, `$(FILE_NAME)`, `$(NAME_PART)`, `$(EXT_PART)`, `$(CURRENT_WORD)`,
+  `$(CURRENT_LINE)`, `$(CURRENT_COLUMN)`, `$(CURRENT_LINESTR)`, `$(NPP_DIRECTORY)`,
+  `$(NPP_FULL_FILE_PATH)`, `$(SYS.NAME)`) through the system's shell, or opens a web address in
+  the browser; Save keeps it by name in `run.toml`, listed in the menu.
 - The Macro menu, as in Notepad++: Start/Stop Recording (Ctrl+Shift+R) records the commands run
   and the text typed, Playback (Ctrl+Shift+P) plays them, Run a Macro Multiple Times... plays a
   number of times or until the end of the file, and saved macros (`macros.toml`) are listed in

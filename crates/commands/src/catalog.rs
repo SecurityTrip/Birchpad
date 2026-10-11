@@ -278,6 +278,8 @@ pub const COMMANDS: &[CommandSpec] = &[
     ),
     // { "to": "base64-encode" | "base64-decode" | "url-encode" | "url-decode" | "ascii-to-hex" | "hex-to-ascii" }
     editor("edit.convert", "Convert"),
+    // Run; { "line": <a command line> } or { "name": <a saved one> }; neither asks for it
+    workspace("run.run", "Run..."),
     // Macro; macro.run takes { "name": <a saved macro>, "times": 1 } or { "until-end": true }
     workspace("macro.start-recording", "Start Recording"),
     workspace("macro.stop-recording", "Stop Recording"),

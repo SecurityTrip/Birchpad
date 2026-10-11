@@ -1,0 +1,7 @@
+[[command]]
+name = "Wikipedia Search"
+line = "https://en.wikipedia.org/wiki/Special:Search?search=$(CURRENT_WORD)"
+
+[[command]]
+name = "Compile"
+line = "gcc \"$(FULL_CURRENT_PATH)\" -o \"$(CURRENT_DIRECTORY)/$(NAME_PART)\" $(SYS.CFLAGS)"

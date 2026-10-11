@@ -35,6 +35,7 @@ mod pane;
 mod panels;
 mod path_dialog;
 mod preferences;
+mod run_menu;
 mod search_results;
 mod session;
 #[cfg(test)]
@@ -113,6 +114,7 @@ fn main() {
             cx.set_global(app_state);
             themes::init(cx);
             macros::init(cx);
+            run_menu::init(cx);
             updates::Updates::install(
                 updates::Updates::http(),
                 updates::trusted_keys(),

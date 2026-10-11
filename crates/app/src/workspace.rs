@@ -144,6 +144,7 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
     crate::shortcut_mapper::register_commands(registry);
     crate::macros::register_commands(registry);
     crate::tools::register_commands(registry);
+    crate::run_menu::register_commands(registry);
 }
 
 /// View menu switches kept in `state.toml`: command, current value, how to remember a new one.
@@ -875,10 +876,15 @@ impl Workspace {
                     .collect()
             })
             .unwrap_or_default();
+        let run_commands: Vec<String> = cx
+            .try_global::<crate::run_menu::RunMenu>()
+            .map(|menu| menu.saved.iter().map(|entry| entry.name.clone()).collect())
+            .unwrap_or_default();
         let state = MenuState {
             recent_files: &recent_files,
             themes: &themes,
             macros: &macros,
+            run_commands: &run_commands,
             checked: &checked,
         };
         menus::install(&state, cx);

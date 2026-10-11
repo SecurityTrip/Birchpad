@@ -104,3 +104,10 @@ path = "fuzz_targets/macros.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "run_commands"
+path = "fuzz_targets/run_commands.rs"
+test = false
+doc = false
+bench = false

@@ -34,6 +34,7 @@ pub const TARGETS: &[(&str, Check)] = &[
     ("theme", theme),
     ("notepad_theme", notepad_theme),
     ("macros", macros),
+    ("run_commands", run_commands),
     ("keymap", keymap),
     ("command_line", command_line),
     ("instance_message", instance_message),
@@ -228,6 +229,31 @@ pub fn macros(data: &[u8]) -> bool {
         again, macros,
         "written:
 {written}"
+    );
+    true
+}
+
+/// `run.toml`: commands that read write back the same, and any line expands without a panic.
+pub fn run_commands(data: &[u8]) -> bool {
+    let Ok(text) = std::str::from_utf8(data) else {
+        return false;
+    };
+    let vars = birchpad_commands::RunVariables {
+        file_name: text.lines().next().unwrap_or_default().to_owned(),
+        current_word: "word".into(),
+        ..Default::default()
+    };
+    let expanded = birchpad_commands::expand_variables(text, &vars, |name| Some(name.to_owned()));
+    if !text.contains("$(") {
+        assert_eq!(expanded, text);
+    }
+    let Ok(commands) = birchpad_commands::parse_run_commands(text) else {
+        return false;
+    };
+    let written = birchpad_commands::write_run_commands(&commands);
+    assert_eq!(
+        birchpad_commands::parse_run_commands(&written).expect("written commands read"),
+        commands
     );
     true
 }

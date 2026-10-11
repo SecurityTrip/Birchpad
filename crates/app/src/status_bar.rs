@@ -236,7 +236,8 @@ fn add_items(
                 Placeholder::RecentFiles
                 | Placeholder::Languages
                 | Placeholder::Themes
-                | Placeholder::Macros,
+                | Placeholder::Macros
+                | Placeholder::RunCommands,
             ) => {}
         }
     }

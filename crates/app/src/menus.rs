@@ -19,6 +19,8 @@ pub(crate) struct MenuState<'a> {
     pub(crate) themes: &'a [String],
     /// The saved macros the Macro menu lists.
     pub(crate) macros: &'a [String],
+    /// The saved command lines the Run menu lists.
+    pub(crate) run_commands: &'a [String],
     /// Whether a command item shows a check mark (word wrap, current encoding, ...).
     pub(crate) checked: &'a dyn Fn(&Invocation) -> bool,
 }
@@ -117,6 +119,12 @@ fn build_menu(
                     items.push(GpuiMenuItem::submenu(
                         gpui_kit::Menu::new(letter.to_string()).items(entries),
                     ));
+                }
+            }
+            MenuItem::Placeholder(Placeholder::RunCommands) => {
+                for name in state.run_commands {
+                    let invocation = Invocation::with_args("run.run", json!({ "name": name }));
+                    items.push(GpuiMenuItem::action(name.clone(), RunCommand(invocation)));
                 }
             }
             MenuItem::Placeholder(Placeholder::Macros) => {
