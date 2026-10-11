@@ -6,6 +6,8 @@ version's release notes from its section here.
 
 ## [Unreleased]
 
+## [0.1.4] - 2026-10-12
+
 ### Added
 
 - Color themes (Settings > Theme): the built-in Default and Dark, and theme files in the
@@ -220,7 +222,8 @@ The first release: a Notepad++-like editor for Windows, Linux and macOS.
   entirely (`updates.mode = "off"`).
 - Nightly builds of `main` on the nightly channel.
 
-[Unreleased]: https://github.com/SecurityTrip/Birchpad/compare/v0.1.3...HEAD
+[Unreleased]: https://github.com/SecurityTrip/Birchpad/compare/v0.1.4...HEAD
+[0.1.4]: https://github.com/SecurityTrip/Birchpad/compare/v0.1.3...v0.1.4
 [0.1.3]: https://github.com/SecurityTrip/Birchpad/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/SecurityTrip/Birchpad/compare/v0.1.0...v0.1.2
 [0.1.0]: https://github.com/SecurityTrip/Birchpad/releases/tag/v0.1.0
