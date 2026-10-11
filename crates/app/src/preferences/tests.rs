@@ -31,6 +31,7 @@ fn every_entry_is_a_setting_with_valid_choices() {
         sections(),
         [
             "Editing",
+            "Auto-Completion",
             "Margins",
             "Highlighting",
             "Files",

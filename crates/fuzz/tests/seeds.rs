@@ -320,6 +320,7 @@ fuzz_tests!(
     notepad_theme,
     macros,
     run_commands,
+    api_file,
     keymap,
     command_line,
     instance_message,

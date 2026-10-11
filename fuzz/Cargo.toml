@@ -111,3 +111,10 @@ path = "fuzz_targets/run_commands.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "api_file"
+path = "fuzz_targets/api_file.rs"
+test = false
+doc = false
+bench = false

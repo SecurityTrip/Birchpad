@@ -37,6 +37,12 @@ version's release notes from its section here.
 - DOS (OEM) code pages in Encoding > Character Sets: OEM-US (437), 737, 775, 850, 852, 855,
   857, 858, 860, 861, 862, 863, 864, 865 and 869, and EBCDIC 037, 1140, 500 and 1026; `cp437`
   and `IBM437` name them in settings and on the command line.
+- Auto-completion, as in Notepad++: brackets and quotes get their closing partner as they are
+  typed (typing it steps over it, Backspace deletes an empty pair); a list of the document's
+  words and the language's keywords shows while typing (Ctrl+Space asks for it); a function's
+  parameters show after its opening bracket (Ctrl+Shift+Space). Keywords and functions come from
+  Notepad++'s API files, put in `autoCompletion` next to the settings. Settings in Preferences >
+  Auto-Completion.
 - The Macro menu, as in Notepad++: Start/Stop Recording (Ctrl+Shift+R) records the commands run
   and the text typed, Playback (Ctrl+Shift+P) plays them, Run a Macro Multiple Times... plays a
   number of times or until the end of the file, and saved macros (`macros.toml`) are listed in

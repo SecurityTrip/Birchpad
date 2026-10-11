@@ -35,6 +35,7 @@ pub const TARGETS: &[(&str, Check)] = &[
     ("notepad_theme", notepad_theme),
     ("macros", macros),
     ("run_commands", run_commands),
+    ("api_file", api_file),
     ("keymap", keymap),
     ("command_line", command_line),
     ("instance_message", instance_message),
@@ -255,6 +256,42 @@ pub fn run_commands(data: &[u8]) -> bool {
         birchpad_commands::parse_run_commands(&written).expect("written commands read"),
         commands
     );
+    true
+}
+
+/// A Notepad++ API file: what reads has sorted, distinct, named keywords, and every function
+/// completes and finds itself.
+pub fn api_file(data: &[u8]) -> bool {
+    let Ok(text) = std::str::from_utf8(data) else {
+        return false;
+    };
+    let Ok(api) = birchpad_config::ApiFile::parse(text) else {
+        return false;
+    };
+    for pair in api.keywords.windows(2) {
+        assert!(
+            pair[0].name < pair[1].name,
+            "{} before {}",
+            pair[0].name,
+            pair[1].name
+        );
+    }
+    for keyword in &api.keywords {
+        assert!(!keyword.name.trim().is_empty());
+        if !keyword.overloads.is_empty() {
+            assert!(api.function(&keyword.name).is_some(), "{}", keyword.name);
+        }
+        let prefix: String = keyword.name.chars().take(1).collect();
+        if prefix.len() < keyword.name.len() {
+            assert!(
+                api.completions(&prefix)
+                    .iter()
+                    .any(|found| found.name == keyword.name),
+                "{}",
+                keyword.name
+            );
+        }
+    }
     true
 }
 

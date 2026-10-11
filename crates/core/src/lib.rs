@@ -6,6 +6,7 @@
 
 mod change;
 mod change_history;
+pub mod completion;
 mod decoration;
 mod document;
 mod format;

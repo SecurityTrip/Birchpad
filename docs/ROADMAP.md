@@ -204,7 +204,9 @@ What Phase 1 left for later is marked *(from Phase 1)* in the phases below.
 - [x] Macros: record commands and typing, play back once, N times or until the end of the
       file, save by name in `macros.toml` ([ADR 0030](adr/0030-macros.md))
 - User Defined Languages (importing Notepad++ UDL files)
-- Word and API-file auto-completion, call tips, auto-closing brackets
+- [x] Auto-completion: brackets and quotes closed as typed, the document's words and Notepad++
+      API files' keywords while typing, call tips with every overload
+      ([ADR 0031](adr/0031-auto-completion.md))
 - [x] Run menu: command lines with Notepad++'s variables (`$(FULL_CURRENT_PATH)`,
       `$(CURRENT_WORD)`, `$(SYS.NAME)`, ...), saved by name in `run.toml`; web addresses open in
       the browser

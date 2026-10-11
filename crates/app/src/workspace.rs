@@ -1101,7 +1101,11 @@ pub(crate) mod tests {
     ) -> (Entity<Workspace>, &mut VisualTestContext) {
         cx.update(|cx| {
             gpui_kit::init(cx);
-            let settings = birchpad_config::resolve(birchpad_config::Sources::default());
+            let mut settings = birchpad_config::resolve(birchpad_config::Sources::default());
+            // Tests type brackets and press Enter as before auto-completion; its own tests turn
+            // it on (`crate::editor::completion::tests`).
+            settings.settings.completion.auto_close.clear();
+            settings.settings.completion.words = false;
             cx.set_global(AppState::new(
                 settings,
                 birchpad_config::ConfigPaths::default(),

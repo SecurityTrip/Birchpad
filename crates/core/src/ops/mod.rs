@@ -11,6 +11,7 @@ mod encode;
 mod lines;
 mod marks;
 mod multi;
+mod pairs;
 mod sort;
 
 use std::ops::Range;
@@ -33,6 +34,7 @@ pub use marks::{
     copy_lines, copy_ranges, other_lines, remove_lines, remove_other_lines, replace_lines,
 };
 pub use multi::{MatchOptions, select_all, select_next, skip_to_next};
+pub use pairs::{Pairs, delete_pairs, type_with_pairs};
 pub use sort::{
     SortError, SortKey, remove_duplicate_lines, remove_empty_lines, reverse_lines, shuffle_lines,
     sort_lines, sort_lines_by_columns,

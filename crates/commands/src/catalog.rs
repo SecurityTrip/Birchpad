@@ -73,6 +73,13 @@ pub const COMMANDS: &[CommandSpec] = &[
     editor("edit.tab", "Insert Tab"),
     // { "text": "..." }
     editor("edit.insert-text", "Insert Text"),
+    // Auto-completion
+    editor("completion.complete", "Function Completion"),
+    editor("completion.parameter-hint", "Function Parameters Hint"),
+    editor("completion.next", "Next Completion"),
+    editor("completion.previous", "Previous Completion"),
+    editor("completion.accept", "Accept Completion"),
+    editor("completion.cancel", "Close Completion"),
     // { "text": "..." }: typed text, overwriting in overwrite mode (what macros record)
     editor("edit.type", "Type Text"),
     editor("edit.toggle-overwrite", "Toggle Insert/Overwrite"),
