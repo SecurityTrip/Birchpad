@@ -73,6 +73,17 @@ pub const COMMANDS: &[CommandSpec] = &[
     editor("edit.tab", "Insert Tab"),
     // { "text": "..." }
     editor("edit.insert-text", "Insert Text"),
+    // Auto-completion
+    editor("completion.complete", "Function Completion"),
+    editor("completion.parameter-hint", "Function Parameters Hint"),
+    editor("completion.next", "Next Completion"),
+    editor("completion.previous", "Previous Completion"),
+    editor("completion.accept", "Accept Completion"),
+    editor("completion.cancel", "Close Completion"),
+    // { "text": "..." }: typed text, overwriting in overwrite mode (what macros record)
+    editor("edit.type", "Type Text"),
+    editor("edit.text-direction-rtl", "Text Direction RTL"),
+    editor("edit.text-direction-ltr", "Text Direction LTR"),
     editor("edit.toggle-overwrite", "Toggle Insert/Overwrite"),
     // { "eol": "crlf" | "lf" | "cr" }
     editor("edit.convert-eol", "EOL Conversion"),
@@ -267,7 +278,33 @@ pub const COMMANDS: &[CommandSpec] = &[
     workspace("encoding.convert-to", "Convert to"),
     editor("encoding.edit-anyway", "Edit Anyway..."),
     // Language; { "language": "rust" | "cpp" | ... | "text" }
+    workspace("file.print", "Print..."),
+    workspace("file.export-html", "Export to HTML..."),
     workspace("language.set", "Language"),
+    workspace("language.import-udl", "Import..."),
+    // Tools; { "hash": "md5" | "sha1" | "sha256" | "sha512" }
+    workspace("tools.hash-files", "Generate from Files..."),
+    editor(
+        "tools.hash-selection",
+        "Generate from Selection into Clipboard",
+    ),
+    // { "to": "base64-encode" | "base64-decode" | "url-encode" | "url-decode" | "ascii-to-hex" | "hex-to-ascii" }
+    editor("edit.convert", "Convert"),
+    // Run; { "line": <a command line> } or { "name": <a saved one> }; neither asks for it
+    workspace("run.run", "Run..."),
+    // Macro; macro.run takes { "name": <a saved macro>, "times": 1 } or { "until-end": true }
+    workspace("macro.start-recording", "Start Recording"),
+    workspace("macro.stop-recording", "Stop Recording"),
+    workspace("macro.playback", "Playback"),
+    workspace("macro.save", "Save Current Recorded Macro..."),
+    workspace("macro.run-multiple", "Run a Macro Multiple Times..."),
+    workspace("macro.run", "Run Macro"),
+    // Settings; settings.theme takes { "name": "Default" | "Dark" | <a theme file's name> }
+    workspace("settings.preferences", "Preferences..."),
+    workspace("settings.style-configurator", "Style Configurator..."),
+    workspace("settings.shortcut-mapper", "Shortcut Mapper..."),
+    workspace("settings.theme", "Theme"),
+    workspace("settings.import-theme", "Import Style Themes..."),
     // Help
     workspace("help.check-updates", "Check for Updates..."),
     // From the update dialogs and notifications.

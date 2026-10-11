@@ -1111,3 +1111,61 @@ keys = "cmd-alt-/"
 command = "edit.block-comment"
 context = "Editor"
 platforms = ["macos"]
+
+# --- Macro --------------------------------------------------------------------------------------
+
+[[binding]]
+keys = "secondary-shift-r"
+command = "macro.start-recording"
+
+[[binding]]
+keys = "secondary-shift-p"
+command = "macro.playback"
+
+# --- Auto-completion ----------------------------------------------------------------------------
+# While the completion list or a call tip shows, the editor's context also has `Completion` or
+# `CallTip`; these come last, so they win over the editor's own keys.
+
+[[binding]]
+keys = "secondary-space"
+command = "completion.complete"
+context = "Editor"
+
+[[binding]]
+keys = "secondary-shift-space"
+command = "completion.parameter-hint"
+context = "Editor"
+
+[[binding]]
+keys = "down"
+command = "completion.next"
+context = "Completion"
+
+[[binding]]
+keys = "up"
+command = "completion.previous"
+context = "Completion"
+
+[[binding]]
+keys = "enter"
+command = "completion.accept"
+context = "Completion"
+
+[[binding]]
+keys = "tab"
+command = "completion.accept"
+context = "Completion"
+
+[[binding]]
+keys = "escape"
+command = "completion.cancel"
+context = "Completion"
+
+[[binding]]
+keys = "escape"
+command = "completion.cancel"
+context = "CallTip"
+
+[[binding]]
+keys = "secondary-p"
+command = "file.print"

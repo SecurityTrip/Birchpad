@@ -71,7 +71,8 @@ fn sample_colors(
     let shown: BTreeSet<u32> = syntax
         .all_highlights(&text, 0..text.len())
         .into_iter()
-        .filter_map(|(_, highlight)| theme::syntax_style(highlight).map(|style| style.color))
+        .filter_map(|(_, highlight)| theme::syntax_style(Some(language.id), highlight)?.color)
+        .map(|color| color >> 8)
         .collect();
     let mut possible: BTreeMap<u32, BTreeSet<String>> = BTreeMap::new();
     for (capture, highlight) in config.capture_highlights() {
@@ -81,8 +82,10 @@ fn sample_colors(
         if exempt {
             continue;
         }
-        if let Some(style) = theme::syntax_style(highlight) {
-            possible.entry(style.color).or_default().insert(capture);
+        if let Some(color) =
+            theme::syntax_style(Some(language.id), highlight).and_then(|style| style.color)
+        {
+            possible.entry(color >> 8).or_default().insert(capture);
         }
     }
     (language.id.to_owned(), shown, possible)

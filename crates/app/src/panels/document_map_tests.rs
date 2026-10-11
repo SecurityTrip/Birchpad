@@ -8,7 +8,7 @@ use crate::workspace::tests::open_workspace;
 
 const RED: u32 = 0xff0000;
 const BLUE: u32 = 0x0000ff;
-const TEXT: u32 = theme::TEXT;
+const TEXT: u32 = 0x1f2328;
 
 #[test]
 fn a_short_document_is_all_shown_from_the_top() {

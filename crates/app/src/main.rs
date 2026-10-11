@@ -25,23 +25,35 @@ mod file_ops;
 mod find;
 mod find_in_files;
 mod help;
+mod i18n;
 mod incremental;
 #[cfg(test)]
 mod language_tests;
+mod macros;
 mod menus;
 mod navigation;
 mod pane;
 mod panels;
 mod path_dialog;
+mod preferences;
+mod print;
+mod run_menu;
 mod search_results;
 mod session;
 #[cfg(test)]
 mod session_tests;
+mod shortcut_mapper;
 #[cfg(test)]
 mod split_tests;
 mod status_bar;
+mod style_configurator;
+mod themes;
+mod tools;
 mod updates;
+mod user_languages;
 mod workspace;
+
+pub(crate) use editor::theme;
 
 use std::fmt::Write as _;
 
@@ -103,6 +115,11 @@ fn main() {
             let mut app_state = AppState::new(settings, paths);
             app_state.no_session = command_line.no_session;
             cx.set_global(app_state);
+            themes::init(cx);
+            i18n::apply(cx);
+            macros::init(cx);
+            run_menu::init(cx);
+            user_languages::init(cx);
             updates::Updates::install(
                 updates::Updates::http(),
                 updates::trusted_keys(),

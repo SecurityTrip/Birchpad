@@ -17,7 +17,7 @@ use gpui_kit::component::notification::Notification;
 use gpui_kit::component::{h_resizable, resizable_panel, v_resizable};
 use gpui_kit::{
     AnyElement, App, AppContext as _, Context, Entity, EntityId, ExternalPaths, FocusHandle,
-    Focusable, Subscription, Window, div, prelude::*, px, rgb,
+    Focusable, Subscription, Window, div, prelude::*, px,
 };
 
 use crate::app_state::AppState;
@@ -117,6 +117,15 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
         });
     }
     registry.workspace("language.set", |this, args: LanguageArgs, _, cx| {
+        if let Some(name) = args.language.strip_prefix(crate::user_languages::ID_PREFIX) {
+            let found = crate::user_languages::find(name, cx)
+                .ok_or_else(|| anyhow::anyhow!("there is no user defined language {name}"))?;
+            if let Some(view) = this.active_view(cx) {
+                let buffer = view.read(cx).buffer.clone();
+                buffer.update(cx, |buffer, cx| buffer.set_user_language(Some(found), cx));
+            }
+            return Ok(());
+        }
         let language = match args.language.as_str() {
             "text" | "normal" => None,
             id => Some(
@@ -139,6 +148,14 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
     crate::panels::register_commands(registry);
     crate::session::register_commands(registry);
     crate::disk::register_commands(registry);
+    crate::themes::register_commands(registry);
+    crate::preferences::register_commands(registry);
+    crate::shortcut_mapper::register_commands(registry);
+    crate::macros::register_commands(registry);
+    crate::tools::register_commands(registry);
+    crate::run_menu::register_commands(registry);
+    crate::user_languages::register_commands(registry);
+    crate::print::register_commands(registry);
 }
 
 /// View menu switches kept in `state.toml`: command, current value, how to remember a new one.
@@ -200,17 +217,17 @@ pub(crate) fn dialog_action(button: Button) -> impl IntoElement {
 
 /// A button that closes a dialog without its action ("Cancel", "Not Now").
 pub(crate) fn dialog_close(label: &'static str) -> DialogClose {
-    DialogClose::new()
-        .trigger(move |button| button.label(label).debug_selector(|| "dialog-close".into()))
+    DialogClose::new().trigger(move |button| {
+        button
+            .label(crate::i18n::tr(label))
+            .debug_selector(|| "dialog-close".into())
+    })
 }
 
 /// Shows a warning to the user without interrupting them.
 pub(crate) fn report_warning(message: impl Into<String>, window: &mut Window, cx: &mut App) {
     window.push_notification(Notification::warning(message.into()), cx);
 }
-
-/// The line over the active view in split view.
-const ACTIVE_VIEW: u32 = 0x0969da;
 
 pub(crate) struct Workspace {
     focus_handle: FocusHandle,
@@ -777,7 +794,7 @@ impl Workspace {
             anyhow::bail!("{} is turned off", invocation.command);
         }
         let handler = registry.get(&invocation.command);
-        match handler {
+        let result = match handler {
             Some(Handler::Workspace(run)) => run(self, invocation, window, cx),
             Some(Handler::Editor(run)) => match self.active_view(cx) {
                 Some(view) => view.update(cx, |view, cx| run(view, invocation, window, cx)),
@@ -790,11 +807,15 @@ impl Workspace {
                 anyhow::bail!("{} is not available yet", invocation.command)
             }
             None => anyhow::bail!("unknown command {}", invocation.command),
+        };
+        if result.is_ok() {
+            crate::macros::record(invocation, cx);
         }
+        result
     }
 
     /// Redraws every editor after a view setting (zoom, word wrap, Show Symbol) changed.
-    fn refresh_views(&mut self, cx: &mut Context<Self>) {
+    pub(crate) fn refresh_views(&mut self, cx: &mut Context<Self>) {
         for view in self.all_views(cx) {
             view.update(cx, |view, cx| view.settings_changed(cx));
         }
@@ -808,17 +829,21 @@ impl Workspace {
             .active_view(cx)
             .map(|view| view.read(cx).buffer.read(cx).doc().format());
         let language = self.active_view(cx).map(|view| {
-            view.read(cx)
-                .buffer
-                .read(cx)
-                .language()
-                .map_or("text", |l| l.id)
+            let buffer = view.read(cx).buffer.read(cx);
+            match (buffer.language(), buffer.user_language()) {
+                (Some(language), _) => language.id.to_owned(),
+                (None, Some(found)) => {
+                    format!("{}{}", crate::user_languages::ID_PREFIX, found.name)
+                }
+                (None, None) => "text".to_owned(),
+            }
         });
         let ansi = AppState::global(cx).ansi;
         let view = ViewSettings::read(cx);
         let monitoring = self
             .active_view(cx)
             .is_some_and(|view| view.read(cx).buffer.read(cx).is_monitoring());
+        let theme_name = crate::theme::current().name.clone();
         let checked = |invocation: &Invocation| {
             if let Some((_, read, _)) = VIEW_SWITCHES
                 .iter()
@@ -838,8 +863,16 @@ impl Workspace {
             if invocation.command == "view.sync-horizontal-scroll" {
                 return self.sync_horizontal;
             }
+            if invocation.command == "settings.theme" {
+                return invocation
+                    .args
+                    .get("name")
+                    .and_then(|name| name.as_str())
+                    .is_some_and(|name| name.eq_ignore_ascii_case(&theme_name));
+            }
             if invocation.command == "language.set" {
-                return invocation.args.get("language").and_then(|id| id.as_str()) == language;
+                return invocation.args.get("language").and_then(|id| id.as_str())
+                    == language.as_deref();
             }
             if let Some(open) = crate::panels::is_checked(&self.docks, invocation) {
                 return open;
@@ -850,8 +883,28 @@ impl Workspace {
             crate::encoding_ui::is_current(invocation, format, ansi)
         };
         let recent_files = AppState::global(cx).state.recent_files.clone();
+        let themes = crate::themes::names(crate::themes::themes_dir(cx).as_deref());
+        let macros: Vec<String> = cx
+            .try_global::<crate::macros::Macros>()
+            .map(|macros| {
+                macros
+                    .saved
+                    .iter()
+                    .map(|found| found.name.clone())
+                    .collect()
+            })
+            .unwrap_or_default();
+        let run_commands: Vec<String> = cx
+            .try_global::<crate::run_menu::RunMenu>()
+            .map(|menu| menu.saved.iter().map(|entry| entry.name.clone()).collect())
+            .unwrap_or_default();
+        let user_languages = crate::user_languages::names(cx);
         let state = MenuState {
+            user_languages: &user_languages,
             recent_files: &recent_files,
+            themes: &themes,
+            macros: &macros,
+            run_commands: &run_commands,
             checked: &checked,
         };
         menus::install(&state, cx);
@@ -907,8 +960,8 @@ impl Render for Workspace {
             .size_full()
             .flex()
             .flex_col()
-            .bg(rgb(0xffffff))
-            .text_color(rgb(0x1f2328))
+            .bg(crate::theme::paint(crate::theme::ui().background))
+            .text_color(crate::theme::paint(crate::theme::ui().text))
             .when_some(self.menu_bar.clone(), birchpad_menu_bar::route_input)
             .when_some(self.menu_bar.clone(), |this, menu_bar| {
                 this.child(
@@ -917,7 +970,7 @@ impl Render for Workspace {
                         .h(px(30.))
                         .px_1()
                         .border_b_1()
-                        .border_color(rgb(0xd0d7de))
+                        .border_color(crate::theme::paint(crate::theme::ui().border))
                         .child(menu_bar),
                 )
             })
@@ -954,7 +1007,7 @@ impl Workspace {
                         div()
                             .size_full()
                             .border_t_1()
-                            .border_color(rgb(0xd0d7de))
+                            .border_color(crate::theme::paint(crate::theme::ui().border))
                             .child(self.search_results.clone()),
                     ),
             )
@@ -978,9 +1031,9 @@ impl Workspace {
         // A line over the active view, as Notepad++ marks the tab of the focused view.
         let panel = |index: usize| {
             let line = if index == self.active_pane {
-                rgb(ACTIVE_VIEW)
+                crate::theme::paint(crate::theme::ui().accent)
             } else {
-                rgb(0xffffff)
+                crate::theme::paint(crate::theme::ui().background)
             };
             resizable_panel().child(
                 div()
@@ -1068,7 +1121,11 @@ pub(crate) mod tests {
     ) -> (Entity<Workspace>, &mut VisualTestContext) {
         cx.update(|cx| {
             gpui_kit::init(cx);
-            let settings = birchpad_config::resolve(birchpad_config::Sources::default());
+            let mut settings = birchpad_config::resolve(birchpad_config::Sources::default());
+            // Tests type brackets and press Enter as before auto-completion; its own tests turn
+            // it on (`crate::editor::completion::tests`).
+            settings.settings.completion.auto_close.clear();
+            settings.settings.completion.words = false;
             cx.set_global(AppState::new(
                 settings,
                 birchpad_config::ConfigPaths::default(),

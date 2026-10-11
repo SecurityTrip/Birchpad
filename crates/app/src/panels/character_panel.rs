@@ -11,7 +11,7 @@ use std::ops::Range;
 use birchpad_core::Encoding;
 use gpui_kit::{
     App, ClickEvent, Context, FocusHandle, Focusable, FontWeight, SharedString,
-    UniformListScrollHandle, WeakEntity, Window, div, prelude::*, px, rgb, uniform_list,
+    UniformListScrollHandle, WeakEntity, Window, div, prelude::*, px, uniform_list,
 };
 
 use crate::app_state::AppState;
@@ -251,7 +251,7 @@ impl Render for CharacterPanel {
             .h(px(24.))
             .items_center()
             .border_b_1()
-            .border_color(rgb(0xd0d7de))
+            .border_color(crate::theme::paint(crate::theme::ui().border))
             .font_weight(FontWeight::SEMIBOLD)
             .children(COLUMNS.iter().map(|(heading, width)| {
                 div()
@@ -278,8 +278,10 @@ impl Render for CharacterPanel {
                             .flex_row()
                             .items_center()
                             .whitespace_nowrap()
-                            .when(this.selected == Some(value), |row| row.bg(rgb(0xddf4ff)))
-                            .hover(|row| row.bg(rgb(0xf3f4f6)))
+                            .when(this.selected == Some(value), |row| {
+                                row.bg(crate::theme::paint(crate::theme::ui().selected))
+                            })
+                            .hover(|row| row.bg(crate::theme::paint(crate::theme::ui().hovered)))
                             .children(rows[index].iter().enumerate().map(|(column, text)| {
                                 div()
                                     .id(("character-cell", index * 8 + column))

@@ -13,7 +13,6 @@ use gpui_kit::component::{Icon, IconName, Sizable};
 use gpui_kit::{
     App, Bounds, Context, DragMoveEvent, Entity, EventEmitter, MouseButton, Pixels, Point,
     ScrollHandle, SharedString, Subscription, WeakEntity, Window, div, prelude::*, px, relative,
-    rgb, rgba,
 };
 
 use crate::buffer::{BufferEvent, ReadOnly};
@@ -55,18 +54,13 @@ impl Render for DraggedTab {
             .py_1()
             .rounded_md()
             .border_1()
-            .border_color(rgb(0xd0d7de))
-            .bg(rgb(0xffffff))
+            .border_color(crate::theme::paint(crate::theme::ui().border))
+            .bg(crate::theme::paint(crate::theme::ui().background))
             .shadow_md()
             .text_sm()
             .child(self.label.clone())
     }
 }
-
-/// Where a dragged tab would land.
-const DROP_TARGET: u32 = 0xddf4ff;
-/// Where the other view would open if the dragged tab is dropped.
-const SPLIT_TARGET: u32 = 0x0969da33;
 
 pub(crate) struct Pane {
     /// 0 for the main view, 1 for the second one.
@@ -140,7 +134,9 @@ impl Pane {
 
     /// The half of the text where the other view would open.
     fn render_split_zone(&self, orientation: SplitOrientation) -> impl IntoElement {
-        let zone = div().absolute().bg(rgba(SPLIT_TARGET));
+        let zone = div().absolute().bg(crate::theme::paint(
+            crate::theme::ui().accent.with_alpha(0x33),
+        ));
         match (orientation, self.index) {
             (SplitOrientation::SideBySide, 0) => zone.top_0().right_0().h_full().w(relative(0.5)),
             (SplitOrientation::SideBySide, _) => zone.top_0().left_0().h_full().w(relative(0.5)),
@@ -292,14 +288,16 @@ impl Pane {
                     Icon::new(IconName::Eye)
                         .xsmall()
                         .ml_1()
-                        .text_color(rgb(0x8c959f))
+                        .text_color(crate::theme::paint(crate::theme::ui().faint))
                         .into_any_element()
                 } else {
                     div()
                         .ml_2()
                         .size(px(8.))
                         .rounded_full()
-                        .when(modified, |dot| dot.bg(rgb(0xd1242f)))
+                        .when(modified, |dot| {
+                            dot.bg(crate::theme::paint(crate::theme::ui().modified))
+                        })
                         .into_any_element()
                 })
                 .suffix(
@@ -322,7 +320,9 @@ impl Pane {
                 )
                 .debug_selector(move || format!("pane-{pane}-tab-{index}"))
                 .on_drag(dragged, |tab, _, _, cx| cx.new(|_| tab.clone()))
-                .drag_over::<DraggedTab>(|style, _, _, _| style.bg(rgb(DROP_TARGET)))
+                .drag_over::<DraggedTab>(|style, _, _, _| {
+                    style.bg(crate::theme::paint(crate::theme::ui().selected))
+                })
                 .on_drop(cx.listener(move |_, tab: &DraggedTab, window, cx| {
                     cx.emit(PaneEvent::Dropped {
                         view: tab.view.clone(),
@@ -360,7 +360,9 @@ impl Render for Pane {
                     .relative()
                     .flex_1()
                     .min_h(px(0.))
-                    .drag_over::<DraggedTab>(|style, _, _, _| style.bg(rgb(DROP_TARGET)))
+                    .drag_over::<DraggedTab>(|style, _, _, _| {
+                        style.bg(crate::theme::paint(crate::theme::ui().selected))
+                    })
                     .on_drag_move(
                         cx.listener(|this, event: &DragMoveEvent<DraggedTab>, _, cx| {
                             let zone = this.split_zone_at(event.event.position, event.bounds, cx);

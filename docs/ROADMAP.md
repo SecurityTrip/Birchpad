@@ -1,7 +1,8 @@
 # Birchpad roadmap
 
-Birchpad first reaches feature parity with Notepad++, then goes beyond it. Phases are ordered by
-dependency, not by calendar. Architecture decisions live in [`adr/`](adr).
+Birchpad first reaches feature parity with Notepad++ (Phases 1 to 6), then goes beyond it
+(Phase 7). Phases are ordered by dependency, not by calendar. Architecture decisions live in
+[`adr/`](adr).
 
 ## Phase 0: foundation
 
@@ -190,15 +191,40 @@ What Phase 1 left for later is marked *(from Phase 1)* in the phases below.
 
 ## Phase 4: customization
 
-- Preferences, Style Configurator, themes (importing Notepad++ XML themes)
-- Shortcut mapper; macros (record, play N times, save) on top of the command registry
-- User Defined Languages (importing Notepad++ UDL files)
-- Word and API-file auto-completion, call tips, auto-closing brackets
-- Run menu with `$(FULL_CURRENT_PATH)`-style variables
-- Hashes, Base64/URL encoding, HEX converter
-- Character sets that `encoding_rs` lacks: OEM 437/850 and other DOS code pages, EBCDIC
-  *(from Phase 1)*
-- Localization (English, Russian first), printing, right-to-left text
+- [x] Color themes for the editor and the whole window: built-in Default and Dark, theme files
+      in TOML, Notepad++ XML themes read as they are; Settings > Theme and Import Style
+      Themes... ([ADR 0027](adr/0027-themes.md))
+- [x] Style Configurator: a theme's editor, interface and highlighting colors, for all
+      languages or one, shown as they change and saved as a theme file
+      ([ADR 0027](adr/0027-themes.md))
+- [x] Preferences: the settings by section, each change written to `settings.toml` keeping its
+      comments and applied at once; settings set by policy shown but locked
+      ([ADR 0028](adr/0028-preferences.md))
+- [x] Shortcut Mapper: add, remove and reset the shortcuts of every command, written to
+      `keymap.toml` and applied at once ([ADR 0029](adr/0029-shortcut-mapper.md))
+- [x] Macros: record commands and typing, play back once, N times or until the end of the
+      file, save by name in `macros.toml` ([ADR 0030](adr/0030-macros.md))
+- [x] User Defined Languages: Notepad++ UDL files read as they are, colored by a small lexer,
+      chosen by extension or in the Language menu, imported ([ADR 0032](adr/0032-user-defined-languages.md))
+- [x] Auto-completion: brackets and quotes closed as typed, the document's words and Notepad++
+      API files' keywords while typing, call tips with every overload
+      ([ADR 0031](adr/0031-auto-completion.md))
+- [x] Run menu: command lines with Notepad++'s variables (`$(FULL_CURRENT_PATH)`,
+      `$(CURRENT_WORD)`, `$(SYS.NAME)`, ...), saved by name in `run.toml`; web addresses open in
+      the browser
+- [x] Tools: MD5, SHA-1, SHA-256 and SHA-512 of the selection (into the clipboard) or of files
+      (into a new document); Base64 and URL encoding and decoding, ASCII to HEX and back, of
+      every selection as one undo step
+- [x] Character sets that `encoding_rs` lacks: OEM 437, 737, 775, 850, 852, 855, 857, 858,
+      860–865, 869, and EBCDIC 037, 500, 1026, 1140, from tables of Birchpad's own behind the
+      same decoder and encoder as encoding_rs's *(from Phase 1)*
+- [x] Localization: English and Russian, the interface's language from the system or
+      `appearance.language` ([ADR 0033](adr/0033-localization.md))
+- [x] Printing: the document as an HTML page in its colors with line numbers, printed
+      through the browser's print dialog, or exported ([ADR 0034](adr/0034-printing.md))
+- [x] Right-to-left text: rows with Hebrew or Arabic reordered by the Unicode Bidirectional
+      Algorithm, carets and clicks mapped both ways; Edit > Text Direction RTL and LTR
+      ([ADR 0035](adr/0035-right-to-left-text.md))
 
 ## Phase 5: plugins
 
@@ -207,7 +233,53 @@ What Phase 1 left for later is marked *(from Phase 1)* in the phases below.
 - Plugin manager; enterprise allowlist
 - Built-in versions of popular Notepad++ plugins: Compare, JSON/XML tools, hex view, spell check
 
-## Phase 6: beyond Notepad++
+## Phase 6: full parity with Notepad++
+
+What Phases 1 to 4 built differently from Notepad++, or left out, is brought in line here; what
+Phase 5 leaves for later is added once it is done. Birchpad goes beyond Notepad++ only after
+this phase.
+
+- Themes and Style Configurator: fonts (family, size, bold/italic per style) in themes, the
+  Style Configurator and Notepad++ theme import; saving changes to a Notepad++ theme back to its
+  XML; a closer match from Scintilla's style names to highlights, with a per-language table
+  where names differ; Notepad++'s separate Dark Mode for the interface, independent of the
+  editor theme
+- Preferences: the remaining sections and options of Notepad++'s dialog (tab bar,
+  multi-instance, delimiters, search engine, MISC and the rest), with OK/Close semantics where
+  Notepad++ has them
+- Shortcut Mapper: key sequences (`ctrl-k ctrl-c`) recorded in the dialog; bindings limited to
+  platforms shown and editable; command titles translated
+- Macros: Notepad++'s built-in "Trim Trailing Space and Save"; recording what dialogs a command
+  opens (Find, Replace) with their fields, as Notepad++ records search parameters
+- Run: Notepad++'s own Run menu entries as built-in items, not only saved command lines
+- Tools: hashes of files in a dialog with Copy, as Notepad++ shows them, besides the listing in a
+  new document
+- Code pages: EBCDIC 875 (Greek), whose standard table maps two bytes to one character; NEL as a
+  line break in EBCDIC documents
+- Auto-completion: closing HTML and XML tags; API files for languages embedded in a document
+  (scripts in HTML); cycling through a function's overloads in the call tip; Notepad++'s
+  auto-completion options (ignore numbers, ignore case, completion from a number of characters
+  per source); bundled API files for common languages
+- User Defined Languages: the UDL editor dialog; folding (code and comment folders); number
+  prefixes, suffixes, extras and ranges; comments that must start a line; nested delimiters;
+  colors from the theme where the UDL leaves them unset
+- Localization: more interface languages, including Notepad++'s `nativeLang` XML files; command
+  titles, messages and composed strings translated
+- Printing: a print preview and page setup of Birchpad's own (margins, header and footer with
+  Notepad++'s variables, colors or black on white, line numbers), printing the selection;
+  native printing where the platform offers it
+- Right-to-left text: selections drawn piece by piece over mixed text; margins on the right in
+  right-to-left mode; keys for Text Direction RTL and LTR; the direction remembered per document
+  in sessions; very long rows reordered too
+- Everything Notepad++ has that Birchpad still lacks: the Window menu and its dialog, tab colors,
+  pinned and multi-line or vertical tabs, the text's context menu (editable, as Notepad++'s
+  Edit Popup ContextMenu), Insert date and time, Copy full path / file name / folder, Rename and
+  Delete file, Edit > Set Read-Only, and other menu commands not listed in the phases above
+- Verified on real systems: input methods (Windows TSF, macOS, IBus/Fcitx), screen readers
+  *(from Phase 1)*
+- After Phase 5: what the plugins phase leaves out of Notepad++'s plugin behavior
+
+## Phase 7: beyond Notepad++
 
 - LSP client; command palette and fuzzy file finder
 - Git: gutter changes, blame, diff

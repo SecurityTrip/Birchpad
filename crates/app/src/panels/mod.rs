@@ -23,7 +23,7 @@ use gpui_kit::component::button::{Button, ButtonVariants as _};
 use gpui_kit::component::tab::{Tab, TabBar};
 use gpui_kit::component::{IconName, Sizable};
 use gpui_kit::component::{h_resizable, resizable_panel};
-use gpui_kit::{AnyElement, AnyView, AppContext as _, Context, Window, div, prelude::*, px, rgb};
+use gpui_kit::{AnyElement, AnyView, AppContext as _, Context, Window, div, prelude::*, px};
 use serde::Deserialize;
 
 use crate::app_state::AppState;
@@ -375,14 +375,14 @@ impl Workspace {
             .ghost()
             .icon(IconName::Close)
             .on_click(cx.listener(move |this, _, _, cx| this.close_panel(shown, cx)));
-        let border = rgb(0xd0d7de);
+        let border = crate::theme::paint(crate::theme::ui().border);
         Some(
             div()
                 .id(("dock", side_index(side)))
                 .size_full()
                 .flex()
                 .flex_col()
-                .bg(rgb(0xffffff))
+                .bg(crate::theme::paint(crate::theme::ui().background))
                 .text_size(px(13.))
                 .map(|dock| match side {
                     Side::Left => dock.border_r_1().border_color(border),
@@ -395,7 +395,7 @@ impl Workspace {
                         .items_center()
                         .flex_none()
                         .h(px(30.))
-                        .bg(rgb(0xf6f8fa))
+                        .bg(crate::theme::paint(crate::theme::ui().surface))
                         .border_b_1()
                         .border_color(border)
                         .child(

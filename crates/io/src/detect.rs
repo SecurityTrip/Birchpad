@@ -14,7 +14,7 @@ use birchpad_core::Encoding;
 use chardetng::{EncodingDetector, Iso2022JpDetection, Utf8Detection};
 
 use crate::decode::sniff_bom;
-use crate::encoding::{from_encoding_rs, to_encoding_rs};
+use crate::encoding::{from_encoding_rs, to_codec};
 
 /// Bytes inspected for the UTF-16 pattern.
 const UTF16_SAMPLE: usize = 64 * 1024;
@@ -138,7 +138,7 @@ fn utf16_pattern(sample: &[u8]) -> Option<Encoding> {
 /// True if `bytes` decode without errors. If `complete` is false, `bytes` is a prefix and may
 /// end in the middle of a character.
 fn decodes_cleanly(bytes: &[u8], encoding: Encoding, complete: bool) -> bool {
-    let mut decoder = to_encoding_rs(encoding).new_decoder_without_bom_handling();
+    let mut decoder = to_codec(encoding).new_decoder_without_bom_handling();
     let mut out = String::with_capacity(
         decoder
             .max_utf8_buffer_length_without_replacement(bytes.len())

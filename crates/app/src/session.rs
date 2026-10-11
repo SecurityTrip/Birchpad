@@ -490,8 +490,19 @@ impl Workspace {
             }
             (None, None) => return None,
         };
-        if let Some(language) = document.language.as_deref().and_then(language) {
-            buffer.update(cx, |buffer, cx| buffer.set_language(language, cx));
+        if let Some(name) = document.language.as_deref() {
+            match name.strip_prefix(crate::user_languages::ID_PREFIX) {
+                Some(name) => {
+                    if let Some(found) = crate::user_languages::find(name, cx) {
+                        buffer.update(cx, |buffer, cx| buffer.set_user_language(Some(found), cx));
+                    }
+                }
+                None => {
+                    if let Some(language) = language(name) {
+                        buffer.update(cx, |buffer, cx| buffer.set_language(language, cx));
+                    }
+                }
+            }
         }
         if !document.bookmarks.is_empty() {
             let lines = document.bookmarks.clone();
@@ -530,9 +541,16 @@ fn document_of(buffer: &Buffer, backups: bool) -> Option<SessionDocument> {
             .then(|| line_ending_name(format.line_ending).to_owned()),
         backup,
         encoding,
-        language: buffer
-            .chosen_language()
-            .map(|language| language.map_or("text", |language| language.id).to_owned()),
+        language: match (buffer.chosen_language(), buffer.user_language()) {
+            (Some(_), Some(found)) => Some(format!(
+                "{}{}",
+                crate::user_languages::ID_PREFIX,
+                found.name
+            )),
+            (chosen, _) => {
+                chosen.map(|language| language.map_or("text", |language| language.id).to_owned())
+            }
+        },
         read_only: buffer.requested_read_only(),
         bookmarks: buffer.bookmark_lines(),
         file_len: buffer.disk().filter(|_| backups).map(|disk| disk.len),

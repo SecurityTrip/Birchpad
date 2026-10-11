@@ -1,0 +1,11 @@
+[editor]
+background = "#002b36"
+caret = "#93a1a1"
+
+[syntax]
+function.method = "#268bd2"
+keyword = { color = "#859900", bold = true }
+
+[language.python.string]
+color = "#2aa198"
+escape = "#cb4b16"

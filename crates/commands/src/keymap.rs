@@ -69,7 +69,7 @@ impl Binding {
 /// A keymap file could not be parsed at all.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 #[error("{0}")]
-pub struct KeymapError(String);
+pub struct KeymapError(pub(crate) String);
 
 /// A problem found while building a keymap. The offending binding is skipped or overridden;
 /// everything else still applies.

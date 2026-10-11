@@ -6,9 +6,11 @@
 
 mod change;
 mod change_history;
+pub mod completion;
 mod decoration;
 mod document;
 mod format;
+pub mod hash;
 mod history;
 mod line_ending;
 pub mod motion;

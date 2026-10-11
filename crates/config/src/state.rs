@@ -31,6 +31,9 @@ pub struct UserState {
     pub indent_guides: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub wrap_symbol: Option<bool>,
+    /// Settings > Theme as last chosen; unset means `appearance.theme` from the settings.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub theme: Option<String>,
     /// How split view places the two views, as last rotated.
     pub split: SplitOrientation,
     /// What update checks remember.

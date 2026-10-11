@@ -6,7 +6,9 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default, rename_all = "kebab-case")]
 pub struct Settings {
+    pub appearance: AppearanceSettings,
     pub editor: EditorSettings,
+    pub completion: CompletionSettings,
     pub highlighting: HighlightingSettings,
     pub files: FileSettings,
     pub session: SessionSettings,
@@ -14,6 +16,27 @@ pub struct Settings {
     pub plugins: PluginSettings,
     pub network: NetworkSettings,
     pub diagnostics: DiagnosticsSettings,
+}
+
+/// How Birchpad looks.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, rename_all = "kebab-case")]
+pub struct AppearanceSettings {
+    /// The color theme as Birchpad starts: a built-in one (`Default`, `Dark`) or the name of a
+    /// file in the `themes` folder next to the settings, without its extension. Settings > Theme
+    /// chooses another (remembered in `state.toml`).
+    pub theme: String,
+    /// The interface's language: `en`, `ru`, or `auto` for the system's.
+    pub language: String,
+}
+
+impl Default for AppearanceSettings {
+    fn default() -> Self {
+        Self {
+            theme: "Default".to_owned(),
+            language: "auto".to_owned(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -118,6 +141,41 @@ impl Default for EditorSettings {
             edge: Edge::default(),
             edge_columns: vec![80],
         }
+    }
+}
+
+/// Notepad++'s Preferences > Auto-Completion.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, rename_all = "kebab-case")]
+pub struct CompletionSettings {
+    /// Brackets and quotes typed in pairs, written as pairs of characters: `()[]{}""''`. Typing the
+    /// closing one steps over it; Backspace between an empty pair deletes both.
+    pub auto_close: String,
+    /// Show the words of the document and the language's API keywords while typing.
+    pub words: bool,
+    /// From how many characters of a word the list shows.
+    pub min_chars: u8,
+    /// Show a function's parameters after its opening bracket, from the language's API file.
+    pub call_tips: bool,
+}
+
+impl Default for CompletionSettings {
+    fn default() -> Self {
+        Self {
+            auto_close: "()[]{}\"\"''".to_owned(),
+            words: true,
+            min_chars: 1,
+            call_tips: true,
+        }
+    }
+}
+
+impl CompletionSettings {
+    /// The pairs of `auto_close`, two characters each; an odd character at the end is left out.
+    pub fn pairs(&self) -> Vec<(char, char)> {
+        let chars: Vec<char> = self.auto_close.chars().collect();
+        let (pairs, _) = chars.as_chunks::<2>();
+        pairs.iter().map(|[open, close]| (*open, *close)).collect()
     }
 }
 
@@ -312,4 +370,24 @@ impl Default for NetworkSettings {
 pub struct DiagnosticsSettings {
     /// Send crash reports. Off unless the user opts in.
     pub crash_reports: bool,
+}
+
+#[cfg(test)]
+mod completion_tests {
+    use super::*;
+
+    #[test]
+    fn pairs_of_auto_close() {
+        let mut settings = CompletionSettings::default();
+        assert_eq!(
+            settings.pairs(),
+            [('(', ')'), ('[', ']'), ('{', '}'), ('"', '"'), ('\'', '\'')]
+        );
+        settings.auto_close = "<>(".into();
+        assert_eq!(settings.pairs(), [('<', '>')]);
+        settings.auto_close.clear();
+        assert!(settings.pairs().is_empty());
+        settings.auto_close = "«»".into();
+        assert_eq!(settings.pairs(), [('«', '»')]);
+    }
 }

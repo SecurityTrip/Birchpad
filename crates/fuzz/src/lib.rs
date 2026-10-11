@@ -16,6 +16,7 @@ use birchpad_commands::{Keymap, Keystroke, Layer, Platform};
 use birchpad_config::{ProjectWorkspace, Session, Sources, UpdateChannel, UserState, resolve};
 use birchpad_core::Encoding;
 use birchpad_io::{CHARACTER_SETS, FileInfo, LoadOptions, decode_appended, decode_file, encode};
+use birchpad_theme::Theme;
 use birchpad_update::SigningKey;
 use birchpad_update::manifest::{self, Envelope, Signature};
 use ed25519_dalek::Signer as _;
@@ -30,6 +31,12 @@ pub const TARGETS: &[(&str, Check)] = &[
     ("state", state),
     ("session", session),
     ("workspace_file", workspace_file),
+    ("theme", theme),
+    ("notepad_theme", notepad_theme),
+    ("macros", macros),
+    ("run_commands", run_commands),
+    ("api_file", api_file),
+    ("udl", udl),
     ("keymap", keymap),
     ("command_line", command_line),
     ("instance_message", instance_message),
@@ -137,6 +144,22 @@ pub fn settings(data: &[u8]) -> bool {
     });
     assert_eq!(again.settings, user.settings);
     assert!(again.diagnostics.is_empty(), "{:?}", again.diagnostics);
+
+    // Preferences changes one setting in the file and leaves the others as they were.
+    let two = toml::Value::Integer(2);
+    if let Ok(edited) = birchpad_config::edit_settings(text, "editor.tab-width", Some(&two)) {
+        let table = toml::from_str::<toml::Table>(&edited).expect("an edited file reads");
+        let edited = resolve(Sources {
+            user: Some(table),
+            ..Sources::default()
+        });
+        assert_eq!(edited.settings.editor.tab_width, 2, "edited:\n{edited:?}");
+        let mut expected = user.settings.clone();
+        expected.editor.tab_width = 2;
+        if user.diagnostics.is_empty() {
+            assert_eq!(edited.settings, expected);
+        }
+    }
     user.diagnostics.is_empty()
 }
 
@@ -190,6 +213,138 @@ pub fn workspace_file(data: &[u8]) -> bool {
     true
 }
 
+/// `macros.toml`: macros that read write back as a file that reads the same.
+pub fn macros(data: &[u8]) -> bool {
+    let Ok(text) = std::str::from_utf8(data) else {
+        return false;
+    };
+    let Ok(macros) = birchpad_commands::parse_macros(text) else {
+        return false;
+    };
+    let written = birchpad_commands::write_macros(&macros);
+    let again = birchpad_commands::parse_macros(&written).expect("written macros read");
+    assert_eq!(again, macros, "written:\n{written}");
+    true
+}
+
+/// `run.toml`: commands that read write back the same, and any line expands without a panic.
+pub fn run_commands(data: &[u8]) -> bool {
+    let Ok(text) = std::str::from_utf8(data) else {
+        return false;
+    };
+    let vars = birchpad_commands::RunVariables {
+        file_name: text.lines().next().unwrap_or_default().to_owned(),
+        current_word: "word".into(),
+        ..Default::default()
+    };
+    let expanded = birchpad_commands::expand_variables(text, &vars, |name| Some(name.to_owned()));
+    if !text.contains("$(") {
+        assert_eq!(expanded, text);
+    }
+    let Ok(commands) = birchpad_commands::parse_run_commands(text) else {
+        return false;
+    };
+    let written = birchpad_commands::write_run_commands(&commands);
+    assert_eq!(
+        birchpad_commands::parse_run_commands(&written).expect("written commands read"),
+        commands
+    );
+    true
+}
+
+/// A Notepad++ API file: what reads has sorted, distinct, named keywords, and every function
+/// completes and finds itself.
+pub fn api_file(data: &[u8]) -> bool {
+    let Ok(text) = std::str::from_utf8(data) else {
+        return false;
+    };
+    let Ok(api) = birchpad_config::ApiFile::parse(text) else {
+        return false;
+    };
+    let names: Vec<&str> = api
+        .keywords
+        .iter()
+        .map(|keyword| keyword.name.as_str())
+        .collect();
+    assert!(
+        names.is_sorted() && names.windows(2).all(|pair| pair[0] != pair[1]),
+        "{names:?}"
+    );
+    for keyword in &api.keywords {
+        assert!(!keyword.name.trim().is_empty());
+        if !keyword.overloads.is_empty() {
+            assert!(api.function(&keyword.name).is_some(), "{}", keyword.name);
+        }
+        let prefix: String = keyword.name.chars().take(1).collect();
+        if prefix.len() < keyword.name.len() {
+            assert!(
+                api.completions(&prefix)
+                    .iter()
+                    .any(|found| found.name == keyword.name),
+                "{}",
+                keyword.name
+            );
+        }
+    }
+    true
+}
+
+/// A Notepad++ user defined language file: every language it holds colors its own text, and
+/// the file itself, with pieces in order, apart, and on character boundaries.
+pub fn udl(data: &[u8]) -> bool {
+    let Ok(text) = std::str::from_utf8(data) else {
+        return false;
+    };
+    let Ok(languages) = birchpad_syntax::parse_udl(text) else {
+        return false;
+    };
+    for language in &languages {
+        assert!(!language.name.trim().is_empty());
+        let pieces = language.highlight(text, 0);
+        let mut end = 0;
+        for (range, _) in &pieces {
+            assert!(range.start >= end && range.start < range.end && range.end <= text.len());
+            assert!(text.is_char_boundary(range.start) && text.is_char_boundary(range.end));
+            end = range.end;
+        }
+        let from = text.len() / 2;
+        let later = language.highlight(text, text.floor_char_boundary(from));
+        assert!(later.iter().all(|piece| pieces.contains(piece)));
+    }
+    true
+}
+
+/// A theme file: one that reads writes back as a complete file that reads as the same theme.
+pub fn theme(data: &[u8]) -> bool {
+    let Ok(text) = std::str::from_utf8(data) else {
+        return false;
+    };
+    let Ok(theme) = Theme::from_toml("Fuzzed", text) else {
+        return false;
+    };
+    check_theme(&theme);
+    true
+}
+
+/// A Notepad++ XML theme: what it imports saves as a Birchpad theme that reads the same.
+pub fn notepad_theme(data: &[u8]) -> bool {
+    let Ok(text) = std::str::from_utf8(data) else {
+        return false;
+    };
+    let Ok(theme) = Theme::from_notepad_xml("Fuzzed", text) else {
+        return false;
+    };
+    check_theme(&theme);
+    true
+}
+
+fn check_theme(theme: &Theme) {
+    let saved = theme.to_toml();
+    let again = Theme::from_toml(&theme.name, &saved).expect("a saved theme reads");
+    assert_eq!(&again, theme, "saved as:\n{saved}");
+    assert_eq!(again.to_toml(), saved);
+}
+
 /// The user's `keymap.toml`, on each platform: the defaults stay whatever it holds, and every
 /// binding's keys, as handed to GPUI, read back as the same keys.
 pub fn keymap(data: &[u8]) -> bool {
@@ -215,6 +370,51 @@ pub fn keymap(data: &[u8]) -> bool {
                     "{shifted}"
                 );
             }
+        }
+    }
+    // The Shortcut Mapper's changes to a keymap that reads cleanly: what it binds is bound,
+    // what it unbinds is not, and resetting gives a command its default keys.
+    if !accepted {
+        return false;
+    }
+    let platform = Platform::Windows;
+    let save = birchpad_commands::Invocation::new("file.save");
+    let effective = |text: &str| {
+        let mut keymap = Keymap::with_defaults(platform);
+        keymap.add_layer(Layer::User, text);
+        keymap
+    };
+    if let Ok(bound) = birchpad_commands::bind(text, platform, "ctrl-alt-shift-f12", None, &save) {
+        let keymap = effective(&bound);
+        let keys = Keystroke::parse_sequence("ctrl-alt-shift-f12", platform).unwrap();
+        let found = keymap
+            .resolve(&keys, &[])
+            .map(|binding| &binding.invocation);
+        assert_eq!(found, Some(&save), "bound:\n{bound}");
+        let unbound = birchpad_commands::unbind(&bound, platform, "ctrl-alt-shift-f12", None)
+            .expect("what was bound unbinds");
+        assert!(
+            effective(&unbound).resolve(&keys, &[]).is_none(),
+            "unbound:\n{unbound}"
+        );
+    }
+    if let Ok(reset) = birchpad_commands::reset(text, platform, &save) {
+        let defaults = Keymap::with_defaults(platform);
+        let keys = |keymap: &Keymap| -> Vec<String> {
+            keymap
+                .bindings_for(&save)
+                .map(|binding| binding.keys_string())
+                .collect()
+        };
+        let keymap = effective(&reset);
+        // Each default key of the command is bound again: to it, or to what the file binds.
+        for default in keys(&defaults) {
+            let parsed = Keystroke::parse_sequence(&default, platform).unwrap();
+            let bound = keymap
+                .bindings()
+                .iter()
+                .any(|binding| binding.keys == parsed);
+            assert!(bound, "{default} after reset:\n{reset}");
         }
     }
     accepted

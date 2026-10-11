@@ -466,22 +466,22 @@ impl Render for FindBar {
             }))
             .child(
                 Tab::new()
-                    .label("Find")
+                    .label(crate::i18n::tr("Find"))
                     .debug_selector(|| "tab-find".into()),
             )
             .child(
                 Tab::new()
-                    .label("Replace")
+                    .label(crate::i18n::tr("Replace"))
                     .debug_selector(|| "tab-replace".into()),
             )
             .child(
                 Tab::new()
-                    .label("Find in Files")
+                    .label(crate::i18n::tr("Find in Files"))
                     .debug_selector(|| "tab-find-in-files".into()),
             )
             .child(
                 Tab::new()
-                    .label("Mark")
+                    .label(crate::i18n::tr("Mark"))
                     .debug_selector(|| "tab-mark".into()),
             )
             .suffix(
@@ -707,17 +707,17 @@ impl Render for FindBar {
                         }))
                         .child(
                             Radio::new("mode-normal")
-                                .label("Normal")
+                                .label(crate::i18n::tr("Normal"))
                                 .debug_selector(|| "mode-normal".into()),
                         )
                         .child(
                             Radio::new("mode-extended")
-                                .label("Extended (\\n, \\r, \\t, \\0, \\x...)")
+                                .label(crate::i18n::tr("Extended (\\n, \\r, \\t, \\0, \\x...)"))
                                 .debug_selector(|| "mode-extended".into()),
                         )
                         .child(
                             Radio::new("mode-regex")
-                                .label("Regular expression")
+                                .label(crate::i18n::tr("Regular expression"))
                                 .debug_selector(|| "mode-regex".into()),
                         ),
                 ),
@@ -749,8 +749,8 @@ impl Render for FindBar {
             .px_3()
             .pb_2()
             .border_t_1()
-            .border_color(rgb(0xd0d7de))
-            .bg(rgb(0xf6f8fa))
+            .border_color(crate::theme::paint(crate::theme::ui().border))
+            .bg(crate::theme::paint(crate::theme::ui().surface))
             .text_size(px(13.))
             .child(tabs)
             .child(find_row)
@@ -1415,14 +1415,14 @@ impl Workspace {
             let go_to = go_to.clone();
             let confirm = go_to.clone();
             dialog
-                .title("Go To")
+                .title(crate::i18n::tr("Go To"))
                 .w(px(360.))
                 .child(go_to)
                 .footer(
                     DialogFooter::new()
                         .child(crate::workspace::dialog_close("Cancel"))
                         .child(crate::workspace::dialog_action(
-                            Button::new("go").label("Go"),
+                            Button::new("go").label(crate::i18n::tr("Go")),
                         )),
                 )
                 .on_ok(move |_, _, cx| {
@@ -1536,7 +1536,7 @@ impl Render for GoTo {
                     .child(
                         Button::new("by-line")
                             .small()
-                            .label("Line")
+                            .label(crate::i18n::tr("Line"))
                             .selected(!self.by_offset)
                             .when(!self.by_offset, |button| button.primary())
                             .on_click(mode(false)),
@@ -1544,7 +1544,7 @@ impl Render for GoTo {
                     .child(
                         Button::new("by-offset")
                             .small()
-                            .label("Offset")
+                            .label(crate::i18n::tr("Offset"))
                             .selected(self.by_offset)
                             .when(self.by_offset, |button| button.primary())
                             .on_click(mode(true)),
@@ -1553,11 +1553,11 @@ impl Render for GoTo {
             .child(format!("You are here: {here}"))
             .child(Input::new(&self.input).id("go-to-input"))
             .child(format!("You can't go further than: {limit}"))
-            .children(
-                self.error
-                    .clone()
-                    .map(|error| div().text_color(rgb(0xcf222e)).child(error)),
-            )
+            .children(self.error.clone().map(|error| {
+                div()
+                    .text_color(crate::theme::paint(crate::theme::ui().error))
+                    .child(error)
+            }))
     }
 }
 

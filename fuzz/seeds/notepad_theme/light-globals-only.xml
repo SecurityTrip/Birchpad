@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<NotepadPlus>
+    <GlobalStyles>
+        <WidgetStyle name="Default Style" styleID="32" fgColor="000000" bgColor="FFFFFF" fontName="Courier New" fontStyle="0" fontSize="10" />
+        <WidgetStyle name="Caret colour" styleID="2069" fgColor="8000FF" />
+    </GlobalStyles>
+</NotepadPlus>

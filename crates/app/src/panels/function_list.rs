@@ -341,8 +341,10 @@ impl FunctionList {
             .whitespace_nowrap()
             .overflow_hidden()
             .cursor_pointer()
-            .when(current, |row| row.bg(rgb(0xddf4ff)))
-            .hover(|row| row.bg(rgb(0xf3f4f6)))
+            .when(current, |row| {
+                row.bg(crate::theme::paint(crate::theme::ui().selected))
+            })
+            .hover(|row| row.bg(crate::theme::paint(crate::theme::ui().hovered)))
             .child(match fold {
                 Some(fold) => fold.into_any_element(),
                 None => div().w(px(INDENT)).flex_none().into_any_element(),
@@ -395,7 +397,7 @@ impl Render for FunctionList {
         let body = match self.contents(cx) {
             Contents::Message(message) => div()
                 .p_2()
-                .text_color(rgb(0x57606a))
+                .text_color(crate::theme::paint(crate::theme::ui().muted))
                 .child(message)
                 .into_any_element(),
             Contents::Tree {

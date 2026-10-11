@@ -9,7 +9,7 @@ use std::time::SystemTime;
 
 use birchpad_core::Encoding;
 
-use crate::encoding::to_encoding_rs;
+use crate::encoding::to_codec;
 use crate::file::FileInfo;
 
 /// What a file looked like when it was read or written: another size or time means another
@@ -122,7 +122,7 @@ pub fn decode_appended(bytes: &[u8], encoding: Encoding) -> Option<(String, usiz
             Some((text, complete * 2))
         }
         Encoding::Legacy(_) => {
-            let encoding = to_encoding_rs(encoding);
+            let encoding = to_codec(encoding);
             if !encoding.is_single_byte() {
                 return None;
             }

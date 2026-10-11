@@ -6,6 +6,61 @@ version's release notes from its section here.
 
 ## [Unreleased]
 
+## [0.1.4] - 2026-10-12
+
+### Added
+
+- Color themes (Settings > Theme): the built-in Default and Dark, and theme files in the
+  `themes` folder next to the settings. A dark theme darkens the whole window: tabs, panels,
+  bars, menus and dialogs. Theme files are TOML and set only the colors they change; Notepad++
+  themes (`.xml`) work as they are, with their colors matched to Birchpad's highlighting, and
+  Settings > Import > Import Style Themes... copies them in. `appearance.theme` sets the theme
+  Birchpad starts with.
+- Settings > Style Configurator..., as in Notepad++: choose a theme and change its colors (the
+  editor's global styles, the interface, and highlighting for all languages or one: foreground,
+  background, bold, italic, underline), seen as they change. Save & Close keeps the theme in the
+  `themes` folder; Cancel goes back.
+- Settings > Preferences...: tab size, auto-indent, the current line, margins and the edge,
+  smart highlighting, recent files, the ANSI encoding, the large file limit, change detection,
+  backups and updates. Each change applies at once and is written to `settings.toml`, keeping
+  its comments; settings an administrator's policy sets are shown but cannot be changed.
+- Settings > Shortcut Mapper...: every command with its shortcuts, with a filter. Add Shortcut
+  takes the keys pressed (without running them), Remove takes one off, Reset gives the
+  defaults back; it warns when the keys run another command. Changes are written to
+  `keymap.toml`, keeping its comments, and apply at once.
+- The Tools menu: MD5, SHA-1, SHA-256 and SHA-512 of the selection, copied to the clipboard, or
+  of files, listed in a new document as `sha256sum` does; Base64 Encode and Decode, URL Encode
+  and Decode, ASCII to HEX and HEX to ASCII on every selection, as one undo step.
+- The Run menu, as in Notepad++: Run... runs a command line with variables (`$(FULL_CURRENT_PATH)`,
+  `$(CURRENT_DIRECTORY)`, `$(FILE_NAME)`, `$(NAME_PART)`, `$(EXT_PART)`, `$(CURRENT_WORD)`,
+  `$(CURRENT_LINE)`, `$(CURRENT_COLUMN)`, `$(CURRENT_LINESTR)`, `$(NPP_DIRECTORY)`,
+  `$(NPP_FULL_FILE_PATH)`, `$(SYS.NAME)`) through the system's shell, or opens a web address in
+  the browser; Save keeps it by name in `run.toml`, listed in the menu.
+- DOS (OEM) code pages in Encoding > Character Sets: OEM-US (437), 737, 775, 850, 852, 855,
+  857, 858, 860, 861, 862, 863, 864, 865 and 869, and EBCDIC 037, 1140, 500 and 1026; `cp437`
+  and `IBM437` name them in settings and on the command line.
+- Hebrew and Arabic show in their order, by the Unicode Bidirectional Algorithm, with carets and
+  clicks where they belong; Edit > Text Direction RTL makes a view run right to left, its rows
+  ending at the right edge, and Text Direction LTR goes back.
+- File > Print... (Ctrl+P) opens the document, in its colors with line numbers, in the browser's
+  print dialog; File > Export to HTML... saves the same page.
+- The interface in Russian: menus, dialogs, Preferences and the status bar follow the system's
+  language, or `appearance.language` (`en`, `ru`, `auto`) in Preferences > Appearance.
+- Notepad++'s User Defined Languages: UDL files in `userDefineLangs` next to the settings are
+  listed in Language > User Defined Language (Import... copies them in), color their keywords,
+  comments, operators, numbers and delimiters in the language's own colors, and apply to files
+  with their extensions.
+- Auto-completion, as in Notepad++: brackets and quotes get their closing partner as they are
+  typed (typing it steps over it, Backspace deletes an empty pair); a list of the document's
+  words and the language's keywords shows while typing (Ctrl+Space asks for it); a function's
+  parameters show after its opening bracket (Ctrl+Shift+Space). Keywords and functions come from
+  Notepad++'s API files, put in `autoCompletion` next to the settings. Settings in Preferences >
+  Auto-Completion.
+- The Macro menu, as in Notepad++: Start/Stop Recording (Ctrl+Shift+R) records the commands run
+  and the text typed, Playback (Ctrl+Shift+P) plays them, Run a Macro Multiple Times... plays a
+  number of times or until the end of the file, and saved macros (`macros.toml`) are listed in
+  the menu.
+
 ### Changed
 
 - Nightly builds come from the branch of the next version (`v0.1.4` after 0.1.3) instead of
@@ -167,7 +222,8 @@ The first release: a Notepad++-like editor for Windows, Linux and macOS.
   entirely (`updates.mode = "off"`).
 - Nightly builds of `main` on the nightly channel.
 
-[Unreleased]: https://github.com/SecurityTrip/Birchpad/compare/v0.1.3...HEAD
+[Unreleased]: https://github.com/SecurityTrip/Birchpad/compare/v0.1.4...HEAD
+[0.1.4]: https://github.com/SecurityTrip/Birchpad/compare/v0.1.3...v0.1.4
 [0.1.3]: https://github.com/SecurityTrip/Birchpad/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/SecurityTrip/Birchpad/compare/v0.1.0...v0.1.2
 [0.1.0]: https://github.com/SecurityTrip/Birchpad/releases/tag/v0.1.0

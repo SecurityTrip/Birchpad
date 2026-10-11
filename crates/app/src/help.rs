@@ -6,7 +6,7 @@ use birchpad_config::UpdateChannel;
 use gpui_kit::component::WindowExt as _;
 use gpui_kit::component::button::{Button, ButtonVariants as _};
 use gpui_kit::component::dialog::DialogFooter;
-use gpui_kit::{App, ClipboardItem, SharedString, Window, div, prelude::*, px, rgb};
+use gpui_kit::{App, ClipboardItem, SharedString, Window, div, prelude::*, px};
 
 use crate::app_state::AppState;
 use crate::commands::CommandRegistry;
@@ -109,22 +109,24 @@ fn show_about(window: &mut Window, cx: &mut App) {
                         div()
                             .w(px(72.))
                             .flex_none()
-                            .text_color(rgb(0x57606a))
+                            .text_color(crate::theme::paint(crate::theme::ui().muted))
                             .child(*label),
                     )
                     .child(div().flex_1().min_w_0().child(value.clone()))
             }));
         dialog
-            .title("About Birchpad")
+            .title(crate::i18n::tr("About Birchpad"))
             .w(px(600.))
             .child(table)
             .footer(
                 DialogFooter::new()
-                    .child(Button::new("copy").label("Copy").on_click(move |_, _, cx| {
-                        cx.write_to_clipboard(ClipboardItem::new_string(text.clone()));
-                    }))
+                    .child(Button::new("copy").label(crate::i18n::tr("Copy")).on_click(
+                        move |_, _, cx| {
+                            cx.write_to_clipboard(ClipboardItem::new_string(text.clone()));
+                        },
+                    ))
                     .child(crate::workspace::dialog_action(
-                        Button::new("ok").primary().label("OK"),
+                        Button::new("ok").primary().label(crate::i18n::tr("OK")),
                     )),
             )
             .on_ok(|_, _, _| true)
@@ -176,7 +178,7 @@ pub(crate) fn show_message_with(
             None => {
                 return dialog
                     .footer(DialogFooter::new().child(crate::workspace::dialog_action(
-                        Button::new("ok").primary().label("OK"),
+                        Button::new("ok").primary().label(crate::i18n::tr("OK")),
                     )))
                     .on_ok(|_, _, _| true);
             }

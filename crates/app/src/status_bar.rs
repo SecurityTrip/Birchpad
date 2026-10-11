@@ -10,7 +10,7 @@ use birchpad_core::{Encoding, Format, LineEnding};
 use gpui_kit::component::Sizable as _;
 use gpui_kit::component::button::{Button, ButtonVariants as _};
 use gpui_kit::component::menu::{DropdownMenu as _, PopupMenu};
-use gpui_kit::{App, Context, Window, div, prelude::*, px, rgb};
+use gpui_kit::{App, Context, Window, div, prelude::*, px};
 use serde_json::json;
 
 use crate::commands::RunCommand;
@@ -31,7 +31,7 @@ pub(crate) struct StatusInfo {
     pub(crate) format: Format,
     pub(crate) overwrite: bool,
     /// The language's description ("Rust file"), or `None` for normal text.
-    pub(crate) language: Option<&'static str>,
+    pub(crate) language: Option<String>,
 }
 
 impl StatusInfo {
@@ -56,11 +56,17 @@ impl StatusInfo {
             selected_lines,
             format: view.buffer.read(cx).doc().format(),
             overwrite: view.overwrite,
-            language: view
-                .buffer
-                .read(cx)
-                .language()
-                .map(|language| language.description),
+            language: {
+                let buffer = view.buffer.read(cx);
+                buffer
+                    .language()
+                    .map(|language| language.description.to_owned())
+                    .or_else(|| {
+                        buffer
+                            .user_language()
+                            .map(|found| format!("User defined language file - {}", found.name))
+                    })
+            },
         }
     }
 
@@ -95,7 +101,7 @@ fn section(child: impl IntoElement) -> gpui_kit::Div {
         .h_full()
         .px_3()
         .border_l_1()
-        .border_color(rgb(0xd0d7de))
+        .border_color(crate::theme::paint(crate::theme::ui().border))
         .child(child)
 }
 
@@ -111,17 +117,18 @@ pub(crate) fn render<V: 'static>(
         .flex_none()
         .items_center()
         .border_t_1()
-        .border_color(rgb(0xd0d7de))
-        .bg(rgb(0xf6f8fa))
+        .border_color(crate::theme::paint(crate::theme::ui().border))
+        .bg(crate::theme::paint(crate::theme::ui().surface))
         .text_size(px(12.));
     let Some(info) = info else {
         return bar.child(div().px_3().flex_1().child("Normal text file"));
     };
     bar = bar.child(
-        div()
-            .px_3()
-            .flex_1()
-            .child(info.language.unwrap_or("Normal text file")),
+        div().px_3().flex_1().child(
+            info.language
+                .clone()
+                .unwrap_or_else(|| crate::i18n::tr("Normal text file")),
+        ),
     );
     let [length, position, selection, eol, encoding, mode] = info.sections();
     let format = info.format;
@@ -232,7 +239,14 @@ fn add_items(
                 }
             }
             // The status bar's menus show line endings and encodings only.
-            MenuItem::Placeholder(Placeholder::RecentFiles | Placeholder::Languages) => {}
+            MenuItem::Placeholder(
+                Placeholder::RecentFiles
+                | Placeholder::Languages
+                | Placeholder::Themes
+                | Placeholder::Macros
+                | Placeholder::RunCommands
+                | Placeholder::UserLanguages,
+            ) => {}
         }
     }
     menu
@@ -326,7 +340,7 @@ mod tests {
             Invocation::with_args("language.set", json!({ "language": "rust" })),
             cx,
         );
-        assert_eq!(info(cx).language, Some("Rust file"));
+        assert_eq!(info(cx).language.as_deref(), Some("Rust file"));
         run(
             Invocation::with_args("encoding.convert-to", json!({ "encoding": "utf-16be-bom" })),
             cx,

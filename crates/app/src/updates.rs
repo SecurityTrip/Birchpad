@@ -501,7 +501,7 @@ fn announce_available(
                 let workspace = workspace.clone();
                 Button::new("update")
                     .primary()
-                    .label("Update")
+                    .label(crate::i18n::tr("Update"))
                     .on_click(move |_, window, cx| {
                         notification.update(cx, |n, cx| n.dismiss(window, cx)).ok();
                         workspace
@@ -516,7 +516,7 @@ fn announce_available(
                 let page = page.clone();
                 Button::new("download")
                     .primary()
-                    .label("Download")
+                    .label(crate::i18n::tr("Download"))
                     .on_click(move |_, window, cx| {
                         notification.update(cx, |n, cx| n.dismiss(window, cx)).ok();
                         cx.open_url(&page);
@@ -540,7 +540,7 @@ fn announce_ready(
             let workspace = workspace.clone();
             Button::new("restart")
                 .primary()
-                .label("Restart Now")
+                .label(crate::i18n::tr("Restart Now"))
                 .on_click(move |_, window, cx| {
                     notification.update(cx, |n, cx| n.dismiss(window, cx)).ok();
                     restart(&workspace, window, cx);

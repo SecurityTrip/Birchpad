@@ -52,10 +52,43 @@ actions!(
 
 const CONTEXT: &str = "MenuBar";
 const ITEM_HEIGHT: Pixels = px(26.);
-const BORDER: u32 = 0xd0d7de;
-const SELECTED: u32 = 0xddf4ff;
-const HOVERED: u32 = 0xeaeef2;
-const MUTED: u32 = 0x8c959f;
+/// The colors of the menu bar and its menus, `0xRRGGBB`, from the application's theme.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Colors {
+    pub background: u32,
+    pub text: u32,
+    pub border: u32,
+    pub selected: u32,
+    pub hovered: u32,
+    /// Shortcuts, submenu arrows and disabled items.
+    pub muted: u32,
+}
+
+impl Default for Colors {
+    fn default() -> Self {
+        Self {
+            background: 0xffffff,
+            text: 0x1f2328,
+            border: 0xd0d7de,
+            selected: 0xddf4ff,
+            hovered: 0xeaeef2,
+            muted: 0x8c959f,
+        }
+    }
+}
+
+thread_local! {
+    static COLORS: std::cell::Cell<Colors> = std::cell::Cell::new(Colors::default());
+}
+
+/// Draws the menu bar with `colors` from its next frame on (on this thread, where the UI runs).
+pub fn set_colors(colors: Colors) {
+    COLORS.with(|cell| cell.set(colors));
+}
+
+fn colors() -> Colors {
+    COLORS.with(std::cell::Cell::get)
+}
 
 /// Binds the menu bar's keys. Nothing on macOS, which has the native menu bar.
 pub fn init(cx: &mut App) {
@@ -708,7 +741,7 @@ impl MenuBar {
                             .h(px(1.))
                             .my_1()
                             .mx_2()
-                            .bg(rgb(BORDER))
+                            .bg(rgb(colors().border))
                             .into_any_element();
                     }
                     let (checked, disabled, shortcut, submenu) = match &item.kind {
@@ -745,8 +778,8 @@ impl MenuBar {
                         .pr_2()
                         .gap_2()
                         .rounded(px(4.))
-                        .when(selected, |row| row.bg(rgb(SELECTED)))
-                        .when(disabled, |row| row.text_color(rgb(MUTED)))
+                        .when(selected, |row| row.bg(rgb(colors().selected)))
+                        .when(disabled, |row| row.text_color(rgb(colors().muted)))
                         .child(
                             div()
                                 .w(px(16.))
@@ -761,10 +794,10 @@ impl MenuBar {
                             show_mnemonics,
                         )))
                         .when_some(shortcut, |row, shortcut| {
-                            row.child(div().pl_6().text_color(rgb(MUTED)).child(shortcut))
+                            row.child(div().pl_6().text_color(rgb(colors().muted)).child(shortcut))
                         })
                         .when(submenu, |row| {
-                            row.child(div().text_color(rgb(MUTED)).child("›"))
+                            row.child(div().text_color(rgb(colors().muted)).child("›"))
                         })
                         .on_hover(cx.listener(move |this, hovered: &bool, _, cx| {
                             if *hovered {
@@ -805,13 +838,13 @@ impl MenuBar {
             .overflow_y_scroll()
             .track_scroll(&scroll)
             .py_1()
-            .bg(rgb(0xffffff))
+            .bg(rgb(colors().background))
             .border_1()
-            .border_color(rgb(BORDER))
+            .border_color(rgb(colors().border))
             .rounded(px(6.))
             .shadow_md()
             .text_sm()
-            .text_color(rgb(0x1f2328))
+            .text_color(rgb(colors().text))
             .children(rows)
             .into_any_element()
     }
@@ -989,9 +1022,11 @@ impl Render for MenuBar {
                             .py(px(3.))
                             .rounded(px(4.))
                             .text_sm()
-                            .when(current == Some(index), |title| title.bg(rgb(SELECTED)))
+                            .when(current == Some(index), |title| {
+                                title.bg(rgb(colors().selected))
+                            })
                             .when(current != Some(index), |title| {
-                                title.hover(|style| style.bg(rgb(HOVERED)))
+                                title.hover(|style| style.bg(rgb(colors().hovered)))
                             })
                             .child(label(&title.label, title.mnemonic.as_ref(), show_mnemonics))
                             .on_mouse_down(

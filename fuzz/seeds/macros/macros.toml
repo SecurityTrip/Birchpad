@@ -1,0 +1,11 @@
+[[macro]]
+name = "Quote"
+steps = [
+    { command = "edit.type", args = { text = "\"" } },
+    { command = "cursor.word-right" },
+    { command = "edit.convert-case", args = { to = "upper" } },
+]
+
+[[macro]]
+name = "Nothing"
+steps = []

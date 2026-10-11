@@ -4,6 +4,7 @@
 //! selection through the changes the others make. Layout in cells (tab stops, word wrap, rows)
 //! comes from `birchpad-view`; [`element::EditorElement`] turns it into pixels and paints it.
 
+mod bidi;
 #[cfg(test)]
 mod capture_coverage_tests;
 #[cfg(test)]
@@ -11,6 +12,7 @@ mod change_history_tests;
 mod column_editor;
 #[cfg(test)]
 mod command_sweep_tests;
+mod completion;
 mod element;
 mod folding;
 mod layout;
@@ -32,7 +34,7 @@ use birchpad_view::{Block, BlockPoint, DisplayMap, LayoutConfig, tab_advance};
 use gpui_kit::{
     App, Bounds, ClipboardItem, Context, Entity, EntityInputHandler, EventEmitter, FocusHandle,
     Focusable, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, Pixels, Point,
-    ScrollWheelEvent, Subscription, Task, UTF16Selection, Window, div, point, prelude::*, px, rgb,
+    ScrollWheelEvent, Subscription, Task, UTF16Selection, Window, div, point, prelude::*, px,
 };
 use serde::Deserialize;
 
@@ -110,6 +112,7 @@ struct ConvertEolArgs {
 }
 
 pub(crate) fn register_commands(registry: &mut CommandRegistry) {
+    completion::register_commands(registry);
     folding::register_commands(registry);
     marks::register_commands(registry);
     multi::register_commands(registry);
@@ -149,7 +152,16 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
         Ok(())
     });
     registry.editor("edit.backspace", |this, (), _, cx| {
-        this.delete_with(cx, motion::prev_boundary);
+        if !this.backspace_pair(cx) {
+            this.delete_with(cx, motion::prev_boundary);
+        }
+        let head = this.selection.primary().head;
+        if this.call_tip.as_ref().is_some_and(|tip| head < tip.open) {
+            this.call_tip = None;
+        }
+        if this.completion.is_some() {
+            this.update_completion(1, cx);
+        }
         Ok(())
     });
     registry.editor("edit.delete-word-left", |this, (), _, cx| {
@@ -182,6 +194,20 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
     });
     registry.editor("edit.insert-text", |this, args: InsertTextArgs, _, cx| {
         this.insert(&args.text, LastEdit::None, cx);
+        Ok(())
+    });
+    registry.editor("edit.type", |this, args: InsertTextArgs, _, cx| {
+        this.type_text(&args.text, cx);
+        Ok(())
+    });
+    registry.editor("edit.text-direction-rtl", |this, (), _, cx| {
+        this.rtl = true;
+        this.settings_changed(cx);
+        Ok(())
+    });
+    registry.editor("edit.text-direction-ltr", |this, (), _, cx| {
+        this.rtl = false;
+        this.settings_changed(cx);
         Ok(())
     });
     registry.editor("edit.toggle-overwrite", |this, (), _, cx| {
@@ -335,6 +361,12 @@ pub(crate) struct EditorView {
     /// Text being composed by an input method, as a byte range.
     pub(crate) marked: Option<ByteRange<usize>>,
     pub(crate) overwrite: bool,
+    /// Edit > Text Direction RTL: rows run right to left and end at the right edge.
+    pub(crate) rtl: bool,
+    /// The completion list, while it shows.
+    pub(crate) completion: Option<completion::Popup>,
+    /// A function's parameters, while they show.
+    pub(crate) call_tip: Option<completion::CallTip>,
     display: DisplayMap,
     wrap_job: Option<WrapJob>,
     /// Where to put the caret once the file has been read (`-n`, `-c`, `-p`).
@@ -473,6 +505,9 @@ impl EditorView {
             selection: Selection::point(0),
             marked: None,
             overwrite: false,
+            rtl: false,
+            completion: None,
+            call_tip: None,
             display,
             wrap_job: None,
             pending_caret: None,
@@ -619,15 +654,20 @@ impl EditorView {
         self.buffer.read(cx).doc().text()
     }
 
-    fn run_command(&mut self, action: &RunCommand, window: &mut Window, cx: &mut Context<Self>) {
+    pub(crate) fn run_command(
+        &mut self,
+        action: &RunCommand,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         let invocation = &action.0;
+        self.close_completion_for(&invocation.command);
         let handler = cx.global::<CommandRegistry>().get(&invocation.command);
         match handler {
-            Some(Handler::Editor(run)) => {
-                if let Err(error) = run(self, invocation, window, cx) {
-                    crate::workspace::report_error(&error, window, cx);
-                }
-            }
+            Some(Handler::Editor(run)) => match run(self, invocation, window, cx) {
+                Ok(()) => crate::macros::record(invocation, cx),
+                Err(error) => crate::workspace::report_error(&error, window, cx),
+            },
             _ => cx.propagate(),
         }
     }
@@ -942,6 +982,10 @@ impl EditorView {
     /// Text typed by the user. In overwrite mode each typed character replaces the next one,
     /// up to the end of the line.
     fn type_text(&mut self, typed: &str, cx: &mut Context<Self>) {
+        if self.type_paired(typed, cx) {
+            self.after_typing(typed, cx);
+            return;
+        }
         if self.overwrite && !typed.contains(['\r', '\n']) && self.is_editable(cx) {
             let text = self.text(cx).clone();
             let count = typed.chars().count();
@@ -964,6 +1008,7 @@ impl EditorView {
             });
         }
         self.insert(typed, LastEdit::Typing, cx);
+        self.after_typing(typed, cx);
     }
 
     /// Enter: a line break, indented as `editor.auto-indent` says.
@@ -1154,7 +1199,7 @@ impl EditorView {
         self.request_autoscroll(cx);
     }
 
-    fn selected_text(&self, cx: &App) -> Option<String> {
+    pub(crate) fn selected_text(&self, cx: &App) -> Option<String> {
         let doc = self.buffer.read(cx).doc();
         let parts: Vec<String> = self
             .selection
@@ -1248,6 +1293,8 @@ impl EditorView {
 
     fn mouse_down(&mut self, event: &MouseDownEvent, window: &mut Window, cx: &mut Context<Self>) {
         window.focus(&self.focus_handle, cx);
+        self.completion = None;
+        self.call_tip = None;
         let Some(layout) = self.layout.as_ref() else {
             return;
         };
@@ -1484,14 +1531,14 @@ impl Render for EditorView {
 
         div()
             .id("editor")
-            .key_context("Editor")
+            .key_context(self.key_context())
             .track_focus(&self.focus_handle)
             .on_action(cx.listener(Self::run_command))
             .size_full()
             .flex()
             .flex_col()
-            .bg(rgb(0xffffff))
-            .text_color(rgb(0x1f2328))
+            .bg(theme::paint(theme::editor().background))
+            .text_color(theme::paint(theme::editor().text))
             .children(banner)
             .child(
                 div()
@@ -1505,6 +1552,7 @@ impl Render for EditorView {
                     .on_mouse_up_out(MouseButton::Left, cx.listener(Self::mouse_up))
                     .on_scroll_wheel(cx.listener(Self::scroll_wheel))
                     .child(EditorElement::new(cx.entity()))
+                    .children(self.render_completion(cx))
                     .children(loading.map(crate::banner::loading)),
             )
     }
@@ -1572,6 +1620,7 @@ impl EntityInputHandler for EditorView {
             Some(range) => self.replace_range(range, text, cx),
             None => self.type_text(text, cx),
         }
+        crate::macros::record_typing(text, cx);
     }
 
     fn replace_and_mark_text_in_range(

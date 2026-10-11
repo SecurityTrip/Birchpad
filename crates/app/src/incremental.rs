@@ -35,9 +35,6 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
     });
 }
 
-/// The field's background when nothing matches.
-const NOT_FOUND: u32 = 0xffebe9;
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum IncrementalEvent {
     /// The text or an option changed: search again from the start of the selection.
@@ -197,8 +194,8 @@ impl Render for IncrementalBar {
             .px_3()
             .py_1()
             .border_t_1()
-            .border_color(rgb(0xd0d7de))
-            .bg(rgb(0xf6f8fa))
+            .border_color(crate::theme::paint(crate::theme::ui().border))
+            .bg(crate::theme::paint(crate::theme::ui().surface))
             .text_size(px(13.))
             .child(
                 Button::new("close-incremental")
@@ -213,7 +210,9 @@ impl Render for IncrementalBar {
                     .id("incremental-input")
                     .w(px(240.))
                     .small()
-                    .when(failed, |input| input.bg(rgb(NOT_FOUND))),
+                    .when(failed, |input| {
+                        input.bg(crate::theme::paint(crate::theme::ui().error_background))
+                    }),
             )
             .child(
                 Button::new("incremental-previous")

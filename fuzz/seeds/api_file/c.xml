@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<NotepadPlus>
+    <AutoComplete language="C">
+        <Environment ignoreCase="no" startFunc="(" stopFunc=")" paramSeparator="," terminal=";" />
+        <KeyWord name="abs" func="yes">
+            <Overload retVal="int" descr="Absolute value"><Param name="int n" /></Overload>
+        </KeyWord>
+        <KeyWord name="auto" />
+    </AutoComplete>
+</NotepadPlus>

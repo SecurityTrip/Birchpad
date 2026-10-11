@@ -11,7 +11,7 @@ use birchpad_core::{LineChange, Rope};
 use birchpad_view::{BlockPoint, DisplayMap, DisplayText, LayoutConfig, Row};
 use gpui_kit::{
     App, AppContext as _, Bounds, Context, Font, FontStyle, FontWeight, Hsla, Pixels, Point,
-    ShapedLine, TextRun, UnderlineStyle, Window, font, point, px, rgb, size,
+    ShapedLine, TextRun, UnderlineStyle, Window, font, point, px, rgba, size,
 };
 
 use super::symbols::Symbols;
@@ -47,6 +47,8 @@ const QUERY_GAP: usize = 4096;
 pub(super) struct HighlightCache {
     language: &'static str,
     version: u64,
+    /// The theme's generation: a new theme colors the text again.
+    theme: u64,
     ranges: Vec<ByteRange<usize>>,
     spans: Vec<(ByteRange<usize>, TextStyle)>,
 }
@@ -92,6 +94,8 @@ pub(super) struct VisibleRow {
     pub(super) x: Pixels,
     pub(super) display: DisplayText,
     pub(super) shaped: ShapedLine,
+    /// The order the characters show in, when it is not the order they are stored in.
+    pub(super) bidi: Option<super::bidi::BidiRow>,
 }
 
 impl VisibleRow {
@@ -101,8 +105,14 @@ impl VisibleRow {
     }
 
     pub(super) fn x_for(&self, pos: usize) -> Option<Pixels> {
-        self.covers(pos)
-            .then(|| self.x + self.shaped.x_for_index(self.display.to_display(pos)))
+        self.covers(pos).then(|| {
+            let index = self.display.to_display(pos);
+            let index = self
+                .bidi
+                .as_ref()
+                .map_or(index, |bidi| bidi.visual_caret(index));
+            self.x + self.shaped.x_for_index(index)
+        })
     }
 
     fn contains_caret(&self, pos: usize) -> bool {
@@ -192,8 +202,6 @@ pub(super) struct Layout {
     /// Rows that fit completely.
     pub(super) full_rows: usize,
 }
-
-pub(super) const TEXT_COLOR: u32 = 0x1f2328;
 
 impl EditorView {
     /// Computes the frame's layout for `bounds`, applying pending scroll requests.
@@ -320,8 +328,12 @@ impl EditorView {
                 && let Some(margin) = margins.line_numbers
             {
                 let number = (row.line + 1).to_string();
-                let shaped_number =
-                    shape(window, &number, &metrics, rgb(theme::GUTTER_TEXT).into());
+                let shaped_number = shape(
+                    window,
+                    &number,
+                    &metrics,
+                    theme::paint(theme::editor().gutter_text).into(),
+                );
                 let x = margin.right() - cell - shaped_number.width();
                 line_numbers.push((point(x, y), shaped_number));
             }
@@ -334,10 +346,22 @@ impl EditorView {
         }
         let styles = self.frame_styles(&shown, &text, cx);
         let mut rows = Vec::with_capacity(pending.len());
-        for (row, y, x, display) in pending {
-            let shaped = self.shape_row(&display, &metrics, &styles, window);
+        for (row, y, mut x, display) in pending {
+            // Rows shaped only in part (very long ones) keep the stored order.
+            let bidi = (row.range.len() <= LONG_ROW)
+                .then(|| super::bidi::BidiRow::new(&display.text, self.rtl))
+                .flatten();
+            let shaped = match &bidi {
+                Some(bidi) => self.shape_bidi_row(&display, bidi, &metrics, &styles, window),
+                None => self.shape_row(&display, &metrics, &styles, window),
+            };
             if row.range.len() <= LONG_ROW {
                 widest = widest.max(shaped.width());
+            }
+            // Right to left: rows that fit end at the right edge.
+            let room = text_bounds.size.width - TEXT_PADDING * 2.;
+            if self.rtl && row.range.len() <= LONG_ROW && shaped.width() <= room {
+                x = text_bounds.right() - TEXT_PADDING - shaped.width();
             }
             rows.push(VisibleRow {
                 row,
@@ -345,6 +369,7 @@ impl EditorView {
                 x,
                 display,
                 shaped,
+                bidi,
             });
         }
         if wrap_width.is_none() {
@@ -451,26 +476,44 @@ impl EditorView {
         {
             match found.partner {
                 Some(partner) => {
-                    styles.braces.push((found.bracket, theme::BRACE_MATCH));
-                    styles.braces.push((partner, theme::BRACE_MATCH));
+                    styles.braces.push((found.bracket, theme::brace_match()));
+                    styles.braces.push((partner, theme::brace_match()));
                 }
-                None => styles.braces.push((found.bracket, theme::BRACE_BAD)),
+                None => styles.braces.push((found.bracket, theme::brace_bad())),
             }
         }
         let Some(syntax) = buffer.syntax() else {
             self.highlight_cache = None;
+            if let Some(language) = buffer.user_language() {
+                let end = ranges.iter().map(|range| range.end).max().unwrap_or(0);
+                let pieces = buffer.udl_pieces(end);
+                for (piece, kind) in pieces.iter() {
+                    let visible = ranges
+                        .iter()
+                        .any(|range| piece.start < range.end && piece.end > range.start);
+                    if let (true, Some(style)) =
+                        (visible, crate::user_languages::style_of(language, *kind))
+                    {
+                        styles.spans.push((piece.clone(), style));
+                    }
+                }
+            }
             return styles;
         };
         let language = syntax.language().id;
         let version = syntax.version();
+        let generation = theme::generation();
         let cached = self.highlight_cache.as_ref().is_some_and(|cache| {
-            cache.language == language && cache.version == version && cache.ranges == ranges
+            cache.language == language
+                && cache.version == version
+                && cache.theme == generation
+                && cache.ranges == ranges
         });
         if !cached {
             let mut spans = Vec::new();
             for range in ranges {
                 for (span, highlight) in syntax.highlights(text, range.clone()) {
-                    if let Some(style) = theme::syntax_style(highlight) {
+                    if let Some(style) = theme::syntax_style(Some(language), highlight) {
                         spans.push((span, style));
                     }
                 }
@@ -478,6 +521,7 @@ impl EditorView {
             self.highlight_cache = Some(HighlightCache {
                 language,
                 version,
+                theme: generation,
                 ranges: ranges.to_vec(),
                 spans,
             });
@@ -490,6 +534,61 @@ impl EditorView {
         styles
     }
 
+    /// Shapes a row in the order its characters show, each colored as where it is stored.
+    fn shape_bidi_row(
+        &self,
+        display: &DisplayText,
+        bidi: &super::bidi::BidiRow,
+        metrics: &Metrics,
+        styles: &FrameStyles,
+        window: &mut Window,
+    ) -> ShapedLine {
+        let color: Hsla = theme::paint(theme::editor().text).into();
+        let mut runs: Vec<TextRun> = Vec::new();
+        let mut last: Option<Option<TextStyle>> = None;
+        for range in bidi.visual_chars() {
+            let style = styles.at(display.to_doc(range.start));
+            if last == Some(style)
+                && let Some(run) = runs.last_mut()
+            {
+                run.len += range.len();
+                continue;
+            }
+            let mut run = TextRun {
+                len: range.len(),
+                font: metrics.font.clone(),
+                color,
+                background_color: None,
+                underline: None,
+                strikethrough: None,
+            };
+            if let Some(style) = style {
+                if let Some(color) = style.color {
+                    run.color = rgba(color).into();
+                }
+                run.background_color = style.background.map(|color| rgba(color).into());
+                if style.bold {
+                    run.font.weight = FontWeight::BOLD;
+                }
+                if style.italic {
+                    run.font.style = FontStyle::Italic;
+                }
+                if style.underline {
+                    run.underline = Some(UnderlineStyle {
+                        color: Some(run.color),
+                        thickness: px(1.),
+                        wavy: false,
+                    });
+                }
+            }
+            runs.push(run);
+            last = Some(style);
+        }
+        window
+            .text_system()
+            .shape_line(bidi.visual.clone().into(), metrics.font_size, &runs, None)
+    }
+
     fn shape_row(
         &self,
         display: &DisplayText,
@@ -497,7 +596,7 @@ impl EditorView {
         styles: &FrameStyles,
         window: &mut Window,
     ) -> ShapedLine {
-        let color: Hsla = rgb(TEXT_COLOR).into();
+        let color: Hsla = theme::paint(theme::editor().text).into();
         let base = TextRun {
             len: display.text.len(),
             font: metrics.font.clone(),
@@ -531,7 +630,17 @@ impl EditorView {
                     ..base.clone()
                 };
                 if let Some(style) = styles.at(pos) {
-                    run.color = rgb(style.color).into();
+                    if let Some(color) = style.color {
+                        run.color = rgba(color).into();
+                    }
+                    run.background_color = style.background.map(|color| rgba(color).into());
+                    if style.underline {
+                        run.underline = Some(UnderlineStyle {
+                            color: Some(run.color),
+                            thickness: px(1.),
+                            wavy: false,
+                        });
+                    }
                     if style.bold {
                         run.font.weight = FontWeight::BOLD;
                     }
@@ -612,8 +721,11 @@ impl EditorView {
             if from >= to {
                 continue;
             }
-            let left = self.x_in_row(layout, row, from, text);
-            let right = self.x_in_row(layout, row, to, text);
+            let (a, b) = (
+                self.x_in_row(layout, row, from, text),
+                self.x_in_row(layout, row, to, text),
+            );
+            let (left, right) = (a.min(b), a.max(b));
             quads.push(Bounds::from_corners(
                 point(left, row.y),
                 point(right, row.y + layout.metrics.line_height),
@@ -791,7 +903,7 @@ impl EditorView {
         let visible = Self::visible_range(layout);
         let mut ranges = Vec::new();
         if let Some(smart) = &self.smart_highlight {
-            let paint = Paint::Fill(gpui_kit::rgba(theme::SMART_HIGHLIGHT));
+            let paint = Paint::Fill(theme::paint(theme::editor().smart_highlight));
             ranges.extend(
                 smart
                     .matches
@@ -808,14 +920,14 @@ impl EditorView {
                     .map(|(range, _)| (range, paint)),
             );
         }
-        let found = Paint::Fill(gpui_kit::rgba(theme::FIND_MARK));
+        let found = Paint::Fill(theme::paint(theme::editor().find_mark));
         ranges.extend(
             marks
                 .found
                 .overlapping(visible.clone())
                 .map(|(range, _)| (range, found)),
         );
-        let incremental = Paint::Fill(gpui_kit::rgba(theme::INCREMENTAL_HIGHLIGHT));
+        let incremental = Paint::Fill(theme::paint(theme::editor().incremental_highlight));
         ranges.extend(
             marks
                 .incremental
@@ -860,6 +972,8 @@ impl EditorView {
                     // A selected line break shows as half a cell after the text.
                     right += layout.metrics.cell * 0.5;
                 }
+                // Right-to-left text puts the end of a range left of its start.
+                let (left, right) = (left.min(right), left.max(right));
                 if right <= left {
                     continue;
                 }
@@ -935,6 +1049,10 @@ impl Layout {
         let pos = if row.covers(row.row.range.end) && row.display.doc_start() == row.row.range.start
         {
             let index = row.shaped.closest_index_for_x(point.x - row.x);
+            let index = row
+                .bidi
+                .as_ref()
+                .map_or(index, |bidi| bidi.logical_caret(index));
             row.display.to_doc(index)
         } else {
             // A long row shaped only in part: go by columns.

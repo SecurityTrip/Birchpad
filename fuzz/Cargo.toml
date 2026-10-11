@@ -83,3 +83,45 @@ path = "fuzz_targets/manifest.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "theme"
+path = "fuzz_targets/theme.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "notepad_theme"
+path = "fuzz_targets/notepad_theme.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "macros"
+path = "fuzz_targets/macros.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "run_commands"
+path = "fuzz_targets/run_commands.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "api_file"
+path = "fuzz_targets/api_file.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "udl"
+path = "fuzz_targets/udl.rs"
+test = false
+doc = false
+bench = false

@@ -8,6 +8,8 @@
 //! recovery copy ([`save`]).
 
 mod changes;
+mod code_pages;
+mod codec;
 mod decode;
 mod detect;
 mod disk;

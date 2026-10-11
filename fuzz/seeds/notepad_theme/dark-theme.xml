@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<NotepadPlus>
+    <LexerStyles>
+        <LexerType name="cpp" desc="C++" ext="">
+            <WordsStyle name="DEFAULT" styleID="11" fgColor="DCDCCC" bgColor="3F3F3F" fontStyle="0" />
+            <WordsStyle name="INSTRUCTION WORD" styleID="5" fgColor="DFC47D" bgColor="3F3F3F" fontStyle="1" />
+            <WordsStyle name="TYPE WORD" styleID="16" fgColor="CEDF99" bgColor="3F3F3F" fontStyle="0" />
+            <WordsStyle name="COMMENT" styleID="1" fgColor="7F9F7F" bgColor="3F3F3F" fontStyle="2" />
+            <WordsStyle name="COMMENT LINE" styleID="2" fgColor="FF0000" bgColor="3F3F3F" fontStyle="0" />
+            <WordsStyle name="COMMENT DOC" styleID="3" fgColor="7F9F7F" bgColor="3F3F3F" fontStyle="0" />
+            <WordsStyle name="STRING" styleID="6" fgColor="CC9393" bgColor="3F3F3F" fontStyle="0" />
+            <WordsStyle name="NUMBER" styleID="4" fgColor="8CD0D3" bgColor="3F3F3F" fontStyle="" />
+            <WordsStyle name="PREPROCESSOR" styleID="9" fgColor="FFCFAF" bgColor="3F3F3F" fontStyle="0" />
+        </LexerType>
+        <LexerType name="java" desc="Java" ext="">
+            <WordsStyle name="INSTRUCTION WORD" styleID="5" fgColor="DFC47D" bgColor="3F3F3F" fontStyle="1" />
+            <WordsStyle name="COMMENT" styleID="1" fgColor="7F9F7F" bgColor="3F3F3F" fontStyle="2" />
+            <WordsStyle name="STRING" styleID="6" fgColor="CC9393" bgColor="3F3F3F" fontStyle="0" />
+        </LexerType>
+        <LexerType name="python" desc="Python" ext="">
+            <WordsStyle name="KEYWORDS" styleID="5" fgColor="FF00FF" bgColor="3F3F3F" fontStyle="5" />
+            <WordsStyle name="COMMENTLINE" styleID="1" fgColor="7F9F7F" bgColor="3F3F3F" fontStyle="2" />
+            <WordsStyle name="STRING" styleID="3" fgColor="CC9393" bgColor="000000" fontStyle="0" />
+            <WordsStyle name="DEF NAME" styleID="9" fgColor="EFEF8F" bgColor="3F3F3F" fontStyle="0" />
+        </LexerType>
+        <LexerType name="javascript" desc="JavaScript (embedded)" ext="">
+            <WordsStyle name="KEYWORD" styleID="47" fgColor="123456" bgColor="3F3F3F" fontStyle="0" />
+        </LexerType>
+        <LexerType name="javascript.js" desc="JavaScript" ext="">
+            <WordsStyle name="KEYWORD" styleID="5" fgColor="DFC47D" bgColor="3F3F3F" fontStyle="1" />
+            <WordsStyle name="REGEX" styleID="14" fgColor="C89191" bgColor="3F3F3F" fontStyle="0" />
+        </LexerType>
+        <LexerType name="searchResult" desc="Search result" ext="">
+            <WordsStyle name="HIT WORD" styleID="4" fgColor="FF0000" bgColor="FFFF00" fontStyle="1" />
+        </LexerType>
+    </LexerStyles>
+    <GlobalStyles>
+        <WidgetStyle name="Global override" styleID="0" fgColor="FFFF80" bgColor="FF8000" fontName="Courier New" fontStyle="0" fontSize="10" />
+        <WidgetStyle name="Default Style" styleID="32" fgColor="DCDCCC" bgColor="3F3F3F" fontName="Consolas" fontStyle="0" fontSize="10" />
+        <WidgetStyle name="Indent guideline style" styleID="37" fgColor="5A5A5A" bgColor="3F3F3F" />
+        <WidgetStyle name="Brace highlight style" styleID="34" fgColor="FFFF00" bgColor="3F3F3F" fontStyle="1" />
+        <WidgetStyle name="Bad brace colour" styleID="35" fgColor="FF0000" bgColor="3F3F3F" />
+        <WidgetStyle name="Current line background colour" styleID="0" bgColor="434343" />
+        <WidgetStyle name="Selected text colour" styleID="0" bgColor="585858" />
+        <WidgetStyle name="Caret colour" styleID="2069" fgColor="BFBFBF" />
+        <WidgetStyle name="Edge colour" styleID="0" fgColor="808080" />
+        <WidgetStyle name="Line number margin" styleID="33" fgColor="9FAFAF" bgColor="262626" />
+        <WidgetStyle name="Fold" styleID="0" fgColor="808080" bgColor="333333" />
+        <WidgetStyle name="White space symbol" styleID="0" fgColor="5A5A5A" />
+        <WidgetStyle name="Smart Highlighting" styleID="29" bgColor="00FF00" />
+        <WidgetStyle name="Find Mark Style" styleID="31" bgColor="FF0000" />
+        <WidgetStyle name="Mark Style 1" styleID="25" bgColor="00FFFF" />
+        <WidgetStyle name="Mark Style 2" styleID="24" bgColor="FF8000" />
+        <WidgetStyle name="Mark Style 3" styleID="23" bgColor="FFFF00" />
+        <WidgetStyle name="Mark Style 4" styleID="22" bgColor="8000FF" />
+        <WidgetStyle name="Mark Style 5" styleID="21" bgColor="008000" />
+        <WidgetStyle name="Incremental highlight all" styleID="28" bgColor="0080FF" />
+        <WidgetStyle name="EOL custom color" styleID="0" fgColor="DADADA" />
+        <WidgetStyle name="Change History modified" styleID="0" fgColor="FF8000" bgColor="FF8001" />
+        <WidgetStyle name="Change History saved" styleID="0" fgColor="00A000" bgColor="00A001" />
+    </GlobalStyles>
+</NotepadPlus>

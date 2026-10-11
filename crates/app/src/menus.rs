@@ -15,6 +15,14 @@ use crate::commands::{CommandRegistry, RunCommand};
 /// Live state the menus reflect.
 pub(crate) struct MenuState<'a> {
     pub(crate) recent_files: &'a [PathBuf],
+    /// The user defined languages the Language menu lists.
+    pub(crate) user_languages: &'a [String],
+    /// The themes Settings > Theme lists.
+    pub(crate) themes: &'a [String],
+    /// The saved macros the Macro menu lists.
+    pub(crate) macros: &'a [String],
+    /// The saved command lines the Run menu lists.
+    pub(crate) run_commands: &'a [String],
     /// Whether a command item shows a check mark (word wrap, current encoding, ...).
     pub(crate) checked: &'a dyn Fn(&Invocation) -> bool,
 }
@@ -43,7 +51,7 @@ fn build_menu(
     for item in menu.items {
         match item {
             MenuItem::Command { .. } => {
-                let label = item.label().unwrap_or_default().to_owned();
+                let label = crate::i18n::tr(item.label().unwrap_or_default());
                 let MenuItem::Command { invocation, .. } = item else {
                     unreachable!()
                 };
@@ -62,8 +70,11 @@ fn build_menu(
             MenuItem::Placeholder(Placeholder::RecentFiles) => {
                 if state.recent_files.is_empty() {
                     items.push(
-                        GpuiMenuItem::action("(empty)", RunCommand::new("file.clear-recent"))
-                            .disabled(true),
+                        GpuiMenuItem::action(
+                            crate::i18n::tr("(empty)"),
+                            RunCommand::new("file.clear-recent"),
+                        )
+                        .disabled(true),
                     );
                 }
                 for (index, path) in state.recent_files.iter().enumerate() {
@@ -115,9 +126,43 @@ fn build_menu(
                     ));
                 }
             }
+            MenuItem::Placeholder(Placeholder::UserLanguages) => {
+                for name in state.user_languages {
+                    let invocation = Invocation::with_args(
+                        "language.set",
+                        json!({ "language": format!("{}{name}", crate::user_languages::ID_PREFIX) }),
+                    );
+                    let checked = (state.checked)(&invocation);
+                    items.push(
+                        GpuiMenuItem::action(name.clone(), RunCommand(invocation)).checked(checked),
+                    );
+                }
+            }
+            MenuItem::Placeholder(Placeholder::RunCommands) => {
+                for name in state.run_commands {
+                    let invocation = Invocation::with_args("run.run", json!({ "name": name }));
+                    items.push(GpuiMenuItem::action(name.clone(), RunCommand(invocation)));
+                }
+            }
+            MenuItem::Placeholder(Placeholder::Macros) => {
+                for name in state.macros {
+                    let invocation = Invocation::with_args("macro.run", json!({ "name": name }));
+                    items.push(GpuiMenuItem::action(name.clone(), RunCommand(invocation)));
+                }
+            }
+            MenuItem::Placeholder(Placeholder::Themes) => {
+                for name in state.themes {
+                    let invocation =
+                        Invocation::with_args("settings.theme", json!({ "name": name }));
+                    let checked = (state.checked)(&invocation);
+                    items.push(
+                        GpuiMenuItem::action(name.clone(), RunCommand(invocation)).checked(checked),
+                    );
+                }
+            }
         }
     }
-    gpui_kit::Menu::new(menu.title).items(items)
+    gpui_kit::Menu::new(crate::i18n::tr(&menu.title)).items(items)
 }
 
 /// On macOS, About, Check for Updates and Quit live in the application menu.

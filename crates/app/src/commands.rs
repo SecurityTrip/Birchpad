@@ -151,6 +151,27 @@ impl CommandRegistry {
 /// Installs the registry and the keymap (defaults plus the user's `keymap.toml`, if any).
 pub(crate) fn init(user_keymap: Option<&str>, cx: &mut App) -> Keymap {
     cx.set_global(CommandRegistry::new());
+    let keymap = build_keymap(user_keymap);
+    let mapper = cx.keyboard_mapper().clone();
+    cx.bind_keys(key_bindings(&keymap, mapper.as_ref(), shifted_symbols()));
+    cx.set_global(ActiveKeymap(keymap.clone()));
+    // Shift with a digit types a different character on each layout (Shift+2 is `@` on a US
+    // layout and `"` on a Russian one), so the bindings are rebuilt for the new layout.
+    cx.on_keyboard_layout_change(rebind).detach();
+    birchpad_menu_bar::init(cx);
+    keymap
+}
+
+/// The keymap in effect: the defaults with the user's `keymap.toml` over them.
+pub(crate) struct ActiveKeymap(pub(crate) Keymap);
+
+impl gpui_kit::Global for ActiveKeymap {}
+
+fn shifted_symbols() -> bool {
+    Platform::current() == Platform::Linux
+}
+
+fn build_keymap(user_keymap: Option<&str>) -> Keymap {
     let mut keymap = Keymap::with_defaults(Platform::current());
     if let Some(source) = user_keymap {
         keymap.add_layer(Layer::User, source);
@@ -158,20 +179,24 @@ pub(crate) fn init(user_keymap: Option<&str>, cx: &mut App) -> Keymap {
     for diagnostic in keymap.diagnostics() {
         eprintln!("keymap: {diagnostic}");
     }
-    let mapper = cx.keyboard_mapper().clone();
-    let shifted_symbols = Platform::current() == Platform::Linux;
-    cx.bind_keys(key_bindings(&keymap, mapper.as_ref(), shifted_symbols));
-    // Shift with a digit types a different character on each layout (Shift+2 is `@` on a US
-    // layout and `"` on a Russian one), so the bindings are rebuilt for the new layout.
-    let bound = keymap.clone();
-    cx.on_keyboard_layout_change(move |cx| {
-        let mapper = cx.keyboard_mapper().clone();
-        let bindings = key_bindings(&bound, mapper.as_ref(), shifted_symbols);
-        replace_command_bindings(bindings, cx);
-    })
-    .detach();
-    birchpad_menu_bar::init(cx);
     keymap
+}
+
+/// Binds the keys of the active keymap again.
+fn rebind(cx: &mut App) {
+    let mapper = cx.keyboard_mapper().clone();
+    let bindings = key_bindings(
+        &cx.global::<ActiveKeymap>().0,
+        mapper.as_ref(),
+        shifted_symbols(),
+    );
+    replace_command_bindings(bindings, cx);
+}
+
+/// Takes the user's keymap anew, after the Shortcut Mapper changed it.
+pub(crate) fn reload_keymap(user_keymap: Option<&str>, cx: &mut App) {
+    cx.set_global(ActiveKeymap(build_keymap(user_keymap)));
+    rebind(cx);
 }
 
 /// Replaces the bindings of [`RunCommand`] with `bindings`. Every other binding (text inputs

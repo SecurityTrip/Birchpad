@@ -31,4 +31,4 @@
   text with mixed line endings.
 - A tree history (undo branches) could be added later without changing `Document`'s API.
 - Collaborative editing would need a CRDT-based model; that is deliberately out of scope until
-  Phase 6.
+  Phase 7 (beyond Notepad++).
