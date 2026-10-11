@@ -64,6 +64,16 @@ const OFF_ON: &[(&str, &str)] = &[("off", "Off"), ("margin", "In the margin")];
 /// View menu, which remembers them.
 pub(crate) const ENTRIES: &[Entry] = &[
     entry(
+        "Appearance",
+        "appearance.language",
+        "Interface language",
+        Kind::Choice(&[
+            ("auto", "Automatic (system)"),
+            ("en", "English"),
+            ("ru", "Русский"),
+        ]),
+    ),
+    entry(
         "Editing",
         "editor.tab-width",
         "Tab size",
@@ -342,6 +352,7 @@ pub(crate) fn set(key: &str, value: Option<Value>, cx: &mut App) -> Result<()> {
         eprintln!("settings ({}): {}", diagnostic.layer, diagnostic.message);
     }
     cx.global_mut::<AppState>().set_settings(resolved);
+    crate::i18n::apply(cx);
     cx.refresh_windows();
     Ok(())
 }
@@ -367,7 +378,7 @@ pub(crate) fn open(workspace: WeakEntity<Workspace>, window: &mut Window, cx: &m
     let preferences = cx.new(|cx| Preferences::new(workspace, window, cx));
     window.open_dialog(cx, move |dialog, _, _| {
         dialog
-            .title("Preferences")
+            .title(crate::i18n::tr("Preferences"))
             .w(px(720.))
             .child(preferences.clone())
             .footer(DialogFooter::new().child(crate::workspace::dialog_close("Close")))
@@ -444,7 +455,7 @@ impl Render for Preferences {
                 .py_1()
                 .when(index == self.section, |row| row.bg(paint(colors.selected)))
                 .hover(|row| row.bg(paint(colors.hovered)))
-                .child(*name)
+                .child(crate::i18n::tr(name))
                 .on_click(cx.listener(move |this, _, _, cx| this.select_section(index, cx)))
         });
         let rows = ENTRIES
@@ -459,7 +470,7 @@ impl Render for Preferences {
                     Kind::Bool => {
                         let checked = value.as_ref().and_then(Value::as_bool).unwrap_or(false);
                         Checkbox::new(("preferences-check", index))
-                            .label(entry.label)
+                            .label(crate::i18n::tr(entry.label))
                             .checked(checked)
                             .disabled(locked)
                             .on_click(cx.listener(move |this, _, _, cx| {
@@ -475,10 +486,12 @@ impl Render for Preferences {
                             .flex_row()
                             .items_center()
                             .gap_3()
-                            .child(div().w(px(200.)).child(entry.label))
+                            .child(div().w(px(200.)).child(crate::i18n::tr(entry.label)))
                             .child(
                                 RadioGroup::horizontal(("preferences-choice", index))
-                                    .children(choices.iter().map(|(_, label)| *label))
+                                    .children(
+                                        choices.iter().map(|(_, label)| crate::i18n::tr(label)),
+                                    )
                                     .selected_index(selected)
                                     .disabled(locked)
                                     .on_click(cx.listener(move |this, index: &usize, _, cx| {
@@ -493,7 +506,7 @@ impl Render for Preferences {
                         .flex_row()
                         .items_center()
                         .gap_3()
-                        .child(div().w(px(200.)).child(entry.label))
+                        .child(div().w(px(200.)).child(crate::i18n::tr(entry.label)))
                         .child(
                             div()
                                 .w(px(200.))
@@ -511,7 +524,7 @@ impl Render for Preferences {
                             div()
                                 .text_sm()
                                 .text_color(paint(colors.muted))
-                                .child("Set by your administrator"),
+                                .child(crate::i18n::tr("Set by your administrator")),
                         )
                     })
                     .children(self.errors.get(key).map(|error| {

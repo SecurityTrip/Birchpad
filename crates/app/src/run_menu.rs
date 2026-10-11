@@ -227,14 +227,14 @@ fn open(workspace: WeakEntity<Workspace>, window: &mut Window, cx: &mut App) {
     window.open_dialog(cx, move |modal, _, _| {
         let run = dialog.clone();
         modal
-            .title("Run...")
+            .title(crate::i18n::tr("Run..."))
             .w(px(560.))
             .child(dialog.clone())
             .footer(
                 DialogFooter::new()
                     .child(crate::workspace::dialog_close("Cancel"))
                     .child(crate::workspace::dialog_action(
-                        Button::new("run-run").label("Run"),
+                        Button::new("run-run").label(crate::i18n::tr("Run")),
                     )),
             )
             .on_ok(move |_, _, cx| run.update(cx, |this, cx| this.run(cx)))
@@ -314,7 +314,7 @@ impl Render for RunDialog {
                     .child(div().flex_1().child(Input::new(&self.name).id("run-name")))
                     .child(
                         Button::new("run-save")
-                            .label("Save")
+                            .label(crate::i18n::tr("Save"))
                             .on_click(cx.listener(|this, _, _, cx| this.save(cx))),
                     ),
             )

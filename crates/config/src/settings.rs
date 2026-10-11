@@ -26,12 +26,15 @@ pub struct AppearanceSettings {
     /// file in the `themes` folder next to the settings, without its extension. Settings > Theme
     /// chooses another (remembered in `state.toml`).
     pub theme: String,
+    /// The interface's language: `en`, `ru`, or `auto` for the system's.
+    pub language: String,
 }
 
 impl Default for AppearanceSettings {
     fn default() -> Self {
         Self {
             theme: "Default".to_owned(),
+            language: "auto".to_owned(),
         }
     }
 }

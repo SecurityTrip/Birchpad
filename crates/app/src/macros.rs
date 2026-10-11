@@ -263,7 +263,7 @@ fn open_save(workspace: WeakEntity<Workspace>, window: &mut Window, cx: &mut App
         let (name, error, workspace) = (name.clone(), error.clone(), workspace.clone());
         let shown = error.clone();
         dialog
-            .title("Save Macro")
+            .title(crate::i18n::tr("Save Macro"))
             .w(px(360.))
             .child(
                 div()
@@ -277,7 +277,7 @@ fn open_save(workspace: WeakEntity<Workspace>, window: &mut Window, cx: &mut App
                 DialogFooter::new()
                     .child(crate::workspace::dialog_close("Cancel"))
                     .child(crate::workspace::dialog_action(
-                        Button::new("macro-save").label("Save"),
+                        Button::new("macro-save").label(crate::i18n::tr("Save")),
                     )),
             )
             .on_ok(move |_, _, cx| {
@@ -331,14 +331,14 @@ fn open_run_multiple(workspace: WeakEntity<Workspace>, window: &mut Window, cx: 
     window.open_dialog(cx, move |modal, _, _| {
         let run = dialog.clone();
         modal
-            .title("Run a Macro Multiple Times")
+            .title(crate::i18n::tr("Run a Macro Multiple Times"))
             .w(px(420.))
             .child(dialog.clone())
             .footer(
                 DialogFooter::new()
                     .child(crate::workspace::dialog_close("Cancel"))
                     .child(crate::workspace::dialog_action(
-                        Button::new("macro-run").label("Run"),
+                        Button::new("macro-run").label(crate::i18n::tr("Run")),
                     )),
             )
             .on_ok(move |_, window, cx| run.update(cx, |this, cx| this.run(window, cx)))
@@ -409,7 +409,7 @@ impl Render for RunMultiple {
             .map(|choice| {
                 choice
                     .clone()
-                    .unwrap_or_else(|| "Current recorded macro".into())
+                    .unwrap_or_else(|| crate::i18n::tr("Current recorded macro"))
             })
             .collect();
         div()
@@ -427,7 +427,9 @@ impl Render for RunMultiple {
             )
             .child(
                 RadioGroup::vertical("macro-times")
-                    .children(["Run a number of times", "Run until the end of file"])
+                    .children(
+                        ["Run a number of times", "Run until the end of file"].map(crate::i18n::tr),
+                    )
                     .selected_index(Some(usize::from(self.until_end)))
                     .on_click(cx.listener(|this, index: &usize, _, cx| {
                         this.until_end = *index == 1;
@@ -440,7 +442,7 @@ impl Render for RunMultiple {
                     .flex_row()
                     .items_center()
                     .gap_2()
-                    .child("Times:")
+                    .child(crate::i18n::tr("Times:"))
                     .child(
                         div()
                             .w(px(100.))

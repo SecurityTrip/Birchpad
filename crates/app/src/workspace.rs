@@ -216,8 +216,11 @@ pub(crate) fn dialog_action(button: Button) -> impl IntoElement {
 
 /// A button that closes a dialog without its action ("Cancel", "Not Now").
 pub(crate) fn dialog_close(label: &'static str) -> DialogClose {
-    DialogClose::new()
-        .trigger(move |button| button.label(label).debug_selector(|| "dialog-close".into()))
+    DialogClose::new().trigger(move |button| {
+        button
+            .label(crate::i18n::tr(label))
+            .debug_selector(|| "dialog-close".into())
+    })
 }
 
 /// Shows a warning to the user without interrupting them.

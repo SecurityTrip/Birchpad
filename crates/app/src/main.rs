@@ -25,6 +25,7 @@ mod file_ops;
 mod find;
 mod find_in_files;
 mod help;
+mod i18n;
 mod incremental;
 #[cfg(test)]
 mod language_tests;
@@ -114,6 +115,7 @@ fn main() {
             app_state.no_session = command_line.no_session;
             cx.set_global(app_state);
             themes::init(cx);
+            i18n::apply(cx);
             macros::init(cx);
             run_menu::init(cx);
             user_languages::init(cx);

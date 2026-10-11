@@ -201,14 +201,14 @@ pub(crate) fn open(workspace: WeakEntity<Workspace>, window: &mut Window, cx: &m
         let save = save.clone();
         let cancel = cancel.clone();
         dialog
-            .title("Style Configurator")
+            .title(crate::i18n::tr("Style Configurator"))
             .w(px(820.))
             .child(configurator.clone())
             .footer(
                 DialogFooter::new()
                     .child(crate::workspace::dialog_close("Cancel"))
                     .child(crate::workspace::dialog_action(
-                        Button::new("style-save").label("Save & Close"),
+                        Button::new("style-save").label(crate::i18n::tr("Save & Close")),
                     )),
             )
             .on_ok(move |_, _, cx| save.update(cx, |this, cx| this.save(cx)))
@@ -390,7 +390,7 @@ impl Render for StyleConfigurator {
         let groups = self.groups.iter().enumerate().map(|(index, (label, _))| {
             row(
                 format!("style-group-{index}").into(),
-                label.clone(),
+                crate::i18n::tr(label),
                 index == self.group,
             )
             .on_click(cx.listener(move |this, _, window, cx| this.select_group(index, window, cx)))
@@ -416,12 +416,12 @@ impl Render for StyleConfigurator {
                 .border_color(paint(colors.border))
                 .bg(paint(color))
         });
-        let label = |text: &'static str| div().flex_none().w(px(90.)).child(text);
+        let label = |text: &'static str| div().flex_none().w(px(90.)).child(crate::i18n::tr(text));
         let field_row = || div().flex().flex_row().items_center().gap_2();
         let checkbox =
             |id: &'static str, text: &'static str, checked: bool, change: fn(&mut Fields)| {
                 Checkbox::new(id)
-                    .label(text)
+                    .label(crate::i18n::tr(text))
                     .checked(checked)
                     .disabled(!is_style)
                     .on_click(cx.listener(move |this, _, _, cx| this.toggle(change, cx)))
@@ -442,7 +442,7 @@ impl Render for StyleConfigurator {
                     .flex_wrap()
                     .items_center()
                     .gap_1()
-                    .child(div().mr_2().child("Theme:"))
+                    .child(div().mr_2().child(crate::i18n::tr("Theme:")))
                     .children(themes),
             )
             .child(

@@ -30,6 +30,7 @@ fn every_entry_is_a_setting_with_valid_choices() {
     assert_eq!(
         sections(),
         [
+            "Appearance",
             "Editing",
             "Auto-Completion",
             "Margins",

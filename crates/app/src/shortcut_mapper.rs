@@ -173,7 +173,7 @@ pub(crate) fn open(workspace: WeakEntity<Workspace>, window: &mut Window, cx: &m
     let focus = mapper.read(cx).filter.clone();
     window.open_dialog(cx, move |dialog, _, _| {
         dialog
-            .title("Shortcut Mapper")
+            .title(crate::i18n::tr("Shortcut Mapper"))
             .w(px(760.))
             .child(mapper.clone())
             .footer(DialogFooter::new().child(crate::workspace::dialog_close("Close")))
@@ -391,7 +391,7 @@ impl Render for ShortcutMapper {
                     .child(div().w(px(160.)).child(label))
                     .child(
                         Button::new(("shortcut-remove", index))
-                            .label("Remove")
+                            .label(crate::i18n::tr("Remove"))
                             .on_click(cx.listener(move |this, _, _, cx| this.remove(&keys, cx))),
                     )
             });
@@ -413,23 +413,21 @@ impl Render for ShortcutMapper {
                             .py_1()
                             .border_1()
                             .border_color(paint(colors.accent))
-                            .child(
-                                pressed
-                                    .clone()
-                                    .unwrap_or_else(|| "Press the keys (Esc: cancel)".into()),
-                            ),
+                            .child(pressed.clone().unwrap_or_else(|| {
+                                crate::i18n::tr("Press the keys (Esc: cancel)")
+                            })),
                     )
                     .child(
                         Button::new("shortcut-assign")
                             .primary()
-                            .label("Assign")
+                            .label(crate::i18n::tr("Assign"))
                             .disabled(pressed.is_none())
                             .on_click(cx.listener(|this, _, _, cx| this.assign(cx))),
                     )
                     .into_any_element()
             } else {
                 Button::new("shortcut-add")
-                    .label("Add Shortcut...")
+                    .label(crate::i18n::tr("Add Shortcut..."))
                     .on_click(cx.listener(|this, _, _, cx| this.start_capture(cx)))
                     .into_any_element()
             };
@@ -442,7 +440,7 @@ impl Render for ShortcutMapper {
                 .child(
                     div().flex().flex_row().gap_2().child(capture).child(
                         Button::new("shortcut-reset")
-                            .label("Reset")
+                            .label(crate::i18n::tr("Reset"))
                             .on_click(cx.listener(|this, _, _, cx| this.reset(cx))),
                     ),
                 )

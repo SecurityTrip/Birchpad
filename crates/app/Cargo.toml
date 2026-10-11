@@ -25,6 +25,7 @@ gpui-kit = "0.7"
 semver = "1"
 serde.workspace = true
 serde_json.workspace = true
+sys-locale = "0.3"
 notify = "8"
 toml.workspace = true
 

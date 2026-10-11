@@ -217,7 +217,9 @@ What Phase 1 left for later is marked *(from Phase 1)* in the phases below.
 - [x] Character sets that `encoding_rs` lacks: OEM 437, 737, 775, 850, 852, 855, 857, 858,
       860–865, 869, and EBCDIC 037, 500, 1026, 1140, from tables of Birchpad's own behind the
       same decoder and encoder as encoding_rs's *(from Phase 1)*
-- Localization (English, Russian first), printing, right-to-left text
+- [x] Localization: English and Russian, the interface's language from the system or
+      `appearance.language` ([ADR 0033](adr/0033-localization.md))
+- Printing, right-to-left text
 
 ## Phase 5: plugins
 

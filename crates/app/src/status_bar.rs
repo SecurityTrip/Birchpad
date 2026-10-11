@@ -127,7 +127,7 @@ pub(crate) fn render<V: 'static>(
         div().px_3().flex_1().child(
             info.language
                 .clone()
-                .unwrap_or_else(|| "Normal text file".into()),
+                .unwrap_or_else(|| crate::i18n::tr("Normal text file")),
         ),
     );
     let [length, position, selection, eol, encoding, mode] = info.sections();

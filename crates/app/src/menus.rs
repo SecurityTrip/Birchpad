@@ -51,7 +51,7 @@ fn build_menu(
     for item in menu.items {
         match item {
             MenuItem::Command { .. } => {
-                let label = item.label().unwrap_or_default().to_owned();
+                let label = crate::i18n::tr(item.label().unwrap_or_default());
                 let MenuItem::Command { invocation, .. } = item else {
                     unreachable!()
                 };
@@ -70,8 +70,11 @@ fn build_menu(
             MenuItem::Placeholder(Placeholder::RecentFiles) => {
                 if state.recent_files.is_empty() {
                     items.push(
-                        GpuiMenuItem::action("(empty)", RunCommand::new("file.clear-recent"))
-                            .disabled(true),
+                        GpuiMenuItem::action(
+                            crate::i18n::tr("(empty)"),
+                            RunCommand::new("file.clear-recent"),
+                        )
+                        .disabled(true),
                     );
                 }
                 for (index, path) in state.recent_files.iter().enumerate() {
@@ -159,7 +162,7 @@ fn build_menu(
             }
         }
     }
-    gpui_kit::Menu::new(menu.title).items(items)
+    gpui_kit::Menu::new(crate::i18n::tr(&menu.title)).items(items)
 }
 
 /// On macOS, About, Check for Updates and Quit live in the application menu.

@@ -35,14 +35,14 @@ pub(super) fn open(view: Entity<EditorView>, window: &mut Window, cx: &mut App) 
     window.open_dialog(cx, move |dialog, _, _| {
         let confirm = editor.clone();
         dialog
-            .title("Column / Multi-Selection Editor")
+            .title(crate::i18n::tr("Column / Multi-Selection Editor"))
             .w(px(420.))
             .child(editor.clone())
             .footer(
                 DialogFooter::new()
                     .child(crate::workspace::dialog_close("Cancel"))
                     .child(crate::workspace::dialog_action(
-                        Button::new("column-ok").label("OK"),
+                        Button::new("column-ok").label(crate::i18n::tr("OK")),
                     )),
             )
             .on_ok(move |_, _, cx| {
@@ -245,7 +245,7 @@ impl Render for ColumnEditor {
             )
             .child(
                 Checkbox::new("column-uppercase")
-                    .label("Hexadecimal in upper case (A-F)")
+                    .label(crate::i18n::tr("Hexadecimal in upper case (A-F)"))
                     .checked(self.uppercase)
                     .disabled(!self.numbers || self.format != FormatName::Hex)
                     .on_click(move |checked, _, cx| {
