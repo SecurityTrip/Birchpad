@@ -5,6 +5,7 @@
 //! undo step, then its effects run in order: commands, messages, the plugin panel. Commands a
 //! plugin runs may run plugins in turn, up to [`MAX_DEPTH`] deep.
 
+pub(crate) mod admin;
 pub(crate) mod plugins;
 pub(crate) mod scripts;
 

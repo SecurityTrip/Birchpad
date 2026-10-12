@@ -711,6 +711,7 @@ pub fn main_menu() -> Vec<Menu> {
             Separator,
             Dynamic(Placeholder::Plugins),
             Separator,
+            cmd("plugin.admin"),
             cmd("plugin.open-folder"),
             cmd("plugin.reload"),
         ],

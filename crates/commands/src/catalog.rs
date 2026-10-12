@@ -339,6 +339,12 @@ pub const COMMANDS: &[CommandSpec] = &[
     workspace("plugin.run", "Run Plugin Command"),
     workspace("plugin.open-folder", "Open Plugins Folder"),
     workspace("plugin.reload", "Reload Plugins"),
+    // Plugins Admin; plugin.install takes { "path": <a plugin.toml> } or asks for it,
+    // plugin.uninstall { "plugin": <id> }, plugin.enable { "plugin": <id>, "enabled": true }
+    workspace("plugin.admin", "Plugins Admin..."),
+    workspace("plugin.install", "Install Plugin..."),
+    workspace("plugin.uninstall", "Remove Plugin"),
+    workspace("plugin.enable", "Turn Plugin On or Off"),
     // Help
     workspace("help.check-updates", "Check for Updates..."),
     // From the update dialogs and notifications.

@@ -39,6 +39,10 @@ version's release notes from its section here.
   It cannot touch files or the network; one that runs too long or takes too much memory is
   stopped. Plugins that the administrator's `PluginInstall` / `AllowedPlugins` policies do not
   allow are not loaded.
+- Plugins > Plugins Admin...: the installed plugins with their version, description and state;
+  Install... copies a plugin's folder in from its `plugin.toml` (installing it again updates
+  it), Remove takes it out, Turn Off and Turn On keep it installed but stopped. The
+  administrator's policy is shown, and installing against it is refused.
 - The `UserScripts` policy (`plugins.scripts`): administrators can turn user scripts off, as
   `PluginInstall` and `AllowedPlugins` control plugins.
 

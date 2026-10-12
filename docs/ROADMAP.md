@@ -239,7 +239,7 @@ What Phase 1 left for later is marked *(from Phase 1)* in the phases below.
 - [x] Plugins folder: `plugin.toml`, installing, updating, removing and turning plugins off;
       the `PluginInstall` / `AllowedPlugins` allowlist and the `UserScripts` policy
       ([ADR 0038](adr/0038-plugin-manager-and-allowlist.md))
-- [ ] Plugins Admin: the installed plugins, install from a file, remove, turn on and off
+- [x] Plugins Admin: the installed plugins, install from a file, remove, turn on and off
 - [x] Built-in tools without a window (`birchpad-tools`): JSON and XML checking, formatting
       and linearizing, hex dumps, comparing texts, Hunspell spell checking
       ([ADR 0039](adr/0039-built-in-tools.md))

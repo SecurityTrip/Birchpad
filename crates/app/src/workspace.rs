@@ -152,6 +152,7 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
     crate::session::register_commands(registry);
     crate::extensions::scripts::register_commands(registry);
     crate::extensions::plugins::register_commands(registry);
+    crate::extensions::admin::register_commands(registry);
     crate::spell_check::register_commands(registry);
     crate::disk::register_commands(registry);
     crate::themes::register_commands(registry);
