@@ -37,6 +37,13 @@ version's release notes from its section here.
 - File > Recent Files > Restore Recent Closed File (Ctrl+Shift+T) and Open All Recent Files.
 - Edit > Copy to Clipboard: the document's full path, file name and folder, also in the tab's
   context menu.
+- View > Always on Top, Toggle Full Screen Mode (F11), Post-It (F12: the text alone, without
+  menus, tabs, panels and status bar) and Distraction Free Mode (full screen, the text in a
+  column in the middle); a button in the corner leaves the last two.
+- View > Move/Clone Current Document > Move to New Instance and Open in New Instance: the file
+  opens at the caret in another Birchpad of its own.
+- Preferences > Multi-Instance (`instances.mode`): every launch, or a launch opening a session,
+  can start a Birchpad of its own instead of handing its files to the running one.
 
 ### Changed
 

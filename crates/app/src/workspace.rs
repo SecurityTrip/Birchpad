@@ -11,13 +11,14 @@ use birchpad_config::{SplitOrientation, UserState};
 use birchpad_core::Document;
 use birchpad_menu_bar::MenuBar;
 use gpui_kit::component::WindowExt as _;
-use gpui_kit::component::button::Button;
+use gpui_kit::component::button::{Button, ButtonVariants as _};
 use gpui_kit::component::dialog::{DialogAction, DialogClose};
 use gpui_kit::component::notification::Notification;
+use gpui_kit::component::{IconName, Sizable as _};
 use gpui_kit::component::{h_resizable, resizable_panel, v_resizable};
 use gpui_kit::{
     AnyElement, App, AppContext as _, Context, Entity, EntityId, ExternalPaths, FocusHandle,
-    Focusable, ModifiersChangedEvent, Subscription, Window, div, prelude::*, px,
+    Focusable, ModifiersChangedEvent, Subscription, Window, div, prelude::*, px, relative,
 };
 
 use crate::app_state::AppState;
@@ -170,6 +171,7 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
     crate::pane::register_commands(registry);
     crate::window_menu::register_commands(registry);
     crate::file_commands::register_commands(registry);
+    crate::window_modes::register_commands(registry);
 }
 
 /// View menu switches kept in `state.toml`: command, current value, how to remember a new one.
@@ -285,6 +287,8 @@ pub(crate) struct Workspace {
     pub(crate) navigation: History<Place>,
     /// The side panels.
     pub(crate) docks: Docks,
+    /// Always on Top, Full Screen, Post-It, Distraction Free.
+    pub(crate) modes: crate::window_modes::WindowModes,
     _subscriptions: Vec<Subscription>,
 }
 
@@ -322,6 +326,7 @@ impl Workspace {
             disk_state: DiskState::default(),
             navigation: History::default(),
             docks: Docks::default(),
+            modes: Default::default(),
             _subscriptions: subscriptions,
         };
         // Back in front: files may have changed meanwhile.
@@ -923,6 +928,9 @@ impl Workspace {
             if let Some(on) = crate::pane::is_checked(invocation, tab_marks) {
                 return on;
             }
+            if let Some(on) = crate::window_modes::is_checked(&invocation.command, self.modes) {
+                return on;
+            }
             if let Some((_, read, _)) = VIEW_SWITCHES
                 .iter()
                 .find(|(id, _, _)| *id == invocation.command)
@@ -1066,23 +1074,43 @@ impl Render for Workspace {
             .bg(crate::theme::paint(crate::theme::ui().background))
             .text_color(crate::theme::paint(crate::theme::ui().text))
             .when_some(self.menu_bar.clone(), birchpad_menu_bar::route_input)
-            .when_some(self.menu_bar.clone(), |this, menu_bar| {
-                this.child(
-                    div()
-                        .flex_none()
-                        .h(px(30.))
-                        .px_1()
-                        .border_b_1()
-                        .border_color(crate::theme::paint(crate::theme::ui().border))
-                        .child(menu_bar),
-                )
-            })
+            .when_some(
+                self.menu_bar.clone().filter(|_| !self.modes.text_only()),
+                |this, menu_bar| {
+                    this.child(
+                        div()
+                            .flex_none()
+                            .h(px(30.))
+                            .px_1()
+                            .border_b_1()
+                            .border_color(crate::theme::paint(crate::theme::ui().border))
+                            .child(menu_bar),
+                    )
+                },
+            )
             .child({
                 let center = self.render_main_area(cx);
+                let main = if self.modes.distraction_free {
+                    // The text in a column in the middle.
+                    div()
+                        .size_full()
+                        .flex()
+                        .justify_center()
+                        .child(div().h_full().w(relative(0.6)).child(center))
+                        .into_any_element()
+                } else if self.modes.post_it {
+                    center
+                } else {
+                    self.render_with_docks(center, cx)
+                };
                 div()
+                    .relative()
                     .flex_1()
                     .min_h(px(0.))
-                    .child(self.render_with_docks(center, cx))
+                    .child(main)
+                    .when(self.modes.text_only(), |this| {
+                        this.child(self.render_leave_button(cx))
+                    })
             })
             .when(self.find_bar.read(cx).visible, |this| {
                 this.child(self.find_bar.clone())
@@ -1090,11 +1118,33 @@ impl Render for Workspace {
             .when(self.incremental.read(cx).visible, |this| {
                 this.child(self.incremental.clone())
             })
-            .child(crate::status_bar::render(status, ansi, cx))
+            .when(!self.modes.text_only(), |this| {
+                this.child(crate::status_bar::render(status, ansi, cx))
+            })
     }
 }
 
 impl Workspace {
+    /// The way out of Post-It and Distraction Free, whose menus are hidden: a faint button in
+    /// the top right corner.
+    fn render_leave_button(&self, cx: &mut Context<Self>) -> impl IntoElement {
+        div()
+            .absolute()
+            .top_1()
+            .right_4()
+            .opacity(0.4)
+            .hover(|style| style.opacity(1.))
+            .child(
+                Button::new("leave-text-only")
+                    .ghost()
+                    .xsmall()
+                    .icon(IconName::Close)
+                    .debug_selector(|| "leave-text-only".into())
+                    .tooltip(t!("window-modes.leave"))
+                    .on_click(cx.listener(|this, _, window, cx| this.leave_text_only(window, cx))),
+            )
+    }
+
     /// The documents, and the search results under them when they are shown.
     fn render_main_area(&self, cx: &App) -> AnyElement {
         if !self.search_results.read(cx).visible {

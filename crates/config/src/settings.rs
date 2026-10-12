@@ -12,6 +12,7 @@ pub struct Settings {
     pub highlighting: HighlightingSettings,
     pub files: FileSettings,
     pub tabs: TabSettings,
+    pub instances: InstanceSettings,
     pub session: SessionSettings,
     pub updates: UpdateSettings,
     pub plugins: PluginSettings,
@@ -316,6 +317,38 @@ impl Default for TabSettings {
             peeker: true,
             switcher: true,
             switcher_mru: true,
+        }
+    }
+}
+
+/// Notepad++'s Preferences > Multi-Instance & Date.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, rename_all = "kebab-case")]
+pub struct InstanceSettings {
+    pub mode: InstanceMode,
+}
+
+/// What a launch does while Birchpad runs.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum InstanceMode {
+    /// It hands its files to the running Birchpad ("Default (mono-instance)").
+    #[default]
+    Single,
+    /// As `single`, but a session given with `-openSession` opens in a Birchpad of its own
+    /// ("Open session in a new instance").
+    Session,
+    /// Every launch is a Birchpad of its own ("Always in multi-instance mode").
+    Multi,
+}
+
+impl InstanceSettings {
+    /// Whether a launch with `open_session` (`-openSession`) starts a Birchpad of its own.
+    pub fn new_instance(&self, open_session: bool) -> bool {
+        match self.mode {
+            InstanceMode::Single => false,
+            InstanceMode::Session => open_session,
+            InstanceMode::Multi => true,
         }
     }
 }

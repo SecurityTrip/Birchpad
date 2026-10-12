@@ -279,7 +279,7 @@ step 6.11 brings in the sections no feature brings.
       Workspace), Open in Default Viewer, Reload from Disk, Save a Copy As, Rename, Move to
       Recycle Bin (Notepad++'s way of deleting a file), Restore Recent Closed File, Open All
       Recent Files; Copy full path / file name / folder
-- [ ] 6.4 Instances and the window: Move/Clone to a new instance, Open in a new instance;
+- [x] 6.4 Instances and the window: Move/Clone to a new instance, Open in a new instance;
       multi-instance in Preferences; Always on Top, Full Screen, Post-It, Distraction Free mode
 - [ ] 6.5 The toolbar: small, large and fluent icons; customizable
 

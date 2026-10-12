@@ -93,7 +93,8 @@ birchpad [-n<line>] [-c<column>] [-p<position>] [-l<language>] [-ro] [-multiInst
 ```
 
 A second launch opens its files as tabs in the running window and exits; `-multiInst` starts a
-separate instance instead. `-l` takes Notepad++'s language names (`-lcpp`, `-lpython`,
+separate instance instead, as do every launch, or a launch with `-openSession`, when
+Preferences > Multi-Instance says so (`instances.mode = "multi"` or `"session"`). `-l` takes Notepad++'s language names (`-lcpp`, `-lpython`,
 `-lnormal`), `-openSession` opens the files as sessions. Other Notepad++ options (`-x`, `-y`,
 `-notabbar`, ...) are accepted and ignored.
 

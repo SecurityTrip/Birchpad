@@ -248,6 +248,8 @@ pub(crate) struct Pane {
     subscriptions: Vec<(Entity<EditorView>, Subscription)>,
     /// How the panes would split if the tab being dragged were dropped where it is.
     split_zone: Option<SplitOrientation>,
+    /// Post-It and Distraction Free show the text alone.
+    tabs_hidden: bool,
 }
 
 impl EventEmitter<PaneEvent> for Pane {}
@@ -265,7 +267,14 @@ impl Pane {
             tab_scroll: ScrollHandle::new(),
             subscriptions: Vec::new(),
             split_zone: None,
+            tabs_hidden: false,
         }
+    }
+
+    /// Hides the tab bar (Post-It, Distraction Free) or shows it again.
+    pub(crate) fn set_tabs_hidden(&mut self, hidden: bool, cx: &mut Context<Self>) {
+        self.tabs_hidden = hidden;
+        cx.notify();
     }
 
     pub(crate) fn set_other(&mut self, other: WeakEntity<Pane>) {
@@ -1103,7 +1112,9 @@ impl Render for Pane {
             .when(options.vertical, |pane| pane.flex_row())
             .when(!options.vertical, |pane| pane.flex_col())
             .size_full()
-            .child(self.render_tabs(&options, cx))
+            .when(!self.tabs_hidden, |pane| {
+                pane.child(self.render_tabs(&options, cx))
+            })
             .child(content)
     }
 }

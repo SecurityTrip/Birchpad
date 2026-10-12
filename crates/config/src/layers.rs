@@ -323,6 +323,27 @@ mod tests {
     }
 
     #[test]
+    fn instance_settings() {
+        use crate::settings::InstanceMode;
+        let instances = |toml: &str| {
+            resolve(Sources {
+                user: table(toml),
+                ..Sources::default()
+            })
+        };
+        let default = instances("").settings.instances;
+        assert_eq!(default.mode, InstanceMode::Single);
+        assert!(!default.new_instance(false) && !default.new_instance(true));
+        let session = instances("instances.mode = 'session'").settings.instances;
+        assert!(!session.new_instance(false) && session.new_instance(true));
+        let multi = instances("instances.mode = 'multi'").settings.instances;
+        assert!(multi.new_instance(false) && multi.new_instance(true));
+        let wrong = instances("instances.mode = 'sometimes'");
+        assert_eq!(wrong.settings.instances.mode, InstanceMode::Single);
+        assert_eq!(wrong.diagnostics.len(), 1);
+    }
+
+    #[test]
     fn edge_and_current_line_settings() {
         use crate::settings::{CurrentLine, Edge};
         let resolved = resolve(Sources {

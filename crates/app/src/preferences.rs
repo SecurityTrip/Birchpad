@@ -113,6 +113,16 @@ pub(crate) const ENTRIES: &[Entry] = &[
         Kind::Bool,
     ),
     entry(
+        "Multi-Instance",
+        "instances.mode",
+        "Instances",
+        Kind::Choice(&[
+            ("single", "Default (mono-instance)"),
+            ("session", "Open session in a new instance"),
+            ("multi", "Always in multi-instance mode"),
+        ]),
+    ),
+    entry(
         "Editing",
         "editor.tab-width",
         "Tab size",

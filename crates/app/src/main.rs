@@ -59,6 +59,7 @@ mod tools;
 mod updates;
 mod user_languages;
 mod window_menu;
+mod window_modes;
 mod workspace;
 
 pub(crate) use editor::theme;
@@ -93,9 +94,16 @@ fn main() {
         eprintln!("birchpad: {warning}");
     }
     let paths = birchpad_config::ConfigPaths::current();
+    let settings = birchpad_config::resolve(birchpad_config::load(&paths));
 
-    // A second launch hands its files to the running instance and exits.
-    let server = match (&paths.user_data, command_line.multi_instance) {
+    // A second launch hands its files to the running instance and exits, unless it asks for
+    // an instance of its own or Preferences > Multi-Instance gives it one.
+    let own_instance = command_line.multi_instance
+        || settings
+            .settings
+            .instances
+            .new_instance(command_line.open_session);
+    let server = match (&paths.user_data, own_instance) {
         (Some(data), false) => {
             match birchpad_cli::start(&Address::for_installation(data), &command_line) {
                 Instance::Secondary => return,
@@ -113,7 +121,6 @@ fn main() {
         .with_assets(gpui_kit::assets::Assets)
         .run(move |cx: &mut App| {
             gpui_kit::init(cx);
-            let settings = birchpad_config::resolve(birchpad_config::load(&paths));
             for diagnostic in &settings.diagnostics {
                 eprintln!("settings ({}): {}", diagnostic.layer, diagnostic.message);
             }

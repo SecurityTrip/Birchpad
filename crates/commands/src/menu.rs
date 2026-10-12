@@ -533,6 +533,11 @@ pub fn main_menu() -> Vec<Menu> {
     let view = Menu::new(
         "View",
         vec![
+            cmd("view.always-on-top"),
+            cmd("view.full-screen"),
+            cmd("view.post-it"),
+            cmd("view.distraction-free"),
+            Separator,
             Submenu(Menu::new(
                 "Show Symbol",
                 vec![
@@ -557,6 +562,8 @@ pub fn main_menu() -> Vec<Menu> {
                 vec![
                     cmd("view.move-to-other-view"),
                     cmd("view.clone-to-other-view"),
+                    cmd("view.move-to-new-instance"),
+                    cmd("view.open-in-new-instance"),
                 ],
             )),
             Submenu(Menu::new("Tab", tab_items())),

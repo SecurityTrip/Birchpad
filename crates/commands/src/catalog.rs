@@ -290,6 +290,13 @@ pub const COMMANDS: &[CommandSpec] = &[
     workspace("view.zoom-in", "Zoom In"),
     workspace("view.zoom-out", "Zoom Out"),
     workspace("view.zoom-reset", "Restore Default Zoom"),
+    workspace("view.always-on-top", "Always on Top"),
+    workspace("view.full-screen", "Toggle Full Screen Mode"),
+    workspace("view.post-it", "Post-It"),
+    workspace("view.distraction-free", "Distraction Free Mode"),
+    // The active file in another Birchpad, at the caret; Move closes it here
+    workspace("view.move-to-new-instance", "Move to New Instance"),
+    workspace("view.open-in-new-instance", "Open in New Instance"),
     workspace("view.next-tab", "Next Tab"),
     workspace("view.previous-tab", "Previous Tab"),
     // { "index": 1..9 }, counted from the first tab of the active view

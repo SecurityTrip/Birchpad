@@ -27,8 +27,9 @@ pub use session::{
 pub use settings::{
     AppearanceSettings, AutoIndent, ChangeDetection, ChangeHistory, CompletionSettings,
     CurrentLine, DiagnosticsSettings, Edge, EditorSettings, FileSettings, HighlightingSettings,
-    NetworkSettings, PluginInstall, PluginSettings, SessionSettings, Settings, SmartHighlighting,
-    TabSettings, TokenMatching, UpdateChannel, UpdateMode, UpdateSettings,
+    InstanceMode, InstanceSettings, NetworkSettings, PluginInstall, PluginSettings,
+    SessionSettings, Settings, SmartHighlighting, TabSettings, TokenMatching, UpdateChannel,
+    UpdateMode, UpdateSettings,
 };
 pub use state::{
     FindInFilesState, MAX_RECENT_FILES, PanelsState, SpellCheckState, SplitOrientation,

@@ -397,6 +397,14 @@ keys = "f8"
 command = "view.focus-other-view"
 
 [[binding]]
+keys = "f11"
+command = "view.full-screen"
+
+[[binding]]
+keys = "f12"
+command = "view.post-it"
+
+[[binding]]
 keys = "ctrl-shift-tab"
 command = "view.switch-document"
 args = { backward = true }
