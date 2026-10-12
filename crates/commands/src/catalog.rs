@@ -335,6 +335,10 @@ pub const COMMANDS: &[CommandSpec] = &[
     workspace("script.run", "Run Script"),
     workspace("script.open-folder", "Open Scripts Folder"),
     workspace("script.reload", "Reload Scripts"),
+    // Plugins; plugin.run takes { "plugin": <its id>, "command": <one of its commands> }
+    workspace("plugin.run", "Run Plugin Command"),
+    workspace("plugin.open-folder", "Open Plugins Folder"),
+    workspace("plugin.reload", "Reload Plugins"),
     // Help
     workspace("help.check-updates", "Check for Updates..."),
     // From the update dialogs and notifications.

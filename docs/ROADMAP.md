@@ -231,8 +231,8 @@ What Phase 1 left for later is marked *(from Phase 1)* in the phases below.
 - [x] Plugin runtime: WebAssembly components of the `birchpad:plugin` WIT world in Wasmtime,
       working on a copy of the document (one undo step a call), without files or network, with
       fuel and memory limits ([ADR 0036](adr/0036-webassembly-plugins.md))
-- [ ] Plugins in the window: the Plugins menu with each plugin's commands, events, the plugin
-      panel
+- [x] Plugins in the window: the Plugins menu with each plugin's commands, events, the plugin
+      panel; compiled in the background at start and on Reload Plugins
 - [x] User scripting in Rhai with the plugins' API and an operation limit
       ([ADR 0037](adr/0037-rhai-scripts.md))
 - [x] Scripts in the Plugins menu, from the `scripts` folder; the plugin panel

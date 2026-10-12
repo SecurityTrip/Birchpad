@@ -361,7 +361,12 @@ async fn write_buffer(
                 buffer.did_save(path.clone(), revision, text.clone(), disk, cx);
             });
             cx.update(|_, cx| AppState::remove_recent(&path, cx))?;
-            workspace.update(cx, |workspace, cx| workspace.refresh_menus(cx))?;
+            workspace.update_in(cx, |workspace, window, cx| {
+                workspace.refresh_menus(cx);
+                if let Some(view) = workspace.view_of_buffer(buffer, cx) {
+                    workspace.plugin_event(birchpad_plugin::EventKind::Saved, &view, window, cx);
+                }
+            })?;
             Ok(())
         }
         Err(WriteFailure::Unencodable(problem)) => Err(anyhow!(

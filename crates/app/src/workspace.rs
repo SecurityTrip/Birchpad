@@ -151,6 +151,7 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
     crate::panels::register_commands(registry);
     crate::session::register_commands(registry);
     crate::extensions::scripts::register_commands(registry);
+    crate::extensions::plugins::register_commands(registry);
     crate::spell_check::register_commands(registry);
     crate::disk::register_commands(registry);
     crate::themes::register_commands(registry);
@@ -236,7 +237,10 @@ pub(crate) fn report_success(message: impl Into<String>, window: &mut Window, cx
 
 /// Tells the user something, without interrupting them.
 pub(crate) fn report_info(message: impl Into<String>, window: &mut Window, cx: &mut App) {
-    window.push_notification(Notification::info(message.into()), cx);
+    let message = message.into();
+    #[cfg(test)]
+    tests::INFO.with(|info| info.borrow_mut().push(message.clone()));
+    window.push_notification(Notification::info(message), cx);
 }
 
 /// Shows a warning to the user without interrupting them.
@@ -352,6 +356,11 @@ impl Workspace {
                 self.note_place(cx);
                 self.refresh_menus(cx);
                 cx.notify();
+                cx.defer_in(window, |this, window, cx| {
+                    if let Some(view) = this.active_view(cx) {
+                        this.plugin_event(birchpad_plugin::EventKind::Activated, &view, window, cx);
+                    }
+                });
             }
             PaneEvent::CloseRequested(view) => {
                 // As File > Close: unsaved changes are asked about.
@@ -736,6 +745,13 @@ impl Workspace {
                 }
             }
             BufferEvent::StateChanged | BufferEvent::Reloaded { .. } => {
+                if let BufferEvent::Reloaded { previous: None } = event
+                    && let Some(view) = self.view_of_buffer(buffer, cx)
+                {
+                    cx.defer_in(window, move |this, window, cx| {
+                        this.plugin_event(birchpad_plugin::EventKind::Opened, &view, window, cx);
+                    });
+                }
                 // Save As may have moved the file to another folder.
                 self.sync_watches(cx);
                 self.refresh_menus(cx);
@@ -764,6 +780,12 @@ impl Workspace {
         if !still_shown && let Some(path) = buffer.read(cx).path().map(Path::to_owned) {
             AppState::add_recent(&path, cx);
             self.refresh_menus(cx);
+        }
+        if !still_shown {
+            let closed = view.clone();
+            cx.defer_in(window, move |this, window, cx| {
+                this.plugin_event(birchpad_plugin::EventKind::Closed, &closed, window, cx);
+            });
         }
         // Forget buffers no view shows any more.
         let live: Vec<EntityId> = self
@@ -927,10 +949,12 @@ impl Workspace {
         let user_languages = crate::user_languages::names(cx);
         let spell_languages = crate::spell_check::languages(cx);
         let scripts = crate::extensions::scripts::names(cx);
+        let plugin_menus = crate::extensions::plugins::menus(cx);
         let state = MenuState {
             user_languages: &user_languages,
             spell_languages: &spell_languages,
             scripts: &scripts,
+            plugins: &plugin_menus,
             recent_files: &recent_files,
             themes: &themes,
             macros: &macros,
@@ -1245,6 +1269,16 @@ pub(crate) mod tests {
             })
         });
         cx.run_until_parked();
+    }
+
+    thread_local! {
+        /// The messages shown with `report_info`, for tests to read.
+        pub(crate) static INFO: std::cell::RefCell<Vec<String>> = std::cell::RefCell::default();
+    }
+
+    /// The messages shown since the last call.
+    pub(crate) fn take_info() -> Vec<String> {
+        INFO.with(|info| std::mem::take(&mut *info.borrow_mut()))
     }
 
     pub(crate) fn active_text(workspace: &Entity<Workspace>, cx: &mut VisualTestContext) -> String {

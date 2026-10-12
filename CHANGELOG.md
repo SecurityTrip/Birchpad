@@ -31,6 +31,14 @@ version's release notes from its section here.
   the text and the selections (its edits are one undo step), runs commands, shows messages and
   fills the Plugin Panel; it cannot touch files or the network, and stops if it runs too long.
   See [writing plugins and scripts](docs/plugins.md).
+- Plugins as WebAssembly components ([ADR 0036](docs/adr/0036-webassembly-plugins.md)): the
+  plugins of the `plugins` folder next to the settings load when Birchpad starts (or on
+  Plugins > Reload Plugins), each with a submenu of its commands in the Plugins menu. A plugin
+  works on the active document as a script does, hears the events it asks for (a document
+  opened, saved, closed or activated) and fills the Plugin Panel, whose lines it hears clicked.
+  It cannot touch files or the network; one that runs too long or takes too much memory is
+  stopped. Plugins that the administrator's `PluginInstall` / `AllowedPlugins` policies do not
+  allow are not loaded.
 - The `UserScripts` policy (`plugins.scripts`): administrators can turn user scripts off, as
   `PluginInstall` and `AllowedPlugins` control plugins.
 

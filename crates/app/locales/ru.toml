@@ -382,3 +382,8 @@
 "Open Scripts Folder" = "Открыть папку скриптов"
 "Reload Scripts" = "Обновить список скриптов"
 "Plugin Panel" = "Панель плагина"
+
+# Plugins: WebAssembly plugins
+"Run Plugin Command" = "Выполнить команду плагина"
+"Open Plugins Folder" = "Открыть папку плагинов"
+"Reload Plugins" = "Перезагрузить плагины"

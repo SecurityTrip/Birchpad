@@ -47,6 +47,8 @@ pub enum Placeholder {
     SpellLanguages,
     /// The scripts of the `scripts` folder, each invoking `script.run`.
     Scripts,
+    /// A submenu for each plugin, with its commands, each invoking `plugin.run`.
+    Plugins,
 }
 
 impl MenuItem {
@@ -706,6 +708,11 @@ pub fn main_menu() -> Vec<Menu> {
                 ],
             )),
             cmd("panel.plugin"),
+            Separator,
+            Dynamic(Placeholder::Plugins),
+            Separator,
+            cmd("plugin.open-folder"),
+            cmd("plugin.reload"),
         ],
     );
 

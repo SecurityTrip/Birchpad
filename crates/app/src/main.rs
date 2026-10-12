@@ -151,6 +151,7 @@ fn main() {
                     let mut workspace = Workspace::new(window, cx);
                     workspace.restore_last_session(window, cx);
                     workspace.restore_panels(window, cx);
+                    workspace.load_plugins(window, cx);
                     workspace.open_command_line(&command_line, window, cx);
                     workspace.report_pending_recoveries(window, cx);
                     workspace.start_backups(cx);

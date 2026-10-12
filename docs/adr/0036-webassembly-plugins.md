@@ -30,8 +30,13 @@ for, cannot take the editor or the machine down, and that enterprises can approv
   call burns fuel (`DEFAULT_FUEL`, a few seconds of work) and the plugin has at most 256 MiB
   of memory; a plugin past either stops with an error. A plugin that traps is instantiated
   afresh on its next call. At most 200 commands and 1 000 effects a call.
-- **Cranelift compiles plugins** off the main thread; on Windows on ARM, where Wasmtime's
-  native code generation is not supported, plugins run in its Pulley interpreter.
+- **Cranelift compiles plugins** off the main thread when Birchpad starts and on Reload
+  Plugins; a plugin's commands appear in the Plugins menu once it is ready. On Windows on ARM,
+  where Wasmtime's native code generation is not supported, plugins run in its Pulley
+  interpreter.
+- **Plugins and scripts may run each other** through commands, at most 8 deep, so that one
+  that runs itself stops. Events are sent after what caused them, and Activated once per
+  document made active.
 
 ## Consequences
 

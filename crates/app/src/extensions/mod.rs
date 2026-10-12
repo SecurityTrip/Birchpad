@@ -5,6 +5,7 @@
 //! undo step, then its effects run in order: commands, messages, the plugin panel. Commands a
 //! plugin runs may run plugins in turn, up to [`MAX_DEPTH`] deep.
 
+pub(crate) mod plugins;
 pub(crate) mod scripts;
 
 use std::cell::Cell;
@@ -28,6 +29,8 @@ thread_local! {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum PanelOwner {
     Script(String),
+    /// A plugin, by id.
+    Plugin(String),
 }
 
 /// A copy of `view`'s document for a call.
@@ -133,10 +136,10 @@ impl Workspace {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> Result<()> {
-        let _ = (line, window, cx);
         match owner {
             // A script's panel only shows.
             PanelOwner::Script(_) => Ok(()),
+            PanelOwner::Plugin(id) => self.plugin_panel_click(id, line, window, cx),
         }
     }
 }

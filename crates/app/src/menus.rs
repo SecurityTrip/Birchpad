@@ -27,6 +27,8 @@ pub(crate) struct MenuState<'a> {
     pub(crate) spell_languages: &'a [String],
     /// The scripts of the `scripts` folder.
     pub(crate) scripts: &'a [String],
+    /// The plugins ready to run: id, name and commands.
+    pub(crate) plugins: &'a [(String, String, Vec<birchpad_plugin::PluginCommand>)],
     /// Whether a command item shows a check mark (word wrap, current encoding, ...).
     pub(crate) checked: &'a dyn Fn(&Invocation) -> bool,
 }
@@ -166,6 +168,20 @@ fn build_menu(
                 for name in state.scripts {
                     let invocation = Invocation::with_args("script.run", json!({ "name": name }));
                     items.push(GpuiMenuItem::action(name.clone(), RunCommand(invocation)));
+                }
+            }
+            MenuItem::Placeholder(Placeholder::Plugins) => {
+                for (id, name, commands) in state.plugins {
+                    let entries = commands.iter().map(|command| {
+                        let invocation = Invocation::with_args(
+                            "plugin.run",
+                            json!({ "plugin": id, "command": command.id }),
+                        );
+                        GpuiMenuItem::action(command.title.clone(), RunCommand(invocation))
+                    });
+                    items.push(GpuiMenuItem::submenu(
+                        gpui_kit::Menu::new(name.clone()).items(entries),
+                    ));
                 }
             }
             MenuItem::Placeholder(Placeholder::RunCommands) => {
