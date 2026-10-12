@@ -18,6 +18,7 @@ use crate::app_state::{AppState, SessionPaths};
 use crate::buffer::{Backup, Buffer, ReadOnly};
 use crate::commands::CommandRegistry;
 use crate::editor::{EditorView, ViewState};
+use crate::pane::TabMarks;
 use crate::workspace::{Workspace, report_error};
 
 pub(crate) fn register_commands(registry: &mut CommandRegistry) {
@@ -142,7 +143,8 @@ impl Workspace {
                 if pane.active_item() == Some(item) {
                     view.active = view.tabs.len();
                 }
-                view.tabs.push(tab_of(document, editor.view_state(cx)));
+                view.tabs
+                    .push(tab_of(document, editor.view_state(cx), editor.tab));
             }
             *session.views_mut()[index] = view;
         }
@@ -382,7 +384,10 @@ impl Workspace {
                     Some(shown) => shown,
                     None => {
                         let editor = cx.new(|cx| EditorView::new(buffer.clone(), window, cx));
-                        editor.update(cx, |editor, cx| editor.restore(state_of(tab), cx));
+                        editor.update(cx, |editor, cx| {
+                            editor.tab = marks_of(tab);
+                            editor.restore(state_of(tab), cx);
+                        });
                         self.track_view(&editor, window, cx);
                         pane.update(cx, |pane, cx| {
                             let end = pane.items().len();
@@ -601,8 +606,10 @@ fn free_number(wanted: Option<usize>, numbers: &mut HashSet<usize>) -> usize {
     number
 }
 
-fn tab_of(document: usize, state: ViewState) -> SessionTab {
+fn tab_of(document: usize, state: ViewState, marks: TabMarks) -> SessionTab {
     SessionTab {
+        pinned: marks.pinned,
+        color: marks.color,
         document,
         selections: state
             .selection
@@ -614,6 +621,16 @@ fn tab_of(document: usize, state: ViewState) -> SessionTab {
         first_row: state.scroll_top,
         scroll_x: state.scroll_left / px(1.),
         folds: state.collapsed,
+    }
+}
+
+/// A tab's pin and color; a color past the last is none.
+fn marks_of(tab: &SessionTab) -> TabMarks {
+    TabMarks {
+        pinned: tab.pinned,
+        color: tab
+            .color
+            .filter(|color| (1..=crate::pane::TAB_COLORS).contains(color)),
     }
 }
 

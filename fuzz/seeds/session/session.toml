@@ -30,6 +30,8 @@ primary = 1
 first-row = 12.5
 scroll-x = 40.0
 folds = [4]
+pinned = true
+color = 3
 
 [second-view]
 active = 0

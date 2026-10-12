@@ -17,7 +17,7 @@ use gpui_kit::component::notification::Notification;
 use gpui_kit::component::{h_resizable, resizable_panel, v_resizable};
 use gpui_kit::{
     AnyElement, App, AppContext as _, Context, Entity, EntityId, ExternalPaths, FocusHandle,
-    Focusable, Subscription, Window, div, prelude::*, px,
+    Focusable, ModifiersChangedEvent, Subscription, Window, div, prelude::*, px,
 };
 
 use crate::app_state::AppState;
@@ -167,6 +167,7 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
     crate::run_menu::register_commands(registry);
     crate::user_languages::register_commands(registry);
     crate::print::register_commands(registry);
+    crate::pane::register_commands(registry);
 }
 
 /// View menu switches kept in `state.toml`: command, current value, how to remember a new one.
@@ -396,6 +397,9 @@ impl Workspace {
                 let target = 1 - usize::from(pane == &self.panes[1]);
                 AppState::update_state(cx, |state, _| state.split = *orientation);
                 self.send_to_pane(view, target, None, *clone, window, cx);
+            }
+            PaneEvent::Command { view, invocation } => {
+                self.run_tab_command(view.as_ref(), invocation, window, cx);
             }
         }
     }
@@ -880,6 +884,10 @@ impl Workspace {
         for view in self.all_views(cx) {
             view.update(cx, |view, cx| view.settings_changed(cx));
         }
+        // The tab bar's settings.
+        for pane in &self.panes {
+            pane.update(cx, |_, cx| cx.notify());
+        }
         self.refresh_menus(cx);
         cx.notify();
     }
@@ -908,7 +916,11 @@ impl Workspace {
         let compare_options = crate::compare::options(cx);
         let spell_enabled = crate::spell_check::is_enabled(cx);
         let spell_language = crate::spell_check::language(cx);
+        let tab_marks = self.active_view(cx).map(|view| view.read(cx).tab);
         let checked = |invocation: &Invocation| {
+            if let Some(on) = crate::pane::is_checked(invocation, tab_marks) {
+                return on;
+            }
             if let Some((_, read, _)) = VIEW_SWITCHES
                 .iter()
                 .find(|(id, _, _)| *id == invocation.command)
@@ -1025,6 +1037,14 @@ impl Render for Workspace {
             .key_context("Workspace")
             .track_focus(&self.focus_handle)
             .on_action(cx.listener(Self::run_command))
+            // Ctrl released: the document switcher keeps the document it shows.
+            .on_modifiers_changed(cx.listener(|this, event: &ModifiersChangedEvent, _, cx| {
+                if !event.modifiers.control {
+                    for pane in this.panes.clone() {
+                        pane.update(cx, |pane, cx| pane.end_switch(cx));
+                    }
+                }
+            }))
             .on_drop(cx.listener(|this, paths: &ExternalPaths, window, cx| {
                 // A folder goes to Folder as Workspace, as in Notepad++.
                 for path in paths.paths() {
@@ -1325,8 +1345,8 @@ pub(crate) mod tests {
         cx.simulate_keystrokes(&secondary("z"));
         assert_eq!(active_text(&workspace, cx), "abc");
 
-        // Ctrl+Tab wraps around to the first tab; closing it frees the number 1 again.
-        cx.simulate_keystrokes("ctrl-tab");
+        // Ctrl+PageDown wraps around to the first tab; closing it frees the number 1 again.
+        cx.simulate_keystrokes("ctrl-pagedown");
         assert_eq!(active_text(&workspace, cx), "");
         cx.simulate_keystrokes(&secondary("w"));
         assert_eq!(tab_names(&workspace, cx), ["new 2", "new 3"]);

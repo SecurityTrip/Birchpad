@@ -221,6 +221,12 @@ palette! {
         line_number,
         /// The matched text in the search results.
         match_background,
+        /// View > Tab > Apply Color 1 to 5: behind a tab.
+        tab_color_1,
+        tab_color_2,
+        tab_color_3,
+        tab_color_4,
+        tab_color_5,
     }
 }
 
@@ -480,6 +486,11 @@ impl Theme {
                 heading: black,
                 line_number: black,
                 match_background: black,
+                tab_color_1: black,
+                tab_color_2: black,
+                tab_color_3: black,
+                tab_color_4: black,
+                tab_color_5: black,
             },
             syntax: SyntaxStyles::new(),
             languages: BTreeMap::new(),

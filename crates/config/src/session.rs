@@ -88,6 +88,12 @@ pub struct SessionTab {
     pub scroll_x: f32,
     /// First lines of the collapsed folds.
     pub folds: Vec<usize>,
+    /// The tab is pinned: it stays at the start of the tab bar.
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub pinned: bool,
+    /// The tab's color, 1 to 5 as Notepad++'s Apply Color 1-5; none if unset.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub color: Option<u8>,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -260,6 +266,8 @@ mod tests {
             first_row: 4.5,
             scroll_x: 16.,
             folds: vec![1],
+            pinned: true,
+            color: Some(3),
         }];
         session.second_view = SessionView {
             active: 1,

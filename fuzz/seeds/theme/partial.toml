@@ -2,6 +2,9 @@
 background = "#002b36"
 caret = "#93a1a1"
 
+[ui]
+tab-color-2 = "#85990060"
+
 [syntax]
 function.method = "#268bd2"
 keyword = { color = "#859900", bold = true }

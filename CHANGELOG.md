@@ -6,6 +6,33 @@ version's release notes from its section here.
 
 ## [Unreleased]
 
+### Added
+
+- Pinned tabs (View > Tab > Pin Tab, or the pin on a tab): they stay at the start of the tab
+  bar, and File > Close Multiple Documents > Close All but Pinned leaves them.
+- Tab colors: View > Tab > Apply Color 1 to 5 and Remove Color. Themes get `tab-color-1` to
+  `tab-color-5`; a Notepad++ theme's tab colors are imported with it.
+- View > Tab: 1st to 9th Tab, Last Tab, Move Tab Forward (Ctrl+Shift+PageDown) and Backward
+  (Ctrl+Shift+PageUp), Move Tab to Start and to End.
+- File > Close Multiple Documents: Close All but This, Close All but Pinned, Close All to the
+  Left, Close All to the Right, Close All Unchanged.
+- The tab's context menu: close it or groups of tabs, save, print, pin, color, move or clone it
+  to the other view.
+- The document switcher: Ctrl+Tab and Ctrl+Shift+Tab go through the view's documents, most
+  recently used first, in a list shown while Ctrl is held.
+- The document peeker: hovering over a tab shows the start of its document.
+- Preferences > Tab Bar (`[tabs]` in `settings.toml`): vertical tabs, tabs on several rows,
+  smaller tabs, locked tabs, the close button on each tab, closing a tab with a double click,
+  the document peeker, and the document switcher with or without most recently used first.
+- A double click on the empty part of the tab bar opens a new document.
+- Pinned tabs and tab colors are kept in sessions, and read from Notepad++'s `session.xml`.
+
+### Changed
+
+- Ctrl+Tab goes to the most recently used document instead of the next tab, as in Notepad++;
+  Ctrl+PageDown and Ctrl+PageUp still go to the next and previous tab, and turning the
+  document switcher off in Preferences > Tab Bar gives Ctrl+Tab its old meaning.
+
 ## [0.1.5] - 2026-10-12
 
 ### Added

@@ -108,6 +108,47 @@ const UNICODE_ENCODINGS: [(&str, &str); 4] = [
     ("utf-16le-bom", "UTF-16 LE BOM"),
 ];
 
+/// View > Tab, as in Notepad++.
+fn tab_items() -> Vec<MenuItem> {
+    const ORDINALS: [&str; 9] = [
+        "1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th", "9th",
+    ];
+    let cmd = MenuItem::command;
+    let mut items: Vec<MenuItem> = ORDINALS
+        .iter()
+        .zip(1..)
+        .map(|(ordinal, index)| {
+            MenuItem::command_with(
+                "view.go-to-tab",
+                json!({ "index": index }),
+                &format!("{ordinal} Tab"),
+            )
+        })
+        .collect();
+    items.extend([
+        cmd("view.last-tab"),
+        cmd("view.next-tab"),
+        cmd("view.previous-tab"),
+        MenuItem::Separator,
+        cmd("view.move-tab-forward"),
+        cmd("view.move-tab-backward"),
+        cmd("view.move-tab-to-start"),
+        cmd("view.move-tab-to-end"),
+        MenuItem::Separator,
+        cmd("view.pin-tab"),
+        MenuItem::Separator,
+    ]);
+    items.extend((1..=5).map(|color| {
+        MenuItem::command_with(
+            "view.tab-color",
+            json!({ "color": color }),
+            &format!("Apply Color {color}"),
+        )
+    }));
+    items.push(cmd("view.remove-tab-color"));
+    items
+}
+
 /// File, Edit, Search, View, Encoding and Help, laid out like Notepad++'s menus.
 pub fn main_menu() -> Vec<Menu> {
     use MenuItem::{Placeholder as Dynamic, Separator, Submenu};
@@ -134,7 +175,16 @@ pub fn main_menu() -> Vec<Menu> {
             Separator,
             cmd("file.close"),
             cmd("file.close-all"),
-            cmd("file.close-others"),
+            Submenu(Menu::new(
+                "Close Multiple Documents",
+                vec![
+                    cmd("file.close-others"),
+                    cmd("file.close-all-but-pinned"),
+                    cmd("file.close-left"),
+                    cmd("file.close-right"),
+                    cmd("file.close-unchanged"),
+                ],
+            )),
             Separator,
             cmd("file.load-session"),
             cmd("file.save-session"),
@@ -481,10 +531,7 @@ pub fn main_menu() -> Vec<Menu> {
                     cmd("view.clone-to-other-view"),
                 ],
             )),
-            Submenu(Menu::new(
-                "Tab",
-                vec![cmd("view.next-tab"), cmd("view.previous-tab")],
-            )),
+            Submenu(Menu::new("Tab", tab_items())),
             cmd("view.word-wrap"),
             cmd("view.focus-other-view"),
             cmd("view.rotate-split"),

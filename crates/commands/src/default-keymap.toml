@@ -378,9 +378,11 @@ command = "view.zoom-reset"
 keys = "ctrl-pagedown"
 command = "view.next-tab"
 
+# Ctrl+Tab and Ctrl+Shift+Tab: the document switcher, or the next and previous tab when it is
+# turned off (Preferences > Tab Bar).
 [[binding]]
 keys = "ctrl-tab"
-command = "view.next-tab"
+command = "view.switch-document"
 
 [[binding]]
 keys = "ctrl-pageup"
@@ -392,7 +394,16 @@ command = "view.focus-other-view"
 
 [[binding]]
 keys = "ctrl-shift-tab"
-command = "view.previous-tab"
+command = "view.switch-document"
+args = { backward = true }
+
+[[binding]]
+keys = "ctrl-shift-pagedown"
+command = "view.move-tab-forward"
+
+[[binding]]
+keys = "ctrl-shift-pageup"
+command = "view.move-tab-backward"
 
 # Folding, as in Notepad++.
 

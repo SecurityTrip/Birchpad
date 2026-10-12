@@ -10,6 +10,10 @@ font-size = 13
 large-file-limit-mb = 50
 change-detection = "all"
 
+[tabs]
+vertical = true
+switcher-mru = false
+
 [session]
 backup-interval-seconds = 30
 

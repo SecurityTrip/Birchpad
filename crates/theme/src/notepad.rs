@@ -10,7 +10,9 @@
 
 use std::collections::BTreeMap;
 
-use crate::{Color, PartialEditorColors, Style, SyntaxStyles, ThemeError, ThemeFile};
+use crate::{
+    Color, PartialEditorColors, PartialUiColors, Style, SyntaxStyles, ThemeError, ThemeFile,
+};
 
 /// Converts the text of a Notepad++ theme into a theme file.
 pub(crate) fn import(xml: &str) -> Result<ThemeFile, ThemeError> {
@@ -46,6 +48,7 @@ pub(crate) fn import(xml: &str) -> Result<ThemeFile, ThemeError> {
     let mut file = ThemeFile {
         dark: None,
         editor: editor_colors(&foreground, &background),
+        ui: ui_colors(&background, default_background.is_some_and(Color::is_dark)),
         ..ThemeFile::default()
     };
     if let Some(lexers) = lexers {
@@ -135,6 +138,25 @@ fn editor_colors(
         compare_removed: None,
         compare_changed: None,
         spell_error: None,
+    }
+}
+
+/// The global styles that are interface colors: Notepad++'s tab colors, in their dark mode
+/// versions for a dark theme.
+fn ui_colors(background: &dyn Fn(&str) -> Option<Color>, dark: bool) -> PartialUiColors {
+    let tab = |number: u8| {
+        let dark_mode = dark
+            .then(|| background(&format!("Tab color dark mode {number}")))
+            .flatten();
+        dark_mode.or_else(|| background(&format!("Tab color {number}")))
+    };
+    PartialUiColors {
+        tab_color_1: tab(1),
+        tab_color_2: tab(2),
+        tab_color_3: tab(3),
+        tab_color_4: tab(4),
+        tab_color_5: tab(5),
+        ..PartialUiColors::default()
     }
 }
 

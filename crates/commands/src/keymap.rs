@@ -384,7 +384,15 @@ mod tests {
         );
         assert_eq!(
             command_for(&windows, "ctrl-tab", &editor),
+            Some("view.switch-document")
+        );
+        assert_eq!(
+            command_for(&windows, "ctrl-pagedown", &editor),
             Some("view.next-tab")
+        );
+        assert_eq!(
+            command_for(&windows, "ctrl-shift-pagedown", &editor),
+            Some("view.move-tab-forward")
         );
         // Editing keys only apply inside an editor.
         assert_eq!(command_for(&windows, "ctrl-z", &["Workspace"]), None);

@@ -1,7 +1,7 @@
 //! Importing a Notepad++ `session.xml`: the files of both views with their carets, scroll
 //! positions, bookmarks, collapsed folds, language and read-only flag, and unsaved text from
-//! Notepad++'s backup copies. Encodings are detected again; Notepad++'s other attributes (tab
-//! colors, the document map) have no counterpart.
+//! Notepad++'s backup copies, tab colors and pinned tabs. Encodings are detected again; the
+//! other attributes (the document map) have no counterpart.
 
 use std::path::PathBuf;
 
@@ -63,6 +63,8 @@ pub(crate) fn import(xml: &str) -> Result<Session, SessionError> {
                 first_row: number(file.attribute("firstVisibleLine")) as f64,
                 scroll_x: number(file.attribute("xOffset")) as f32,
                 folds: lines("Fold"),
+                pinned: file.attribute("tabPinned") == Some("yes"),
+                color: tab_color(file.attribute("tabColourId")),
             });
         }
         view.active = view.active.min(view.tabs.len().saturating_sub(1));
@@ -104,6 +106,12 @@ fn is_same(document: &SessionDocument, filename: &str) -> bool {
 /// "new 3" is Notepad++'s third untitled document.
 fn untitled_number(filename: &str) -> Option<usize> {
     filename.strip_prefix("new ")?.parse().ok()
+}
+
+/// Notepad++ numbers its tab colors from 0 and writes -1 for none; Birchpad's go from 1 to 5.
+fn tab_color(attribute: Option<&str>) -> Option<u8> {
+    let id: u8 = attribute?.trim().parse().ok()?;
+    (id < 5).then_some(id + 1)
 }
 
 fn is_normal_text(lang: &str) -> bool {
@@ -188,6 +196,37 @@ mod tests {
         assert_eq!(session.main_view.active, 0);
         assert_eq!(session.main_view.tabs[0].selections, [[0, 0]]);
         assert!(session.second_view.tabs.is_empty());
+    }
+
+    #[test]
+    fn tab_colors_and_pinned_tabs() {
+        let xml = r#"<NotepadPlus><Session>
+            <mainView>
+                <File filename="C:\a.txt" tabColourId="0" tabPinned="yes" />
+                <File filename="C:\b.txt" tabColourId="4" tabPinned="no" />
+                <File filename="C:\c.txt" tabColourId="-1" />
+                <File filename="C:\d.txt" tabColourId="5" />
+                <File filename="C:\e.txt" tabColourId="red" tabPinned="YES" />
+            </mainView>
+        </Session></NotepadPlus>"#;
+        let session = import(xml).unwrap();
+        let tabs: Vec<(bool, Option<u8>)> = session
+            .main_view
+            .tabs
+            .iter()
+            .map(|tab| (tab.pinned, tab.color))
+            .collect();
+        assert_eq!(
+            tabs,
+            [
+                (true, Some(1)),
+                (false, Some(5)),
+                (false, None),
+                (false, None),
+                (false, None)
+            ],
+            "colors 0 to 4 become 1 to 5; none, past the last or not a number, no color"
+        );
     }
 
     #[test]

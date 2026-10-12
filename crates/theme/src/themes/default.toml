@@ -62,6 +62,12 @@ directory = "#9a6700"
 heading = "#e8eef6"
 line-number = "#1a7f37"
 match-background = "#fff8c5"
+# View > Tab > Apply Color 1 to 5.
+tab-color-1 = "#f7e98e"
+tab-color-2 = "#bde8b0"
+tab-color-3 = "#b4d7f5"
+tab-color-4 = "#f9cb9c"
+tab-color-5 = "#f2b6dd"
 
 # Highlight names fall back to their prefix: `function.method` takes `function`'s style unless
 # it has its own. Names with a dot are quoted, or written as nested tables.

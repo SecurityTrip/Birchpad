@@ -295,6 +295,34 @@ mod tests {
     }
 
     #[test]
+    fn tab_settings() {
+        let defaults = resolve(Sources::default()).settings.tabs;
+        assert!(defaults.close_button && defaults.peeker, "as in Notepad++");
+        assert!(
+            defaults.switcher && defaults.switcher_mru,
+            "as in Notepad++"
+        );
+        assert!(!defaults.vertical && !defaults.multi_line && !defaults.reduce);
+        assert!(!defaults.lock && !defaults.double_click_close);
+
+        let resolved = resolve(Sources {
+            user: table(
+                "tabs.vertical = true\ntabs.double-click-close = true\ntabs.lock = 'yes'\n\
+                 tabs.switcher-mru = false",
+            ),
+            policy: table("tabs.close-button = false"),
+            ..Sources::default()
+        });
+        let tabs = &resolved.settings.tabs;
+        assert!(tabs.vertical && tabs.double_click_close && !tabs.switcher_mru);
+        assert!(!tabs.lock, "a value of the wrong type keeps the default");
+        assert!(!tabs.close_button);
+        assert!(resolved.is_locked("tabs.close-button"));
+        assert_eq!(resolved.diagnostics.len(), 1);
+        assert_eq!(resolved.diagnostics[0].key.as_deref(), Some("tabs.lock"));
+    }
+
+    #[test]
     fn edge_and_current_line_settings() {
         use crate::settings::{CurrentLine, Edge};
         let resolved = resolve(Sources {

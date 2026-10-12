@@ -1,4 +1,6 @@
-//! File commands: open, save, save as, save all, close with confirmation, exit, recent files.
+//! File commands: open, save, save as, save all, close with confirmation (one document, all,
+//! all but this or the pinned ones, those left or right of it, the unchanged ones), exit,
+//! recent files.
 
 use std::path::{Path, PathBuf};
 
@@ -78,6 +80,40 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
             .all_views(cx)
             .into_iter()
             .filter(|view| Some(view) != active.as_ref())
+            .collect();
+        this.close_with_confirmation(views, window, cx).detach();
+        Ok(())
+    });
+    registry.workspace("file.close-all-but-pinned", |this, (), window, cx| {
+        let views = this
+            .all_views(cx)
+            .into_iter()
+            .filter(|view| !view.read(cx).tab.pinned)
+            .collect();
+        this.close_with_confirmation(views, window, cx).detach();
+        Ok(())
+    });
+    for (id, left) in [("file.close-left", true), ("file.close-right", false)] {
+        registry.workspace(id, move |this, (), window, cx| {
+            let pane = this.active_pane().read(cx);
+            let Some(active) = pane.active_item() else {
+                return Ok(());
+            };
+            let at = pane.index_of(active).unwrap_or_default();
+            let views = if left {
+                pane.items()[..at].to_vec()
+            } else {
+                pane.items()[at + 1..].to_vec()
+            };
+            this.close_with_confirmation(views, window, cx).detach();
+            Ok(())
+        });
+    }
+    registry.workspace("file.close-unchanged", |this, (), window, cx| {
+        let views = this
+            .all_views(cx)
+            .into_iter()
+            .filter(|view| !view.read(cx).buffer.read(cx).is_modified())
             .collect();
         this.close_with_confirmation(views, window, cx).detach();
         Ok(())

@@ -56,6 +56,11 @@ directory = "#d29922"
 heading = "#2d333b"
 line-number = "#3fb950"
 match-background = "#613a00"
+tab-color-1 = "#6b5d12"
+tab-color-2 = "#2e5b26"
+tab-color-3 = "#1f4a73"
+tab-color-4 = "#74431a"
+tab-color-5 = "#6d2a58"
 
 [syntax]
 attribute = "#9cdcfe"

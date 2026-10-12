@@ -1,5 +1,5 @@
 use super::*;
-use crate::{DARK, Theme};
+use crate::{DARK, DEFAULT, Theme, UiColors};
 
 /// A small theme in Notepad++'s format, dark, with lexers that agree and one that does not.
 const SAMPLE: &str = r#"<?xml version="1.0" encoding="UTF-8" ?>
@@ -62,6 +62,10 @@ const SAMPLE: &str = r#"<?xml version="1.0" encoding="UTF-8" ?>
         <WidgetStyle name="EOL custom color" styleID="0" fgColor="DADADA" />
         <WidgetStyle name="Change History modified" styleID="0" fgColor="FF8000" bgColor="FF8001" />
         <WidgetStyle name="Change History saved" styleID="0" fgColor="00A000" bgColor="00A001" />
+        <WidgetStyle name="Tab color 1" styleID="0" bgColor="FFFF80" />
+        <WidgetStyle name="Tab color dark mode 1" styleID="0" bgColor="404000" />
+        <WidgetStyle name="Tab color 2" styleID="0" bgColor="80FF80" />
+        <WidgetStyle name="Tab color dark mode 3" styleID="0" bgColor="NOTHEX" />
     </GlobalStyles>
 </NotepadPlus>
 "#;
@@ -101,7 +105,30 @@ fn global_styles_become_editor_colors() {
     let dark = Theme::builtin(DARK).unwrap();
     assert_eq!(editor.bookmark, dark.editor.bookmark);
     assert_eq!(editor.gutter_border, dark.editor.gutter_border);
-    assert_eq!(theme.ui, dark.ui);
+    // A dark theme takes Notepad++'s dark mode tab colors, or the light ones without.
+    assert_eq!(theme.ui.tab_color_1, Color::rgb(0x404000));
+    assert_eq!(theme.ui.tab_color_2, Color::rgb(0x80ff80));
+    assert_eq!(theme.ui.tab_color_3, dark.ui.tab_color_3, "not a color");
+    let ui = UiColors {
+        tab_color_1: dark.ui.tab_color_1,
+        tab_color_2: dark.ui.tab_color_2,
+        ..theme.ui
+    };
+    assert_eq!(ui, dark.ui);
+}
+
+#[test]
+fn a_light_theme_takes_the_light_tab_colors() {
+    let xml = r#"<NotepadPlus><GlobalStyles>
+        <WidgetStyle name="Default Style" fgColor="000000" bgColor="FFFFFF" />
+        <WidgetStyle name="Tab color 1" bgColor="FFFF80" />
+        <WidgetStyle name="Tab color dark mode 1" bgColor="404000" />
+    </GlobalStyles></NotepadPlus>"#;
+    let theme = Theme::from_notepad_xml("Light", xml).unwrap();
+    assert!(!theme.dark);
+    assert_eq!(theme.ui.tab_color_1, Color::rgb(0xffff80));
+    let default = Theme::builtin(DEFAULT).unwrap();
+    assert_eq!(theme.ui.tab_color_5, default.ui.tab_color_5);
 }
 
 #[test]

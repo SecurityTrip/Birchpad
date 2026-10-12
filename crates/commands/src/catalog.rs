@@ -55,6 +55,11 @@ pub const COMMANDS: &[CommandSpec] = &[
     workspace("file.close", "Close"),
     workspace("file.close-all", "Close All"),
     workspace("file.close-others", "Close All but This"),
+    workspace("file.close-all-but-pinned", "Close All but Pinned"),
+    // The tabs left or right of the active one, in its view
+    workspace("file.close-left", "Close All to the Left"),
+    workspace("file.close-right", "Close All to the Right"),
+    workspace("file.close-unchanged", "Close All Unchanged"),
     workspace("file.load-session", "Load Session..."),
     workspace("file.save-session", "Save Session..."),
     workspace("file.exit", "Exit"),
@@ -274,6 +279,19 @@ pub const COMMANDS: &[CommandSpec] = &[
     workspace("view.zoom-reset", "Restore Default Zoom"),
     workspace("view.next-tab", "Next Tab"),
     workspace("view.previous-tab", "Previous Tab"),
+    // { "index": 1..9 }, counted from the first tab of the active view
+    workspace("view.go-to-tab", "Go to Tab"),
+    workspace("view.last-tab", "Last Tab"),
+    workspace("view.move-tab-forward", "Move Tab Forward"),
+    workspace("view.move-tab-backward", "Move Tab Backward"),
+    workspace("view.move-tab-to-start", "Move Tab to Start"),
+    workspace("view.move-tab-to-end", "Move Tab to End"),
+    workspace("view.pin-tab", "Pin Tab"),
+    // { "color": 1..5 }
+    workspace("view.tab-color", "Apply Color"),
+    workspace("view.remove-tab-color", "Remove Color"),
+    // { "backward": false }: the next document of the switcher's list (Ctrl+Tab)
+    workspace("view.switch-document", "Document Switcher"),
     // Encoding; { "encoding": "utf-8" | "utf-8-bom" | "utf-16le-bom" | "ansi" | "windows-1251" | ... }
     workspace("encoding.encode-in", "Encode in"),
     workspace("encoding.convert-to", "Convert to"),

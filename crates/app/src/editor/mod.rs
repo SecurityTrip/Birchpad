@@ -376,6 +376,8 @@ pub(crate) struct EditorView {
     pending_match: Option<(usize, ByteRange<usize>)>,
     /// Where to put the view once the file has been read (a restored session).
     pending_state: Option<ViewState>,
+    /// Whether its tab is pinned, and its color.
+    pub(crate) tab: crate::pane::TabMarks,
     /// First visible row; fractional while scrolling smoothly.
     scroll_top: f64,
     /// Horizontal scroll offset of the text.
@@ -513,6 +515,7 @@ impl EditorView {
             pending_caret: None,
             pending_match: None,
             pending_state: None,
+            tab: crate::pane::TabMarks::default(),
             scroll_top: 0.,
             scroll_left: px(0.),
             scroll_width: px(0.),
