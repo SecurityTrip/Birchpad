@@ -246,7 +246,8 @@ fn add_items(
                 | Placeholder::Macros
                 | Placeholder::RunCommands
                 | Placeholder::UserLanguages
-                | Placeholder::SpellLanguages,
+                | Placeholder::SpellLanguages
+                | Placeholder::Scripts,
             ) => {}
         }
     }

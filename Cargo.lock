@@ -609,6 +609,7 @@ dependencies = [
  "birchpad-core",
  "birchpad-io",
  "birchpad-menu-bar",
+ "birchpad-plugin",
  "birchpad-syntax",
  "birchpad-theme",
  "birchpad-tools",

@@ -45,6 +45,8 @@ pub enum Placeholder {
     UserLanguages,
     /// The languages of the spell checker's dictionaries, each invoking `spell.language`.
     SpellLanguages,
+    /// The scripts of the `scripts` folder, each invoking `script.run`.
+    Scripts,
 }
 
 impl MenuItem {
@@ -693,6 +695,17 @@ pub fn main_menu() -> Vec<Menu> {
                     cmd("spell.open-dictionaries-folder"),
                 ],
             )),
+            Separator,
+            Submenu(Menu::new(
+                "Scripts",
+                vec![
+                    Dynamic(Placeholder::Scripts),
+                    Separator,
+                    cmd("script.open-folder"),
+                    cmd("script.reload"),
+                ],
+            )),
+            cmd("panel.plugin"),
         ],
     );
 

@@ -375,3 +375,10 @@
 "Open Dictionaries Folder" = "Открыть папку словарей"
 "(no dictionaries)" = "(нет словарей)"
 "Dictionary Language" = "Язык словаря"
+
+# Plugins: Scripts and the plugin panel
+"Scripts" = "Скрипты"
+"Run Script" = "Выполнить скрипт"
+"Open Scripts Folder" = "Открыть папку скриптов"
+"Reload Scripts" = "Обновить список скриптов"
+"Plugin Panel" = "Панель плагина"

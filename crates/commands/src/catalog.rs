@@ -207,6 +207,7 @@ pub const COMMANDS: &[CommandSpec] = &[
     workspace("panel.folder-as-workspace", "Folder as Workspace"),
     workspace("panel.project", "Project Panel"),
     workspace("panel.document-map", "Document Map"),
+    workspace("panel.plugin", "Plugin Panel"),
     workspace("panel.document-list", "Document List"),
     workspace("panel.function-list", "Function List"),
     workspace("panel.clipboard-history", "Clipboard History"),
@@ -330,6 +331,10 @@ pub const COMMANDS: &[CommandSpec] = &[
     editor("spell.add-word", "Add Word to Dictionary"),
     workspace("spell.language", "Dictionary Language"),
     workspace("spell.open-dictionaries-folder", "Open Dictionaries Folder"),
+    // Scripts; script.run takes { "name": <a script of the scripts folder, without .rhai> }
+    workspace("script.run", "Run Script"),
+    workspace("script.open-folder", "Open Scripts Folder"),
+    workspace("script.reload", "Reload Scripts"),
     // Help
     workspace("help.check-updates", "Check for Updates..."),
     // From the update dialogs and notifications.

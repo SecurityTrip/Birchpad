@@ -150,6 +150,7 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
     crate::navigation::register_commands(registry);
     crate::panels::register_commands(registry);
     crate::session::register_commands(registry);
+    crate::extensions::scripts::register_commands(registry);
     crate::spell_check::register_commands(registry);
     crate::disk::register_commands(registry);
     crate::themes::register_commands(registry);
@@ -231,6 +232,11 @@ pub(crate) fn dialog_close(label: &'static str) -> DialogClose {
 /// Tells the user that something went well, without interrupting them.
 pub(crate) fn report_success(message: impl Into<String>, window: &mut Window, cx: &mut App) {
     window.push_notification(Notification::success(message.into()), cx);
+}
+
+/// Tells the user something, without interrupting them.
+pub(crate) fn report_info(message: impl Into<String>, window: &mut Window, cx: &mut App) {
+    window.push_notification(Notification::info(message.into()), cx);
 }
 
 /// Shows a warning to the user without interrupting them.
@@ -920,9 +926,11 @@ impl Workspace {
             .unwrap_or_default();
         let user_languages = crate::user_languages::names(cx);
         let spell_languages = crate::spell_check::languages(cx);
+        let scripts = crate::extensions::scripts::names(cx);
         let state = MenuState {
             user_languages: &user_languages,
             spell_languages: &spell_languages,
+            scripts: &scripts,
             recent_files: &recent_files,
             themes: &themes,
             macros: &macros,

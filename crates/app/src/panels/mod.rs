@@ -13,6 +13,7 @@ mod document_list;
 mod document_map;
 mod folder_workspace;
 mod function_list;
+mod plugin_panel;
 mod project;
 
 use std::collections::HashMap;
@@ -36,6 +37,7 @@ pub(crate) use document_list::DocumentList;
 pub(crate) use document_map::DocumentMap;
 pub(crate) use folder_workspace::FolderWorkspace;
 pub(crate) use function_list::FunctionList;
+pub(crate) use plugin_panel::PluginPanel;
 pub(crate) use project::ProjectPanel;
 
 /// The project panels, as Notepad++'s Project Panel 1 to 3.
@@ -59,10 +61,12 @@ pub(crate) enum PanelKind {
     CharacterPanel,
     FunctionList,
     DocumentMap,
+    /// What a plugin or a script shows.
+    PluginPanel,
 }
 
 impl PanelKind {
-    pub(crate) const ALL: [Self; 9] = [
+    pub(crate) const ALL: [Self; 10] = [
         Self::FolderWorkspace,
         Self::Project(1),
         Self::Project(2),
@@ -72,6 +76,7 @@ impl PanelKind {
         Self::CharacterPanel,
         Self::FunctionList,
         Self::DocumentMap,
+        Self::PluginPanel,
     ];
 
     /// The name kept in `state.toml`.
@@ -86,6 +91,7 @@ impl PanelKind {
             Self::CharacterPanel => "character-panel",
             Self::FunctionList => "function-list",
             Self::DocumentMap => "document-map",
+            Self::PluginPanel => "plugin-panel",
         }
     }
 
@@ -104,12 +110,13 @@ impl PanelKind {
             Self::CharacterPanel => "Character Panel",
             Self::FunctionList => "Function List",
             Self::DocumentMap => "Document Map",
+            Self::PluginPanel => "Plugin Panel",
         }
     }
 
     pub(crate) fn side(self) -> Side {
         match self {
-            Self::FunctionList | Self::DocumentMap => Side::Right,
+            Self::FunctionList | Self::DocumentMap | Self::PluginPanel => Side::Right,
             _ => Side::Left,
         }
     }
@@ -124,6 +131,7 @@ impl PanelKind {
             Self::CharacterPanel => "panel.character-panel",
             Self::FunctionList => "panel.function-list",
             Self::DocumentMap => "panel.document-map",
+            Self::PluginPanel => "panel.plugin",
         }
     }
 
@@ -313,6 +321,7 @@ impl Workspace {
             PanelKind::CharacterPanel => cx
                 .new(|cx| CharacterPanel::new(workspace, window, cx))
                 .into(),
+            PanelKind::PluginPanel => cx.new(|cx| PluginPanel::new(workspace, window, cx)).into(),
             PanelKind::Project(panel) => cx
                 .new(|cx| ProjectPanel::new(panel, workspace, window, cx))
                 .into(),

@@ -235,7 +235,7 @@ What Phase 1 left for later is marked *(from Phase 1)* in the phases below.
       panel
 - [x] User scripting in Rhai with the plugins' API and an operation limit
       ([ADR 0037](adr/0037-rhai-scripts.md))
-- [ ] Scripts in the Plugins menu, from the `scripts` folder
+- [x] Scripts in the Plugins menu, from the `scripts` folder; the plugin panel
 - [x] Plugins folder: `plugin.toml`, installing, updating, removing and turning plugins off;
       the `PluginInstall` / `AllowedPlugins` allowlist and the `UserScripts` policy
       ([ADR 0038](adr/0038-plugin-manager-and-allowlist.md))

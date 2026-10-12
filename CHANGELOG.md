@@ -26,6 +26,11 @@ version's release notes from its section here.
   Suggestions in the completion list; Add Word to Dictionary; Dictionary Language. Dictionaries
   are Hunspell's `.aff` and `.dic`, from the `dictionaries` folder next to the settings (Open
   Dictionaries Folder) or the system's; none comes with Birchpad.
+- Plugins > Scripts: scripts in Rhai, saved as `.rhai` files in the `scripts` folder next to
+  the settings (Open Scripts Folder), run over the active document. A script reads and edits
+  the text and the selections (its edits are one undo step), runs commands, shows messages and
+  fills the Plugin Panel; it cannot touch files or the network, and stops if it runs too long.
+  See [writing plugins and scripts](docs/plugins.md).
 - The `UserScripts` policy (`plugins.scripts`): administrators can turn user scripts off, as
   `PluginInstall` and `AllowedPlugins` control plugins.
 

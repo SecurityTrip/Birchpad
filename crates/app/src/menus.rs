@@ -25,6 +25,8 @@ pub(crate) struct MenuState<'a> {
     pub(crate) run_commands: &'a [String],
     /// The languages of the spell checker's dictionaries.
     pub(crate) spell_languages: &'a [String],
+    /// The scripts of the `scripts` folder.
+    pub(crate) scripts: &'a [String],
     /// Whether a command item shows a check mark (word wrap, current encoding, ...).
     pub(crate) checked: &'a dyn Fn(&Invocation) -> bool,
 }
@@ -158,6 +160,12 @@ fn build_menu(
                         GpuiMenuItem::action(language.clone(), RunCommand(invocation))
                             .checked(checked),
                     );
+                }
+            }
+            MenuItem::Placeholder(Placeholder::Scripts) => {
+                for name in state.scripts {
+                    let invocation = Invocation::with_args("script.run", json!({ "name": name }));
+                    items.push(GpuiMenuItem::action(name.clone(), RunCommand(invocation)));
                 }
             }
             MenuItem::Placeholder(Placeholder::RunCommands) => {
