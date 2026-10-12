@@ -6,6 +6,8 @@ version's release notes from its section here.
 
 ## [Unreleased]
 
+## [0.1.5] - 2026-10-12
+
 ### Added
 
 - The Plugins menu, with Birchpad's own versions of popular Notepad++ plugins.
@@ -48,6 +50,11 @@ version's release notes from its section here.
   forms. Interface languages are YAML files (`en.yaml`, `ru.yaml`) where every text has a key.
 - The `UserScripts` policy (`plugins.scripts`): administrators can turn user scripts off, as
   `PluginInstall` and `AllowedPlugins` control plugins.
+
+### Changed
+
+- The Russian translation moved from `ru.toml`, keyed by the English text, to `ru.yaml`,
+  keyed like `en.yaml` ([ADR 0033](docs/adr/0033-localization.md)).
 
 ## [0.1.4] - 2026-10-12
 
@@ -265,7 +272,8 @@ The first release: a Notepad++-like editor for Windows, Linux and macOS.
   entirely (`updates.mode = "off"`).
 - Nightly builds of `main` on the nightly channel.
 
-[Unreleased]: https://github.com/SecurityTrip/Birchpad/compare/v0.1.4...HEAD
+[Unreleased]: https://github.com/SecurityTrip/Birchpad/compare/v0.1.5...HEAD
+[0.1.5]: https://github.com/SecurityTrip/Birchpad/compare/v0.1.4...v0.1.5
 [0.1.4]: https://github.com/SecurityTrip/Birchpad/compare/v0.1.3...v0.1.4
 [0.1.3]: https://github.com/SecurityTrip/Birchpad/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/SecurityTrip/Birchpad/compare/v0.1.0...v0.1.2
