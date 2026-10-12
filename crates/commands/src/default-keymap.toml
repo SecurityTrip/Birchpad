@@ -650,6 +650,11 @@ command = "edit.tab"
 context = "Editor"
 
 [[binding]]
+keys = "shift-tab"
+command = "edit.outdent"
+context = "Editor"
+
+[[binding]]
 keys = "insert"
 command = "edit.toggle-overwrite"
 context = "Editor"

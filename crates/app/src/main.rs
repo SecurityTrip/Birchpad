@@ -17,11 +17,13 @@ mod banner;
 mod buffer;
 mod commands;
 mod compare;
+mod date_time;
 mod disk;
 #[cfg(test)]
 mod disk_tests;
 #[cfg(feature = "e2e")]
 mod e2e;
+mod edit_extras;
 mod editor;
 mod encoding_ui;
 mod extensions;

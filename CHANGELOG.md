@@ -45,6 +45,16 @@ version's release notes from its section here.
 - The toolbar under the menus, with Notepad++'s buttons: they run their commands, show
   switches that are on pressed, and have small or large icons (Preferences > Toolbar). Which
   buttons it has, in what order, is `toolbar.buttons` in `settings.toml`; it can be hidden.
+- Edit > Indent > Increase and Decrease Line Indent; Tab on a selection of several lines
+  indents them and Shift+Tab takes one level off, by a tab or the tab width in spaces.
+- Edit > Insert > Date Time (short, long, customized), in Notepad++'s format letters; the
+  customized format and the order are in Preferences > Multi-Instance & Date.
+- Edit > Set Read-Only and Clear Read-Only Flag.
+- Edit > Paste Special: copy, cut and paste binary content (NUL characters kept), and paste
+  the clipboard's HTML or RTF as text.
+- Edit > On Selection: open the file the selection names, show its folder, or search for it
+  on the Internet with the engine of Preferences > Search Engine (DuckDuckGo, Google, Bing,
+  Yahoo!, Stack Overflow or an address of one's own).
 - Preferences > Multi-Instance (`instances.mode`): every launch, or a launch opening a session,
   can start a Birchpad of its own instead of handing its files to the running one.
 

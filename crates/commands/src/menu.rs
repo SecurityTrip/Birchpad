@@ -250,6 +250,9 @@ pub fn main_menu() -> Vec<Menu> {
         })
         .collect::<Vec<_>>()
     };
+    let date = |format: &str, label: &str| {
+        MenuItem::command_with("edit.insert-date-time", json!({ "format": format }), label)
+    };
     let edit = Menu::new(
         "Edit",
         vec![
@@ -267,6 +270,37 @@ pub fn main_menu() -> Vec<Menu> {
                     cmd("edit.copy-full-path"),
                     cmd("edit.copy-file-name"),
                     cmd("edit.copy-folder-path"),
+                ],
+            )),
+            Submenu(Menu::new(
+                "Insert",
+                vec![
+                    date("short", "Date Time (short)"),
+                    date("long", "Date Time (long)"),
+                    date("custom", "Date Time (customized)"),
+                ],
+            )),
+            Submenu(Menu::new(
+                "Indent",
+                vec![cmd("edit.indent"), cmd("edit.outdent")],
+            )),
+            Submenu(Menu::new(
+                "Paste Special",
+                vec![
+                    cmd("edit.copy-binary"),
+                    cmd("edit.cut-binary"),
+                    cmd("edit.paste-binary"),
+                    Separator,
+                    cmd("edit.paste-html"),
+                    cmd("edit.paste-rtf"),
+                ],
+            )),
+            Submenu(Menu::new(
+                "On Selection",
+                vec![
+                    cmd("edit.open-selected-file"),
+                    cmd("edit.open-selected-folder"),
+                    cmd("edit.search-online"),
                 ],
             )),
             cmd("edit.begin-end-select"),
@@ -432,6 +466,9 @@ pub fn main_menu() -> Vec<Menu> {
             cmd("edit.column-editor"),
             cmd("panel.character-panel"),
             cmd("panel.clipboard-history"),
+            Separator,
+            cmd("edit.toggle-read-only"),
+            cmd("edit.clear-read-only-flag"),
         ],
     );
 

@@ -120,7 +120,7 @@ pub(crate) const ENTRIES: &[Entry] = &[
         Kind::Bool,
     ),
     entry(
-        "Multi-Instance",
+        "Multi-Instance & Date",
         "instances.mode",
         "Instances",
         Kind::Choice(&[
@@ -128,6 +128,37 @@ pub(crate) const ENTRIES: &[Entry] = &[
             ("session", "Open session in a new instance"),
             ("multi", "Always in multi-instance mode"),
         ]),
+    ),
+    entry(
+        "Multi-Instance & Date",
+        "date.custom-format",
+        "Customized date and time",
+        Kind::Text,
+    ),
+    entry(
+        "Multi-Instance & Date",
+        "date.reverse",
+        "Date before time (short and long)",
+        Kind::Bool,
+    ),
+    entry(
+        "Search Engine",
+        "search-engine.engine",
+        "Search on Internet with",
+        Kind::Choice(&[
+            ("duckduckgo", "DuckDuckGo"),
+            ("google", "Google"),
+            ("bing", "Bing"),
+            ("yahoo", "Yahoo!"),
+            ("stack-overflow", "Stack Overflow"),
+            ("custom", "Custom"),
+        ]),
+    ),
+    entry(
+        "Search Engine",
+        "search-engine.custom-url",
+        "Custom address ($(CURRENT_WORD))",
+        Kind::Text,
     ),
     entry(
         "Editing",

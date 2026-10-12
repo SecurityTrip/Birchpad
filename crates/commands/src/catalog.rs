@@ -77,6 +77,20 @@ pub const COMMANDS: &[CommandSpec] = &[
     workspace("edit.copy-full-path", "Copy Current Full File Path"),
     workspace("edit.copy-file-name", "Copy Current Filename"),
     workspace("edit.copy-folder-path", "Copy Current Dir. Path"),
+    // { "format": "short" | "long" | "custom" }: the local time at every caret
+    editor("edit.insert-date-time", "Insert Date Time"),
+    workspace("edit.toggle-read-only", "Set Read-Only"),
+    workspace("edit.clear-read-only-flag", "Clear Read-Only Flag"),
+    // Paste Special: text with NUL characters, the clipboard's HTML or RTF
+    editor("edit.copy-binary", "Copy Binary Content"),
+    editor("edit.cut-binary", "Cut Binary Content"),
+    editor("edit.paste-binary", "Paste Binary Content"),
+    editor("edit.paste-html", "Paste HTML Content"),
+    editor("edit.paste-rtf", "Paste RTF Content"),
+    // On Selection: the primary selection names a file or is searched for
+    workspace("edit.open-selected-file", "Open File"),
+    workspace("edit.open-selected-folder", "Open Containing Folder"),
+    workspace("edit.search-online", "Search on Internet"),
     editor("edit.undo", "Undo"),
     editor("edit.redo", "Redo"),
     editor("edit.cut", "Cut"),
@@ -89,6 +103,8 @@ pub const COMMANDS: &[CommandSpec] = &[
     editor("edit.delete-word-right", "Delete to End of Word"),
     editor("edit.newline", "New Line"),
     editor("edit.tab", "Insert Tab"),
+    editor("edit.indent", "Increase Line Indent"),
+    editor("edit.outdent", "Decrease Line Indent"),
     // { "text": "..." }
     editor("edit.insert-text", "Insert Text"),
     // Auto-completion

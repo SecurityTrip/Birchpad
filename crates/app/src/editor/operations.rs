@@ -260,7 +260,7 @@ fn random_seed() -> u64 {
 
 impl EditorView {
     /// Runs an operation on the text and the selection as one undo step.
-    fn run_op(
+    pub(super) fn run_op(
         &mut self,
         cx: &mut Context<Self>,
         op: impl FnOnce(&Rope, &Selection, LineEnding) -> Option<Transaction>,

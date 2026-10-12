@@ -496,6 +496,20 @@ impl Buffer {
         self.requested_read_only
     }
 
+    /// Edit > Set Read-Only: the document cannot be edited, whatever its file allows.
+    pub(crate) fn set_requested_read_only(&mut self, on: bool, cx: &mut Context<Self>) {
+        self.requested_read_only = on;
+        cx.emit(BufferEvent::StateChanged);
+        cx.notify();
+    }
+
+    /// Edit > Clear Read-Only Flag made the file writable.
+    pub(crate) fn file_made_writable(&mut self, cx: &mut Context<Self>) {
+        self.file_read_only = false;
+        cx.emit(BufferEvent::StateChanged);
+        cx.notify();
+    }
+
     /// Whether the folds may still change on their own: a language's first parse is running.
     pub(crate) fn folds_pending(&self) -> bool {
         self.syntax.folds_pending

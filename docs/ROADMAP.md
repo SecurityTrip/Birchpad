@@ -286,7 +286,7 @@ step 6.11 brings in the sections no feature brings.
 
 ### Editing, search and view
 
-- [ ] 6.6 Edit menu: Insert date and time, Set Read-Only and Clear Read-Only Flag, Paste Special
+- [x] 6.6 Edit menu: Insert date and time, Set Read-Only and Clear Read-Only Flag, Paste Special
       (binary content, HTML, RTF), On Selection (open the file named, its folder, search the
       Internet with a chosen engine), Begin/End Select in Column Mode, Remove Consecutive
       Duplicate Lines, Increase/Decrease Line Indent as menu commands

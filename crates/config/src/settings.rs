@@ -14,6 +14,8 @@ pub struct Settings {
     pub tabs: TabSettings,
     pub toolbar: ToolbarSettings,
     pub instances: InstanceSettings,
+    pub date: DateSettings,
+    pub search_engine: SearchEngineSettings,
     pub session: SessionSettings,
     pub updates: UpdateSettings,
     pub plugins: PluginSettings,
@@ -429,6 +431,90 @@ impl InstanceSettings {
     }
 }
 
+/// Edit > Insert > Date Time: Notepad++'s "Customize insert Date Time".
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, rename_all = "kebab-case")]
+pub struct DateSettings {
+    /// Date Time (customized), in Notepad++'s letters: `yyyy-MM-dd HH:mm:ss`.
+    pub custom_format: String,
+    /// The date before the time in the short and long formats ("Reverse default date time
+    /// order").
+    pub reverse: bool,
+}
+
+impl Default for DateSettings {
+    fn default() -> Self {
+        Self {
+            custom_format: "yyyy-MM-dd HH:mm:ss".to_owned(),
+            reverse: false,
+        }
+    }
+}
+
+/// Edit > On Selection > Search on Internet: Notepad++'s Preferences > Search Engine.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, rename_all = "kebab-case")]
+pub struct SearchEngineSettings {
+    pub engine: SearchEngine,
+    /// With `engine = "custom"`: the address, `$(CURRENT_WORD)` standing for what is searched
+    /// (`https://example.com/search?q=$(CURRENT_WORD)`).
+    pub custom_url: String,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum SearchEngine {
+    #[default]
+    Duckduckgo,
+    Google,
+    Bing,
+    Yahoo,
+    StackOverflow,
+    Custom,
+}
+
+impl SearchEngineSettings {
+    /// The address that searches for `words` (encoded as a URL's query); `None` for a custom
+    /// address that is not `http(s)://`.
+    pub fn url(&self, words: &str) -> Option<String> {
+        const WORD: &str = "$(CURRENT_WORD)";
+        let template = match self.engine {
+            SearchEngine::Duckduckgo => "https://duckduckgo.com/?q=$(CURRENT_WORD)",
+            SearchEngine::Google => "https://www.google.com/search?q=$(CURRENT_WORD)",
+            SearchEngine::Bing => "https://www.bing.com/search?q=$(CURRENT_WORD)",
+            SearchEngine::Yahoo => "https://search.yahoo.com/search?p=$(CURRENT_WORD)",
+            SearchEngine::StackOverflow => "https://stackoverflow.com/search?q=$(CURRENT_WORD)",
+            SearchEngine::Custom => self.custom_url.trim(),
+        };
+        let lower = template.to_ascii_lowercase();
+        if !(lower.starts_with("https://") || lower.starts_with("http://")) {
+            return None;
+        }
+        let words = encode_query(words);
+        Some(if template.contains(WORD) {
+            template.replace(WORD, &words)
+        } else {
+            format!("{template}{words}")
+        })
+    }
+}
+
+/// `text` as a URL's query value: unreserved characters stay, spaces become `+`, the rest is
+/// percent-encoded UTF-8.
+fn encode_query(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    for byte in text.bytes() {
+        match byte {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
+                out.push(byte as char);
+            }
+            b' ' => out.push('+'),
+            _ => out.push_str(&format!("%{byte:02X}")),
+        }
+    }
+    out
+}
+
 /// Notepad++'s Preferences > Backup.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default, rename_all = "kebab-case")]
@@ -535,6 +621,62 @@ impl Default for NetworkSettings {
 pub struct DiagnosticsSettings {
     /// Send crash reports. Off unless the user opts in.
     pub crash_reports: bool,
+}
+
+#[cfg(test)]
+mod search_engine_tests {
+    use super::*;
+
+    #[test]
+    fn engines_search_for_the_words() {
+        let mut settings = SearchEngineSettings::default();
+        assert_eq!(
+            settings.url("rust fmt").as_deref(),
+            Some("https://duckduckgo.com/?q=rust+fmt")
+        );
+        settings.engine = SearchEngine::Google;
+        assert_eq!(
+            settings.url("a&b=c/d").as_deref(),
+            Some("https://www.google.com/search?q=a%26b%3Dc%2Fd")
+        );
+        settings.engine = SearchEngine::StackOverflow;
+        assert_eq!(
+            settings.url("é").as_deref(),
+            Some("https://stackoverflow.com/search?q=%C3%A9")
+        );
+        assert_eq!(
+            settings.url("").as_deref(),
+            Some("https://stackoverflow.com/search?q=")
+        );
+    }
+
+    #[test]
+    fn a_custom_address() {
+        let mut settings = SearchEngineSettings {
+            engine: SearchEngine::Custom,
+            custom_url: " https://example.com/s?w=$(CURRENT_WORD)&x=1 ".into(),
+        };
+        assert_eq!(
+            settings.url("a b").as_deref(),
+            Some("https://example.com/s?w=a+b&x=1")
+        );
+        // Without the placeholder, the words go at the end.
+        settings.custom_url = "HTTP://example.com/?q=".into();
+        assert_eq!(
+            settings.url("x").as_deref(),
+            Some("HTTP://example.com/?q=x")
+        );
+        // Only web addresses.
+        for bad in [
+            "",
+            "file:///etc/passwd",
+            "javascript:alert(1)",
+            "example.com",
+        ] {
+            settings.custom_url = bad.into();
+            assert_eq!(settings.url("x"), None, "{bad}");
+        }
+    }
 }
 
 #[cfg(test)]

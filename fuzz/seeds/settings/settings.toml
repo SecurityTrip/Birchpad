@@ -18,6 +18,13 @@ switcher-mru = false
 size = "large"
 buttons = ["file.new", "|", "edit.undo"]
 
+[date]
+custom-format = "dd.MM.yyyy 'at' HH:mm"
+
+[search-engine]
+engine = "custom"
+custom-url = "https://example.com/?q=$(CURRENT_WORD)"
+
 [session]
 backup-interval-seconds = 30
 

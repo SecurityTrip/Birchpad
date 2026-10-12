@@ -22,6 +22,7 @@ birchpad-theme.workspace = true
 birchpad-tools.workspace = true
 birchpad-update = { workspace = true, features = ["installer"] }
 birchpad-view.workspace = true
+chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
 futures = "0.3"
 gpui-kit = "0.7"
 raw-window-handle = "0.6"
@@ -53,13 +54,19 @@ tempfile = "3"
 [lints]
 workspace = true
 
-# View > Always on Top: the platforms' own calls for the main window.
+# View > Always on Top, Edit > Paste Special > Paste HTML/RTF Content: the platforms' own calls.
 [target.'cfg(windows)'.dependencies]
-windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_UI_WindowsAndMessaging"] }
+windows-sys = { version = "0.61", features = [
+    "Win32_Foundation",
+    "Win32_System_DataExchange",
+    "Win32_System_Memory",
+    "Win32_UI_WindowsAndMessaging",
+] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2 = "0.6"
-objc2-app-kit = { version = "0.3", features = ["NSResponder", "NSView", "NSWindow"] }
+objc2-app-kit = { version = "0.3", features = ["NSPasteboard", "NSResponder", "NSView", "NSWindow"] }
+objc2-foundation = { version = "0.3", features = ["NSString"] }
 
 [target.'cfg(all(unix, not(target_os = "macos")))'.dependencies]
 x11rb = "0.13"

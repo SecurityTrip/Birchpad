@@ -189,7 +189,24 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
         Ok(())
     });
     registry.editor("edit.tab", |this, (), _, cx| {
-        this.insert_tab(cx);
+        // A selection over several lines indents them, as in Notepad++.
+        let text = this.text(cx).clone();
+        let several_lines = this.selection.iter().any(|range| {
+            !range.is_empty() && birchpad_core::ops::lines_of(&text, *range).len() > 1
+        });
+        if several_lines {
+            this.indent(true, cx);
+        } else {
+            this.insert_tab(cx);
+        }
+        Ok(())
+    });
+    registry.editor("edit.indent", |this, (), _, cx| {
+        this.indent(true, cx);
+        Ok(())
+    });
+    registry.editor("edit.outdent", |this, (), _, cx| {
+        this.indent(false, cx);
         Ok(())
     });
     registry.editor("edit.insert-text", |this, args: InsertTextArgs, _, cx| {
@@ -1103,6 +1120,25 @@ impl EditorView {
         } else {
             self.go_to(partner.start, cx);
         }
+    }
+
+    /// Increase (`more`) or Decrease Line Indent: the lines of every selection, by a tab or by
+    /// `editor.tab-width` spaces with `editor.insert-spaces`.
+    fn indent(&mut self, more: bool, cx: &mut Context<Self>) {
+        let settings = ViewSettings::read(cx);
+        let unit = if settings.insert_spaces {
+            " ".repeat(settings.tab_width.max(1))
+        } else {
+            "	".to_owned()
+        };
+        let width = settings.tab_width;
+        self.run_op(cx, move |text, selection, _| {
+            if more {
+                birchpad_core::ops::indent_lines(text, selection, &unit)
+            } else {
+                birchpad_core::ops::outdent_lines(text, selection, width)
+            }
+        });
     }
 
     /// Tab: a tab character, or spaces up to the next tab stop with `editor.insert-spaces`.

@@ -128,6 +128,8 @@ pub(crate) enum Shell {
     Terminal(PathBuf),
     /// The program the system opens this file with.
     Open(PathBuf),
+    /// The web browser, at this address.
+    Browse(String),
 }
 
 #[cfg(test)]
@@ -137,7 +139,7 @@ thread_local! {
 }
 
 /// Hands `request` to the system (in tests, only notes it).
-fn shell(request: Shell, cx: &mut App) -> Result<()> {
+pub(crate) fn shell(request: Shell, cx: &mut App) -> Result<()> {
     #[cfg(test)]
     {
         let _ = &cx;
@@ -153,6 +155,10 @@ fn shell(request: Shell, cx: &mut App) -> Result<()> {
         Shell::Terminal(folder) => crate::panels::open_terminal(&folder),
         Shell::Open(path) => {
             cx.open_with_system(&path);
+            Ok(())
+        }
+        Shell::Browse(url) => {
+            cx.open_url(&url);
             Ok(())
         }
     }

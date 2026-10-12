@@ -172,6 +172,8 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
     crate::window_menu::register_commands(registry);
     crate::file_commands::register_commands(registry);
     crate::window_modes::register_commands(registry);
+    crate::date_time::register_commands(registry);
+    crate::edit_extras::register_commands(registry);
 }
 
 /// View menu switches kept in `state.toml`: command, current value, how to remember a new one.
@@ -927,12 +929,18 @@ impl Workspace {
         let spell_enabled = crate::spell_check::is_enabled(cx);
         let spell_language = crate::spell_check::language(cx);
         let tab_marks = self.active_view(cx).map(|view| view.read(cx).tab);
+        let requested_read_only = self
+            .active_view(cx)
+            .is_some_and(|view| view.read(cx).buffer.read(cx).requested_read_only());
         let checked = |invocation: &Invocation| {
             if let Some(on) = crate::pane::is_checked(invocation, tab_marks) {
                 return on;
             }
             if let Some(on) = crate::window_modes::is_checked(&invocation.command, self.modes) {
                 return on;
+            }
+            if invocation.command == "edit.toggle-read-only" {
+                return requested_read_only;
             }
             if let Some((_, read, _)) = VIEW_SWITCHES
                 .iter()
