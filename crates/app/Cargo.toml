@@ -32,6 +32,7 @@ unicode-bidi = "0.3"
 yaml-rust2 = "0.13"
 notify = "8"
 toml.workspace = true
+trash = "5"
 
 [features]
 # Runs the script named by BIRCHPAD_E2E_SCRIPT once started, for the end-to-end tests

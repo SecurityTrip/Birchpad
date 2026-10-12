@@ -691,6 +691,21 @@ impl Pane {
                 .item(command("file.save-as"))
                 .item(command("file.print"))
                 .separator()
+                .item(command("file.rename"))
+                .item(command("file.move-to-recycle-bin"))
+                .item(command("file.reload"))
+                .separator()
+                .item(entry(
+                    Invocation::with_args(
+                        "file.containing-folder",
+                        json!({ "in": "file-manager" }),
+                    ),
+                    crate::menus::command_title("file.containing-folder"),
+                ))
+                .item(command("edit.copy-full-path"))
+                .item(command("edit.copy-file-name"))
+                .item(command("edit.copy-folder-path"))
+                .separator()
                 .item(command("view.pin-tab").checked(marks.pinned))
                 .separator();
             for color in 1..=TAB_COLORS {

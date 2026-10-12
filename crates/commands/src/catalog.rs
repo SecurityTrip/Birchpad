@@ -42,16 +42,24 @@ pub const COMMANDS: &[CommandSpec] = &[
     // File
     workspace("file.new", "New"),
     workspace("file.open", "Open..."),
+    // { "in": "file-manager" | "terminal" | "workspace" }: the active file's folder
+    workspace("file.containing-folder", "Open Containing Folder"),
+    workspace("file.open-default-viewer", "Open in Default Viewer"),
+    workspace("file.reload", "Reload from Disk"),
     workspace(
         "file.open-folder-as-workspace",
         "Open Folder as Workspace...",
     ),
     // { "path": "C:\\notes.txt" }
     workspace("file.open-recent", "Open Recent File"),
+    workspace("file.restore-recent-closed", "Restore Recent Closed File"),
+    workspace("file.open-all-recent", "Open All Recent Files"),
     workspace("file.clear-recent", "Empty Recent Files List"),
     workspace("file.save", "Save"),
     workspace("file.save-as", "Save As..."),
+    workspace("file.save-copy-as", "Save a Copy As..."),
     workspace("file.save-all", "Save All"),
+    workspace("file.rename", "Rename..."),
     workspace("file.close", "Close"),
     workspace("file.close-all", "Close All"),
     workspace("file.close-others", "Close All but This"),
@@ -60,10 +68,15 @@ pub const COMMANDS: &[CommandSpec] = &[
     workspace("file.close-left", "Close All to the Left"),
     workspace("file.close-right", "Close All to the Right"),
     workspace("file.close-unchanged", "Close All Unchanged"),
+    workspace("file.move-to-recycle-bin", "Move to Recycle Bin"),
     workspace("file.load-session", "Load Session..."),
     workspace("file.save-session", "Save Session..."),
     workspace("file.exit", "Exit"),
     // Edit
+    // The active document's full path (its name if untitled), file name, folder
+    workspace("edit.copy-full-path", "Copy Current Full File Path"),
+    workspace("edit.copy-file-name", "Copy Current Filename"),
+    workspace("edit.copy-folder-path", "Copy Current Dir. Path"),
     editor("edit.undo", "Undo"),
     editor("edit.redo", "Redo"),
     editor("edit.cut", "Cut"),

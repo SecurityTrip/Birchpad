@@ -46,6 +46,10 @@ keys = "secondary-shift-w"
 command = "file.close-all"
 
 [[binding]]
+keys = "secondary-shift-t"
+command = "file.restore-recent-closed"
+
+[[binding]]
 keys = "cmd-q"
 command = "file.exit"
 platforms = ["macos"]

@@ -30,6 +30,13 @@ version's release notes from its section here.
   length or modified time, either way), and Windows..., a list of the view's documents with
   their path, type and size, sorted by any column, where the selected ones are activated,
   saved or closed and Sort Tabs gives the tabs the order shown.
+- File > Open Containing Folder (in the file manager, a terminal or Folder as Workspace), Open
+  in Default Viewer, Reload from Disk, Save a Copy As (in the document's encoding, leaving it
+  as it is), Rename (the file in its folder, or the name of an untitled document, kept in
+  sessions) and Move to Recycle Bin, also in the tab's context menu.
+- File > Recent Files > Restore Recent Closed File (Ctrl+Shift+T) and Open All Recent Files.
+- Edit > Copy to Clipboard: the document's full path, file name and folder, also in the tab's
+  context menu.
 
 ### Changed
 

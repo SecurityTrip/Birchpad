@@ -12,6 +12,9 @@ mod clipboard_history;
 mod document_list;
 mod document_map;
 mod folder_workspace;
+// Open Containing Folder > Terminal; tests only note it (`file_commands::Shell`).
+#[cfg_attr(test, allow(unused_imports))]
+pub(crate) use folder_workspace::open_terminal;
 mod function_list;
 mod plugin_panel;
 mod project;

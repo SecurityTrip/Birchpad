@@ -25,6 +25,7 @@ mod e2e;
 mod editor;
 mod encoding_ui;
 mod extensions;
+mod file_commands;
 mod file_ops;
 mod find;
 mod find_in_files;

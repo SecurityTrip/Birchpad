@@ -621,7 +621,7 @@ impl FolderWorkspace {
 }
 
 /// Opens the system's terminal in `folder`.
-fn open_terminal(folder: &Path) -> anyhow::Result<()> {
+pub(crate) fn open_terminal(folder: &Path) -> anyhow::Result<()> {
     use std::process::Command;
     let started = if cfg!(target_os = "windows") {
         Command::new("cmd")

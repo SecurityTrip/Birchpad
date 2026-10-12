@@ -207,6 +207,8 @@ pub(crate) struct Buffer {
     path: Option<PathBuf>,
     /// The number of an untitled buffer: 1 for "new 1".
     untitled: Option<usize>,
+    /// The name an untitled buffer was given (File > Rename), shown instead of "new N".
+    title: Option<String>,
     problem: Option<DecodeProblem>,
     /// With a problem: where saving the text would change the file.
     decode_changes: ByteChanges,
@@ -243,6 +245,7 @@ impl Buffer {
             doc: Document::new(),
             path: None,
             untitled: Some(number),
+            title: None,
             problem: None,
             decode_changes: ByteChanges::default(),
             file_read_only: false,
@@ -312,6 +315,7 @@ impl Buffer {
             doc: Document::new(),
             path: Some(path),
             untitled: None,
+            title: None,
             problem: None,
             decode_changes: ByteChanges::default(),
             file_read_only: false,
@@ -861,16 +865,39 @@ impl Buffer {
         self.untitled
     }
 
-    /// The name shown on the tab: the file name, or "new N".
+    /// The name shown on the tab: the file name, the name an untitled document was given, or
+    /// "new N".
     pub(crate) fn display_name(&self) -> String {
-        match (&self.path, self.untitled) {
-            (Some(path), _) => path.file_name().map_or_else(
+        match (&self.path, &self.title, self.untitled) {
+            (Some(path), _, _) => path.file_name().map_or_else(
                 || path.display().to_string(),
                 |name| name.to_string_lossy().into_owned(),
             ),
-            (None, Some(number)) => format!("new {number}"),
-            (None, None) => "new".to_owned(),
+            (None, Some(title), _) => title.clone(),
+            (None, None, Some(number)) => format!("new {number}"),
+            (None, None, None) => "new".to_owned(),
         }
+    }
+
+    /// The name an untitled document was given, if any.
+    pub(crate) fn title(&self) -> Option<&str> {
+        self.title.as_deref().filter(|_| self.path.is_none())
+    }
+
+    /// Gives an untitled document a name (File > Rename); `None` goes back to "new N".
+    pub(crate) fn set_title(&mut self, title: Option<String>, cx: &mut Context<Self>) {
+        self.title = title;
+        cx.emit(BufferEvent::StateChanged);
+        cx.notify();
+    }
+
+    /// The file was renamed to `path` (File > Rename): the document follows it.
+    pub(crate) fn renamed(&mut self, path: PathBuf, cx: &mut Context<Self>) {
+        self.disk = birchpad_io::stamp(&path).ok().flatten();
+        self.path = Some(path);
+        self.detect_language(cx);
+        cx.emit(BufferEvent::StateChanged);
+        cx.notify();
     }
 
     pub(crate) fn is_modified(&self) -> bool {

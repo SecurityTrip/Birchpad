@@ -156,24 +156,41 @@ pub fn main_menu() -> Vec<Menu> {
     use MenuItem::{Placeholder as Dynamic, Separator, Submenu};
     let cmd = MenuItem::command;
 
+    let folder = |target: &str, label: &str| {
+        MenuItem::command_with("file.containing-folder", json!({ "in": target }), label)
+    };
     let file = Menu::new(
         "File",
         vec![
             cmd("file.new"),
             cmd("file.open"),
+            Submenu(Menu::new(
+                "Open Containing Folder",
+                vec![
+                    folder("file-manager", "File Manager"),
+                    folder("terminal", "Terminal"),
+                    folder("workspace", "Folder as Workspace"),
+                ],
+            )),
+            cmd("file.open-default-viewer"),
             cmd("file.open-folder-as-workspace"),
+            cmd("file.reload"),
             Submenu(Menu::new(
                 "Recent Files",
                 vec![
                     Dynamic(Placeholder::RecentFiles),
                     Separator,
+                    cmd("file.restore-recent-closed"),
+                    cmd("file.open-all-recent"),
                     cmd("file.clear-recent"),
                 ],
             )),
             Separator,
             cmd("file.save"),
             cmd("file.save-as"),
+            cmd("file.save-copy-as"),
             cmd("file.save-all"),
+            cmd("file.rename"),
             Separator,
             cmd("file.close"),
             cmd("file.close-all"),
@@ -187,6 +204,7 @@ pub fn main_menu() -> Vec<Menu> {
                     cmd("file.close-unchanged"),
                 ],
             )),
+            cmd("file.move-to-recycle-bin"),
             Separator,
             cmd("file.load-session"),
             cmd("file.save-session"),
@@ -243,6 +261,14 @@ pub fn main_menu() -> Vec<Menu> {
             cmd("edit.paste"),
             cmd("edit.delete"),
             cmd("edit.select-all"),
+            Submenu(Menu::new(
+                "Copy to Clipboard",
+                vec![
+                    cmd("edit.copy-full-path"),
+                    cmd("edit.copy-file-name"),
+                    cmd("edit.copy-folder-path"),
+                ],
+            )),
             cmd("edit.begin-end-select"),
             cmd("edit.begin-end-select-column"),
             Separator,

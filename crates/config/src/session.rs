@@ -35,6 +35,9 @@ pub struct SessionDocument {
     /// The number of an untitled document: 1 for "new 1".
     #[serde(skip_serializing_if = "Option::is_none")]
     pub untitled: Option<usize>,
+    /// The name an untitled document was given instead of "new N".
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
     /// The text, as UTF-8, when it is not the file's: a file name in the backup folder, or an
     /// absolute path (sessions imported from Notepad++).
     #[serde(skip_serializing_if = "Option::is_none")]

@@ -515,6 +515,14 @@ impl Workspace {
                 }
             }
         }
+        if let Some(title) = document
+            .title
+            .clone()
+            .filter(|title| !title.trim().is_empty())
+            && document.path.is_none()
+        {
+            buffer.update(cx, |buffer, cx| buffer.set_title(Some(title), cx));
+        }
         if !document.bookmarks.is_empty() {
             let lines = document.bookmarks.clone();
             buffer.update(cx, |buffer, cx| buffer.restore_bookmarks(lines, cx));
@@ -545,6 +553,7 @@ fn document_of(buffer: &Buffer, backups: bool) -> Option<SessionDocument> {
     };
     Some(SessionDocument {
         untitled: path.is_none().then(|| buffer.untitled_number()).flatten(),
+        title: buffer.title().map(str::to_owned),
         path,
         modified: backup.is_some() && buffer.is_modified(),
         line_ending: backup
