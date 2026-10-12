@@ -31,7 +31,14 @@ struct AnyStyleArgs {
 /// The index of style 1..5.
 fn style_index(style: usize) -> Result<usize> {
     if !(1..=MARK_STYLES).contains(&style) {
-        bail!("there is no style {style}; styles are numbered 1 to {MARK_STYLES}");
+        bail!(
+            "{}",
+            t!(
+                "editor.marks.there-is-no-style-styles-are-numbered-1-to",
+                style = style,
+                MARK_STYLES = MARK_STYLES
+            )
+        );
     }
     Ok(style - 1)
 }

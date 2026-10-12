@@ -84,7 +84,7 @@ pub(crate) fn hash_listing(
 pub(crate) fn register_commands(registry: &mut CommandRegistry) {
     registry.editor("tools.hash-selection", |this, args: HashArgs, _, cx| {
         let Some(selected) = this.selected_text(cx) else {
-            bail!("select the text to hash");
+            bail!("{}", t!("tools.select-the-text-to-hash"));
         };
         let hash = hash_hex(args.hash.into(), selected.as_bytes());
         cx.write_to_clipboard(ClipboardItem::new_string(hash));

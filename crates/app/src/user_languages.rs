@@ -128,9 +128,12 @@ pub(crate) fn import(paths: &[PathBuf], dir: &Path) -> (usize, Vec<String>) {
                 birchpad_syntax::parse_udl(&text).with_context(|| path.display().to_string())?;
             std::fs::create_dir_all(dir)
                 .with_context(|| format!("cannot create {}", dir.display()))?;
-            let name = path
-                .file_name()
-                .ok_or_else(|| anyhow!("{} has no name", path.display()))?;
+            let name = path.file_name().ok_or_else(|| {
+                anyhow!(
+                    "{}",
+                    t!("user-languages.has-no-name", path = path.display())
+                )
+            })?;
             let target = dir.join(name);
             if *path != target {
                 std::fs::copy(path, &target)
@@ -157,7 +160,10 @@ impl Workspace {
     fn import_user_languages(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let Some(dir) = folder(cx) else {
             report_error(
-                &anyhow!("there is no settings folder to keep languages in"),
+                &anyhow!(
+                    "{}",
+                    t!("user-languages.there-is-no-settings-folder-to-keep-languages-in")
+                ),
                 window,
                 cx,
             );

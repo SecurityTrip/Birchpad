@@ -35,7 +35,7 @@ pub(crate) fn rows(keymap: &Keymap) -> Vec<Row> {
         .iter()
         .map(|spec| Row {
             invocation: Invocation::new(spec.id),
-            name: spec.title.to_owned(),
+            name: crate::menus::command_title(spec.id),
             category: category(spec.id),
         })
         .collect();
@@ -44,8 +44,11 @@ pub(crate) fn rows(keymap: &Keymap) -> Vec<Row> {
         for item in items {
             match item {
                 MenuItem::Command { invocation, .. } if !invocation.args.is_null() => {
-                    let label = item.label().unwrap_or_default();
-                    out.push((invocation.clone(), format!("{parent}: {label}")));
+                    let parent = crate::i18n::get_or(&crate::menus::menu_key(parent), parent);
+                    out.push((
+                        invocation.clone(),
+                        format!("{parent}: {}", crate::menus::menu_label(item)),
+                    ));
                 }
                 MenuItem::Submenu(menu) => walk(&menu.items, &menu.title, out),
                 _ => {}
@@ -58,7 +61,9 @@ pub(crate) fn rows(keymap: &Keymap) -> Vec<Row> {
     for binding in keymap.bindings() {
         if !binding.invocation.args.is_null() {
             let title = birchpad_commands::find(&binding.invocation.command)
-                .map_or(binding.invocation.command.as_str(), |spec| spec.title);
+                .map_or(binding.invocation.command.clone(), |spec| {
+                    crate::menus::command_title(spec.id)
+                });
             with_args.push((
                 binding.invocation.clone(),
                 format!("{title} {}", binding.invocation.args),
@@ -130,8 +135,12 @@ pub(crate) fn change(
     cx: &mut App,
     edit: impl FnOnce(&str) -> Result<String, birchpad_commands::KeymapError>,
 ) -> Result<()> {
-    let path =
-        keymap_path(cx).ok_or_else(|| anyhow!("there is no settings folder for keymap.toml"))?;
+    let path = keymap_path(cx).ok_or_else(|| {
+        anyhow!(
+            "{}",
+            t!("shortcut-mapper.there-is-no-settings-folder-for-keymap-toml")
+        )
+    })?;
     let text = match std::fs::read_to_string(&path) {
         Ok(text) => text,
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => String::new(),
@@ -173,17 +182,18 @@ pub(crate) fn open(workspace: WeakEntity<Workspace>, window: &mut Window, cx: &m
     let focus = mapper.read(cx).filter.clone();
     window.open_dialog(cx, move |dialog, _, _| {
         dialog
-            .title(crate::i18n::tr("Shortcut Mapper"))
+            .title(t!("shortcut-mapper.shortcut-mapper"))
             .w(px(760.))
             .child(mapper.clone())
-            .footer(DialogFooter::new().child(crate::workspace::dialog_close("Close")))
+            .footer(DialogFooter::new().child(crate::workspace::dialog_close("common.close")))
     });
     focus.update(cx, |input, cx| input.focus(window, cx));
 }
 
 impl ShortcutMapper {
     fn new(workspace: WeakEntity<Workspace>, window: &mut Window, cx: &mut Context<Self>) -> Self {
-        let filter = cx.new(|cx| InputState::new(window, cx).placeholder("Filter"));
+        let filter =
+            cx.new(|cx| InputState::new(window, cx).placeholder(t!("shortcut-mapper.filter")));
         cx.subscribe(&filter, |this, _, event: &InputEvent, cx| {
             if matches!(event, InputEvent::Change) {
                 this.refilter(cx);
@@ -391,7 +401,7 @@ impl Render for ShortcutMapper {
                     .child(div().w(px(160.)).child(label))
                     .child(
                         Button::new(("shortcut-remove", index))
-                            .label(crate::i18n::tr("Remove"))
+                            .label(t!("common.remove"))
                             .on_click(cx.listener(move |this, _, _, cx| this.remove(&keys, cx))),
                     )
             });
@@ -414,20 +424,20 @@ impl Render for ShortcutMapper {
                             .border_1()
                             .border_color(paint(colors.accent))
                             .child(pressed.clone().unwrap_or_else(|| {
-                                crate::i18n::tr("Press the keys (Esc: cancel)")
+                                t!("shortcut-mapper.press-the-keys-esc-cancel")
                             })),
                     )
                     .child(
                         Button::new("shortcut-assign")
                             .primary()
-                            .label(crate::i18n::tr("Assign"))
+                            .label(t!("shortcut-mapper.assign"))
                             .disabled(pressed.is_none())
                             .on_click(cx.listener(|this, _, _, cx| this.assign(cx))),
                     )
                     .into_any_element()
             } else {
                 Button::new("shortcut-add")
-                    .label(crate::i18n::tr("Add Shortcut..."))
+                    .label(t!("shortcut-mapper.add-shortcut"))
                     .on_click(cx.listener(|this, _, _, cx| this.start_capture(cx)))
                     .into_any_element()
             };
@@ -440,16 +450,18 @@ impl Render for ShortcutMapper {
                 .child(
                     div().flex().flex_row().gap_2().child(capture).child(
                         Button::new("shortcut-reset")
-                            .label(crate::i18n::tr("Reset"))
+                            .label(t!("shortcut-mapper.reset"))
                             .on_click(cx.listener(|this, _, _, cx| this.reset(cx))),
                     ),
                 )
                 .children(conflict.map(|other| {
                     let title = birchpad_commands::find(&other.command)
-                        .map_or(other.command.clone(), |spec| spec.title.to_owned());
-                    div().text_color(paint(colors.error)).child(format!(
-                        "These keys run {title} now; assigning them replaces it."
-                    ))
+                        .map_or(other.command.clone(), |spec| {
+                            crate::menus::command_title(spec.id)
+                        });
+                    div()
+                        .text_color(paint(colors.error))
+                        .child(t!("shortcut-mapper.conflict", title = title))
                 }))
         });
         div()

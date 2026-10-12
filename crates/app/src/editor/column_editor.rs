@@ -35,14 +35,14 @@ pub(super) fn open(view: Entity<EditorView>, window: &mut Window, cx: &mut App) 
     window.open_dialog(cx, move |dialog, _, _| {
         let confirm = editor.clone();
         dialog
-            .title(crate::i18n::tr("Column / Multi-Selection Editor"))
+            .title(t!("editor.column-editor.column-multi-selection-editor"))
             .w(px(420.))
             .child(editor.clone())
             .footer(
                 DialogFooter::new()
-                    .child(crate::workspace::dialog_close("Cancel"))
+                    .child(crate::workspace::dialog_close("common.cancel"))
                     .child(crate::workspace::dialog_action(
-                        Button::new("column-ok").label(crate::i18n::tr("OK")),
+                        Button::new("column-ok").label(t!("common.ok")),
                     )),
             )
             .on_ok(move |_, _, cx| {
@@ -94,14 +94,28 @@ impl ColumnEditor {
         let base = Base::from(self.format);
         let field = |input: &Entity<InputState>| input.read(cx).value().to_string();
         let initial = field(&self.initial);
-        let initial = parse_number(&initial, base)
-            .ok_or_else(|| anyhow!("The initial number is not a {} number", base_name(base)))?;
+        let initial = parse_number(&initial, base).ok_or_else(|| {
+            anyhow!(
+                "{}",
+                t!(
+                    "editor.column-editor.the-initial-number-is-not-a-number",
+                    base_name = base_name(base)
+                )
+            )
+        })?;
         let step = field(&self.step);
         let step = if step.trim().is_empty() {
             0
         } else {
-            parse_number(&step, base)
-                .ok_or_else(|| anyhow!("Increase by is not a {} number", base_name(base)))?
+            parse_number(&step, base).ok_or_else(|| {
+                anyhow!(
+                    "{}",
+                    t!(
+                        "editor.column-editor.increase-by-is-not-a-number",
+                        base_name = base_name(base)
+                    )
+                )
+            })?
         };
         let repeat = field(&self.repeat);
         let repeat = if repeat.trim().is_empty() {
@@ -109,7 +123,13 @@ impl ColumnEditor {
         } else {
             match parse_number(&repeat, base) {
                 Some(repeat) if repeat > 0 => repeat as usize,
-                _ => bail!("Repeat must be a positive {} number", base_name(base)),
+                _ => bail!(
+                    "{}",
+                    t!(
+                        "editor.column-editor.repeat-must-be-a-positive-number",
+                        base_name = base_name(base)
+                    )
+                ),
             }
         };
         Ok(ColumnInsertArgs::Numbers(NumberArgs {
@@ -245,7 +265,7 @@ impl Render for ColumnEditor {
             )
             .child(
                 Checkbox::new("column-uppercase")
-                    .label(crate::i18n::tr("Hexadecimal in upper case (A-F)"))
+                    .label(t!("editor.column-editor.hexadecimal-in-upper-case-a-f"))
                     .checked(self.uppercase)
                     .disabled(!self.numbers || self.format != FormatName::Hex)
                     .on_click(move |checked, _, cx| {

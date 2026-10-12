@@ -23,8 +23,42 @@ pub(crate) struct MenuState<'a> {
     pub(crate) macros: &'a [String],
     /// The saved command lines the Run menu lists.
     pub(crate) run_commands: &'a [String],
+    /// The languages of the spell checker's dictionaries.
+    pub(crate) spell_languages: &'a [String],
+    /// The scripts of the `scripts` folder.
+    pub(crate) scripts: &'a [String],
+    /// The plugins ready to run: id, name and commands.
+    pub(crate) plugins: &'a [(String, String, Vec<birchpad_plugin::PluginCommand>)],
     /// Whether a command item shows a check mark (word wrap, current encoding, ...).
     pub(crate) checked: &'a dyn Fn(&Invocation) -> bool,
+}
+
+/// The key of a menu's or a menu item's own title: `menu.<title>`.
+pub(crate) fn menu_key(title: &str) -> String {
+    format!("menu.{}", crate::i18n::slug(title))
+}
+
+/// The key of a command's title: `command.<id>`.
+pub(crate) fn command_key(id: &str) -> String {
+    format!("command.{id}")
+}
+
+/// A command's title in the interface's language.
+pub(crate) fn command_title(id: &str) -> String {
+    let english = birchpad_commands::find(id).map_or(id, |spec| spec.title);
+    crate::i18n::get_or(&command_key(id), english)
+}
+
+/// The text of a menu item: its own label (`menu.<label>`), or its command's title.
+pub(crate) fn menu_label(item: &MenuItem) -> String {
+    match item {
+        MenuItem::Command {
+            label: Some(label), ..
+        } => crate::i18n::get_or(&menu_key(label), label),
+        MenuItem::Command { invocation, .. } => command_title(&invocation.command),
+        MenuItem::Submenu(menu) => crate::i18n::get_or(&menu_key(&menu.title), &menu.title),
+        _ => String::new(),
+    }
 }
 
 /// Turns the menu model into GPUI menus.
@@ -51,7 +85,7 @@ fn build_menu(
     for item in menu.items {
         match item {
             MenuItem::Command { .. } => {
-                let label = crate::i18n::tr(item.label().unwrap_or_default());
+                let label = menu_label(&item);
                 let MenuItem::Command { invocation, .. } = item else {
                     unreachable!()
                 };
@@ -71,7 +105,7 @@ fn build_menu(
                 if state.recent_files.is_empty() {
                     items.push(
                         GpuiMenuItem::action(
-                            crate::i18n::tr("(empty)"),
+                            t!("menus.empty"),
                             RunCommand::new("file.clear-recent"),
                         )
                         .disabled(true),
@@ -138,6 +172,46 @@ fn build_menu(
                     );
                 }
             }
+            MenuItem::Placeholder(Placeholder::SpellLanguages) => {
+                if state.spell_languages.is_empty() {
+                    items.push(
+                        GpuiMenuItem::action(
+                            t!("menus.no-dictionaries"),
+                            RunCommand::new("spell.open-dictionaries-folder"),
+                        )
+                        .disabled(true),
+                    );
+                }
+                for language in state.spell_languages {
+                    let invocation =
+                        Invocation::with_args("spell.language", json!({ "language": language }));
+                    let checked = (state.checked)(&invocation);
+                    items.push(
+                        GpuiMenuItem::action(language.clone(), RunCommand(invocation))
+                            .checked(checked),
+                    );
+                }
+            }
+            MenuItem::Placeholder(Placeholder::Scripts) => {
+                for name in state.scripts {
+                    let invocation = Invocation::with_args("script.run", json!({ "name": name }));
+                    items.push(GpuiMenuItem::action(name.clone(), RunCommand(invocation)));
+                }
+            }
+            MenuItem::Placeholder(Placeholder::Plugins) => {
+                for (id, name, commands) in state.plugins {
+                    let entries = commands.iter().map(|command| {
+                        let invocation = Invocation::with_args(
+                            "plugin.run",
+                            json!({ "plugin": id, "command": command.id }),
+                        );
+                        GpuiMenuItem::action(command.title.clone(), RunCommand(invocation))
+                    });
+                    items.push(GpuiMenuItem::submenu(
+                        gpui_kit::Menu::new(name.clone()).items(entries),
+                    ));
+                }
+            }
             MenuItem::Placeholder(Placeholder::RunCommands) => {
                 for name in state.run_commands {
                     let invocation = Invocation::with_args("run.run", json!({ "name": name }));
@@ -162,7 +236,7 @@ fn build_menu(
             }
         }
     }
-    gpui_kit::Menu::new(crate::i18n::tr(&menu.title)).items(items)
+    gpui_kit::Menu::new(crate::i18n::get_or(&menu_key(&menu.title), &menu.title)).items(items)
 }
 
 /// On macOS, About, Check for Updates and Quit live in the application menu.

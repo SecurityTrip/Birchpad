@@ -10,10 +10,13 @@
 // A GUI program: no console window on Windows (debug builds keep it for diagnostics).
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+#[macro_use]
+mod i18n;
 mod app_state;
 mod banner;
 mod buffer;
 mod commands;
+mod compare;
 mod disk;
 #[cfg(test)]
 mod disk_tests;
@@ -21,12 +24,14 @@ mod disk_tests;
 mod e2e;
 mod editor;
 mod encoding_ui;
+mod extensions;
 mod file_ops;
 mod find;
 mod find_in_files;
 mod help;
-mod i18n;
+mod hex_view;
 mod incremental;
+mod json_xml;
 #[cfg(test)]
 mod language_tests;
 mod macros;
@@ -43,6 +48,7 @@ mod session;
 #[cfg(test)]
 mod session_tests;
 mod shortcut_mapper;
+mod spell_check;
 #[cfg(test)]
 mod split_tests;
 mod status_bar;
@@ -146,6 +152,7 @@ fn main() {
                     let mut workspace = Workspace::new(window, cx);
                     workspace.restore_last_session(window, cx);
                     workspace.restore_panels(window, cx);
+                    workspace.load_plugins(window, cx);
                     workspace.open_command_line(&command_line, window, cx);
                     workspace.report_pending_recoveries(window, cx);
                     workspace.start_backups(cx);

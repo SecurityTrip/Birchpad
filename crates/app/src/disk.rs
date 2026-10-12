@@ -211,10 +211,19 @@ impl Workspace {
             )
         };
         if !monitoring && !has_path {
-            bail!("Monitoring follows a file: save {name} first");
+            bail!(
+                "{}",
+                t!("disk.monitoring-follows-a-file-save-first", name = name)
+            );
         }
         if !monitoring && modified {
-            bail!("Save or undo the changes to {name} before monitoring it");
+            bail!(
+                "{}",
+                t!(
+                    "disk.save-or-undo-the-changes-to-before-monitoring-it",
+                    name = name
+                )
+            );
         }
         buffer.update(cx, |buffer, cx| buffer.set_monitoring(!monitoring, cx));
         self.sync_watches(cx);
@@ -261,14 +270,11 @@ async fn handle_change(
         Some(_) => {
             let question = if modified {
                 (
-                    "was changed by another program. Reload it and lose your changes?",
-                    ["Reload", "Keep My Changes"],
+                    "disk.changed-modified",
+                    ["disk.reload", "disk.keep-my-changes"],
                 )
             } else {
-                (
-                    "was changed by another program. Reload it?",
-                    ["Reload", "Don't Reload"],
-                )
+                ("disk.changed", ["disk.reload", "disk.don-t-reload"])
             };
             let Some(answer) = ask(workspace, buffer, &path, question, cx).await else {
                 return;
@@ -282,10 +288,7 @@ async fn handle_change(
             });
         }
         None => {
-            let question = (
-                "does not exist any more. Keep it in the editor?",
-                ["Keep in Editor", "Close"],
-            );
+            let question = ("disk.deleted", ["disk.keep-in-editor", "common.close"]);
             let Some(answer) = ask(workspace, buffer, &path, question, cx).await else {
                 return;
             };
@@ -334,9 +337,11 @@ async fn ask(
         })
         .ok()?;
     let detail = path.display().to_string();
+    let answers = answers.map(|answer| t!(answer));
+    let answers: Vec<&str> = answers.iter().map(String::as_str).collect();
     let answer = cx.prompt(
         PromptLevel::Warning,
-        &format!("{name} {message}"),
+        &t!(message, name = name),
         Some(&detail),
         &answers,
     );

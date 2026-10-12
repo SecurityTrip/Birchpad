@@ -105,15 +105,16 @@ impl SearchRun {
     /// from the list no longer count.
     pub(crate) fn title(&self) -> String {
         let hits: usize = self.files.iter().map(|file| file.hits).sum();
-        let plural = |count: usize, one: &str, many: &str| {
-            format!("{count} {}", if count == 1 { one } else { many })
-        };
-        format!(
-            "Search \"{}\" ({} in {} of {} searched)",
-            self.pattern,
-            plural(hits, "hit", "hits"),
-            plural(self.files.len(), "file", "files"),
-            self.searched
+        let count = crate::i18n::count;
+        t!(
+            "search-results.title",
+            pattern = self.pattern,
+            found = t!(
+                "find-in-files.found",
+                hits = count(hits, "hit", "hits"),
+                files = count(self.files.len(), "file", "files"),
+                searched = self.searched
+            )
         )
     }
 }
@@ -512,21 +513,20 @@ impl SearchResults {
             }
             Row::File(r, f) => {
                 let file = &self.runs[r].files[f];
-                let plural = if file.hits == 1 { "hit" } else { "hits" };
                 base.pl(px(16.))
                     .text_color(crate::theme::paint(crate::theme::ui().line_number))
                     .child(format!(
-                        "{}{} ({} {plural})",
+                        "{}{} ({})",
                         fold(file.collapsed),
                         file.name,
-                        file.hits
+                        crate::i18n::count(file.hits, "hit", "hits")
                     ))
                     .context_menu(menu)
                     .into_any_element()
             }
             Row::Line(r, f, l) => {
                 let hit = &self.runs[r].files[f].lines[l];
-                let prefix = format!("Line {}: ", hit.line + 1);
+                let prefix = t!("search-results.line", line = hit.line + 1);
                 let text = format!("{prefix}{}", hit.text);
                 let highlight = HighlightStyle {
                     background_color: Some(
@@ -568,12 +568,12 @@ impl Render for SearchResults {
             .border_b_1()
             .border_color(crate::theme::paint(crate::theme::ui().border))
             .bg(crate::theme::paint(crate::theme::ui().surface))
-            .child(div().flex_1().child("Search results"))
+            .child(div().flex_1().child(t!("search-results.search-results")))
             .child(
                 Button::new("clear-results")
                     .small()
                     .ghost()
-                    .label("Clear")
+                    .label(t!("search-results.clear"))
                     .on_click(cx.listener(|this, _, _, cx| this.clear(cx))),
             )
             .child(

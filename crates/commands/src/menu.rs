@@ -43,6 +43,12 @@ pub enum Placeholder {
     RunCommands,
     /// The user defined languages, each invoking `language.set` with `udl:<name>`.
     UserLanguages,
+    /// The languages of the spell checker's dictionaries, each invoking `spell.language`.
+    SpellLanguages,
+    /// The scripts of the `scripts` folder, each invoking `script.run`.
+    Scripts,
+    /// A submenu for each plugin, with its commands, each invoking `plugin.run`.
+    Plugins,
 }
 
 impl MenuItem {
@@ -636,13 +642,88 @@ pub fn main_menu() -> Vec<Menu> {
         ],
     );
 
+    let plugins = Menu::new(
+        "Plugins",
+        vec![
+            Submenu(Menu::new(
+                "JSON Viewer",
+                vec![
+                    cmd("json.format"),
+                    cmd("json.minify"),
+                    Separator,
+                    cmd("json.validate"),
+                ],
+            )),
+            Submenu(Menu::new(
+                "XML Tools",
+                vec![
+                    cmd("xml.pretty-print"),
+                    cmd("xml.linearize"),
+                    Separator,
+                    cmd("xml.check"),
+                ],
+            )),
+            Submenu(Menu::new(
+                "Hex Editor",
+                vec![cmd("hex.view"), cmd("hex.apply")],
+            )),
+            Submenu(Menu::new(
+                "Compare",
+                vec![
+                    cmd("compare.compare"),
+                    cmd("compare.clear"),
+                    Separator,
+                    cmd("compare.previous"),
+                    cmd("compare.next"),
+                    Separator,
+                    cmd("compare.ignore-spaces"),
+                    cmd("compare.ignore-case"),
+                ],
+            )),
+            Submenu(Menu::new(
+                "Spell Checker",
+                vec![
+                    cmd("spell.auto"),
+                    Separator,
+                    cmd("spell.next"),
+                    cmd("spell.previous"),
+                    cmd("spell.suggestions"),
+                    cmd("spell.add-word"),
+                    Separator,
+                    Submenu(Menu::new(
+                        "Language",
+                        vec![Dynamic(Placeholder::SpellLanguages)],
+                    )),
+                    cmd("spell.open-dictionaries-folder"),
+                ],
+            )),
+            Separator,
+            Submenu(Menu::new(
+                "Scripts",
+                vec![
+                    Dynamic(Placeholder::Scripts),
+                    Separator,
+                    cmd("script.open-folder"),
+                    cmd("script.reload"),
+                ],
+            )),
+            cmd("panel.plugin"),
+            Separator,
+            Dynamic(Placeholder::Plugins),
+            Separator,
+            cmd("plugin.admin"),
+            cmd("plugin.open-folder"),
+            cmd("plugin.reload"),
+        ],
+    );
+
     let help = Menu::new(
         "Help",
         vec![cmd("help.check-updates"), Separator, cmd("help.about")],
     );
 
     vec![
-        file, edit, search, view, encoding, language, settings, tools, macros, run, help,
+        file, edit, search, view, encoding, language, settings, tools, macros, run, plugins, help,
     ]
 }
 
@@ -657,7 +738,7 @@ mod tests {
             titles,
             [
                 "File", "Edit", "Search", "View", "Encoding", "Language", "Settings", "Tools",
-                "Macro", "Run", "Help"
+                "Macro", "Run", "Plugins", "Help"
             ]
         );
     }

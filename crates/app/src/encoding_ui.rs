@@ -35,8 +35,12 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
 }
 
 fn parse(name: &str, cx: &gpui_kit::App) -> Result<(Encoding, bool)> {
-    birchpad_io::parse_encoding(name, AppState::global(cx).ansi)
-        .ok_or_else(|| anyhow!("unknown encoding {name:?}"))
+    birchpad_io::parse_encoding(name, AppState::global(cx).ansi).ok_or_else(|| {
+        anyhow!(
+            "{}",
+            t!("encoding-ui.unknown-encoding", name = format!("{:?}", name))
+        )
+    })
 }
 
 fn active_buffer(workspace: &Workspace, cx: &gpui_kit::App) -> Result<Entity<Buffer>> {
@@ -62,7 +66,7 @@ fn encode_in(
         )
     };
     if loading {
-        bail!("the file is still being read");
+        bail!("{}", t!("encoding-ui.the-file-is-still-being-read"));
     }
     let Some(path) = path else {
         // An untitled document has no bytes to reinterpret: choose how it will be saved.
@@ -76,15 +80,14 @@ fn encode_in(
         reload(&buffer, cx);
         return Ok(());
     }
-    let detail = format!(
-        "Reinterpreting reads {} again from disk. Your unsaved changes will be lost.",
-        path.display()
-    );
+    let detail = t!("encoding-ui.reload-detail", path = path.display());
+    let answers = [t!("disk.reload"), t!("common.cancel")];
+    let answers: Vec<&str> = answers.iter().map(String::as_str).collect();
     let answer = window.prompt(
         PromptLevel::Warning,
-        "Discard changes and reload in another encoding?",
+        &t!("encoding-ui.discard-changes-and-reload-in-another-encoding"),
         Some(&detail),
-        &["Reload", "Cancel"],
+        &answers,
         cx,
     );
     cx.spawn(async move |_, cx| {
@@ -107,7 +110,7 @@ fn convert_to(
     let view = workspace.active_view(cx).context("no document is open")?;
     let buffer = view.read(cx).buffer.clone();
     if buffer.read(cx).read_only().is_some() {
-        bail!("this document is read-only");
+        bail!("{}", t!("encoding-ui.this-document-is-read-only"));
     }
     let selection = view.read(cx).selection.clone();
     buffer.update(cx, |buffer, cx| {
@@ -116,9 +119,10 @@ fn convert_to(
     let text = buffer.read(cx).doc().text().clone();
     if let Err(problem) = birchpad_io::check_encodable(&text, encoding) {
         report_warning(
-            format!(
-                "{problem}. {}. Saving is blocked until they are removed.",
-                first_position(&text, &problem)
+            t!(
+                "encoding-ui.unencodable",
+                problem = crate::i18n::tr_text(&problem.to_string()),
+                first = first_position(&text, &problem)
             ),
             window,
             cx,
@@ -139,8 +143,11 @@ fn edit_anyway(
         let buffer = buffer.read(cx);
         if !matches!(buffer.read_only(), Some(ReadOnly::Decoding(_))) {
             bail!(
-                "{} was decoded exactly: it can be edited",
-                buffer.display_name()
+                "{}",
+                t!(
+                    "encoding-ui.was-decoded-exactly-it-can-be-edited",
+                    buffer = buffer.display_name()
+                )
             );
         }
         let encoding = birchpad_io::display_name(buffer.doc().format().encoding, false);
@@ -150,11 +157,13 @@ fn edit_anyway(
             buffer.decode_changes().clone(),
         )
     };
+    let answers = [t!("encoding-ui.edit-anyway"), t!("common.cancel")];
+    let answers: Vec<&str> = answers.iter().map(String::as_str).collect();
     let answer = window.prompt(
         PromptLevel::Warning,
-        &format!("Edit {name} anyway?"),
+        &t!("encoding-ui.edit-question", name = name),
         Some(&describe_changes(&changes, &encoding)),
-        &["Edit Anyway", "Cancel"],
+        &answers,
         cx,
     );
     cx.spawn(async move |_, cx| {
@@ -176,13 +185,8 @@ pub(crate) fn describe_changes(changes: &ByteChanges, encoding: &str) -> String 
             .collect::<Vec<_>>()
             .join(" ")
     };
-    let places = if changes.count == 1 {
-        "1 place".to_owned()
-    } else {
-        format!("{} places", changes.count)
-    };
-    let mut text =
-        format!("Saving writes the text in {encoding} again, which changes {places} in the file:");
+    let places = crate::i18n::count(changes.count, "place", "places");
+    let mut text = t!("encoding-ui.changes", encoding = encoding, places = places);
     for change in &changes.first {
         let (offset, before) = (change.offset, hex(&change.before));
         let read_as = if change.text.is_empty() {
@@ -191,24 +195,41 @@ pub(crate) fn describe_changes(changes: &ByteChanges, encoding: &str) -> String 
             format!(" ({})", change.text)
         };
         let line = match &change.after {
-            Some(after) if after.is_empty() => format!("offset {offset}: {before} is left out"),
-            Some(after) => format!("offset {offset}: {before}{read_as} becomes {}", hex(after)),
-            None => format!("offset {offset}: {before}{read_as} cannot be written in {encoding}"),
+            Some(after) if after.is_empty() => {
+                t!(
+                    "encoding-ui.change-left-out",
+                    offset = offset,
+                    before = before
+                )
+            }
+            Some(after) => t!(
+                "encoding-ui.change-becomes",
+                offset = offset,
+                before = before,
+                read_as = read_as,
+                after = hex(after)
+            ),
+            None => t!(
+                "encoding-ui.change-unwritable",
+                offset = offset,
+                before = before,
+                read_as = read_as,
+                encoding = encoding
+            ),
         };
         text.push_str("\n• ");
         text.push_str(&line);
     }
     let unlisted = changes.count - changes.first.len();
     if unlisted > 0 {
-        text.push_str(&format!("\n• and {unlisted} more"));
+        text.push_str(&format!("\n• {}", t!("encoding-ui.more", count = unlisted)));
     }
     if changes.unwritable > 0 {
-        text.push_str(&format!(
-            "\n\nSaving is refused while the text has characters {encoding} cannot write: \
-             replace them, or convert the document to UTF-8."
-        ));
+        text.push_str("\n\n");
+        text.push_str(&t!("encoding-ui.refused", encoding = encoding));
     }
-    text.push_str("\n\nEverything else is saved as it was, apart from your edits.");
+    text.push_str("\n\n");
+    text.push_str(&t!("encoding-ui.rest-kept"));
     text
 }
 
@@ -222,7 +243,7 @@ pub(crate) fn first_position(text: &Rope, problem: &birchpad_io::Unencodable) ->
         .slice(line_range(text, line).start..offset)
         .chars()
         .count();
-    format!("The first one is at Ln {}, Col {}", line + 1, column + 1)
+    t!("encoding-ui.first-at", line = line + 1, column = column + 1)
 }
 
 /// Whether a menu item describes the document's current format (for check marks).

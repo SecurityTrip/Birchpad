@@ -62,36 +62,51 @@ impl StatusInfo {
                     .language()
                     .map(|language| language.description.to_owned())
                     .or_else(|| {
-                        buffer
-                            .user_language()
-                            .map(|found| format!("User defined language file - {}", found.name))
+                        buffer.user_language().map(|found| {
+                            t!("status-bar.user-defined-language-file", name = found.name)
+                        })
                     })
             },
         }
     }
 
-    /// The texts of the sections, in order (also used by tests).
+    /// The texts of the sections, in order, in the interface's language.
     pub(crate) fn sections(&self) -> [String; 6] {
         [
-            format!("Length : {}    Lines : {}", self.length, self.lines),
-            format!(
-                "Ln : {}    Col : {}    Pos : {}",
-                self.line, self.column, self.pos
+            t!(
+                "status-bar.length",
+                length = self.length,
+                lines = self.lines
             ),
-            format!("Sel : {} | {}", self.selected_chars, self.selected_lines),
-            line_ending_name(self.format.line_ending).to_owned(),
+            t!(
+                "status-bar.position",
+                line = self.line,
+                column = self.column,
+                pos = self.pos
+            ),
+            t!(
+                "status-bar.selection",
+                chars = self.selected_chars,
+                lines = self.selected_lines
+            ),
+            translated_line_ending(self.format.line_ending),
             birchpad_io::display_name(self.format.encoding, self.format.bom),
-            if self.overwrite { "OVR" } else { "INS" }.to_owned(),
+            if self.overwrite {
+                t!("status-bar.overwrite")
+            } else {
+                t!("status-bar.insert")
+            },
         ]
     }
 }
 
-pub(crate) fn line_ending_name(line_ending: LineEnding) -> &'static str {
-    match line_ending {
-        LineEnding::CrLf => "Windows (CR LF)",
-        LineEnding::Lf => "Unix (LF)",
-        LineEnding::Cr => "Macintosh (CR)",
-    }
+fn translated_line_ending(line_ending: LineEnding) -> String {
+    let key = match line_ending {
+        LineEnding::CrLf => "status-bar.eol-crlf",
+        LineEnding::Lf => "status-bar.eol-lf",
+        LineEnding::Cr => "status-bar.eol-cr",
+    };
+    t!(key)
 }
 
 fn section(child: impl IntoElement) -> gpui_kit::Div {
@@ -121,13 +136,18 @@ pub(crate) fn render<V: 'static>(
         .bg(crate::theme::paint(crate::theme::ui().surface))
         .text_size(px(12.));
     let Some(info) = info else {
-        return bar.child(div().px_3().flex_1().child("Normal text file"));
+        return bar.child(
+            div()
+                .px_3()
+                .flex_1()
+                .child(t!("status-bar.normal-text-file")),
+        );
     };
     bar = bar.child(
         div().px_3().flex_1().child(
             info.language
                 .clone()
-                .unwrap_or_else(|| crate::i18n::tr("Normal text file")),
+                .unwrap_or_else(|| t!("status-bar.normal-text-file")),
         ),
     );
     let [length, position, selection, eol, encoding, mode] = info.sections();
@@ -169,7 +189,7 @@ fn eol_menu(mut menu: PopupMenu, current: LineEnding) -> PopupMenu {
     ] {
         let invocation = Invocation::with_args("edit.convert-eol", json!({ "eol": name }));
         menu = menu.menu_with_check(
-            line_ending_name(eol),
+            translated_line_ending(eol),
             eol == current,
             Box::new(RunCommand(invocation)),
         );
@@ -245,7 +265,10 @@ fn add_items(
                 | Placeholder::Themes
                 | Placeholder::Macros
                 | Placeholder::RunCommands
-                | Placeholder::UserLanguages,
+                | Placeholder::UserLanguages
+                | Placeholder::SpellLanguages
+                | Placeholder::Scripts
+                | Placeholder::Plugins,
             ) => {}
         }
     }
@@ -277,7 +300,7 @@ mod tests {
                 "Length : 0    Lines : 1",
                 "Ln : 1    Col : 1    Pos : 1",
                 "Sel : 0 | 0",
-                line_ending_name(LineEnding::native()),
+                &translated_line_ending(LineEnding::native()),
                 "UTF-8",
                 "INS",
             ]
@@ -286,9 +309,9 @@ mod tests {
 
     #[test]
     fn line_endings_have_notepad_plus_plus_names() {
-        assert_eq!(line_ending_name(LineEnding::CrLf), "Windows (CR LF)");
-        assert_eq!(line_ending_name(LineEnding::Lf), "Unix (LF)");
-        assert_eq!(line_ending_name(LineEnding::Cr), "Macintosh (CR)");
+        assert_eq!(translated_line_ending(LineEnding::CrLf), "Windows (CR LF)");
+        assert_eq!(translated_line_ending(LineEnding::Lf), "Unix (LF)");
+        assert_eq!(translated_line_ending(LineEnding::Cr), "Macintosh (CR)");
     }
 
     #[gpui_kit::test]

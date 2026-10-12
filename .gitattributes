@@ -19,3 +19,6 @@ fuzz/seeds/** -text -diff
 *.ico binary
 *.icns binary
 *.ttf binary
+
+# Built plugins for the tests.
+*.wasm binary

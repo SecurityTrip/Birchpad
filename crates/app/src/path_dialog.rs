@@ -127,7 +127,7 @@ fn open_text_dialog(
             .child(Input::new(&input).id("path"))
             .footer(
                 DialogFooter::new()
-                    .child(crate::workspace::dialog_close("Cancel"))
+                    .child(crate::workspace::dialog_close("common.cancel"))
                     .child(crate::workspace::dialog_action(
                         Button::new("ok").label(title),
                     )),

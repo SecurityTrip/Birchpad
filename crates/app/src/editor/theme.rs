@@ -19,7 +19,6 @@ pub(crate) enum Paint {
     #[expect(dead_code, reason = "used by later decorations")]
     Outline(Rgba),
     /// A line under the text.
-    #[expect(dead_code, reason = "used by later decorations")]
     Underline(Rgba),
 }
 

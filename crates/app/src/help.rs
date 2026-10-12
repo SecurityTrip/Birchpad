@@ -37,19 +37,22 @@ pub(crate) fn about_rows(cx: &App) -> Vec<(&'static str, String)> {
     let state = AppState::global(cx);
     let commit = COMMIT.map_or("unknown", |commit| &commit[..commit.len().min(12)]);
     let location = |path: Option<&std::path::Path>| {
-        path.map_or_else(|| "none".to_owned(), |path| path.display().to_string())
+        path.map_or_else(|| t!("help.none"), |path| path.display().to_string())
     };
     let mut rows = vec![
         ("Version", VERSION.to_owned()),
-        ("Build", format!("{BUILD_CHANNEL}, commit {commit}")),
+        (
+            "Build",
+            t!("help.build", channel = BUILD_CHANNEL, commit = commit),
+        ),
         (
             "Installed",
             if crate::updates::Updates::installed(cx) {
-                "for this user, by the installer".to_owned()
+                t!("help.installed-by-installer")
             } else if state.paths.portable {
-                "portable copy".to_owned()
+                t!("help.portable-copy")
             } else {
-                "not by Birchpad's installer".to_owned()
+                t!("help.not-installed")
             },
         ),
         ("Updates", crate::updates::describe(cx)),
@@ -59,16 +62,16 @@ pub(crate) fn about_rows(cx: &App) -> Vec<(&'static str, String)> {
                 "{}{}",
                 location(state.paths.user_settings.as_deref()),
                 if state.paths.portable {
-                    " (portable)"
+                    format!(" ({})", t!("help.portable"))
                 } else {
-                    ""
+                    String::new()
                 }
             ),
         ),
         ("Data", location(state.paths.user_data.as_deref())),
     ];
     if state.policies.is_empty() {
-        rows.push(("Policies", "none".to_owned()));
+        rows.push(("Policies", t!("help.none")));
     }
     for (index, (key, value)) in state.policies.iter().enumerate() {
         let label = if index == 0 { "Policies" } else { "" };
@@ -110,23 +113,32 @@ fn show_about(window: &mut Window, cx: &mut App) {
                             .w(px(72.))
                             .flex_none()
                             .text_color(crate::theme::paint(crate::theme::ui().muted))
-                            .child(*label),
+                            .child(if label.is_empty() {
+                                String::new()
+                            } else {
+                                crate::i18n::get_or(
+                                    &format!("help.about-{}", crate::i18n::slug(label)),
+                                    label,
+                                )
+                            }),
                     )
                     .child(div().flex_1().min_w_0().child(value.clone()))
             }));
         dialog
-            .title(crate::i18n::tr("About Birchpad"))
+            .title(t!("help.about-birchpad"))
             .w(px(600.))
             .child(table)
             .footer(
                 DialogFooter::new()
-                    .child(Button::new("copy").label(crate::i18n::tr("Copy")).on_click(
-                        move |_, _, cx| {
-                            cx.write_to_clipboard(ClipboardItem::new_string(text.clone()));
-                        },
-                    ))
+                    .child(
+                        Button::new("copy")
+                            .label(t!("help.copy"))
+                            .on_click(move |_, _, cx| {
+                                cx.write_to_clipboard(ClipboardItem::new_string(text.clone()));
+                            }),
+                    )
                     .child(crate::workspace::dialog_action(
-                        Button::new("ok").primary().label(crate::i18n::tr("OK")),
+                        Button::new("ok").primary().label(t!("common.ok")),
                     )),
             )
             .on_ok(|_, _, _| true)
@@ -138,9 +150,9 @@ pub(crate) type OnClick = Box<dyn Fn(&mut Window, &mut App)>;
 
 /// What the button of a message does, besides closing it.
 pub(crate) enum MessageAction {
-    /// Opens a web page.
+    /// Opens a web page; the button's text is the key given.
     Open(&'static str, String),
-    /// Runs a function.
+    /// Runs a function; the button's text is the key given.
     Run(&'static str, OnClick),
 }
 
@@ -152,7 +164,7 @@ pub(crate) fn show_message(
     window: &mut Window,
     cx: &mut App,
 ) {
-    let action = page.map(|page| MessageAction::Open("Open Download Page", page));
+    let action = page.map(|page| MessageAction::Open("updates.open-download-page", page));
     show_message_with(title, lines, action, window, cx);
 }
 
@@ -164,7 +176,7 @@ pub(crate) fn show_message_with(
     window: &mut Window,
     cx: &mut App,
 ) {
-    let title = title.into();
+    let title: SharedString = title.into();
     let action = std::rc::Rc::new(action);
     window.open_dialog(cx, move |dialog, _, _| {
         let body = div()
@@ -178,7 +190,7 @@ pub(crate) fn show_message_with(
             None => {
                 return dialog
                     .footer(DialogFooter::new().child(crate::workspace::dialog_action(
-                        Button::new("ok").primary().label(crate::i18n::tr("OK")),
+                        Button::new("ok").primary().label(t!("common.ok")),
                     )))
                     .on_ok(|_, _, _| true);
             }
@@ -187,9 +199,9 @@ pub(crate) fn show_message_with(
         dialog
             .footer(
                 DialogFooter::new()
-                    .child(crate::workspace::dialog_close("Not Now"))
+                    .child(crate::workspace::dialog_close("help.not-now"))
                     .child(crate::workspace::dialog_action(
-                        Button::new("action").primary().label(label),
+                        Button::new("action").primary().label(t!(label)),
                     )),
             )
             .on_ok(move |_, window, cx| {

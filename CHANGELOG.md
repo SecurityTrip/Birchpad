@@ -6,6 +6,56 @@ version's release notes from its section here.
 
 ## [Unreleased]
 
+## [0.1.5] - 2026-10-12
+
+### Added
+
+- The Plugins menu, with Birchpad's own versions of popular Notepad++ plugins.
+- Plugins > JSON Viewer: Format JSON (one value per line, with the editor's indentation),
+  Compress JSON and Validate JSON, for the selection or the whole document. Numbers and strings
+  stay as written; an error puts the caret where it is and says what is wrong.
+- Plugins > XML Tools: Pretty Print XML, Linearize XML and Check XML Syntax, likewise.
+- Plugins > Hex Editor: View in Hex opens the document's bytes, in its encoding, as rows of 16
+  in a new document; after editing them, Apply Hex to Document puts them back into the
+  document as one undo step.
+- Plugins > Compare: compares the active document with the other view's, or with the tab
+  before it, which it puts side by side; lines added, removed and changed are colored across
+  the line, Next and Previous Difference go through them, Clear Results takes the colors off.
+  Spaces and case can be ignored. Themes get `compare-added`, `compare-removed`,
+  `compare-changed` and `spell-error` colors.
+- Plugins > Spell Checker, as DSpellCheck: Spell Check Document Automatically underlines
+  misspelled words (in code, only in comments and strings); Find Next and Previous Misspelling;
+  Suggestions in the completion list; Add Word to Dictionary; Dictionary Language. Dictionaries
+  are Hunspell's `.aff` and `.dic`, from the `dictionaries` folder next to the settings (Open
+  Dictionaries Folder) or the system's; none comes with Birchpad.
+- Plugins > Scripts: scripts in Rhai, saved as `.rhai` files in the `scripts` folder next to
+  the settings (Open Scripts Folder), run over the active document. A script reads and edits
+  the text and the selections (its edits are one undo step), runs commands, shows messages and
+  fills the Plugin Panel; it cannot touch files or the network, and stops if it runs too long.
+  See [writing plugins and scripts](docs/plugins.md).
+- Plugins as WebAssembly components ([ADR 0036](docs/adr/0036-webassembly-plugins.md)): the
+  plugins of the `plugins` folder next to the settings load when Birchpad starts (or on
+  Plugins > Reload Plugins), each with a submenu of its commands in the Plugins menu. A plugin
+  works on the active document as a script does, hears the events it asks for (a document
+  opened, saved, closed or activated) and fills the Plugin Panel, whose lines it hears clicked.
+  It cannot touch files or the network; one that runs too long or takes too much memory is
+  stopped. Plugins that the administrator's `PluginInstall` / `AllowedPlugins` policies do not
+  allow are not loaded.
+- Plugins > Plugins Admin...: the installed plugins with their version, description and state;
+  Install... copies a plugin's folder in from its `plugin.toml` (installing it again updates
+  it), Remove takes it out, Turn Off and Turn On keep it installed but stopped. The
+  administrator's policy is shown, and installing against it is refused.
+- The whole interface in Russian: command titles (also in the Shortcut Mapper), messages,
+  errors, questions, the status bar, the find panel and the search results, with Russian plural
+  forms. Interface languages are YAML files (`en.yaml`, `ru.yaml`) where every text has a key.
+- The `UserScripts` policy (`plugins.scripts`): administrators can turn user scripts off, as
+  `PluginInstall` and `AllowedPlugins` control plugins.
+
+### Changed
+
+- The Russian translation moved from `ru.toml`, keyed by the English text, to `ru.yaml`,
+  keyed like `en.yaml` ([ADR 0033](docs/adr/0033-localization.md)).
+
 ## [0.1.4] - 2026-10-12
 
 ### Added
@@ -222,7 +272,8 @@ The first release: a Notepad++-like editor for Windows, Linux and macOS.
   entirely (`updates.mode = "off"`).
 - Nightly builds of `main` on the nightly channel.
 
-[Unreleased]: https://github.com/SecurityTrip/Birchpad/compare/v0.1.4...HEAD
+[Unreleased]: https://github.com/SecurityTrip/Birchpad/compare/v0.1.5...HEAD
+[0.1.5]: https://github.com/SecurityTrip/Birchpad/compare/v0.1.4...v0.1.5
 [0.1.4]: https://github.com/SecurityTrip/Birchpad/compare/v0.1.3...v0.1.4
 [0.1.3]: https://github.com/SecurityTrip/Birchpad/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/SecurityTrip/Birchpad/compare/v0.1.0...v0.1.2

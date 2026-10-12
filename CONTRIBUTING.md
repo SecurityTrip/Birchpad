@@ -49,7 +49,8 @@ tests lift the crate well over it.
 
 Everything that reads input from outside (files and their encodings, settings, the state file,
 sessions and Notepad++'s `session.xml`, `.workspace` files, the keymap, the command line and the
-message that hands it to a running instance, the update manifest) is fuzzed. The checks live in
+message that hands it to a running instance, the update manifest, plugins' `plugin.toml`, and
+the JSON, XML and hex dumps the built-in tools read) is fuzzed. The checks live in
 `crates/fuzz`: each takes any bytes and checks more than "no panic" (what reads cleanly writes
 back the same). `cargo test -p birchpad-fuzz` runs them over the seeds in `fuzz/seeds`, every
 cut of each seed and a few hundred mutants of it (`BIRCHPAD_FUZZ_MUTANTS=20000` for more); CI

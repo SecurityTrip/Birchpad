@@ -169,7 +169,7 @@ pub(crate) fn to_html(
 fn active_html(workspace: &Workspace, print: bool, cx: &App) -> Result<(String, String)> {
     let view = workspace
         .active_view(cx)
-        .ok_or_else(|| anyhow!("there is no document"))?;
+        .ok_or_else(|| anyhow!("{}", t!("print.there-is-no-document")))?;
     let buffer = view.read(cx).buffer.read(cx);
     let text = buffer.doc().text().clone();
     let title = buffer.display_name();
@@ -242,7 +242,10 @@ impl Workspace {
                 return;
             };
             if let Err(error) = std::fs::write(&path, html) {
-                let error = anyhow!("cannot write {}: {error}", path.display());
+                let error = anyhow!(
+                    "{}",
+                    t!("print.cannot-write", path = path.display(), error = error)
+                );
                 cx.update(|window, cx| report_error(&error, window, cx))
                     .ok();
             }

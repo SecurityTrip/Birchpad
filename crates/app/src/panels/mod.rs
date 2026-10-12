@@ -13,6 +13,7 @@ mod document_list;
 mod document_map;
 mod folder_workspace;
 mod function_list;
+mod plugin_panel;
 mod project;
 
 use std::collections::HashMap;
@@ -36,6 +37,7 @@ pub(crate) use document_list::DocumentList;
 pub(crate) use document_map::DocumentMap;
 pub(crate) use folder_workspace::FolderWorkspace;
 pub(crate) use function_list::FunctionList;
+pub(crate) use plugin_panel::PluginPanel;
 pub(crate) use project::ProjectPanel;
 
 /// The project panels, as Notepad++'s Project Panel 1 to 3.
@@ -59,10 +61,12 @@ pub(crate) enum PanelKind {
     CharacterPanel,
     FunctionList,
     DocumentMap,
+    /// What a plugin or a script shows.
+    PluginPanel,
 }
 
 impl PanelKind {
-    pub(crate) const ALL: [Self; 9] = [
+    pub(crate) const ALL: [Self; 10] = [
         Self::FolderWorkspace,
         Self::Project(1),
         Self::Project(2),
@@ -72,6 +76,7 @@ impl PanelKind {
         Self::CharacterPanel,
         Self::FunctionList,
         Self::DocumentMap,
+        Self::PluginPanel,
     ];
 
     /// The name kept in `state.toml`.
@@ -86,6 +91,7 @@ impl PanelKind {
             Self::CharacterPanel => "character-panel",
             Self::FunctionList => "function-list",
             Self::DocumentMap => "document-map",
+            Self::PluginPanel => "plugin-panel",
         }
     }
 
@@ -104,14 +110,20 @@ impl PanelKind {
             Self::CharacterPanel => "Character Panel",
             Self::FunctionList => "Function List",
             Self::DocumentMap => "Document Map",
+            Self::PluginPanel => "Plugin Panel",
         }
     }
 
     pub(crate) fn side(self) -> Side {
         match self {
-            Self::FunctionList | Self::DocumentMap => Side::Right,
+            Self::FunctionList | Self::DocumentMap | Self::PluginPanel => Side::Right,
             _ => Side::Left,
         }
+    }
+
+    /// The title in the interface's language: `panel.<id>`.
+    pub(crate) fn translated_title(self) -> String {
+        crate::i18n::get_or(&format!("panel.{}", self.id()), self.title())
     }
 
     /// The id of the command that opens and closes the panel.
@@ -124,6 +136,7 @@ impl PanelKind {
             Self::CharacterPanel => "panel.character-panel",
             Self::FunctionList => "panel.function-list",
             Self::DocumentMap => "panel.document-map",
+            Self::PluginPanel => "panel.plugin",
         }
     }
 
@@ -174,7 +187,14 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
 
 fn project_panel(panel: u8) -> Result<PanelKind> {
     if !(1..=PROJECT_PANELS).contains(&panel) {
-        bail!("there is no project panel {panel}; they are numbered 1 to {PROJECT_PANELS}");
+        bail!(
+            "{}",
+            t!(
+                "panels.there-is-no-project-panel-they-are-numbered-1-to",
+                panel = panel,
+                PROJECT_PANELS = PROJECT_PANELS
+            )
+        );
     }
     Ok(PanelKind::Project(panel))
 }
@@ -313,6 +333,7 @@ impl Workspace {
             PanelKind::CharacterPanel => cx
                 .new(|cx| CharacterPanel::new(workspace, window, cx))
                 .into(),
+            PanelKind::PluginPanel => cx.new(|cx| PluginPanel::new(workspace, window, cx)).into(),
             PanelKind::Project(panel) => cx
                 .new(|cx| ProjectPanel::new(panel, workspace, window, cx))
                 .into(),
@@ -361,13 +382,16 @@ impl Workspace {
                         this.show_panel(*kind, cx);
                     }
                 }))
-                .children(open.iter().map(|kind| Tab::new().label(kind.title())))
+                .children(
+                    open.iter()
+                        .map(|kind| Tab::new().label(kind.translated_title())),
+                )
                 .into_any_element()
         } else {
             div()
                 .px_2()
                 .flex_1()
-                .child(shown.title())
+                .child(shown.translated_title())
                 .into_any_element()
         };
         let close = Button::new(("close-panel", side_index(side)))

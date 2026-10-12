@@ -135,7 +135,7 @@ pub(crate) fn is_url(line: &str) -> bool {
 /// Expands `line` with `vars` and runs it.
 pub(crate) fn launch(line: &str, vars: RunVariables, cx: &mut App) -> Result<()> {
     if line.trim().is_empty() {
-        bail!("there is no command to run");
+        bail!("{}", t!("run-menu.there-is-no-command-to-run"));
     }
     let expanded =
         birchpad_commands::expand_variables(line, &vars, |name| std::env::var(name).ok());
@@ -159,12 +159,17 @@ pub(crate) fn launch(line: &str, vars: RunVariables, cx: &mut App) -> Result<()>
 pub(crate) fn save(name: &str, line: &str, cx: &mut App) -> Result<()> {
     let name = name.trim();
     if name.is_empty() {
-        bail!("a command needs a name");
+        bail!("{}", t!("run-menu.a-command-needs-a-name"));
     }
     if line.trim().is_empty() {
-        bail!("there is no command to save");
+        bail!("{}", t!("run-menu.there-is-no-command-to-save"));
     }
-    let path = run_path(cx).ok_or_else(|| anyhow!("there is no settings folder for run.toml"))?;
+    let path = run_path(cx).ok_or_else(|| {
+        anyhow!(
+            "{}",
+            t!("run-menu.there-is-no-settings-folder-for-run-toml")
+        )
+    })?;
     let mut saved = run_menu(cx).saved.clone();
     let entry = RunEntry {
         name: name.to_owned(),
@@ -202,7 +207,12 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
                 .iter()
                 .find(|known| known.name == name)
                 .map(|known| known.line.clone())
-                .ok_or_else(|| anyhow!("there is no saved command named {name}"))?,
+                .ok_or_else(|| {
+                    anyhow!(
+                        "{}",
+                        t!("run-menu.there-is-no-saved-command-named", name = name)
+                    )
+                })?,
             (None, None) => {
                 open(cx.entity().downgrade(), window, cx);
                 return Ok(());
@@ -227,14 +237,14 @@ fn open(workspace: WeakEntity<Workspace>, window: &mut Window, cx: &mut App) {
     window.open_dialog(cx, move |modal, _, _| {
         let run = dialog.clone();
         modal
-            .title(crate::i18n::tr("Run..."))
+            .title(t!("run-menu.run"))
             .w(px(560.))
             .child(dialog.clone())
             .footer(
                 DialogFooter::new()
-                    .child(crate::workspace::dialog_close("Cancel"))
+                    .child(crate::workspace::dialog_close("common.cancel"))
                     .child(crate::workspace::dialog_action(
-                        Button::new("run-run").label(crate::i18n::tr("Run")),
+                        Button::new("run-run").label(t!("common.run")),
                     )),
             )
             .on_ok(move |_, _, cx| run.update(cx, |this, cx| this.run(cx)))
@@ -254,7 +264,9 @@ impl RunDialog {
                     )
                     .default_value(last)
             }),
-            name: cx.new(|cx| InputState::new(window, cx).placeholder("Name to save it as")),
+            name: cx.new(|cx| {
+                InputState::new(window, cx).placeholder(t!("run-menu.name-to-save-it-as"))
+            }),
             error: None,
         }
     }
@@ -265,7 +277,7 @@ impl RunDialog {
         let result = self
             .workspace
             .upgrade()
-            .ok_or_else(|| anyhow!("the window is closed"))
+            .ok_or_else(|| anyhow!("{}", t!("run-menu.the-window-is-closed")))
             .and_then(|workspace| {
                 let vars = variables(workspace.read(cx), cx);
                 launch(&line, vars, cx)
@@ -314,7 +326,7 @@ impl Render for RunDialog {
                     .child(div().flex_1().child(Input::new(&self.name).id("run-name")))
                     .child(
                         Button::new("run-save")
-                            .label(crate::i18n::tr("Save"))
+                            .label(t!("common.save"))
                             .on_click(cx.listener(|this, _, _, cx| this.save(cx))),
                     ),
             )

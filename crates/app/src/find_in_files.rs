@@ -89,8 +89,15 @@ impl SkipCounts {
         .collect();
         match parts.as_slice() {
             [] => String::new(),
-            [one] => format!("; {one} skipped"),
-            [rest @ .., last] => format!("; {} and {last} skipped", rest.join(", ")),
+            [one] => format!("; {}", t!("find-in-files.skipped", files = one)),
+            [rest @ .., last] => format!(
+                "; {}",
+                t!(
+                    "find-in-files.skipped-several",
+                    files = rest.join(", "),
+                    last = last
+                )
+            ),
         }
     }
 }
@@ -433,11 +440,20 @@ impl Workspace {
                 let run = SearchRun::new(&query.pattern, files, searched);
                 let hits: usize = run.files.iter().map(|file| file.hits).sum();
                 let message = format!(
-                    "{WHAT}: {} in {} of {searched} searched{}{}",
-                    plural(hits, "hit", "hits"),
-                    plural(run.files.len(), "file", "files"),
+                    "{}: {}{}{}",
+                    t!("find-in-files.find-in-files"),
+                    t!(
+                        "find-in-files.found",
+                        hits = plural(hits, "hit", "hits"),
+                        files = plural(run.files.len(), "file", "files"),
+                        searched = searched
+                    ),
                     skipped.describe(),
-                    if stopped { " (stopped)" } else { "" }
+                    if stopped {
+                        format!(" ({})", t!("find-in-files.stopped"))
+                    } else {
+                        String::new()
+                    }
                 );
                 this.search_results
                     .update(cx, |results, cx| results.add(run, cx));
@@ -463,17 +479,16 @@ impl Workspace {
             return;
         };
         let template = self.find_bar.read(cx).replacement(cx);
+        let answers = [t!("common.replace"), t!("common.cancel")];
+        let answers: Vec<&str> = answers.iter().map(String::as_str).collect();
         let answer = window.prompt(
             PromptLevel::Warning,
-            &format!(
-                "Replace all occurrences in the files of {}?",
-                request.root.display()
+            &t!(
+                "find-in-files.replace-question",
+                folder = request.root.display()
             ),
-            Some(
-                "Open documents are changed in their tabs, where Undo takes the change back. \
-                 Other files are changed on disk.",
-            ),
-            &["Replace", "Cancel"],
+            Some(&t!("find-in-files.open-documents-are-changed-in-their-tabs-where-undo-takes-the-change-back-other-files-are-changed-on-disk")),
+            &answers,
             cx,
         );
         let ansi = AppState::global(cx).ansi;
@@ -567,11 +582,19 @@ impl Workspace {
                     return;
                 }
                 let message = format!(
-                    "{WHAT}: {} replaced in {}{}{}",
-                    plural(replaced, "occurrence", "occurrences"),
-                    plural(changed, "file", "files"),
+                    "{}: {}{}{}",
+                    t!("find-in-files.replace-in-files"),
+                    t!(
+                        "find-in-files.replaced",
+                        replaced = plural(replaced, "occurrence replaced", "occurrences replaced"),
+                        files = plural(changed, "file", "files")
+                    ),
                     skipped.describe(),
-                    if stopped { " (stopped)" } else { "" }
+                    if stopped {
+                        format!(" ({})", t!("find-in-files.stopped"))
+                    } else {
+                        String::new()
+                    }
                 );
                 this.report(Some(message), replaced == 0, cx);
             })

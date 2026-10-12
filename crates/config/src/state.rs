@@ -42,6 +42,19 @@ pub struct UserState {
     pub find_in_files: FindInFilesState,
     /// The side panels.
     pub panels: PanelsState,
+    /// Plugins > Spell Checker.
+    pub spell_check: SpellCheckState,
+}
+
+/// What the spell checker remembers between runs.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, rename_all = "kebab-case")]
+pub struct SpellCheckState {
+    /// Spell Check Document Automatically: misspelled words underlined.
+    pub enabled: bool,
+    /// The dictionary's language (`en_US`); unset means the system's language.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub language: Option<String>,
 }
 
 /// What the side panels remember between runs.

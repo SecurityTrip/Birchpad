@@ -118,21 +118,25 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
     }
     registry.workspace("language.set", |this, args: LanguageArgs, _, cx| {
         if let Some(name) = args.language.strip_prefix(crate::user_languages::ID_PREFIX) {
-            let found = crate::user_languages::find(name, cx)
-                .ok_or_else(|| anyhow::anyhow!("there is no user defined language {name}"))?;
+            let found = crate::user_languages::find(name, cx).ok_or_else(|| {
+                anyhow::anyhow!(
+                    "{}",
+                    t!("workspace.there-is-no-user-defined-language", name = name)
+                )
+            })?;
             if let Some(view) = this.active_view(cx) {
                 let buffer = view.read(cx).buffer.clone();
                 buffer.update(cx, |buffer, cx| buffer.set_user_language(Some(found), cx));
             }
             return Ok(());
         }
-        let language = match args.language.as_str() {
-            "text" | "normal" => None,
-            id => Some(
-                birchpad_syntax::by_id(id)
-                    .ok_or_else(|| anyhow::anyhow!("unknown language {id}"))?,
-            ),
-        };
+        let language =
+            match args.language.as_str() {
+                "text" | "normal" => None,
+                id => Some(birchpad_syntax::by_id(id).ok_or_else(|| {
+                    anyhow::anyhow!("{}", t!("workspace.unknown-language", id = id))
+                })?),
+            };
         if let Some(view) = this.active_view(cx) {
             let buffer = view.read(cx).buffer.clone();
             buffer.update(cx, |buffer, cx| buffer.set_language(language, cx));
@@ -142,11 +146,18 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
     crate::encoding_ui::register_commands(registry);
     crate::file_ops::register_commands(registry);
     crate::find::register_commands(registry);
+    crate::compare::register_commands(registry);
     crate::help::register_commands(registry);
+    crate::hex_view::register_commands(registry);
     crate::incremental::register_commands(registry);
+    crate::json_xml::register_commands(registry);
     crate::navigation::register_commands(registry);
     crate::panels::register_commands(registry);
     crate::session::register_commands(registry);
+    crate::extensions::scripts::register_commands(registry);
+    crate::extensions::plugins::register_commands(registry);
+    crate::extensions::admin::register_commands(registry);
+    crate::spell_check::register_commands(registry);
     crate::disk::register_commands(registry);
     crate::themes::register_commands(registry);
     crate::preferences::register_commands(registry);
@@ -204,7 +215,7 @@ struct LanguageArgs {
 
 /// Shows an error to the user without interrupting them.
 pub(crate) fn report_error(error: &anyhow::Error, window: &mut Window, cx: &mut App) {
-    window.push_notification(Notification::error(format!("{error:#}")), cx);
+    window.push_notification(Notification::error(crate::i18n::tr_error(error)), cx);
 }
 
 /// The confirming button of a dialog footer, at its natural width (`DialogAction` alone fills
@@ -215,18 +226,38 @@ pub(crate) fn dialog_action(button: Button) -> impl IntoElement {
         .child(DialogAction::new().child(button))
 }
 
-/// A button that closes a dialog without its action ("Cancel", "Not Now").
+/// A button that closes a dialog without its action: `label` is the key of its text
+/// (`common.cancel`).
 pub(crate) fn dialog_close(label: &'static str) -> DialogClose {
     DialogClose::new().trigger(move |button| {
         button
-            .label(crate::i18n::tr(label))
+            .label(t!(label))
             .debug_selector(|| "dialog-close".into())
     })
 }
 
+/// Tells the user that something went well, without interrupting them.
+pub(crate) fn report_success(message: impl Into<String>, window: &mut Window, cx: &mut App) {
+    window.push_notification(
+        Notification::success(crate::i18n::tr_text(&message.into())),
+        cx,
+    );
+}
+
+/// Tells the user something, without interrupting them.
+pub(crate) fn report_info(message: impl Into<String>, window: &mut Window, cx: &mut App) {
+    let message = message.into();
+    #[cfg(test)]
+    tests::INFO.with(|info| info.borrow_mut().push(message.clone()));
+    window.push_notification(Notification::info(crate::i18n::tr_text(&message)), cx);
+}
+
 /// Shows a warning to the user without interrupting them.
 pub(crate) fn report_warning(message: impl Into<String>, window: &mut Window, cx: &mut App) {
-    window.push_notification(Notification::warning(message.into()), cx);
+    window.push_notification(
+        Notification::warning(crate::i18n::tr_text(&message.into())),
+        cx,
+    );
 }
 
 pub(crate) struct Workspace {
@@ -337,6 +368,11 @@ impl Workspace {
                 self.note_place(cx);
                 self.refresh_menus(cx);
                 cx.notify();
+                cx.defer_in(window, |this, window, cx| {
+                    if let Some(view) = this.active_view(cx) {
+                        this.plugin_event(birchpad_plugin::EventKind::Activated, &view, window, cx);
+                    }
+                });
             }
             PaneEvent::CloseRequested(view) => {
                 // As File > Close: unsaved changes are asked about.
@@ -582,7 +618,7 @@ impl Workspace {
             id => match birchpad_syntax::by_id(id) {
                 Some(language) => Some(Some(language)),
                 None => {
-                    report_warning(format!("Unknown language -l{id}"), window, cx);
+                    report_warning(t!("workspace.unknown-language-option", id = id), window, cx);
                     None
                 }
             },
@@ -721,6 +757,13 @@ impl Workspace {
                 }
             }
             BufferEvent::StateChanged | BufferEvent::Reloaded { .. } => {
+                if let BufferEvent::Reloaded { previous: None } = event
+                    && let Some(view) = self.view_of_buffer(buffer, cx)
+                {
+                    cx.defer_in(window, move |this, window, cx| {
+                        this.plugin_event(birchpad_plugin::EventKind::Opened, &view, window, cx);
+                    });
+                }
                 // Save As may have moved the file to another folder.
                 self.sync_watches(cx);
                 self.refresh_menus(cx);
@@ -749,6 +792,12 @@ impl Workspace {
         if !still_shown && let Some(path) = buffer.read(cx).path().map(Path::to_owned) {
             AppState::add_recent(&path, cx);
             self.refresh_menus(cx);
+        }
+        if !still_shown {
+            let closed = view.clone();
+            cx.defer_in(window, move |this, window, cx| {
+                this.plugin_event(birchpad_plugin::EventKind::Closed, &closed, window, cx);
+            });
         }
         // Forget buffers no view shows any more.
         let live: Vec<EntityId> = self
@@ -791,7 +840,10 @@ impl Workspace {
         if registry.get(&invocation.command).is_some()
             && !registry.is_enabled(&invocation.command, cx)
         {
-            anyhow::bail!("{} is turned off", invocation.command);
+            anyhow::bail!(
+                "{}",
+                t!("workspace.is-turned-off", invocation = invocation.command)
+            );
         }
         let handler = registry.get(&invocation.command);
         let result = match handler {
@@ -804,9 +856,18 @@ impl Workspace {
                 .global::<CommandRegistry>()
                 .is_pending(&invocation.command) =>
             {
-                anyhow::bail!("{} is not available yet", invocation.command)
+                anyhow::bail!(
+                    "{}",
+                    t!(
+                        "workspace.is-not-available-yet",
+                        invocation = invocation.command
+                    )
+                )
             }
-            None => anyhow::bail!("unknown command {}", invocation.command),
+            None => anyhow::bail!(
+                "{}",
+                t!("workspace.unknown-command", invocation = invocation.command)
+            ),
         };
         if result.is_ok() {
             crate::macros::record(invocation, cx);
@@ -844,6 +905,9 @@ impl Workspace {
             .active_view(cx)
             .is_some_and(|view| view.read(cx).buffer.read(cx).is_monitoring());
         let theme_name = crate::theme::current().name.clone();
+        let compare_options = crate::compare::options(cx);
+        let spell_enabled = crate::spell_check::is_enabled(cx);
+        let spell_language = crate::spell_check::language(cx);
         let checked = |invocation: &Invocation| {
             if let Some((_, read, _)) = VIEW_SWITCHES
                 .iter()
@@ -874,6 +938,14 @@ impl Workspace {
                 return invocation.args.get("language").and_then(|id| id.as_str())
                     == language.as_deref();
             }
+            if let Some(on) = crate::compare::is_checked(invocation, compare_options) {
+                return on;
+            }
+            if let Some(on) =
+                crate::spell_check::is_checked(invocation, spell_enabled, &spell_language)
+            {
+                return on;
+            }
             if let Some(open) = crate::panels::is_checked(&self.docks, invocation) {
                 return open;
             }
@@ -899,8 +971,14 @@ impl Workspace {
             .map(|menu| menu.saved.iter().map(|entry| entry.name.clone()).collect())
             .unwrap_or_default();
         let user_languages = crate::user_languages::names(cx);
+        let spell_languages = crate::spell_check::languages(cx);
+        let scripts = crate::extensions::scripts::names(cx);
+        let plugin_menus = crate::extensions::plugins::menus(cx);
         let state = MenuState {
             user_languages: &user_languages,
+            spell_languages: &spell_languages,
+            scripts: &scripts,
+            plugins: &plugin_menus,
             recent_files: &recent_files,
             themes: &themes,
             macros: &macros,
@@ -1215,6 +1293,16 @@ pub(crate) mod tests {
             })
         });
         cx.run_until_parked();
+    }
+
+    thread_local! {
+        /// The messages shown with `report_info`, for tests to read.
+        pub(crate) static INFO: std::cell::RefCell<Vec<String>> = std::cell::RefCell::default();
+    }
+
+    /// The messages shown since the last call.
+    pub(crate) fn take_info() -> Vec<String> {
+        INFO.with(|info| std::mem::take(&mut *info.borrow_mut()))
     }
 
     pub(crate) fn active_text(workspace: &Entity<Workspace>, cx: &mut VisualTestContext) -> String {

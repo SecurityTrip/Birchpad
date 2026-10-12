@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE note [<!ENTITY who "World">]>
+<!-- a comment -->
+<note lang="en" x='a>b'>
+  <to>&who;</to>
+  <body>Hello <b>bold</b> text</body>
+  <data><![CDATA[<raw> & ]]></data>
+  <empty/>
+  <?pi data?>
+</note>

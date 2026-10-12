@@ -31,7 +31,10 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
         if !args.path.exists() {
             AppState::update_state(cx, |state, _| state.remove_recent(&args.path));
             this.refresh_menus(cx);
-            bail!("{} no longer exists", args.path.display());
+            bail!(
+                "{}",
+                t!("file-ops.no-longer-exists", path = args.path.display())
+            );
         }
         this.open_path(&args.path, window, cx);
         Ok(())
@@ -42,12 +45,16 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
         Ok(())
     });
     registry.workspace("file.save", |this, (), window, cx| {
-        let view = this.active_view(cx).ok_or_else(|| anyhow!("no document"))?;
+        let view = this
+            .active_view(cx)
+            .ok_or_else(|| anyhow!("{}", t!("file-ops.no-document")))?;
         this.save(view, SaveMode::Save, window, cx).detach();
         Ok(())
     });
     registry.workspace("file.save-as", |this, (), window, cx| {
-        let view = this.active_view(cx).ok_or_else(|| anyhow!("no document"))?;
+        let view = this
+            .active_view(cx)
+            .ok_or_else(|| anyhow!("{}", t!("file-ops.no-document")))?;
         this.save(view, SaveMode::SaveAs, window, cx).detach();
         Ok(())
     });
@@ -150,7 +157,11 @@ impl Workspace {
             _ => None,
         };
         if let Some(reason) = blocked {
-            report_error(&anyhow!("Cannot save: {reason}"), window, cx);
+            report_error(
+                &anyhow!("{}", t!("file-ops.cannot-save", reason = reason)),
+                window,
+                cx,
+            );
             return Task::ready(false);
         }
         let existing = buffer.read(cx).path().map(Path::to_owned);
@@ -328,8 +339,11 @@ async fn write_buffer(
     })?;
     if open_elsewhere {
         bail!(
-            "{} is open in another tab; close it first or choose another name",
-            path.display()
+            "{}",
+            t!(
+                "file-ops.is-open-in-another-tab-close-it-first-or-choose",
+                path = path.display()
+            )
         );
     }
     let (text, format, revision) = buffer.read_with(cx, |buffer, _| {
@@ -361,14 +375,22 @@ async fn write_buffer(
                 buffer.did_save(path.clone(), revision, text.clone(), disk, cx);
             });
             cx.update(|_, cx| AppState::remove_recent(&path, cx))?;
-            workspace.update(cx, |workspace, cx| workspace.refresh_menus(cx))?;
+            workspace.update_in(cx, |workspace, window, cx| {
+                workspace.refresh_menus(cx);
+                if let Some(view) = workspace.view_of_buffer(buffer, cx) {
+                    workspace.plugin_event(birchpad_plugin::EventKind::Saved, &view, window, cx);
+                }
+            })?;
             Ok(())
         }
         Err(WriteFailure::Unencodable(problem)) => Err(anyhow!(
-            "Cannot save {}: {problem}. {}. Remove them or convert the document to a Unicode \
-             encoding (Encoding > Convert to UTF-8).",
-            path.display(),
-            first_position(&text, &problem)
+            "{}",
+            t!(
+                "file-ops.cannot-save-remove-them-or-convert-the-document",
+                path = path.display(),
+                problem = problem,
+                first_position = first_position(&text, &problem)
+            )
         )),
         Err(WriteFailure::Save(error)) => Err(anyhow!(error)),
     }
@@ -416,11 +438,17 @@ async fn ask_to_save(
     {
         return false;
     }
+    let answers = [
+        t!("common.save"),
+        t!("file-ops.don-t-save"),
+        t!("common.cancel"),
+    ];
+    let answers: Vec<&str> = answers.iter().map(String::as_str).collect();
     let answer = cx.prompt(
         PromptLevel::Warning,
-        &format!("Save changes to {name}?"),
+        &t!("file-ops.save-question", name = name),
         path.as_deref(),
-        &["Save", "Don't Save", "Cancel"],
+        &answers,
     );
     match answer.await {
         Ok(0) => {

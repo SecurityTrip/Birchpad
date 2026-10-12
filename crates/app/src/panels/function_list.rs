@@ -195,7 +195,7 @@ impl FunctionList {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> Self {
-        let filter = cx.new(|cx| InputState::new(window, cx).placeholder("Search"));
+        let filter = cx.new(|cx| InputState::new(window, cx).placeholder(t!("common.search")));
         let changes = cx.subscribe(&filter, |_, _, event: &InputEvent, cx| {
             if let InputEvent::Change = event {
                 cx.notify();
@@ -228,17 +228,20 @@ impl FunctionList {
             .upgrade()
             .and_then(|workspace| workspace.read(cx).active_view(cx))
         else {
-            return Contents::Message("No document".into());
+            return Contents::Message(t!("panels.function-list.no-document"));
         };
         let buffer = view.read(cx).buffer.read(cx);
         let Some(language) = buffer.language() else {
-            return Contents::Message("Plain text has no function list".into());
+            return Contents::Message(t!("panels.function-list.plain-text"));
         };
         if !birchpad_syntax::has_outline(language) {
-            return Contents::Message(format!("No function list for {}", language.name));
+            return Contents::Message(t!(
+                "panels.function-list.no-outline",
+                language = language.name
+            ));
         }
         let Some(syntax) = buffer.syntax() else {
-            return Contents::Message("The file is too large for a function list".into());
+            return Contents::Message(t!("panels.function-list.too-large"));
         };
         let buffer_id = view.read(cx).buffer.entity_id();
         let fresh = self.outline.as_ref().is_some_and(|outline| {

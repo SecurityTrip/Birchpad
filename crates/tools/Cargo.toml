@@ -1,0 +1,21 @@
+[package]
+name = "birchpad-tools"
+description = "Birchpad's built-in tools without a window: JSON and XML formatting, hex dumps, comparing texts, spell checking."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[dependencies]
+roxmltree = "0.21"
+similar = { version = "3.2", default-features = false, features = ["std"] }
+spellbook = "0.4"
+thiserror.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
+
+[lints]
+workspace = true

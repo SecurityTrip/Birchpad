@@ -1,0 +1,31 @@
+[package]
+name = "birchpad-plugin"
+description = "Birchpad's plugins and scripts without a window: WebAssembly components, Rhai scripts, the plugin manager and its policies."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+birchpad-commands.workspace = true
+birchpad-config.workspace = true
+birchpad-core.workspace = true
+rhai = { version = "1.23", default-features = false, features = ["std", "serde", "no_module", "no_custom_syntax"] }
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+toml.workspace = true
+wasmtime = { version = "49", default-features = false, features = ["runtime", "cranelift", "component-model", "std"] }
+
+# Cranelift does not generate code for Windows on ARM: plugins run in Wasmtime's interpreter.
+[target.'cfg(all(windows, target_arch = "aarch64"))'.dependencies]
+wasmtime = { version = "49", default-features = false, features = ["pulley"] }
+
+[dev-dependencies]
+tempfile = "3"
+
+[lints]
+workspace = true

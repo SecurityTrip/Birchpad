@@ -249,8 +249,8 @@ impl Workspace {
             Err(error) => {
                 if trigger == Trigger::Request {
                     show_message(
-                        "Cannot Check for Updates",
-                        vec![error.to_string()],
+                        t!("updates.cannot-check"),
+                        vec![crate::i18n::tr_text(&error.to_string())],
                         None,
                         window,
                         cx,
@@ -330,7 +330,7 @@ impl Workspace {
         cx.global_mut::<Updates>().downloading = true;
         if after == AfterDownload::Restart {
             window.push_notification(
-                Notification::info(format!("Downloading Birchpad {}…", release.version)),
+                Notification::info(t!("updates.downloading", version = release.version)),
                 cx,
             );
         }
@@ -355,8 +355,11 @@ impl Workspace {
                         }
                     }
                     Err(error) => {
-                        let message =
-                            format!("Cannot download Birchpad {}: {error}", release.version);
+                        let message = t!(
+                            "updates.cannot-download",
+                            version = release.version,
+                            error = crate::i18n::tr_text(&error.to_string())
+                        );
                         if after == AfterDownload::Restart {
                             report_error(&anyhow::anyhow!(message), window, cx);
                         } else {
@@ -388,7 +391,7 @@ impl Workspace {
             cx.update(|window, cx| match installer.restart() {
                 Ok(()) => cx.quit(),
                 Err(error) => report_error(
-                    &anyhow::anyhow!("Cannot start the update: {error}"),
+                    &anyhow::anyhow!("{}", t!("updates.cannot-start-the-update", error = error)),
                     window,
                     cx,
                 ),
@@ -411,11 +414,20 @@ fn up_to_date(newest: Option<Version>, window: &mut Window, cx: &mut App) {
     let channel = crate::help::channel_name(AppState::global(cx).settings.updates.channel);
     let line = match newest {
         Some(newest) => {
-            format!("You have version {VERSION}; the newest {channel} release is {newest}.")
+            t!(
+                "updates.newest-is",
+                version = VERSION,
+                channel = channel,
+                newest = newest
+            )
         }
-        None => format!("You have version {VERSION}; no {channel} release is published yet."),
+        None => t!(
+            "updates.none-published",
+            version = VERSION,
+            channel = channel
+        ),
     };
-    show_message("Birchpad Is Up to Date", vec![line], None, window, cx);
+    show_message(t!("updates.up-to-date"), vec![line], None, window, cx);
 }
 
 /// The answer to Help > Check for Updates when there is a newer release: Update and Restart for
@@ -427,18 +439,15 @@ fn show_available(
     window: &mut Window,
     cx: &mut App,
 ) {
-    let mut lines = vec![format!(
-        "Birchpad {} is available. You have version {VERSION}.",
-        release.version
+    let mut lines = vec![t!(
+        "updates.available-line",
+        newest = release.version,
+        version = VERSION
     )];
     let action = if installable {
-        lines.push(
-            "It is downloaded and checked against the signed update manifest; Birchpad then \
-             restarts, reopening your documents."
-                .to_owned(),
-        );
+        lines.push(t!("updates.how-it-updates"));
         crate::help::MessageAction::Run(
-            "Update and Restart",
+            "updates.update-and-restart",
             Box::new(move |window, cx| {
                 workspace
                     .update(cx, |workspace, cx| {
@@ -450,10 +459,10 @@ fn show_available(
             }),
         )
     } else {
-        lines.push(format!("Download page: {}", release.page));
-        crate::help::MessageAction::Open("Open Download Page", release.page.clone())
+        lines.push(t!("updates.download-page", page = release.page));
+        crate::help::MessageAction::Open("updates.open-download-page", release.page.clone())
     };
-    crate::help::show_message_with("Update Available", lines, Some(action), window, cx);
+    crate::help::show_message_with(t!("updates.available"), lines, Some(action), window, cx);
 }
 
 fn show_ready(
@@ -463,12 +472,10 @@ fn show_ready(
     cx: &mut App,
 ) {
     crate::help::show_message_with(
-        "Update Ready",
-        vec![format!(
-            "Birchpad {version} has been downloaded. It is installed when Birchpad restarts."
-        )],
+        t!("updates.ready"),
+        vec![t!("updates.ready-line", version = version)],
         Some(crate::help::MessageAction::Run(
-            "Restart Now",
+            "updates.restart-now",
             Box::new(move |window, cx| restart(&workspace, window, cx)),
         )),
         window,
@@ -493,15 +500,15 @@ fn announce_available(
 ) {
     let page = release.page.clone();
     let notification = Notification::new()
-        .title(format!("Birchpad {} is available", release.version))
-        .message(format!("You have version {VERSION}."))
+        .title(t!("updates.is-available", version = release.version))
+        .message(t!("updates.you-have", version = VERSION))
         .action(move |_, _, cx| {
             let notification = cx.entity().downgrade();
             if installable {
                 let workspace = workspace.clone();
                 Button::new("update")
                     .primary()
-                    .label(crate::i18n::tr("Update"))
+                    .label(t!("updates.update"))
                     .on_click(move |_, window, cx| {
                         notification.update(cx, |n, cx| n.dismiss(window, cx)).ok();
                         workspace
@@ -516,7 +523,7 @@ fn announce_available(
                 let page = page.clone();
                 Button::new("download")
                     .primary()
-                    .label(crate::i18n::tr("Download"))
+                    .label(t!("updates.download"))
                     .on_click(move |_, window, cx| {
                         notification.update(cx, |n, cx| n.dismiss(window, cx)).ok();
                         cx.open_url(&page);
@@ -533,14 +540,14 @@ fn announce_ready(
     cx: &mut App,
 ) {
     let notification = Notification::new()
-        .title(format!("Birchpad {version} is ready"))
-        .message("It is installed when Birchpad restarts.")
+        .title(t!("updates.is-ready", version = version))
+        .message(t!("updates.installed-on-restart"))
         .action(move |_, _, cx| {
             let notification = cx.entity().downgrade();
             let workspace = workspace.clone();
             Button::new("restart")
                 .primary()
-                .label(crate::i18n::tr("Restart Now"))
+                .label(t!("updates.restart-now"))
                 .on_click(move |_, window, cx| {
                     notification.update(cx, |n, cx| n.dismiss(window, cx)).ok();
                     restart(&workspace, window, cx);
@@ -559,24 +566,30 @@ pub(crate) fn describe(cx: &App) -> String {
     let state = AppState::global(cx);
     let settings = &state.settings.updates;
     if settings.mode == UpdateMode::Off {
-        return "turned off".to_owned();
+        return t!("updates.turned-off");
     }
     let channel = crate::help::channel_name(settings.channel);
     let source = birchpad_update::manifest_url(settings);
     let how = if !checks_in_background() {
-        "checked only from Help > Check for Updates (development build)"
+        t!("updates.how-manual")
     } else if settings.mode == UpdateMode::Auto && Updates::installed(cx) {
-        "checked daily, installed when Birchpad restarts"
+        t!("updates.how-auto")
     } else if Updates::installed(cx) {
-        "checked daily, new versions announced"
+        t!("updates.how-notify")
     } else {
-        "checked daily, new versions announced with their download page"
+        t!("updates.how-page")
     };
     let last = match state.state.updates.last_check {
         0 => String::new(),
-        time => format!("; last checked {}", manifest::date(time)),
+        time => t!("updates.last-checked", date = manifest::date(time)),
     };
-    format!("{channel} channel from {source}, {how}{last}")
+    t!(
+        "updates.describe",
+        channel = channel,
+        source = source,
+        how = how,
+        last = last
+    )
 }
 
 #[cfg(test)]

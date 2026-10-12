@@ -1,0 +1,8 @@
+id = "word-count"
+name = "Word Count"
+version = "1.0.0"
+description = "Counts words."
+author = "Jane Doe"
+api = "0.1"
+entry = "plugin.wasm"
+events = ["opened", "saved", "closed", "activated"]

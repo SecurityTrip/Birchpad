@@ -56,6 +56,11 @@ pub const POLICIES: &[PolicyDef] = &[
         kind: PolicyKind::List,
     },
     PolicyDef {
+        name: "UserScripts",
+        key: "plugins.scripts",
+        kind: PolicyKind::Bool,
+    },
+    PolicyDef {
         name: "BackupUnsaved",
         key: "session.backup-unsaved",
         kind: PolicyKind::Bool,

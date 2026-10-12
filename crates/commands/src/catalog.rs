@@ -207,6 +207,7 @@ pub const COMMANDS: &[CommandSpec] = &[
     workspace("panel.folder-as-workspace", "Folder as Workspace"),
     workspace("panel.project", "Project Panel"),
     workspace("panel.document-map", "Document Map"),
+    workspace("panel.plugin", "Plugin Panel"),
     workspace("panel.document-list", "Document List"),
     workspace("panel.function-list", "Function List"),
     workspace("panel.clipboard-history", "Clipboard History"),
@@ -305,6 +306,45 @@ pub const COMMANDS: &[CommandSpec] = &[
     workspace("settings.shortcut-mapper", "Shortcut Mapper..."),
     workspace("settings.theme", "Theme"),
     workspace("settings.import-theme", "Import Style Themes..."),
+    // Plugins: the built-in JSON Viewer and XML Tools work on the selection, or the whole text
+    editor("json.format", "Format JSON"),
+    editor("json.minify", "Compress JSON"),
+    editor("json.validate", "Validate JSON"),
+    editor("xml.pretty-print", "Pretty Print XML"),
+    editor("xml.linearize", "Linearize XML"),
+    editor("xml.check", "Check XML Syntax"),
+    // Hex Editor: the active document's bytes in a new document, and back
+    workspace("hex.view", "View in Hex"),
+    workspace("hex.apply", "Apply Hex to Document"),
+    // Compare: the active document with the other view's, or with the tab before it
+    workspace("compare.compare", "Compare"),
+    workspace("compare.clear", "Clear Results"),
+    editor("compare.next", "Next Difference"),
+    editor("compare.previous", "Previous Difference"),
+    workspace("compare.ignore-spaces", "Ignore Spaces"),
+    workspace("compare.ignore-case", "Ignore Case"),
+    // Spell Checker; spell.language takes { "language": "en_US" }
+    workspace("spell.auto", "Spell Check Document Automatically"),
+    editor("spell.next", "Find Next Misspelling"),
+    editor("spell.previous", "Find Previous Misspelling"),
+    editor("spell.suggestions", "Suggestions"),
+    editor("spell.add-word", "Add Word to Dictionary"),
+    workspace("spell.language", "Dictionary Language"),
+    workspace("spell.open-dictionaries-folder", "Open Dictionaries Folder"),
+    // Scripts; script.run takes { "name": <a script of the scripts folder, without .rhai> }
+    workspace("script.run", "Run Script"),
+    workspace("script.open-folder", "Open Scripts Folder"),
+    workspace("script.reload", "Reload Scripts"),
+    // Plugins; plugin.run takes { "plugin": <its id>, "command": <one of its commands> }
+    workspace("plugin.run", "Run Plugin Command"),
+    workspace("plugin.open-folder", "Open Plugins Folder"),
+    workspace("plugin.reload", "Reload Plugins"),
+    // Plugins Admin; plugin.install takes { "path": <a plugin.toml> } or asks for it,
+    // plugin.uninstall { "plugin": <id> }, plugin.enable { "plugin": <id>, "enabled": true }
+    workspace("plugin.admin", "Plugins Admin..."),
+    workspace("plugin.install", "Install Plugin..."),
+    workspace("plugin.uninstall", "Remove Plugin"),
+    workspace("plugin.enable", "Turn Plugin On or Off"),
     // Help
     workspace("help.check-updates", "Check for Updates..."),
     // From the update dialogs and notifications.
