@@ -248,7 +248,7 @@ What Phase 1 left for later is marked *(from Phase 1)* in the phases below.
 - [x] Hex Editor: the document's bytes as a hex dump, edited and applied back
 - [x] Compare: two documents side by side with their differences marked, next and previous
       difference, ignoring spaces or case
-- [ ] Spell checking as DSpellCheck: misspelled words underlined, next and previous, suggestions,
+- [x] Spell checking as DSpellCheck: misspelled words underlined, next and previous, suggestions,
       the user's words, the dictionary's language
 - [x] Fuzzing `plugin.toml`, JSON, XML and hex dumps
 

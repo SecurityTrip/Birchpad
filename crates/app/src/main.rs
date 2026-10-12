@@ -46,6 +46,7 @@ mod session;
 #[cfg(test)]
 mod session_tests;
 mod shortcut_mapper;
+mod spell_check;
 #[cfg(test)]
 mod split_tests;
 mod status_bar;

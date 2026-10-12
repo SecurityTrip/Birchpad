@@ -21,6 +21,11 @@ version's release notes from its section here.
   the line, Next and Previous Difference go through them, Clear Results takes the colors off.
   Spaces and case can be ignored. Themes get `compare-added`, `compare-removed`,
   `compare-changed` and `spell-error` colors.
+- Plugins > Spell Checker, as DSpellCheck: Spell Check Document Automatically underlines
+  misspelled words (in code, only in comments and strings); Find Next and Previous Misspelling;
+  Suggestions in the completion list; Add Word to Dictionary; Dictionary Language. Dictionaries
+  are Hunspell's `.aff` and `.dic`, from the `dictionaries` folder next to the settings (Open
+  Dictionaries Folder) or the system's; none comes with Birchpad.
 - The `UserScripts` policy (`plugins.scripts`): administrators can turn user scripts off, as
   `PluginInstall` and `AllowedPlugins` control plugins.
 

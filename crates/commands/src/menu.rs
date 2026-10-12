@@ -43,6 +43,8 @@ pub enum Placeholder {
     RunCommands,
     /// The user defined languages, each invoking `language.set` with `udl:<name>`.
     UserLanguages,
+    /// The languages of the spell checker's dictionaries, each invoking `spell.language`.
+    SpellLanguages,
 }
 
 impl MenuItem {
@@ -672,6 +674,23 @@ pub fn main_menu() -> Vec<Menu> {
                     Separator,
                     cmd("compare.ignore-spaces"),
                     cmd("compare.ignore-case"),
+                ],
+            )),
+            Submenu(Menu::new(
+                "Spell Checker",
+                vec![
+                    cmd("spell.auto"),
+                    Separator,
+                    cmd("spell.next"),
+                    cmd("spell.previous"),
+                    cmd("spell.suggestions"),
+                    cmd("spell.add-word"),
+                    Separator,
+                    Submenu(Menu::new(
+                        "Language",
+                        vec![Dynamic(Placeholder::SpellLanguages)],
+                    )),
+                    cmd("spell.open-dictionaries-folder"),
                 ],
             )),
         ],

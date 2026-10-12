@@ -150,6 +150,7 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
     crate::navigation::register_commands(registry);
     crate::panels::register_commands(registry);
     crate::session::register_commands(registry);
+    crate::spell_check::register_commands(registry);
     crate::disk::register_commands(registry);
     crate::themes::register_commands(registry);
     crate::preferences::register_commands(registry);
@@ -853,6 +854,8 @@ impl Workspace {
             .is_some_and(|view| view.read(cx).buffer.read(cx).is_monitoring());
         let theme_name = crate::theme::current().name.clone();
         let compare_options = crate::compare::options(cx);
+        let spell_enabled = crate::spell_check::is_enabled(cx);
+        let spell_language = crate::spell_check::language(cx);
         let checked = |invocation: &Invocation| {
             if let Some((_, read, _)) = VIEW_SWITCHES
                 .iter()
@@ -886,6 +889,11 @@ impl Workspace {
             if let Some(on) = crate::compare::is_checked(invocation, compare_options) {
                 return on;
             }
+            if let Some(on) =
+                crate::spell_check::is_checked(invocation, spell_enabled, &spell_language)
+            {
+                return on;
+            }
             if let Some(open) = crate::panels::is_checked(&self.docks, invocation) {
                 return open;
             }
@@ -911,8 +919,10 @@ impl Workspace {
             .map(|menu| menu.saved.iter().map(|entry| entry.name.clone()).collect())
             .unwrap_or_default();
         let user_languages = crate::user_languages::names(cx);
+        let spell_languages = crate::spell_check::languages(cx);
         let state = MenuState {
             user_languages: &user_languages,
+            spell_languages: &spell_languages,
             recent_files: &recent_files,
             themes: &themes,
             macros: &macros,

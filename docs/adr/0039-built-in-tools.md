@@ -35,8 +35,10 @@ third-party ports.
   `dictionaries` folder next to the settings, then the system's folders (and Notepad++'s
   DSpellCheck folder on Windows). Words are runs of letters with inner apostrophes; words with
   digits or underscores, in capitals or with a capital inside, single letters and addresses are
-  skipped, as they are mostly code and names. Words added by the user are kept in
-  `dictionaries/user.txt`.
+  skipped, as they are mostly code and names; in a document with a syntax tree only comments
+  and strings are checked. Words added by the user are kept in `dictionaries/user.txt`.
+  Misspelled words are underlined in the visible part of the text, found again only when the
+  text, its syntax tree or the dictionary changes; suggestions show in the completion list.
 
 ## Consequences
 

@@ -322,6 +322,14 @@ pub const COMMANDS: &[CommandSpec] = &[
     editor("compare.previous", "Previous Difference"),
     workspace("compare.ignore-spaces", "Ignore Spaces"),
     workspace("compare.ignore-case", "Ignore Case"),
+    // Spell Checker; spell.language takes { "language": "en_US" }
+    workspace("spell.auto", "Spell Check Document Automatically"),
+    editor("spell.next", "Find Next Misspelling"),
+    editor("spell.previous", "Find Previous Misspelling"),
+    editor("spell.suggestions", "Suggestions"),
+    editor("spell.add-word", "Add Word to Dictionary"),
+    workspace("spell.language", "Dictionary Language"),
+    workspace("spell.open-dictionaries-folder", "Open Dictionaries Folder"),
     // Help
     workspace("help.check-updates", "Check for Updates..."),
     // From the update dialogs and notifications.

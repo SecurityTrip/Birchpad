@@ -364,3 +364,14 @@
 "Ignore Spaces" = "Игнорировать пробелы"
 "Ignore Case" = "Игнорировать регистр"
 "The documents are the same" = "Документы совпадают"
+
+# Plugins: Spell Checker
+"Spell Checker" = "Проверка орфографии"
+"Spell Check Document Automatically" = "Проверять орфографию автоматически"
+"Find Next Misspelling" = "Следующая ошибка"
+"Find Previous Misspelling" = "Предыдущая ошибка"
+"Suggestions" = "Варианты исправления"
+"Add Word to Dictionary" = "Добавить слово в словарь"
+"Open Dictionaries Folder" = "Открыть папку словарей"
+"(no dictionaries)" = "(нет словарей)"
+"Dictionary Language" = "Язык словаря"

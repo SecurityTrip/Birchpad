@@ -934,6 +934,12 @@ impl EditorView {
                 .overlapping(visible.clone())
                 .map(|(range, _)| (range, incremental)),
         );
+        let spell = Paint::Underline(theme::paint(theme::editor().spell_error));
+        let buffer = self.buffer.read(cx);
+        let misspelled =
+            crate::spell_check::underlined(buffer, self.buffer.entity_id(), visible.clone(), cx);
+        ranges.extend(misspelled.iter().map(|range| (range.clone(), spell)));
+        let marks = buffer.marks();
         let mut quads = Vec::new();
         // Compared lines are filled across the text area, under the other decorations.
         for (range, change) in marks.compare.overlapping(visible.clone()) {

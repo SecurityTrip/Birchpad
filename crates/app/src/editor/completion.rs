@@ -243,6 +243,30 @@ impl EditorView {
         }
     }
 
+    /// Offers `choices` for the text of `range` (a misspelled word) in the completion list,
+    /// with the caret at its end; the one taken replaces it.
+    pub(crate) fn show_choices(
+        &mut self,
+        range: std::ops::Range<usize>,
+        choices: Vec<String>,
+        cx: &mut Context<Self>,
+    ) {
+        self.go_to(range.end, cx);
+        self.call_tip = None;
+        self.completion = Some(Popup {
+            start: range.start,
+            items: choices
+                .into_iter()
+                .map(|label| Item {
+                    label,
+                    detail: None,
+                })
+                .collect(),
+            selected: 0,
+        });
+        cx.notify();
+    }
+
     /// Takes the selected entry in place of the word typed.
     pub(crate) fn accept_completion(&mut self, cx: &mut Context<Self>) {
         let Some(popup) = self.completion.take() else {
