@@ -326,4 +326,8 @@ fuzz_tests!(
     command_line,
     instance_message,
     manifest,
+    plugin_manifest,
+    json,
+    xml,
+    hex_dump,
 );

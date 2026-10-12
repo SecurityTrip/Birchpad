@@ -125,3 +125,31 @@ path = "fuzz_targets/udl.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "plugin_manifest"
+path = "fuzz_targets/plugin_manifest.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "json"
+path = "fuzz_targets/json.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "xml"
+path = "fuzz_targets/xml.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "hex_dump"
+path = "fuzz_targets/hex_dump.rs"
+test = false
+doc = false
+bench = false

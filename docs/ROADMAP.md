@@ -245,7 +245,7 @@ What Phase 1 left for later is marked *(from Phase 1)* in the phases below.
       ([ADR 0039](adr/0039-built-in-tools.md))
 - [ ] Built-in versions of popular Notepad++ plugins in the window: Compare, JSON Viewer, XML
       Tools, Hex Editor, DSpellCheck ([ADR 0039](adr/0039-built-in-tools.md))
-- [ ] Fuzzing `plugin.toml`, JSON, XML and hex dumps
+- [x] Fuzzing `plugin.toml`, JSON, XML and hex dumps
 
 ## Phase 6: full parity with Notepad++
 

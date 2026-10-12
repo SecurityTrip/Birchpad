@@ -41,6 +41,10 @@ pub const TARGETS: &[(&str, Check)] = &[
     ("command_line", command_line),
     ("instance_message", instance_message),
     ("manifest", manifest),
+    ("plugin_manifest", plugin_manifest),
+    ("json", json),
+    ("xml", xml),
+    ("hex_dump", hex_dump),
 ];
 
 /// Every encoding a file can be opened in.
@@ -483,4 +487,83 @@ pub fn manifest(data: &[u8]) -> bool {
         }
         Err(_) => served,
     }
+}
+
+/// A plugin's `plugin.toml`: one that reads writes back as TOML that reads as the same.
+pub fn plugin_manifest(data: &[u8]) -> bool {
+    let Ok(text) = std::str::from_utf8(data) else {
+        return false;
+    };
+    let Ok(manifest) = birchpad_plugin::Manifest::parse(text) else {
+        return false;
+    };
+    assert!(birchpad_plugin::manifest::is_valid_id(&manifest.id));
+    assert_eq!(
+        birchpad_plugin::Manifest::parse(&manifest.to_toml()).as_ref(),
+        Ok(&manifest)
+    );
+    true
+}
+
+/// A document checked, formatted and minified as JSON: what is JSON formats and minifies to
+/// JSON with the same tokens, whatever the layout; what is not is refused by all three.
+pub fn json(data: &[u8]) -> bool {
+    use birchpad_tools::json;
+    let Ok(text) = std::str::from_utf8(data) else {
+        return false;
+    };
+    let layout = birchpad_tools::Layout::default();
+    if let Err(error) = json::validate(text) {
+        assert!(error.offset <= text.len());
+        assert!(json::format(text, layout).is_err() && json::minify(text).is_err());
+        return false;
+    }
+    let small = json::minify(text).unwrap();
+    let pretty = json::format(text, layout).unwrap();
+    assert_eq!(json::minify(&pretty).unwrap(), small);
+    assert_eq!(json::minify(&small).unwrap(), small);
+    assert_eq!(json::format(&pretty, layout).unwrap(), pretty);
+    true
+}
+
+/// A document checked, pretty printed and linearized as XML: what is well formed stays well
+/// formed both ways, and pretty printing twice changes nothing more.
+pub fn xml(data: &[u8]) -> bool {
+    use birchpad_tools::xml;
+    let Ok(text) = std::str::from_utf8(data) else {
+        return false;
+    };
+    let layout = birchpad_tools::Layout::default();
+    if let Err(error) = xml::check(text) {
+        assert!(error.offset <= text.len());
+        assert!(xml::pretty_print(text, layout).is_err() && xml::linearize(text).is_err());
+        return false;
+    }
+    let pretty = xml::pretty_print(text, layout).unwrap();
+    let line = xml::linearize(text).unwrap();
+    assert!(xml::check(&pretty).is_ok(), "{pretty}");
+    assert!(xml::check(&line).is_ok(), "{line}");
+    assert_eq!(xml::pretty_print(&pretty, layout).unwrap(), pretty);
+    assert_eq!(xml::linearize(&line).unwrap(), line);
+    true
+}
+
+/// A hex dump edited by hand: what reads dumps back to rows that read as the same bytes.
+pub fn hex_dump(data: &[u8]) -> bool {
+    use birchpad_tools::hex;
+    let Ok(text) = std::str::from_utf8(data) else {
+        return false;
+    };
+    let Ok(bytes) = hex::parse(text) else {
+        return false;
+    };
+    assert_eq!(
+        hex::parse(&hex::dump(
+            &bytes, "
+"
+        ))
+        .unwrap(),
+        bytes
+    );
+    true
 }

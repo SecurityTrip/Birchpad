@@ -1,0 +1,6 @@
+{
+  "name": "Birchpad",
+  "list": [1, -2.5e3, true, false, null, "é\n"],
+  "empty": {}, "none": [],
+  "deep": [[[{"a": {"b": [0]}}]]]
+}
