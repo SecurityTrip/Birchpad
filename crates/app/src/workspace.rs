@@ -143,6 +143,7 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
     crate::file_ops::register_commands(registry);
     crate::find::register_commands(registry);
     crate::help::register_commands(registry);
+    crate::hex_view::register_commands(registry);
     crate::incremental::register_commands(registry);
     crate::json_xml::register_commands(registry);
     crate::navigation::register_commands(registry);

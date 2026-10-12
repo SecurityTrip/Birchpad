@@ -25,6 +25,7 @@ mod file_ops;
 mod find;
 mod find_in_files;
 mod help;
+mod hex_view;
 mod i18n;
 mod incremental;
 mod json_xml;

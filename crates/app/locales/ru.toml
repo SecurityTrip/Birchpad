@@ -350,3 +350,8 @@
 "Linearize XML" = "XML в одну строку"
 "Check XML Syntax" = "Проверить синтаксис XML"
 "XML is valid" = "XML корректен"
+
+# Plugins: Hex Editor
+"Hex Editor" = "Hex Editor"
+"View in Hex" = "Показать в шестнадцатеричном виде"
+"Apply Hex to Document" = "Применить шестнадцатеричные данные к документу"

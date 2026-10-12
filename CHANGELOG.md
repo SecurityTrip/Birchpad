@@ -13,6 +13,9 @@ version's release notes from its section here.
   Compress JSON and Validate JSON, for the selection or the whole document. Numbers and strings
   stay as written; an error puts the caret where it is and says what is wrong.
 - Plugins > XML Tools: Pretty Print XML, Linearize XML and Check XML Syntax, likewise.
+- Plugins > Hex Editor: View in Hex opens the document's bytes, in its encoding, as rows of 16
+  in a new document; after editing them, Apply Hex to Document puts them back into the
+  document as one undo step.
 - The `UserScripts` policy (`plugins.scripts`): administrators can turn user scripts off, as
   `PluginInstall` and `AllowedPlugins` control plugins.
 

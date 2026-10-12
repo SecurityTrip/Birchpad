@@ -312,6 +312,9 @@ pub const COMMANDS: &[CommandSpec] = &[
     editor("xml.pretty-print", "Pretty Print XML"),
     editor("xml.linearize", "Linearize XML"),
     editor("xml.check", "Check XML Syntax"),
+    // Hex Editor: the active document's bytes in a new document, and back
+    workspace("hex.view", "View in Hex"),
+    workspace("hex.apply", "Apply Hex to Document"),
     // Help
     workspace("help.check-updates", "Check for Updates..."),
     // From the update dialogs and notifications.

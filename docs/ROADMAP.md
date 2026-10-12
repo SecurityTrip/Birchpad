@@ -245,7 +245,7 @@ What Phase 1 left for later is marked *(from Phase 1)* in the phases below.
       ([ADR 0039](adr/0039-built-in-tools.md))
 - [x] The Plugins menu; JSON Viewer and XML Tools in it: format, compress or linearize, and
       check the selection or the document ([ADR 0039](adr/0039-built-in-tools.md))
-- [ ] Hex Editor: the document's bytes as a hex dump, edited and applied back
+- [x] Hex Editor: the document's bytes as a hex dump, edited and applied back
 - [ ] Compare: two documents side by side with their differences marked, next and previous
       difference
 - [ ] Spell checking as DSpellCheck: misspelled words underlined, next and previous, suggestions,

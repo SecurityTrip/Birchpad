@@ -657,6 +657,10 @@ pub fn main_menu() -> Vec<Menu> {
                     cmd("xml.check"),
                 ],
             )),
+            Submenu(Menu::new(
+                "Hex Editor",
+                vec![cmd("hex.view"), cmd("hex.apply")],
+            )),
         ],
     );
 
