@@ -306,12 +306,22 @@ pub(crate) fn display(value: Option<&Value>) -> String {
 /// Reads what was typed into the field of a setting of `kind`. `None`: remove the setting.
 pub(crate) fn parse_field(kind: Kind, text: &str) -> Result<Option<Value>> {
     let number = |text: &str, min: i64, max: i64| -> Result<i64> {
-        let value: i64 = text
-            .trim()
-            .parse()
-            .map_err(|_| anyhow!("{} is not a whole number", text.trim()))?;
+        let value: i64 = text.trim().parse().map_err(|_| {
+            anyhow!(
+                "{}",
+                t!("preferences.is-not-a-whole-number", text = text.trim())
+            )
+        })?;
         if !(min..=max).contains(&value) {
-            bail!("{value} is not between {min} and {max}");
+            bail!(
+                "{}",
+                t!(
+                    "preferences.is-not-between-and",
+                    value = value,
+                    min = min,
+                    max = max
+                )
+            );
         }
         Ok(value)
     };
@@ -329,7 +339,9 @@ pub(crate) fn parse_field(kind: Kind, text: &str) -> Result<Option<Value>> {
             let text = text.trim();
             Ok((!text.is_empty()).then(|| Value::String(text.to_owned())))
         }
-        Kind::Bool | Kind::Choice(_) => bail!("this setting has no text field"),
+        Kind::Bool | Kind::Choice(_) => {
+            bail!("{}", t!("preferences.this-setting-has-no-text-field"))
+        }
     }
 }
 
@@ -338,13 +350,17 @@ pub(crate) fn parse_field(kind: Kind, text: &str) -> Result<Option<Value>> {
 pub(crate) fn set(key: &str, value: Option<Value>, cx: &mut App) -> Result<()> {
     let state = AppState::global(cx);
     if state.is_locked(key) {
-        bail!("{key} is set by your administrator");
+        bail!(
+            "{}",
+            t!("preferences.is-set-by-your-administrator", key = key)
+        );
     }
-    let path = state
-        .paths
-        .user_settings
-        .clone()
-        .ok_or_else(|| anyhow!("there is no settings file to write to"))?;
+    let path = state.paths.user_settings.clone().ok_or_else(|| {
+        anyhow!(
+            "{}",
+            t!("preferences.there-is-no-settings-file-to-write-to")
+        )
+    })?;
     birchpad_config::write_setting(&path, key, value.as_ref())?;
     let paths = AppState::global(cx).paths.clone();
     let resolved = birchpad_config::resolve(birchpad_config::load(&paths));
@@ -378,10 +394,10 @@ pub(crate) fn open(workspace: WeakEntity<Workspace>, window: &mut Window, cx: &m
     let preferences = cx.new(|cx| Preferences::new(workspace, window, cx));
     window.open_dialog(cx, move |dialog, _, _| {
         dialog
-            .title(crate::i18n::tr("Preferences"))
+            .title(t!("preferences.preferences"))
             .w(px(720.))
             .child(preferences.clone())
-            .footer(DialogFooter::new().child(crate::workspace::dialog_close("Close")))
+            .footer(DialogFooter::new().child(crate::workspace::dialog_close("common.close")))
     });
 }
 
@@ -441,6 +457,11 @@ impl Preferences {
     }
 }
 
+/// A section's, a setting's or a choice's text: `preferences.<text>`.
+fn label(text: &str) -> String {
+    crate::i18n::get_or(&format!("preferences.{}", crate::i18n::slug(text)), text)
+}
+
 impl Render for Preferences {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let colors = ui();
@@ -455,7 +476,7 @@ impl Render for Preferences {
                 .py_1()
                 .when(index == self.section, |row| row.bg(paint(colors.selected)))
                 .hover(|row| row.bg(paint(colors.hovered)))
-                .child(crate::i18n::tr(name))
+                .child(label(name))
                 .on_click(cx.listener(move |this, _, _, cx| this.select_section(index, cx)))
         });
         let rows = ENTRIES
@@ -470,7 +491,7 @@ impl Render for Preferences {
                     Kind::Bool => {
                         let checked = value.as_ref().and_then(Value::as_bool).unwrap_or(false);
                         Checkbox::new(("preferences-check", index))
-                            .label(crate::i18n::tr(entry.label))
+                            .label(label(entry.label))
                             .checked(checked)
                             .disabled(locked)
                             .on_click(cx.listener(move |this, _, _, cx| {
@@ -486,12 +507,10 @@ impl Render for Preferences {
                             .flex_row()
                             .items_center()
                             .gap_3()
-                            .child(div().w(px(200.)).child(crate::i18n::tr(entry.label)))
+                            .child(div().w(px(200.)).child(label(entry.label)))
                             .child(
                                 RadioGroup::horizontal(("preferences-choice", index))
-                                    .children(
-                                        choices.iter().map(|(_, label)| crate::i18n::tr(label)),
-                                    )
+                                    .children(choices.iter().map(|(_, text)| label(text)))
                                     .selected_index(selected)
                                     .disabled(locked)
                                     .on_click(cx.listener(move |this, index: &usize, _, cx| {
@@ -506,7 +525,7 @@ impl Render for Preferences {
                         .flex_row()
                         .items_center()
                         .gap_3()
-                        .child(div().w(px(200.)).child(crate::i18n::tr(entry.label)))
+                        .child(div().w(px(200.)).child(label(entry.label)))
                         .child(
                             div()
                                 .w(px(200.))
@@ -524,7 +543,7 @@ impl Render for Preferences {
                             div()
                                 .text_sm()
                                 .text_color(paint(colors.muted))
-                                .child(crate::i18n::tr("Set by your administrator")),
+                                .child(t!("preferences.set-by-your-administrator")),
                         )
                     })
                     .children(self.errors.get(key).map(|error| {

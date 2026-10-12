@@ -58,13 +58,15 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
         },
     );
     registry.workspace("plugin.uninstall", |this, args: PluginArgs, window, cx| {
-        let dir = plugins_dir(cx).ok_or_else(|| anyhow!("there is no settings folder"))?;
+        let dir = plugins_dir(cx)
+            .ok_or_else(|| anyhow!("{}", t!("extensions.admin.there-is-no-settings-folder")))?;
         let result = manager::uninstall(&dir, &args.plugin);
         this.load_plugins(window, cx);
         result
     });
     registry.workspace("plugin.enable", |this, args: EnableArgs, window, cx| {
-        let dir = plugins_dir(cx).ok_or_else(|| anyhow!("there is no settings folder"))?;
+        let dir = plugins_dir(cx)
+            .ok_or_else(|| anyhow!("{}", t!("extensions.admin.there-is-no-settings-folder")))?;
         let known = cx.try_global::<Plugins>().is_some_and(|plugins| {
             plugins
                 .entries
@@ -72,7 +74,13 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
                 .any(|entry| entry.id() == args.plugin)
         });
         if !known {
-            anyhow::bail!("the plugin {} is not installed", args.plugin);
+            anyhow::bail!(
+                "{}",
+                t!(
+                    "extensions.admin.the-plugin-is-not-installed",
+                    plugin = args.plugin
+                )
+            );
         }
         manager::set_enabled(&dir, &args.plugin, args.enabled)?;
         this.load_plugins(window, cx);
@@ -87,14 +95,15 @@ impl Workspace {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> Result<()> {
-        let dir = plugins_dir(cx).ok_or_else(|| anyhow!("there is no settings folder"))?;
+        let dir = plugins_dir(cx)
+            .ok_or_else(|| anyhow!("{}", t!("extensions.admin.there-is-no-settings-folder")))?;
         let settings = AppState::global(cx).settings.plugins.clone();
         let installed = manager::install(manifest, &dir, &settings)?;
         self.load_plugins(window, cx);
         crate::workspace::report_success(
             format!(
                 "{} {}",
-                crate::i18n::tr("Installed"),
+                t!("extensions.admin.installed"),
                 installed.manifest.name
             ),
             window,
@@ -147,9 +156,9 @@ pub(crate) fn rows(cx: &App) -> (Vec<Row>, Vec<String>) {
         .map(|entry| {
             let manifest = &entry.installed.manifest;
             let status = match &entry.state {
-                State::Loading => crate::i18n::tr("Loading"),
-                State::Ready(_) => crate::i18n::tr("On"),
-                State::Disabled => crate::i18n::tr("Off"),
+                State::Loading => t!("extensions.admin.loading"),
+                State::Ready(_) => t!("extensions.admin.on"),
+                State::Disabled => t!("extensions.admin.off"),
                 State::Refused(why) | State::Failed(why) => why.clone(),
             };
             Row {
@@ -169,11 +178,11 @@ pub(crate) fn rows(cx: &App) -> (Vec<Row>, Vec<String>) {
 fn policy_note(cx: &App) -> Option<String> {
     match AppState::global(cx).settings.plugins.install {
         PluginInstall::Allow => None,
-        PluginInstall::Allowlist => Some(crate::i18n::tr(
-            "Your administrator allows only some plugins.",
+        PluginInstall::Allowlist => Some(t!(
+            "extensions.admin.your-administrator-allows-only-some-plugins"
         )),
-        PluginInstall::Deny => Some(crate::i18n::tr(
-            "Your administrator has turned plugins off.",
+        PluginInstall::Deny => Some(t!(
+            "extensions.admin.your-administrator-has-turned-plugins-off"
         )),
     }
 }
@@ -190,14 +199,14 @@ fn open(window: &mut Window, cx: &mut Context<Workspace>) {
     window.open_dialog(cx, move |dialog, _, _| {
         let install_from = install_from.clone();
         dialog
-            .title(crate::i18n::tr("Plugins Admin"))
+            .title(t!("extensions.admin.plugins-admin"))
             .w(px(640.))
             .child(admin.clone())
             .footer(
                 DialogFooter::new()
                     .child(
                         Button::new("plugin-install")
-                            .label(crate::i18n::tr("Install..."))
+                            .label(t!("extensions.admin.install"))
                             .on_click(move |_, window, cx| {
                                 install_from
                                     .update(cx, |workspace, cx| {
@@ -206,7 +215,7 @@ fn open(window: &mut Window, cx: &mut Context<Workspace>) {
                                     .ok();
                             }),
                     )
-                    .child(crate::workspace::dialog_close("Close")),
+                    .child(crate::workspace::dialog_close("common.close")),
             )
     });
 }
@@ -239,7 +248,11 @@ impl Render for PluginsAdmin {
                 "plugin.uninstall",
                 serde_json::json!({ "plugin": row.id }),
             );
-            let toggle_label = if row.disabled { "Turn On" } else { "Turn Off" };
+            let toggle_label = if row.disabled {
+                "extensions.admin.turn-on"
+            } else {
+                "extensions.admin.turn-off"
+            };
             div()
                 .id(("plugin-row", index))
                 .debug_selector(move || format!("plugin-row-{index}"))
@@ -269,7 +282,7 @@ impl Render for PluginsAdmin {
                 .child(
                     Button::new(("plugin-toggle", index))
                         .small()
-                        .label(crate::i18n::tr(toggle_label))
+                        .label(t!(toggle_label))
                         .on_click(cx.listener(move |this, _, window, cx| {
                             this.run(toggle.clone(), window, cx);
                             cx.notify();
@@ -279,7 +292,7 @@ impl Render for PluginsAdmin {
                     Button::new(("plugin-remove", index))
                         .small()
                         .ghost()
-                        .label(crate::i18n::tr("Remove"))
+                        .label(t!("common.remove"))
                         .on_click(cx.listener(move |this, _, window, cx| {
                             this.run(remove.clone(), window, cx);
                             cx.notify();
@@ -298,7 +311,7 @@ impl Render for PluginsAdmin {
                 list.child(
                     div()
                         .text_color(muted)
-                        .child(crate::i18n::tr("No plugins are installed.")),
+                        .child(t!("extensions.admin.no-plugins-are-installed")),
                 )
             })
             .child(

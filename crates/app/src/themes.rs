@@ -65,7 +65,7 @@ pub(crate) fn load(dir: Option<&Path>, name: &str) -> Result<Theme> {
     }
     Theme::builtin(name)
         .cloned()
-        .ok_or_else(|| anyhow!("there is no theme named {name}"))
+        .ok_or_else(|| anyhow!("{}", t!("themes.there-is-no-theme-named", name = name)))
 }
 
 /// Reads a theme file, in Notepad++'s format if it is XML.
@@ -81,7 +81,7 @@ fn read(path: &Path, name: &str) -> Result<Theme> {
     } else {
         Theme::from_toml(name, text)
     };
-    theme.with_context(|| format!("the theme {}", path.display()))
+    theme.with_context(|| t!("themes.the-theme", path = path.display()))
 }
 
 /// The theme chosen last, or the one the settings name.
@@ -165,8 +165,15 @@ pub(crate) fn import(paths: &[PathBuf], dir: &Path) -> (Vec<Theme>, Vec<String>)
     let mut errors = Vec::new();
     for path in paths {
         let result = (|| {
-            let name = theme_name(path)
-                .ok_or_else(|| anyhow!("{} is not a theme file (.toml or .xml)", path.display()))?;
+            let name = theme_name(path).ok_or_else(|| {
+                anyhow!(
+                    "{}",
+                    t!(
+                        "themes.is-not-a-theme-file-toml-or-xml",
+                        path = path.display()
+                    )
+                )
+            })?;
             let theme = read(path, &name)?;
             std::fs::create_dir_all(dir)
                 .with_context(|| format!("cannot create {}", dir.display()))?;
@@ -200,7 +207,10 @@ impl Workspace {
     fn import_themes(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let Some(dir) = themes_dir(cx) else {
             report_error(
-                &anyhow!("there is no settings folder to keep themes in"),
+                &anyhow!(
+                    "{}",
+                    t!("themes.there-is-no-settings-folder-to-keep-themes-in")
+                ),
                 window,
                 cx,
             );

@@ -841,7 +841,7 @@ impl Render for ProjectPanel {
                 .flex_col()
                 .gap_2()
                 .text_color(crate::theme::paint(crate::theme::ui().muted))
-                .child("No workspace")
+                .child(t!("panels.project.no-workspace"))
                 .child(
                     div()
                         .flex()
@@ -850,7 +850,7 @@ impl Render for ProjectPanel {
                         .child(
                             Button::new("project-new")
                                 .small()
-                                .label("New Workspace...")
+                                .label(t!("panels.project.new-workspace"))
                                 .debug_selector(|| "project-new".into())
                                 .on_click(cx.listener(|this, _, window, cx| {
                                     this.ask_save_path(window, cx, |panel, path, cx| {
@@ -862,7 +862,7 @@ impl Render for ProjectPanel {
                             Button::new("project-open")
                                 .small()
                                 .ghost()
-                                .label("Open Workspace...")
+                                .label(t!("panels.project.open-workspace"))
                                 .debug_selector(|| "project-open".into())
                                 .on_click(cx.listener(|this, _, window, cx| {
                                     this.ask_paths(false, window, cx, |panel, paths, cx| {

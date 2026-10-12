@@ -73,7 +73,7 @@ impl Workspace {
     fn view_in_hex(&mut self, window: &mut Window, cx: &mut Context<Self>) -> Result<()> {
         let view = self
             .active_view(cx)
-            .ok_or_else(|| anyhow!("there is no document"))?;
+            .ok_or_else(|| anyhow!("{}", t!("hex-view.there-is-no-document")))?;
         let source = view.read(cx).buffer.clone();
         let (bytes, eol) = {
             let doc = source.read(cx).doc();
@@ -95,31 +95,44 @@ impl Workspace {
     fn apply_hex(&mut self, window: &mut Window, cx: &mut Context<Self>) -> Result<()> {
         let view = self
             .active_view(cx)
-            .ok_or_else(|| anyhow!("there is no document"))?;
+            .ok_or_else(|| anyhow!("{}", t!("hex-view.there-is-no-document")))?;
         let id = view.read(cx).buffer.entity_id();
-        let source = links(cx)
-            .get(&id)
-            .cloned()
-            .ok_or_else(|| anyhow!("this document is not a hex view: use View in Hex first"))?;
+        let source = links(cx).get(&id).cloned().ok_or_else(|| {
+            anyhow!(
+                "{}",
+                t!("hex-view.this-document-is-not-a-hex-view-use-view-in-hex")
+            )
+        })?;
         let Some(source) = source.upgrade() else {
             links(cx).remove(&id);
-            bail!("the document this hex view shows is closed");
+            bail!(
+                "{}",
+                t!("hex-view.the-document-this-hex-view-shows-is-closed")
+            );
         };
         let bytes = hex::parse(&view.read(cx).text(cx).to_string())?;
         let encoding = source.read(cx).doc().format().encoding;
         let decoded = birchpad_io::decode(bytes, encoding);
         if let Some(problem) = decoded.problem {
             bail!(
-                "the bytes are not {} text (at byte {})",
-                encoding,
-                problem.offset()
+                "{}",
+                t!(
+                    "hex-view.the-bytes-are-not-text-at-byte",
+                    encoding = encoding,
+                    problem = problem.offset()
+                )
             );
         }
         let target = self
             .all_views(cx)
             .into_iter()
             .find(|candidate| candidate.read(cx).buffer == source)
-            .ok_or_else(|| anyhow!("the document this hex view shows is closed"))?;
+            .ok_or_else(|| {
+                anyhow!(
+                    "{}",
+                    t!("hex-view.the-document-this-hex-view-shows-is-closed")
+                )
+            })?;
         apply_text(&target, &decoded.text, cx)?;
         self.activate_view(&target, window, cx);
         Ok(())
@@ -133,7 +146,7 @@ fn apply_text(view: &Entity<crate::editor::EditorView>, text: &str, cx: &mut App
             return Ok(());
         }
         if !view.apply_command_edit(transaction, cx) {
-            bail!("the document cannot be changed");
+            bail!("{}", t!("hex-view.the-document-cannot-be-changed"));
         }
         Ok(())
     })

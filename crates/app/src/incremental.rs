@@ -204,7 +204,7 @@ impl Render for IncrementalBar {
                     .icon(IconName::Close)
                     .on_click(emit(IncrementalEvent::Close)),
             )
-            .child("Find:")
+            .child(t!("incremental.find"))
             .child(
                 Input::new(&self.input)
                     .id("incremental-input")
@@ -250,7 +250,7 @@ impl Render for IncrementalBar {
             .children(self.status.map(|status| {
                 div()
                     .text_color(rgb(if failed { 0xcf222e } else { 0x57606a }))
-                    .child(status)
+                    .child(t!(status))
             }))
             .children(
                 self.count
@@ -358,14 +358,10 @@ impl Workspace {
         };
         let found = searcher.find(&text, from, direction, true);
         let status = match &found {
-            None => Some("Phrase not found"),
+            None => Some("incremental.not-found"),
             Some(found) => match direction {
-                Direction::Forward if found.start < from => {
-                    Some("Reached end of page, continued from top")
-                }
-                Direction::Backward if found.start >= from => {
-                    Some("Reached top of page, continued from bottom")
-                }
+                Direction::Forward if found.start < from => Some("incremental.wrapped-to-top"),
+                Direction::Backward if found.start >= from => Some("incremental.wrapped-to-bottom"),
                 _ => None,
             },
         };
@@ -481,15 +477,12 @@ mod tests {
         assert_eq!(selection(&workspace, cx), (13, 16));
         cx.simulate_keystrokes("enter");
         assert_eq!(selection(&workspace, cx), (4, 7));
-        assert_eq!(
-            state(&workspace, cx).0,
-            Some("Reached end of page, continued from top")
-        );
+        assert_eq!(state(&workspace, cx).0, Some("incremental.wrapped-to-top"));
         cx.simulate_keystrokes("shift-enter");
         assert_eq!(selection(&workspace, cx), (13, 16));
         assert_eq!(
             state(&workspace, cx).0,
-            Some("Reached top of page, continued from bottom")
+            Some("incremental.wrapped-to-bottom")
         );
     }
 
@@ -504,7 +497,7 @@ mod tests {
         type_text(&workspace, "betx", cx);
         assert_eq!(
             state(&workspace, cx),
-            (Some("Phrase not found"), true, None)
+            (Some("incremental.not-found"), true, None)
         );
         assert_eq!(selection(&workspace, cx), (6, 9), "the last match stays");
         // Emptied: no message, and the caret where the match was.
@@ -549,7 +542,7 @@ mod tests {
         type_text(&workspace, "none", cx);
         assert_eq!(
             state(&workspace, cx),
-            (Some("Phrase not found"), true, Some(0))
+            (Some("incremental.not-found"), true, Some(0))
         );
         assert!(highlights(&workspace, cx).is_empty());
     }
@@ -618,7 +611,7 @@ mod tests {
         type_text(&workspace, "x", cx);
         assert_eq!(
             state(&workspace, cx),
-            (Some("Phrase not found"), true, None)
+            (Some("incremental.not-found"), true, None)
         );
         assert_eq!(selection(&workspace, cx), (0, 0));
         // Enter reports a change of the field without one: no search from the match's start.

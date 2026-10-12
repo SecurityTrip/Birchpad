@@ -204,7 +204,7 @@ impl Render for DocumentMap {
             return div()
                 .p_2()
                 .text_color(crate::theme::paint(crate::theme::ui().muted))
-                .child("No document")
+                .child(t!("panels.document-map.no-document"))
                 .into_any_element();
         };
         let this = cx.entity().downgrade();

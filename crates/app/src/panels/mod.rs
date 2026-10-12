@@ -121,6 +121,11 @@ impl PanelKind {
         }
     }
 
+    /// The title in the interface's language: `panel.<id>`.
+    pub(crate) fn translated_title(self) -> String {
+        crate::i18n::get_or(&format!("panel.{}", self.id()), self.title())
+    }
+
     /// The id of the command that opens and closes the panel.
     fn command(self) -> &'static str {
         match self {
@@ -182,7 +187,14 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
 
 fn project_panel(panel: u8) -> Result<PanelKind> {
     if !(1..=PROJECT_PANELS).contains(&panel) {
-        bail!("there is no project panel {panel}; they are numbered 1 to {PROJECT_PANELS}");
+        bail!(
+            "{}",
+            t!(
+                "panels.there-is-no-project-panel-they-are-numbered-1-to",
+                panel = panel,
+                PROJECT_PANELS = PROJECT_PANELS
+            )
+        );
     }
     Ok(PanelKind::Project(panel))
 }
@@ -370,13 +382,16 @@ impl Workspace {
                         this.show_panel(*kind, cx);
                     }
                 }))
-                .children(open.iter().map(|kind| Tab::new().label(kind.title())))
+                .children(
+                    open.iter()
+                        .map(|kind| Tab::new().label(kind.translated_title())),
+                )
                 .into_any_element()
         } else {
             div()
                 .px_2()
                 .flex_1()
-                .child(shown.title())
+                .child(shown.translated_title())
                 .into_any_element()
         };
         let close = Button::new(("close-panel", side_index(side)))

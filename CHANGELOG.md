@@ -43,6 +43,9 @@ version's release notes from its section here.
   Install... copies a plugin's folder in from its `plugin.toml` (installing it again updates
   it), Remove takes it out, Turn Off and Turn On keep it installed but stopped. The
   administrator's policy is shown, and installing against it is refused.
+- The whole interface in Russian: command titles (also in the Shortcut Mapper), messages,
+  errors, questions, the status bar, the find panel and the search results, with Russian plural
+  forms. Interface languages are YAML files (`en.yaml`, `ru.yaml`) where every text has a key.
 - The `UserScripts` policy (`plugins.scripts`): administrators can turn user scripts off, as
   `PluginInstall` and `AllowedPlugins` control plugins.
 

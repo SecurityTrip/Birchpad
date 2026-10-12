@@ -118,21 +118,25 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
     }
     registry.workspace("language.set", |this, args: LanguageArgs, _, cx| {
         if let Some(name) = args.language.strip_prefix(crate::user_languages::ID_PREFIX) {
-            let found = crate::user_languages::find(name, cx)
-                .ok_or_else(|| anyhow::anyhow!("there is no user defined language {name}"))?;
+            let found = crate::user_languages::find(name, cx).ok_or_else(|| {
+                anyhow::anyhow!(
+                    "{}",
+                    t!("workspace.there-is-no-user-defined-language", name = name)
+                )
+            })?;
             if let Some(view) = this.active_view(cx) {
                 let buffer = view.read(cx).buffer.clone();
                 buffer.update(cx, |buffer, cx| buffer.set_user_language(Some(found), cx));
             }
             return Ok(());
         }
-        let language = match args.language.as_str() {
-            "text" | "normal" => None,
-            id => Some(
-                birchpad_syntax::by_id(id)
-                    .ok_or_else(|| anyhow::anyhow!("unknown language {id}"))?,
-            ),
-        };
+        let language =
+            match args.language.as_str() {
+                "text" | "normal" => None,
+                id => Some(birchpad_syntax::by_id(id).ok_or_else(|| {
+                    anyhow::anyhow!("{}", t!("workspace.unknown-language", id = id))
+                })?),
+            };
         if let Some(view) = this.active_view(cx) {
             let buffer = view.read(cx).buffer.clone();
             buffer.update(cx, |buffer, cx| buffer.set_language(language, cx));
@@ -211,7 +215,7 @@ struct LanguageArgs {
 
 /// Shows an error to the user without interrupting them.
 pub(crate) fn report_error(error: &anyhow::Error, window: &mut Window, cx: &mut App) {
-    window.push_notification(Notification::error(format!("{error:#}")), cx);
+    window.push_notification(Notification::error(crate::i18n::tr_error(error)), cx);
 }
 
 /// The confirming button of a dialog footer, at its natural width (`DialogAction` alone fills
@@ -222,18 +226,22 @@ pub(crate) fn dialog_action(button: Button) -> impl IntoElement {
         .child(DialogAction::new().child(button))
 }
 
-/// A button that closes a dialog without its action ("Cancel", "Not Now").
+/// A button that closes a dialog without its action: `label` is the key of its text
+/// (`common.cancel`).
 pub(crate) fn dialog_close(label: &'static str) -> DialogClose {
     DialogClose::new().trigger(move |button| {
         button
-            .label(crate::i18n::tr(label))
+            .label(t!(label))
             .debug_selector(|| "dialog-close".into())
     })
 }
 
 /// Tells the user that something went well, without interrupting them.
 pub(crate) fn report_success(message: impl Into<String>, window: &mut Window, cx: &mut App) {
-    window.push_notification(Notification::success(message.into()), cx);
+    window.push_notification(
+        Notification::success(crate::i18n::tr_text(&message.into())),
+        cx,
+    );
 }
 
 /// Tells the user something, without interrupting them.
@@ -241,12 +249,15 @@ pub(crate) fn report_info(message: impl Into<String>, window: &mut Window, cx: &
     let message = message.into();
     #[cfg(test)]
     tests::INFO.with(|info| info.borrow_mut().push(message.clone()));
-    window.push_notification(Notification::info(message), cx);
+    window.push_notification(Notification::info(crate::i18n::tr_text(&message)), cx);
 }
 
 /// Shows a warning to the user without interrupting them.
 pub(crate) fn report_warning(message: impl Into<String>, window: &mut Window, cx: &mut App) {
-    window.push_notification(Notification::warning(message.into()), cx);
+    window.push_notification(
+        Notification::warning(crate::i18n::tr_text(&message.into())),
+        cx,
+    );
 }
 
 pub(crate) struct Workspace {
@@ -607,7 +618,7 @@ impl Workspace {
             id => match birchpad_syntax::by_id(id) {
                 Some(language) => Some(Some(language)),
                 None => {
-                    report_warning(format!("Unknown language -l{id}"), window, cx);
+                    report_warning(t!("workspace.unknown-language-option", id = id), window, cx);
                     None
                 }
             },
@@ -829,7 +840,10 @@ impl Workspace {
         if registry.get(&invocation.command).is_some()
             && !registry.is_enabled(&invocation.command, cx)
         {
-            anyhow::bail!("{} is turned off", invocation.command);
+            anyhow::bail!(
+                "{}",
+                t!("workspace.is-turned-off", invocation = invocation.command)
+            );
         }
         let handler = registry.get(&invocation.command);
         let result = match handler {
@@ -842,9 +856,18 @@ impl Workspace {
                 .global::<CommandRegistry>()
                 .is_pending(&invocation.command) =>
             {
-                anyhow::bail!("{} is not available yet", invocation.command)
+                anyhow::bail!(
+                    "{}",
+                    t!(
+                        "workspace.is-not-available-yet",
+                        invocation = invocation.command
+                    )
+                )
             }
-            None => anyhow::bail!("unknown command {}", invocation.command),
+            None => anyhow::bail!(
+                "{}",
+                t!("workspace.unknown-command", invocation = invocation.command)
+            ),
         };
         if result.is_ok() {
             crate::macros::record(invocation, cx);

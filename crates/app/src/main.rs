@@ -10,6 +10,8 @@
 // A GUI program: no console window on Windows (debug builds keep it for diagnostics).
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+#[macro_use]
+mod i18n;
 mod app_state;
 mod banner;
 mod buffer;
@@ -28,7 +30,6 @@ mod find;
 mod find_in_files;
 mod help;
 mod hex_view;
-mod i18n;
 mod incremental;
 mod json_xml;
 #[cfg(test)]

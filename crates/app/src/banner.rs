@@ -55,14 +55,14 @@ pub(crate) fn decoding_problem(
             Button::new("reopen-with-encoding")
                 .small()
                 .outline()
-                .label("Reopen with Encoding")
+                .label(t!("banner.reopen-with-encoding"))
                 .dropdown_menu(encoding_menu),
         )
         .child(
             Button::new("edit-anyway")
                 .small()
                 .outline()
-                .label("Edit Anyway…")
+                .label(t!("banner.edit-anyway"))
                 .on_click(move |_, window, cx| {
                     let action = RunCommand(Invocation::new("encoding.edit-anyway"));
                     editor.dispatch_action(&action, window, cx);
@@ -73,22 +73,21 @@ pub(crate) fn decoding_problem(
 
 pub(crate) fn read_only_requested() -> AnyElement {
     bar(0xf6f8fa, 0xd0d7de)
-        .child("Opened read-only from the command line (-ro).")
+        .child(t!("banner.opened-read-only-from-the-command-line-ro"))
         .into_any_element()
 }
 
 pub(crate) fn monitoring() -> AnyElement {
     bar(0xddf4ff, 0x54aeff)
-        .child(
-            "Monitoring (tail -f): the document follows the file and cannot be edited. \
-             View > Monitoring stops it.",
-        )
+        .child(t!("banner.monitoring-tail-f-the-document-follows-the-file-and-cannot-be-edited-view-monitoring-stops-it"))
         .into_any_element()
 }
 
 pub(crate) fn read_only_file() -> AnyElement {
     bar(0xf6f8fa, 0xd0d7de)
-        .child("This file is read-only. Use Save As to keep your changes in another file.")
+        .child(t!(
+            "banner.this-file-is-read-only-use-save-as-to-keep-your-changes-in-another-file"
+        ))
         .into_any_element()
 }
 
@@ -110,7 +109,7 @@ pub(crate) fn loading(progress: f32) -> AnyElement {
                 .bg(crate::theme::paint(crate::theme::ui().surface))
                 .border_1()
                 .border_color(crate::theme::paint(crate::theme::ui().border))
-                .child(format!("Loading… {:.0}%", progress * 100.)),
+                .child(format!("{} {:.0}%", t!("banner.loading"), progress * 100.)),
         )
         .into_any_element()
 }

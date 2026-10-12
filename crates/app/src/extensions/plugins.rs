@@ -125,7 +125,8 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
         Ok(())
     });
     registry.workspace("plugin.open-folder", |_, (), _, cx| {
-        let dir = plugins_dir(cx).ok_or_else(|| anyhow!("there is no settings folder"))?;
+        let dir = plugins_dir(cx)
+            .ok_or_else(|| anyhow!("{}", t!("extensions.plugins.there-is-no-settings-folder")))?;
         std::fs::create_dir_all(&dir)
             .with_context(|| format!("cannot create {}", dir.display()))?;
         cx.open_with_system(&dir);
@@ -143,12 +144,21 @@ fn with_plugin<T>(
         .entries
         .iter_mut()
         .find(|entry| entry.id() == id)
-        .ok_or_else(|| anyhow!("there is no plugin {id}"))?;
+        .ok_or_else(|| anyhow!("{}", t!("extensions.plugins.there-is-no-plugin", id = id)))?;
     match &mut entry.state {
         State::Ready(plugin) => call(plugin),
-        State::Loading => bail!("the plugin {id} is still loading"),
-        State::Disabled => bail!("the plugin {id} is turned off"),
-        State::Refused(why) | State::Failed(why) => bail!("the plugin {id}: {why}"),
+        State::Loading => bail!(
+            "{}",
+            t!("extensions.plugins.the-plugin-is-still-loading", id = id)
+        ),
+        State::Disabled => bail!(
+            "{}",
+            t!("extensions.plugins.the-plugin-is-turned-off", id = id)
+        ),
+        State::Refused(why) | State::Failed(why) => bail!(
+            "{}",
+            t!("extensions.plugins.the-plugin", id = id, why = why)
+        ),
     }
 }
 

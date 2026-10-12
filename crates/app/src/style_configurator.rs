@@ -108,9 +108,16 @@ fn parse(text: &str, what: &str) -> Result<Option<Color>> {
     } else {
         format!("#{text}")
     };
-    text.parse()
-        .map(Some)
-        .map_err(|_| anyhow!("{what}: {text} is not a color; write #rrggbb or #rrggbbaa"))
+    text.parse().map(Some).map_err(|_| {
+        anyhow!(
+            "{}",
+            t!(
+                "style-configurator.is-not-a-color-write-rrggbb-or-rrggbbaa",
+                what = what,
+                text = text
+            )
+        )
+    })
 }
 
 /// Sets `item` of `group` from `fields`. A highlighting style with nothing set is removed, so
@@ -124,18 +131,29 @@ pub(crate) fn write_fields(
     let color = parse(&fields.color, "Color")?;
     match group {
         Group::Editor | Group::Interface => {
-            let color = color.ok_or_else(|| anyhow!("Color: this style needs a color"))?;
+            let color = color.ok_or_else(|| {
+                anyhow!(
+                    "{}",
+                    t!("style-configurator.color-this-style-needs-a-color")
+                )
+            })?;
             let set = match group {
                 Group::Editor => theme.editor.set(item, color),
                 _ => theme.ui.set(item, color),
             };
             if !set {
-                return Err(anyhow!("there is no style {item}"));
+                return Err(anyhow!(
+                    "{}",
+                    t!("style-configurator.there-is-no-style", item = item)
+                ));
             }
         }
         Group::Syntax(language) => {
             if !birchpad_syntax::HIGHLIGHT_NAMES.contains(&item) {
-                return Err(anyhow!("there is no style {item}"));
+                return Err(anyhow!(
+                    "{}",
+                    t!("style-configurator.there-is-no-style", item = item)
+                ));
             }
             let style = Style {
                 color,
@@ -201,14 +219,14 @@ pub(crate) fn open(workspace: WeakEntity<Workspace>, window: &mut Window, cx: &m
         let save = save.clone();
         let cancel = cancel.clone();
         dialog
-            .title(crate::i18n::tr("Style Configurator"))
+            .title(t!("style-configurator.style-configurator"))
             .w(px(820.))
             .child(configurator.clone())
             .footer(
                 DialogFooter::new()
-                    .child(crate::workspace::dialog_close("Cancel"))
+                    .child(crate::workspace::dialog_close("common.cancel"))
                     .child(crate::workspace::dialog_action(
-                        Button::new("style-save").label(crate::i18n::tr("Save & Close")),
+                        Button::new("style-save").label(t!("style-configurator.save-close")),
                     )),
             )
             .on_ok(move |_, _, cx| save.update(cx, |this, cx| this.save(cx)))
@@ -223,7 +241,8 @@ impl StyleConfigurator {
     fn new(workspace: WeakEntity<Workspace>, window: &mut Window, cx: &mut Context<Self>) -> Self {
         let original = (*crate::theme::current()).clone();
         let color = cx.new(|cx| InputState::new(window, cx).placeholder("#rrggbb"));
-        let background = cx.new(|cx| InputState::new(window, cx).placeholder("none"));
+        let background =
+            cx.new(|cx| InputState::new(window, cx).placeholder(t!("style-configurator.none")));
         for input in [&color, &background] {
             cx.subscribe_in(input, window, |this, _, event: &InputEvent, _, cx| {
                 if matches!(event, InputEvent::Change) && !this.filling {
@@ -318,7 +337,12 @@ impl StyleConfigurator {
             return false;
         }
         let result = themes::themes_dir(cx)
-            .ok_or_else(|| anyhow!("there is no settings folder to keep themes in"))
+            .ok_or_else(|| {
+                anyhow!(
+                    "{}",
+                    t!("style-configurator.there-is-no-settings-folder-to-keep-themes-in")
+                )
+            })
             .and_then(|dir| save(&self.theme, &dir));
         if let Err(error) = result {
             self.error = Some(format!("{error:#}"));
@@ -390,7 +414,10 @@ impl Render for StyleConfigurator {
         let groups = self.groups.iter().enumerate().map(|(index, (label, _))| {
             row(
                 format!("style-group-{index}").into(),
-                crate::i18n::tr(label),
+                crate::i18n::get_or(
+                    &format!("style-configurator.{}", crate::i18n::slug(label)),
+                    label,
+                ),
                 index == self.group,
             )
             .on_click(cx.listener(move |this, _, window, cx| this.select_group(index, window, cx)))
@@ -416,20 +443,26 @@ impl Render for StyleConfigurator {
                 .border_color(paint(colors.border))
                 .bg(paint(color))
         });
-        let label = |text: &'static str| div().flex_none().w(px(90.)).child(crate::i18n::tr(text));
+        let text_of = |text: &str| {
+            crate::i18n::get_or(
+                &format!("style-configurator.{}", crate::i18n::slug(text)),
+                text,
+            )
+        };
+        let label = move |text: &'static str| div().flex_none().w(px(90.)).child(text_of(text));
         let field_row = || div().flex().flex_row().items_center().gap_2();
         let checkbox =
             |id: &'static str, text: &'static str, checked: bool, change: fn(&mut Fields)| {
                 Checkbox::new(id)
-                    .label(crate::i18n::tr(text))
+                    .label(text_of(text))
                     .checked(checked)
                     .disabled(!is_style)
                     .on_click(cx.listener(move |this, _, _, cx| this.toggle(change, cx)))
             };
         let hint = match self.current_group() {
-            Group::Syntax(None) => "Empty fields take the style of the name before its last dot.",
-            Group::Syntax(Some(_)) => "Empty fields take the style for all languages.",
-            _ => "",
+            Group::Syntax(None) => t!("style-configurator.hint-all"),
+            Group::Syntax(Some(_)) => t!("style-configurator.hint-language"),
+            _ => String::new(),
         };
         div()
             .flex()
@@ -442,7 +475,7 @@ impl Render for StyleConfigurator {
                     .flex_wrap()
                     .items_center()
                     .gap_1()
-                    .child(div().mr_2().child(crate::i18n::tr("Theme:")))
+                    .child(div().mr_2().child(t!("style-configurator.theme")))
                     .children(themes),
             )
             .child(

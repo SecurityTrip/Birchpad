@@ -60,10 +60,13 @@ fn locate(
         .chars()
         .count();
     anyhow!(
-        "line {}, column {}: {}",
-        line + 1,
-        column + 1,
-        error.message
+        "{}",
+        t!(
+            "json-xml.line-column",
+            line = line + 1,
+            column = column + 1,
+            error = error.message
+        )
     )
 }
 
@@ -73,7 +76,7 @@ fn reformat(
     tool: impl FnOnce(&str, Layout<'_>) -> Result<String, SyntaxError>,
 ) -> Result<()> {
     if !view.is_editable(cx) {
-        bail!("the document cannot be changed");
+        bail!("{}", t!("json-xml.the-document-cannot-be-changed"));
     }
     let (range, part) = target(view, cx);
     let settings = ViewSettings::read(cx);
@@ -115,11 +118,7 @@ fn validate(
     let (range, part) = target(view, cx);
     match check(&part) {
         Ok(()) => {
-            crate::workspace::report_success(
-                crate::i18n::tr(&format!("{kind} is valid")),
-                window,
-                cx,
-            );
+            crate::workspace::report_success(t!("json-xml.valid", kind = kind), window, cx);
             Ok(())
         }
         Err(error) => Err(locate(view, range.start, &part, &error, cx)),

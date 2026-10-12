@@ -214,8 +214,9 @@ impl FindBar {
             .try_global::<AppState>()
             .map(|app| app.state.find_in_files.clone())
             .unwrap_or_default();
-        let find_input = cx.new(|cx| InputState::new(window, cx).placeholder("Find what"));
-        let replace_input = cx.new(|cx| InputState::new(window, cx).placeholder("Replace with"));
+        let find_input = cx.new(|cx| InputState::new(window, cx).placeholder(t!("find.find-what")));
+        let replace_input =
+            cx.new(|cx| InputState::new(window, cx).placeholder(t!("find.replace-with")));
         let filters_input = cx.new(|cx| {
             InputState::new(window, cx)
                 .placeholder("*.*")
@@ -228,7 +229,7 @@ impl FindBar {
             .unwrap_or_default();
         let directory_input = cx.new(|cx| {
             InputState::new(window, cx)
-                .placeholder("Folder")
+                .placeholder(t!("find.folder"))
                 .default_value(directory)
         });
         let find_events =
@@ -466,22 +467,22 @@ impl Render for FindBar {
             }))
             .child(
                 Tab::new()
-                    .label(crate::i18n::tr("Find"))
+                    .label(t!("find.find"))
                     .debug_selector(|| "tab-find".into()),
             )
             .child(
                 Tab::new()
-                    .label(crate::i18n::tr("Replace"))
+                    .label(t!("find.replace"))
                     .debug_selector(|| "tab-replace".into()),
             )
             .child(
                 Tab::new()
-                    .label(crate::i18n::tr("Find in Files"))
+                    .label(t!("find.find-in-files"))
                     .debug_selector(|| "tab-find-in-files".into()),
             )
             .child(
                 Tab::new()
-                    .label(crate::i18n::tr("Mark"))
+                    .label(t!("find.mark"))
                     .debug_selector(|| "tab-mark".into()),
             )
             .suffix(
@@ -707,17 +708,17 @@ impl Render for FindBar {
                         }))
                         .child(
                             Radio::new("mode-normal")
-                                .label(crate::i18n::tr("Normal"))
+                                .label(t!("find.normal"))
                                 .debug_selector(|| "mode-normal".into()),
                         )
                         .child(
                             Radio::new("mode-extended")
-                                .label(crate::i18n::tr("Extended (\\n, \\r, \\t, \\0, \\x...)"))
+                                .label(t!("find.extended-n-r-t-0-x"))
                                 .debug_selector(|| "mode-extended".into()),
                         )
                         .child(
                             Radio::new("mode-regex")
-                                .label(crate::i18n::tr("Regular expression"))
+                                .label(t!("find.regular-expression"))
                                 .debug_selector(|| "mode-regex".into()),
                         ),
                 ),
@@ -771,17 +772,17 @@ struct Scope {
 }
 
 impl Scope {
-    fn describe(&self) -> &'static str {
+    fn describe(&self) -> String {
         if self.in_selection {
-            "in selection"
+            t!("find.in-selection")
         } else {
-            "in entire file"
+            t!("find.in-entire-file")
         }
     }
 }
 
 pub(crate) fn plural(count: usize, one: &str, many: &str) -> String {
-    format!("{count} {}", if count == 1 { one } else { many })
+    crate::i18n::count(count, one, many)
 }
 
 impl Workspace {
@@ -859,7 +860,8 @@ impl Workspace {
         match Searcher::new(&query) {
             Ok(searcher) => Some((searcher, query)),
             Err(error) => {
-                self.report(Some(format!("Find: {error}")), true, cx);
+                let error = crate::i18n::tr_text(&error.to_string());
+                self.report(Some(format!("{}: {error}", t!("find.find"))), true, cx);
                 None
             }
         }
@@ -869,7 +871,8 @@ impl Workspace {
     pub(crate) fn report_failure(&mut self, searcher: &Searcher, cx: &mut Context<Self>) -> bool {
         match searcher.failure() {
             Some(error) => {
-                self.report(Some(format!("Find: {error}")), true, cx);
+                let error = crate::i18n::tr_text(&error.to_string());
+                self.report(Some(format!("{}: {error}", t!("find.find"))), true, cx);
                 true
             }
             None => false,
@@ -963,11 +966,7 @@ impl Workspace {
             }
             None => {
                 if !self.report_failure(&searcher, cx) {
-                    self.report(
-                        Some(format!("Can't find the text \"{}\"", query.pattern)),
-                        true,
-                        cx,
-                    );
+                    self.report(Some(t!("find.not-found", text = query.pattern)), true, cx);
                 }
             }
         }
@@ -1021,7 +1020,8 @@ impl Workspace {
         }
         self.report(
             Some(format!(
-                "Count: {} {}",
+                "{}: {} {}",
+                t!("find.count"),
                 plural(count, "match", "matches"),
                 scope.describe()
             )),
@@ -1092,7 +1092,11 @@ impl Workspace {
         self.search_results
             .update(cx, |results, cx| results.add(run, cx));
         self.report(
-            Some(format!("Find All: {}", plural(hits, "hit", "hits"))),
+            Some(format!(
+                "{}: {}",
+                t!("find.find-all"),
+                plural(hits, "hit", "hits")
+            )),
             hits == 0,
             cx,
         );
@@ -1105,7 +1109,7 @@ impl Workspace {
             .search_results
             .update(cx, |results, cx| results.step(forward, cx));
         if !found {
-            self.report(Some("No search results".into()), true, cx);
+            self.report(Some(t!("find.no-search-results")), true, cx);
         }
         cx.notify();
     }
@@ -1145,7 +1149,7 @@ impl Workspace {
         let view = match location {
             ResultLocation::Buffer(buffer) => {
                 let Some(buffer) = buffer.upgrade() else {
-                    self.report(Some("The document was closed".into()), true, cx);
+                    self.report(Some(t!("find.the-document-was-closed")), true, cx);
                     return;
                 };
                 let active = self
@@ -1156,7 +1160,7 @@ impl Workspace {
                         .into_iter()
                         .find(|view| view.read(cx).buffer == buffer)
                 }) else {
-                    self.report(Some("The document was closed".into()), true, cx);
+                    self.report(Some(t!("find.the-document-was-closed")), true, cx);
                     return;
                 };
                 self.activate_view(&view, window, cx);
@@ -1206,7 +1210,7 @@ impl Workspace {
                 applied
             });
             if !applied {
-                self.report(Some("The document is read-only".into()), true, cx);
+                self.report(Some(t!("find.the-document-is-read-only")), true, cx);
                 return;
             }
         }
@@ -1253,13 +1257,14 @@ impl Workspace {
         if let Some((transaction, _)) = edits
             && !view.update(cx, |view, cx| view.apply_command_edit(transaction, cx))
         {
-            self.report(Some("The document is read-only".into()), true, cx);
+            self.report(Some(t!("find.the-document-is-read-only")), true, cx);
             return;
         }
         self.report(
             Some(format!(
-                "Replace All: {} replaced {}",
-                plural(count, "occurrence", "occurrences"),
+                "{}: {} {}",
+                t!("find.replace-all"),
+                plural(count, "occurrence replaced", "occurrences replaced"),
                 scope.describe()
             )),
             count == 0,
@@ -1305,14 +1310,22 @@ impl Workspace {
             return;
         }
         let mut message = format!(
-            "Replace All in all opened documents: {} replaced in {}",
-            plural(total, "occurrence", "occurrences"),
-            plural(documents, "document", "documents")
+            "{}: {}",
+            t!("find.replace-all-in-all-opened-documents"),
+            t!(
+                "find.replaced-in",
+                replaced = plural(total, "occurrence replaced", "occurrences replaced"),
+                documents = plural(documents, "document", "documents")
+            )
         );
         if read_only > 0 {
             message.push_str(&format!(
-                "; {} read-only",
-                plural(read_only, "document is", "documents are")
+                "; {}",
+                plural(
+                    read_only,
+                    "document is read-only",
+                    "documents are read-only"
+                )
             ));
         }
         self.report(Some(message), total == 0, cx);
@@ -1354,7 +1367,8 @@ impl Workspace {
         });
         self.report(
             Some(format!(
-                "Mark: {} {}",
+                "{}: {} {}",
+                t!("find.mark"),
                 plural(count, "match", "matches"),
                 scope.describe()
             )),
@@ -1371,7 +1385,7 @@ impl Workspace {
         buffer.update(cx, |buffer, cx| {
             buffer.update_marks(cx, |marks, _| marks.found.clear());
         });
-        self.report(Some("Marks cleared".into()), false, cx);
+        self.report(Some(t!("find.marks-cleared")), false, cx);
     }
 
     /// Copy Marked Text: the marked texts, one per line.
@@ -1398,7 +1412,8 @@ impl Workspace {
         }
         self.report(
             Some(format!(
-                "Copied {}",
+                "{} {}",
+                t!("find.copied"),
                 plural(count, "marked text", "marked texts")
             )),
             count == 0,
@@ -1415,14 +1430,14 @@ impl Workspace {
             let go_to = go_to.clone();
             let confirm = go_to.clone();
             dialog
-                .title(crate::i18n::tr("Go To"))
+                .title(t!("find.go-to"))
                 .w(px(360.))
                 .child(go_to)
                 .footer(
                     DialogFooter::new()
-                        .child(crate::workspace::dialog_close("Cancel"))
+                        .child(crate::workspace::dialog_close("common.cancel"))
                         .child(crate::workspace::dialog_action(
-                            Button::new("go").label(crate::i18n::tr("Go")),
+                            Button::new("go").label(t!("find.go")),
                         )),
                 )
                 .on_ok(move |_, _, cx| {
@@ -1487,12 +1502,15 @@ impl GoTo {
 
     fn go(&mut self, cx: &mut Context<Self>) -> Result<()> {
         let value = self.input.read(cx).value();
-        let number: usize = value.trim().parse().map_err(|_| anyhow!("Type a number"))?;
+        let number: usize = value
+            .trim()
+            .parse()
+            .map_err(|_| anyhow!("{}", t!("find.type-a-number")))?;
         let target = if self.by_offset {
             GoToTarget::Offset(number)
         } else {
             if number == 0 {
-                bail!("Lines are numbered from 1");
+                bail!("{}", t!("find.lines-are-numbered-from-1"));
             }
             GoToTarget::Line(number)
         };
@@ -1536,7 +1554,7 @@ impl Render for GoTo {
                     .child(
                         Button::new("by-line")
                             .small()
-                            .label(crate::i18n::tr("Line"))
+                            .label(t!("common.line"))
                             .selected(!self.by_offset)
                             .when(!self.by_offset, |button| button.primary())
                             .on_click(mode(false)),
@@ -1544,15 +1562,15 @@ impl Render for GoTo {
                     .child(
                         Button::new("by-offset")
                             .small()
-                            .label(crate::i18n::tr("Offset"))
+                            .label(t!("find.offset"))
                             .selected(self.by_offset)
                             .when(self.by_offset, |button| button.primary())
                             .on_click(mode(true)),
                     ),
             )
-            .child(format!("You are here: {here}"))
+            .child(t!("find.you-are-here", here = here))
             .child(Input::new(&self.input).id("go-to-input"))
-            .child(format!("You can't go further than: {limit}"))
+            .child(t!("find.you-can-t-go-further-than", limit = limit))
             .children(self.error.clone().map(|error| {
                 div()
                     .text_color(crate::theme::paint(crate::theme::ui().error))

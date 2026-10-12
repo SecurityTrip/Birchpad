@@ -29,7 +29,7 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
             if let Err(error) = write_private(&path, session.to_toml().as_bytes()) {
                 cx.update(|window, cx| {
                     let error = anyhow::Error::new(error)
-                        .context(format!("Cannot save the session to {}", path.display()));
+                        .context(t!("session.cannot-save", path = path.display()));
                     report_error(&error, window, cx);
                 })
                 .ok();
@@ -327,7 +327,13 @@ impl Workspace {
     ) -> Result<()> {
         let session = Session::read(path)?;
         if self.restore_session(&session, None, window, cx) == 0 {
-            anyhow::bail!("{} lists no document that could be opened", path.display());
+            anyhow::bail!(
+                "{}",
+                t!(
+                    "session.lists-no-document-that-could-be-opened",
+                    path = path.display()
+                )
+            );
         }
         Ok(())
     }

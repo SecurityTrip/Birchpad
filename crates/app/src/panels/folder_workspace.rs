@@ -638,9 +638,16 @@ fn open_terminal(folder: &Path) -> anyhow::Result<()> {
             .current_dir(folder)
             .spawn()
     };
-    started
-        .map(|_| ())
-        .map_err(|error| anyhow::anyhow!("cannot open a terminal in {}: {error}", folder.display()))
+    started.map(|_| ()).map_err(|error| {
+        anyhow::anyhow!(
+            "{}",
+            t!(
+                "panels.folder-workspace.cannot-open-a-terminal-in",
+                folder = folder.display(),
+                error = error
+            )
+        )
+    })
 }
 
 impl Render for FolderWorkspace {
@@ -657,24 +664,24 @@ impl Render for FolderWorkspace {
                 Button::new("folders-unfold-all")
                     .small()
                     .ghost()
-                    .label("Unfold")
-                    .tooltip("Unfold All")
+                    .label(t!("panels.folder-workspace.unfold"))
+                    .tooltip(t!("panels.folder-workspace.unfold-all"))
                     .on_click(cx.listener(|this, _, _, cx| this.set_all(true, cx))),
             )
             .child(
                 Button::new("folders-fold-all")
                     .small()
                     .ghost()
-                    .label("Fold")
-                    .tooltip("Fold All")
+                    .label(t!("panels.folder-workspace.fold"))
+                    .tooltip(t!("panels.folder-workspace.fold-all"))
                     .on_click(cx.listener(|this, _, _, cx| this.set_all(false, cx))),
             )
             .child(
                 Button::new("folders-locate")
                     .small()
                     .ghost()
-                    .label("Locate")
-                    .tooltip("Locate Current File")
+                    .label(t!("panels.folder-workspace.locate"))
+                    .tooltip(t!("panels.folder-workspace.locate-current-file"))
                     .on_click(cx.listener(|this, _, _, cx| {
                         let file = this.workspace.upgrade().and_then(|workspace| {
                             let workspace = workspace.read(cx);
@@ -690,7 +697,9 @@ impl Render for FolderWorkspace {
             div()
                 .p_2()
                 .text_color(crate::theme::paint(crate::theme::ui().muted))
-                .child("File > Open Folder as Workspace..., or drop a folder here")
+                .child(t!(
+                    "panels.folder-workspace.file-open-folder-as-workspace-or-drop-a-folder-here"
+                ))
                 .into_any_element()
         } else {
             let rows = std::rc::Rc::new(rows);

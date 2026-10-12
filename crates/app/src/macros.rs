@@ -98,13 +98,17 @@ pub(crate) fn record_typing(text: &str, cx: &mut App) {
 pub(crate) fn save(name: &str, steps: Vec<Invocation>, cx: &mut App) -> Result<()> {
     let name = name.trim();
     if name.is_empty() {
-        bail!("a macro needs a name");
+        bail!("{}", t!("macros.a-macro-needs-a-name"));
     }
     if steps.is_empty() {
-        bail!("there is no recorded macro to save");
+        bail!("{}", t!("macros.there-is-no-recorded-macro-to-save"));
     }
-    let path =
-        macros_path(cx).ok_or_else(|| anyhow!("there is no settings folder for macros.toml"))?;
+    let path = macros_path(cx).ok_or_else(|| {
+        anyhow!(
+            "{}",
+            t!("macros.there-is-no-settings-folder-for-macros-toml")
+        )
+    })?;
     let mut saved = macros(cx).saved.clone();
     let found = Macro {
         name: name.to_owned(),
@@ -142,7 +146,7 @@ pub(crate) fn play(
     cx: &mut Context<Workspace>,
 ) -> Result<()> {
     if steps.is_empty() {
-        bail!("there is no macro to play");
+        bail!("{}", t!("macros.there-is-no-macro-to-play"));
     }
     macros(cx).playing = true;
     let result = (|| {
@@ -196,7 +200,7 @@ fn steps_of(name: Option<&str>, cx: &mut App) -> Result<Vec<Invocation>> {
             .iter()
             .find(|known| known.name == name)
             .map(|known| known.steps.clone())
-            .ok_or_else(|| anyhow!("there is no macro named {name}")),
+            .ok_or_else(|| anyhow!("{}", t!("macros.there-is-no-macro-named", name = name))),
     }
 }
 
@@ -233,7 +237,10 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
     registry.enabled_when("macro.playback", can_play);
     registry.workspace("macro.run", |this, args: RunArgs, window, cx| {
         if macros(cx).is_recording() {
-            bail!("a macro cannot run while one is being recorded");
+            bail!(
+                "{}",
+                t!("macros.a-macro-cannot-run-while-one-is-being-recorded")
+            );
         }
         let steps = steps_of(args.name.as_deref(), cx)?;
         play(this, &steps, args.times, args.until_end, window, cx)
@@ -256,14 +263,14 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
 
 /// Save Current Recorded Macro...: asks for a name.
 fn open_save(workspace: WeakEntity<Workspace>, window: &mut Window, cx: &mut App) {
-    let name = cx.new(|cx| InputState::new(window, cx).placeholder("Name"));
+    let name = cx.new(|cx| InputState::new(window, cx).placeholder(t!("macros.name")));
     let error = cx.new(|_| None::<String>);
     let focus = name.clone();
     window.open_dialog(cx, move |dialog, _, _| {
         let (name, error, workspace) = (name.clone(), error.clone(), workspace.clone());
         let shown = error.clone();
         dialog
-            .title(crate::i18n::tr("Save Macro"))
+            .title(t!("macros.save-macro"))
             .w(px(360.))
             .child(
                 div()
@@ -275,9 +282,9 @@ fn open_save(workspace: WeakEntity<Workspace>, window: &mut Window, cx: &mut App
             )
             .footer(
                 DialogFooter::new()
-                    .child(crate::workspace::dialog_close("Cancel"))
+                    .child(crate::workspace::dialog_close("common.cancel"))
                     .child(crate::workspace::dialog_action(
-                        Button::new("macro-save").label(crate::i18n::tr("Save")),
+                        Button::new("macro-save").label(t!("common.save")),
                     )),
             )
             .on_ok(move |_, _, cx| {
@@ -331,14 +338,14 @@ fn open_run_multiple(workspace: WeakEntity<Workspace>, window: &mut Window, cx: 
     window.open_dialog(cx, move |modal, _, _| {
         let run = dialog.clone();
         modal
-            .title(crate::i18n::tr("Run a Macro Multiple Times"))
+            .title(t!("macros.run-a-macro-multiple-times"))
             .w(px(420.))
             .child(dialog.clone())
             .footer(
                 DialogFooter::new()
-                    .child(crate::workspace::dialog_close("Cancel"))
+                    .child(crate::workspace::dialog_close("common.cancel"))
                     .child(crate::workspace::dialog_action(
-                        Button::new("macro-run").label(crate::i18n::tr("Run")),
+                        Button::new("macro-run").label(t!("common.run")),
                     )),
             )
             .on_ok(move |_, window, cx| run.update(cx, |this, cx| this.run(window, cx)))
@@ -370,14 +377,17 @@ impl RunMultiple {
                 .choices
                 .get(self.choice)
                 .cloned()
-                .ok_or_else(|| anyhow!("there is no macro to run"))?;
+                .ok_or_else(|| anyhow!("{}", t!("macros.there-is-no-macro-to-run")))?;
             let times = if self.until_end {
                 1
             } else {
                 let text = self.times.read(cx).value().to_string();
                 match text.trim().parse::<usize>() {
                     Ok(times) if times > 0 => times,
-                    _ => bail!("Run: {} is not a number of times", text.trim()),
+                    _ => bail!(
+                        "{}",
+                        t!("macros.run-is-not-a-number-of-times", text = text.trim())
+                    ),
                 }
             };
             let steps = steps_of(name.as_deref(), cx)?;
@@ -386,7 +396,7 @@ impl RunMultiple {
                 .update(cx, |workspace, cx| {
                     play(workspace, &steps, times, until_end, window, cx)
                 })
-                .map_err(|_| anyhow!("the window is closed"))?
+                .map_err(|_| anyhow!("{}", t!("macros.the-window-is-closed")))?
         })();
         match result {
             Ok(()) => true,
@@ -409,7 +419,7 @@ impl Render for RunMultiple {
             .map(|choice| {
                 choice
                     .clone()
-                    .unwrap_or_else(|| crate::i18n::tr("Current recorded macro"))
+                    .unwrap_or_else(|| t!("macros.current-recorded-macro"))
             })
             .collect();
         div()
@@ -427,9 +437,7 @@ impl Render for RunMultiple {
             )
             .child(
                 RadioGroup::vertical("macro-times")
-                    .children(
-                        ["Run a number of times", "Run until the end of file"].map(crate::i18n::tr),
-                    )
+                    .children([t!("macros.run-times"), t!("macros.run-until-end")])
                     .selected_index(Some(usize::from(self.until_end)))
                     .on_click(cx.listener(|this, index: &usize, _, cx| {
                         this.until_end = *index == 1;
@@ -442,7 +450,7 @@ impl Render for RunMultiple {
                     .flex_row()
                     .items_center()
                     .gap_2()
-                    .child(crate::i18n::tr("Times:"))
+                    .child(t!("macros.times"))
                     .child(
                         div()
                             .w(px(100.))

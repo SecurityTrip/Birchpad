@@ -55,7 +55,8 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
                     marks.compare.previous_before(pos)
                 }
             };
-            let target = target.ok_or_else(|| anyhow!("there are no differences here"))?;
+            let target =
+                target.ok_or_else(|| anyhow!("{}", t!("compare.there-are-no-differences-here")))?;
             this.go_to(target.start, cx);
             Ok(())
         });
@@ -125,7 +126,7 @@ impl Workspace {
     ) -> Result<(Entity<EditorView>, Entity<EditorView>)> {
         let new = self
             .active_view(cx)
-            .ok_or_else(|| anyhow!("there is no document to compare"))?;
+            .ok_or_else(|| anyhow!("{}", t!("compare.there-is-no-document-to-compare")))?;
         let other = 1 - self.active_pane_index();
         if let Some(old) = self.panes()[other].read(cx).active_item().cloned() {
             return Ok((old, new));
@@ -134,13 +135,16 @@ impl Workspace {
         let index = pane.index_of(&new).unwrap_or(0);
         let partner = if index > 0 { index - 1 } else { index + 1 };
         let Some(old) = pane.items().get(partner).cloned() else {
-            bail!("open a second document to compare this one with");
+            bail!(
+                "{}",
+                t!("compare.open-a-second-document-to-compare-this-one-with")
+            );
         };
         // Side by side: the new document moves to the other view.
         self.dispatch(&Invocation::new("view.move-to-other-view"), window, cx)?;
         let new = self
             .active_view(cx)
-            .ok_or_else(|| anyhow!("there is no document to compare"))?;
+            .ok_or_else(|| anyhow!("{}", t!("compare.there-is-no-document-to-compare")))?;
         Ok((old, new))
     }
 
@@ -150,7 +154,10 @@ impl Workspace {
         let old_buffer = old.read(cx).buffer.clone();
         let new_buffer = new.read(cx).buffer.clone();
         if old_buffer == new_buffer {
-            bail!("a document is the same as itself: open another one to compare it with");
+            bail!(
+                "{}",
+                t!("compare.a-document-is-the-same-as-itself-open-another-on")
+            );
         }
         let old_text = old_buffer.read(cx).doc().text().clone();
         let new_text = new_buffer.read(cx).doc().text().clone();
@@ -168,11 +175,7 @@ impl Workspace {
             });
         }
         if differences.is_empty() {
-            crate::workspace::report_success(
-                crate::i18n::tr("The documents are the same"),
-                window,
-                cx,
-            );
+            crate::workspace::report_success(t!("compare.the-documents-are-the-same"), window, cx);
         } else {
             new.update(cx, |view, cx| {
                 if let Some(first) = view.buffer.read(cx).marks().compare.next_from(0) {

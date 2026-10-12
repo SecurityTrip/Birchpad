@@ -251,6 +251,10 @@ What Phase 1 left for later is marked *(from Phase 1)* in the phases below.
 - [x] Spell checking as DSpellCheck: misspelled words underlined, next and previous, suggestions,
       the user's words, the dictionary's language
 - [x] Fuzzing `plugin.toml`, JSON, XML and hex dumps
+- [x] The whole interface translated: every text by key from YAML locales (`en.yaml`,
+      `ru.yaml`) with named arguments and plural forms; command titles, messages, errors,
+      questions, the status bar and the find panel in Russian; errors of the crates without a
+      window translated from their English ([ADR 0033](adr/0033-localization.md))
 
 ## Phase 6: full parity with Notepad++
 
@@ -282,8 +286,7 @@ this phase.
 - User Defined Languages: the UDL editor dialog; folding (code and comment folders); number
   prefixes, suffixes, extras and ranges; comments that must start a line; nested delimiters;
   colors from the theme where the UDL leaves them unset
-- Localization: more interface languages, including Notepad++'s `nativeLang` XML files; command
-  titles, messages and composed strings translated
+- Localization: more interface languages, including Notepad++'s `nativeLang` XML files
 - Printing: a print preview and page setup of Birchpad's own (margins, header and footer with
   Notepad++'s variables, colors or black on white, line numbers), printing the selection;
   native printing where the platform offers it

@@ -65,7 +65,13 @@ pub(crate) fn session(workspace: &Workspace, cx: &App) -> (Option<Entity<EditorV
 pub(crate) fn nested<T>(call: impl FnOnce() -> Result<T>) -> Result<T> {
     let depth = DEPTH.with(Cell::get);
     if depth >= MAX_DEPTH {
-        bail!("plugins and scripts run each other more than {MAX_DEPTH} deep");
+        bail!(
+            "{}",
+            t!(
+                "extensions.plugins-and-scripts-run-each-other-more-than-dee",
+                MAX_DEPTH = MAX_DEPTH
+            )
+        );
     }
     DEPTH.with(|cell| cell.set(depth + 1));
     let result = call();
@@ -86,10 +92,10 @@ impl Workspace {
     ) -> Result<()> {
         if let Some(transaction) = outcome.transaction {
             let Some(view) = view else {
-                bail!("there is no document to change");
+                bail!("{}", t!("extensions.there-is-no-document-to-change"));
             };
             if !view.update(cx, |view, cx| view.apply_command_edit(transaction, cx)) {
-                bail!("the document cannot be changed");
+                bail!("{}", t!("extensions.the-document-cannot-be-changed"));
             }
         }
         let mut failed = None;

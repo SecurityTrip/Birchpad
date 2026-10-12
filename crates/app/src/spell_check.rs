@@ -121,7 +121,12 @@ fn load(language: &str, cx: &App) -> Result<Speller> {
             .map(|dir| dir.display().to_string())
             .unwrap_or_default();
         bail!(
-            "there is no {language} dictionary: put {language}.aff and {language}.dic (Hunspell) into {user}"
+            "{}",
+            t!(
+                "spell-check.there-is-no-dictionary-put-aff-and-dic-hunspell",
+                language = language,
+                user = user
+            )
         );
     };
     let mut speller = Speller::open(&aff, &dic)?;
@@ -259,7 +264,13 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
     registry.workspace("spell.language", |this, args: LanguageArgs, _, cx| {
         let language = args.language.trim().to_owned();
         if language.is_empty() || language.contains(['/', '\\', '.']) {
-            bail!("{:?} is not a dictionary's language", args.language);
+            bail!(
+                "{}",
+                t!(
+                    "spell-check.is-not-a-dictionary-s-language",
+                    language = format!("{:?}", args.language)
+                )
+            );
         }
         AppState::update_state(cx, |state, _| state.spell_check.language = Some(language));
         forget(cx);
@@ -267,7 +278,8 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
         speller(cx).map(|_| ())
     });
     registry.workspace("spell.open-dictionaries-folder", |_, (), _, cx| {
-        let dir = dictionaries_dir(cx).ok_or_else(|| anyhow!("there is no settings folder"))?;
+        let dir = dictionaries_dir(cx)
+            .ok_or_else(|| anyhow!("{}", t!("spell-check.there-is-no-settings-folder")))?;
         std::fs::create_dir_all(&dir)
             .with_context(|| format!("cannot create {}", dir.display()))?;
         cx.open_with_system(&dir);
@@ -285,11 +297,14 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
         let (range, word) = word_at_caret(this, cx)?;
         let speller = speller.borrow();
         if speller.check(&word) {
-            bail!("{word} is spelled right");
+            bail!("{}", t!("spell-check.is-spelled-right", word = word));
         }
         let suggestions = speller.suggest(&word);
         if suggestions.is_empty() {
-            bail!("there are no suggestions for {word}");
+            bail!(
+                "{}",
+                t!("spell-check.there-are-no-suggestions-for", word = word)
+            );
         }
         this.show_choices(range, suggestions, cx);
         Ok(())
@@ -297,7 +312,8 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
     registry.editor("spell.add-word", |this, (), _, cx| {
         let speller = speller(cx)?;
         let (_, word) = word_at_caret(this, cx)?;
-        let dir = dictionaries_dir(cx).ok_or_else(|| anyhow!("there is no settings folder"))?;
+        let dir = dictionaries_dir(cx)
+            .ok_or_else(|| anyhow!("{}", t!("spell-check.there-is-no-settings-folder")))?;
         std::fs::create_dir_all(&dir)
             .with_context(|| format!("cannot create {}", dir.display()))?;
         let path = dir.join(USER_WORDS);
@@ -353,7 +369,7 @@ fn word_at_caret(view: &EditorView, cx: &App) -> Result<(Range<usize>, String)> 
             let range = line_range.start + word.start..line_range.start + word.end;
             (range, line_text[word].to_owned())
         })
-        .ok_or_else(|| anyhow!("there is no word at the caret"))
+        .ok_or_else(|| anyhow!("{}", t!("spell-check.there-is-no-word-at-the-caret")))
 }
 
 /// Selects the next (or previous) misspelled word, wrapping around.
@@ -383,7 +399,8 @@ fn go_to_misspelled(
             .find(|word| word.end <= primary.from() && word.start != primary.from())
             .or(words.last())
     };
-    let target = target.ok_or_else(|| anyhow!("there are no misspelled words"))?;
+    let target =
+        target.ok_or_else(|| anyhow!("{}", t!("spell-check.there-are-no-misspelled-words")))?;
     view.select_range(target.clone(), cx);
     Ok(())
 }

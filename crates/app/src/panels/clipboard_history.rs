@@ -158,7 +158,7 @@ impl Render for ClipboardHistory {
             div()
                 .p_2()
                 .text_color(crate::theme::paint(crate::theme::ui().muted))
-                .child("Copied texts show here")
+                .child(t!("panels.clipboard-history.copied-texts-show-here"))
                 .into_any_element()
         } else {
             let rows: Vec<(String, usize)> = self

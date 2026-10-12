@@ -137,7 +137,13 @@ impl DocumentList {
             .px_2()
             .font_weight(FontWeight::SEMIBOLD)
             .cursor_pointer()
-            .child(format!("{label}{arrow}"))
+            .child(format!(
+                "{}{arrow}",
+                crate::i18n::get_or(
+                    &format!("panels.document-list.{}", crate::i18n::slug(label)),
+                    label
+                )
+            ))
             .on_click(cx.listener(move |this, _, _, cx| this.sort_by(column, cx)))
     }
 }
