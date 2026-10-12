@@ -361,6 +361,7 @@ pub const COMMANDS: &[CommandSpec] = &[
     workspace("settings.preferences", "Preferences..."),
     workspace("settings.style-configurator", "Style Configurator..."),
     workspace("settings.shortcut-mapper", "Shortcut Mapper..."),
+    workspace("settings.edit-context-menu", "Edit Popup ContextMenu"),
     workspace("settings.theme", "Theme"),
     workspace("settings.import-theme", "Import Style Themes..."),
     // Plugins: the built-in JSON Viewer and XML Tools work on the selection, or the whole text

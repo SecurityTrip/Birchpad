@@ -246,6 +246,7 @@ command:
     word-left: "Расширить выделение до предыдущего слова"
     word-right: "Расширить выделение до следующего слова"
   settings:
+    edit-context-menu: "Изменить контекстное меню"
     import-theme: "Импортировать темы..."
     preferences: "Настройки..."
     shortcut-mapper: "Горячие клавиши..."
@@ -327,6 +328,8 @@ compare:
   the-documents-are-the-same: "Документы совпадают"
   there-are-no-differences-here: "здесь нет различий"
   there-is-no-document-to-compare: "нет документа для сравнения"
+context-menu:
+  there-is-no-settings-folder: "нет папки настроек для context-menu.toml"
 date-time:
   month-1: "января"
   month-10: "октября"

@@ -290,7 +290,7 @@ step 6.11 brings in the sections no feature brings.
       (binary content, HTML, RTF), On Selection (open the file named, its folder, search the
       Internet with a chosen engine), Begin/End Select in Column Mode, Remove Consecutive
       Duplicate Lines, Increase/Decrease Line Indent as menu commands
-- [ ] 6.7 The text's context menu, editable as Notepad++'s Edit Popup ContextMenu
+- [x] 6.7 The text's context menu, editable as Notepad++'s Edit Popup ContextMenu
 - [ ] 6.8 Search menu: Find (Volatile) Next/Previous, Select and Find Previous, Find characters
       in range, Change History (next and previous change, clear all changes), Find in Projects;
       the search results' context menu as Notepad++'s (copy lines or paths, open all, wrap long

@@ -55,6 +55,10 @@ version's release notes from its section here.
 - Edit > On Selection: open the file the selection names, show its folder, or search for it
   on the Internet with the engine of Preferences > Search Engine (DuckDuckGo, Google, Bing,
   Yahoo!, Stack Overflow or an address of one's own).
+- The text's context menu, on a right click: cut, copy, paste, styles of tokens, case,
+  opening the selected file, searching the Internet, comments. Its items are
+  `context-menu.toml` next to the settings, opened by Settings > Edit Popup ContextMenu, as
+  Notepad++'s `contextMenu.xml`: any command with its arguments, own labels, submenus.
 - Preferences > Multi-Instance (`instances.mode`): every launch, or a launch opening a session,
   can start a Birchpad of its own instead of handing its files to the running one.
 

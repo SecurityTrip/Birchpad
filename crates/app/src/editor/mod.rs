@@ -31,6 +31,7 @@ use birchpad_core::{
     Edit, LineEnding, LineMarkers, Range, RevisionId, Rope, Selection, Transaction, UndoGrouping,
 };
 use birchpad_view::{Block, BlockPoint, DisplayMap, LayoutConfig, tab_advance};
+use gpui_kit::component::menu::ContextMenuExt as _;
 use gpui_kit::{
     App, Bounds, ClipboardItem, Context, Entity, EntityInputHandler, EventEmitter, FocusHandle,
     Focusable, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, Pixels, Point,
@@ -359,6 +360,8 @@ pub(crate) enum EditorEvent {
     /// The view scrolled by this many rows and pixels since the last frame (for synchronized
     /// scrolling).
     Scrolled { rows: f64, x: Pixels },
+    /// An item of the context menu was chosen: the command runs on this view's document.
+    Command(birchpad_commands::Invocation),
 }
 
 /// Where a view is in its buffer: what Clone to Other View copies and sessions save.
@@ -1330,6 +1333,29 @@ impl EditorView {
         }
     }
 
+    /// A right click: the caret goes there, unless the click is in a selection (the context
+    /// menu then acts on it).
+    fn right_mouse_down(
+        &mut self,
+        event: &MouseDownEvent,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        window.focus(&self.focus_handle, cx);
+        self.completion = None;
+        self.call_tip = None;
+        let Some(pos) = self.position_for_point(event.position, cx) else {
+            return;
+        };
+        let in_selection = self
+            .selection
+            .iter()
+            .any(|range| !range.is_empty() && range.from() <= pos && pos <= range.to());
+        if !in_selection {
+            self.go_to(pos, cx);
+        }
+    }
+
     fn mouse_down(&mut self, event: &MouseDownEvent, window: &mut Window, cx: &mut Context<Self>) {
         window.focus(&self.focus_handle, cx);
         self.completion = None;
@@ -1586,13 +1612,30 @@ impl Render for EditorView {
                     .flex_1()
                     .min_h(px(0.))
                     .on_mouse_down(MouseButton::Left, cx.listener(Self::mouse_down))
+                    .on_mouse_down(MouseButton::Right, cx.listener(Self::right_mouse_down))
                     .on_mouse_move(cx.listener(Self::mouse_move))
                     .on_mouse_up(MouseButton::Left, cx.listener(Self::mouse_up))
                     .on_mouse_up_out(MouseButton::Left, cx.listener(Self::mouse_up))
                     .on_scroll_wheel(cx.listener(Self::scroll_wheel))
                     .child(EditorElement::new(cx.entity()))
                     .children(self.render_completion(cx))
-                    .children(loading.map(crate::banner::loading)),
+                    .children(loading.map(crate::banner::loading))
+                    .context_menu({
+                        let view = cx.entity().downgrade();
+                        move |menu, window, cx| {
+                            let (nodes, problem) = crate::context_menu::load(cx);
+                            let menu = match problem {
+                                Some(problem) => menu
+                                    .item(
+                                        gpui_kit::component::menu::PopupMenuItem::new(problem)
+                                            .disabled(true),
+                                    )
+                                    .separator(),
+                                None => menu,
+                            };
+                            crate::context_menu::build(menu, &nodes, &view, window, cx)
+                        }
+                    }),
             )
     }
 }

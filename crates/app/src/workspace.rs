@@ -174,6 +174,7 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
     crate::window_modes::register_commands(registry);
     crate::date_time::register_commands(registry);
     crate::edit_extras::register_commands(registry);
+    crate::context_menu::register_commands(registry);
 }
 
 /// View menu switches kept in `state.toml`: command, current value, how to remember a new one.
@@ -421,10 +422,20 @@ impl Workspace {
         &mut self,
         view: &Entity<EditorView>,
         event: &EditorEvent,
-        _: &mut Window,
+        window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        let EditorEvent::Scrolled { rows, x } = *event;
+        let (rows, x) = match event {
+            EditorEvent::Scrolled { rows, x } => (*rows, *x),
+            EditorEvent::Command(invocation) => {
+                let (view, invocation) = (view.clone(), invocation.clone());
+                // After the menu that chose it has closed.
+                cx.defer_in(window, move |this, window, cx| {
+                    this.run_context_command(&view, &invocation, window, cx);
+                });
+                return;
+            }
+        };
         if !(self.sync_vertical || self.sync_horizontal) || !self.is_split(cx) {
             return;
         }

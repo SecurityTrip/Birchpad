@@ -7,6 +7,7 @@
 //! application maps invocations to handlers and keymaps to its UI toolkit.
 
 mod catalog;
+pub mod context_menu;
 mod invocation;
 mod keymap;
 mod keymap_edit;

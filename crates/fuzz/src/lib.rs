@@ -38,6 +38,7 @@ pub const TARGETS: &[(&str, Check)] = &[
     ("api_file", api_file),
     ("udl", udl),
     ("keymap", keymap),
+    ("context_menu", context_menu),
     ("command_line", command_line),
     ("instance_message", instance_message),
     ("manifest", manifest),
@@ -228,6 +229,46 @@ pub fn macros(data: &[u8]) -> bool {
     let written = birchpad_commands::write_macros(&macros);
     let again = birchpad_commands::parse_macros(&written).expect("written macros read");
     assert_eq!(again, macros, "written:\n{written}");
+    true
+}
+
+/// `context-menu.toml`: a menu that reads writes back the same, and holds only commands the
+/// catalog knows, without separators at its ends or twice in a row.
+pub fn context_menu(data: &[u8]) -> bool {
+    use birchpad_commands::context_menu::{Node, parse, write};
+    let Ok(text) = std::str::from_utf8(data) else {
+        return false;
+    };
+    let Ok(nodes) = parse(text) else {
+        return false;
+    };
+    fn check(nodes: &[Node]) {
+        assert_ne!(nodes.first(), Some(&Node::Separator));
+        assert_ne!(nodes.last(), Some(&Node::Separator));
+        for pair in nodes.windows(2) {
+            assert!(pair != [Node::Separator, Node::Separator]);
+        }
+        for node in nodes {
+            match node {
+                Node::Command { invocation, .. } => {
+                    assert!(birchpad_commands::find(&invocation.command).is_some());
+                }
+                Node::Folder { items, .. } => {
+                    assert!(!items.is_empty());
+                    check(items);
+                }
+                Node::Separator => {}
+            }
+        }
+    }
+    check(&nodes);
+    let written = write(&nodes);
+    let again = parse(&written).expect("a written menu reads");
+    assert_eq!(
+        again, nodes,
+        "written:
+{written}"
+    );
     true
 }
 

@@ -323,6 +323,7 @@ fuzz_tests!(
     api_file,
     udl,
     keymap,
+    context_menu,
     command_line,
     instance_message,
     manifest,

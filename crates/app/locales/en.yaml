@@ -244,6 +244,7 @@ command:
     word-left: "Extend Selection to Previous Word"
     word-right: "Extend Selection to Next Word"
   settings:
+    edit-context-menu: "Edit Popup ContextMenu"
     import-theme: "Import Style Themes..."
     preferences: "Preferences..."
     shortcut-mapper: "Shortcut Mapper..."
@@ -325,6 +326,8 @@ compare:
   the-documents-are-the-same: "The documents are the same"
   there-are-no-differences-here: "there are no differences here"
   there-is-no-document-to-compare: "there is no document to compare"
+context-menu:
+  there-is-no-settings-folder: "there is no settings folder for context-menu.toml"
 date-time:
   month-1: "January"
   month-10: "October"

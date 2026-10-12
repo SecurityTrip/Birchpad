@@ -64,6 +64,13 @@ doc = false
 bench = false
 
 [[bin]]
+name = "context_menu"
+path = "fuzz_targets/context_menu.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
 name = "command_line"
 path = "fuzz_targets/command_line.rs"
 test = false

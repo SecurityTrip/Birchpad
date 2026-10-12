@@ -756,6 +756,7 @@ pub fn main_menu() -> Vec<Menu> {
             cmd("settings.preferences"),
             cmd("settings.style-configurator"),
             cmd("settings.shortcut-mapper"),
+            cmd("settings.edit-context-menu"),
             Submenu(Menu::new("Theme", vec![Dynamic(Placeholder::Themes)])),
             Submenu(Menu::new("Import", vec![cmd("settings.import-theme")])),
         ],

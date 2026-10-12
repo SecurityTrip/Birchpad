@@ -374,7 +374,8 @@ mod tests {
         .unwrap();
         remove(&previous(&path));
         assert_eq!(Session::load(&path), None);
-        fs::remove_dir_all(&dir).unwrap();
+        // Cleaning up may meet a scanner too; the temporary folder can stay.
+        let _ = fs::remove_dir_all(&dir);
     }
 
     #[test]

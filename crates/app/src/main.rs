@@ -17,6 +17,7 @@ mod banner;
 mod buffer;
 mod commands;
 mod compare;
+mod context_menu;
 mod date_time;
 mod disk;
 #[cfg(test)]

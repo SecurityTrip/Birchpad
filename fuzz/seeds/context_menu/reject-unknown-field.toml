@@ -1,0 +1,3 @@
+[[item]]
+command = "edit.copy"
+shortcut = "ctrl-c"
