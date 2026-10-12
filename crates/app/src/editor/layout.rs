@@ -935,6 +935,30 @@ impl EditorView {
                 .map(|(range, _)| (range, incremental)),
         );
         let mut quads = Vec::new();
+        // Compared lines are filled across the text area, under the other decorations.
+        for (range, change) in marks.compare.overlapping(visible.clone()) {
+            let color = match change {
+                birchpad_tools::compare::Change::Added => theme::editor().compare_added,
+                birchpad_tools::compare::Change::Removed => theme::editor().compare_removed,
+                birchpad_tools::compare::Change::Changed => theme::editor().compare_changed,
+            };
+            let paint = Paint::Fill(theme::paint(color));
+            for row in &layout.rows {
+                let start = row.row.range.start;
+                if start >= range.start && start < range.end {
+                    quads.push((
+                        Bounds::from_corners(
+                            point(layout.text_bounds.left(), row.y),
+                            point(
+                                layout.text_bounds.right(),
+                                row.y + layout.metrics.line_height,
+                            ),
+                        ),
+                        paint,
+                    ));
+                }
+            }
+        }
         for (range, paint) in ranges {
             for bounds in self.range_bounds(layout, text, range) {
                 quads.push((bounds, paint));

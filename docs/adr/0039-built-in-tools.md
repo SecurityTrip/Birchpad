@@ -24,9 +24,13 @@ third-party ports.
 - **Hex:** the document's bytes in its encoding as rows of 16 (offset, bytes, text) in a
   document of their own; edited rows read back into bytes, which replace the original text
   (decoded in its encoding) as one undo step.
-- **Compare:** two documents line by line (Myers, line breaks ignored, optionally whitespace
-  and case), shown side by side in the split view with added, removed and changed lines marked,
-  and commands to go to the next and previous difference.
+- **Compare:** the active document (new) with the other view's, or with the tab before it,
+  which then goes side by side in the split view; line by line (Myers, line breaks ignored,
+  optionally spaces and case). The marks belong to the documents and follow edits: the old one
+  shows the lines it loses and those that change, the new one the lines it gains and those that
+  change, filled across the line in the theme's `compare-*` colors. Next and Previous
+  Difference go through the active document's marks; Clear Results takes them all off. Lines
+  are not padded to stay aligned, as ComparePlus does; that is Phase 6.
 - **Spell check:** Hunspell dictionaries (`.aff` and `.dic`) read by `spellbook`, from the
   `dictionaries` folder next to the settings, then the system's folders (and Notepad++'s
   DSpellCheck folder on Windows). Words are runs of letters with inner apostrophes; words with

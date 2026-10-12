@@ -16,6 +16,11 @@ version's release notes from its section here.
 - Plugins > Hex Editor: View in Hex opens the document's bytes, in its encoding, as rows of 16
   in a new document; after editing them, Apply Hex to Document puts them back into the
   document as one undo step.
+- Plugins > Compare: compares the active document with the other view's, or with the tab
+  before it, which it puts side by side; lines added, removed and changed are colored across
+  the line, Next and Previous Difference go through them, Clear Results takes the colors off.
+  Spaces and case can be ignored. Themes get `compare-added`, `compare-removed`,
+  `compare-changed` and `spell-error` colors.
 - The `UserScripts` policy (`plugins.scripts`): administrators can turn user scripts off, as
   `PluginInstall` and `AllowedPlugins` control plugins.
 

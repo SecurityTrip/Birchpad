@@ -4,8 +4,6 @@
 use anyhow::{Result, anyhow, bail};
 use birchpad_core::{Edit, Range, Selection, Transaction};
 use birchpad_tools::{Indent, Layout, SyntaxError, json, xml};
-use gpui_kit::component::WindowExt as _;
-use gpui_kit::component::notification::Notification;
 use gpui_kit::{Context, Window};
 
 use crate::commands::CommandRegistry;
@@ -117,8 +115,11 @@ fn validate(
     let (range, part) = target(view, cx);
     match check(&part) {
         Ok(()) => {
-            let message = crate::i18n::tr(&format!("{kind} is valid"));
-            window.push_notification(Notification::success(message), cx);
+            crate::workspace::report_success(
+                crate::i18n::tr(&format!("{kind} is valid")),
+                window,
+                cx,
+            );
             Ok(())
         }
         Err(error) => Err(locate(view, range.start, &part, &error, cx)),

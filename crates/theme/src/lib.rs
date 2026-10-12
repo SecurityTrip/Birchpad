@@ -166,6 +166,13 @@ palette! {
         mark_4,
         mark_5,
         scrollbar_thumb,
+        /// Compare: lines only the new document has, lines only the old one has, and lines
+        /// both have differently; translucent, across the whole line.
+        compare_added,
+        compare_removed,
+        compare_changed,
+        /// The wavy line under a misspelled word.
+        spell_error,
     }
 }
 
@@ -451,6 +458,10 @@ impl Theme {
                 mark_4: black,
                 mark_5: black,
                 scrollbar_thumb: black,
+                compare_added: black,
+                compare_removed: black,
+                compare_changed: black,
+                spell_error: black,
             },
             ui: UiColors {
                 background: black,

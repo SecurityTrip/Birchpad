@@ -661,6 +661,19 @@ pub fn main_menu() -> Vec<Menu> {
                 "Hex Editor",
                 vec![cmd("hex.view"), cmd("hex.apply")],
             )),
+            Submenu(Menu::new(
+                "Compare",
+                vec![
+                    cmd("compare.compare"),
+                    cmd("compare.clear"),
+                    Separator,
+                    cmd("compare.previous"),
+                    cmd("compare.next"),
+                    Separator,
+                    cmd("compare.ignore-spaces"),
+                    cmd("compare.ignore-case"),
+                ],
+            )),
         ],
     );
 

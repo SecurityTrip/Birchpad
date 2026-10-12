@@ -315,6 +315,13 @@ pub const COMMANDS: &[CommandSpec] = &[
     // Hex Editor: the active document's bytes in a new document, and back
     workspace("hex.view", "View in Hex"),
     workspace("hex.apply", "Apply Hex to Document"),
+    // Compare: the active document with the other view's, or with the tab before it
+    workspace("compare.compare", "Compare"),
+    workspace("compare.clear", "Clear Results"),
+    editor("compare.next", "Next Difference"),
+    editor("compare.previous", "Previous Difference"),
+    workspace("compare.ignore-spaces", "Ignore Spaces"),
+    workspace("compare.ignore-case", "Ignore Case"),
     // Help
     workspace("help.check-updates", "Check for Updates..."),
     // From the update dialogs and notifications.

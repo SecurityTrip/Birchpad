@@ -71,6 +71,8 @@ pub(crate) struct DocumentMarks {
     pub(crate) found: RangeSet<()>,
     /// The matches of incremental search with Highlight all.
     pub(crate) incremental: RangeSet<()>,
+    /// The lines Plugins > Compare found different, whole with their line breaks.
+    pub(crate) compare: RangeSet<birchpad_tools::compare::Change>,
 }
 
 impl DocumentMarks {
@@ -94,6 +96,7 @@ impl DocumentMarks {
         }
         self.found.map(changes);
         self.incremental.map(changes);
+        self.compare.map(changes);
     }
 }
 

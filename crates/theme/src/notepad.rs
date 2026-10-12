@@ -131,6 +131,10 @@ fn editor_colors(
         mark_4: translucent(background("Mark Style 4"), 0x55),
         mark_5: translucent(background("Mark Style 5"), 0x66),
         scrollbar_thumb: None,
+        compare_added: None,
+        compare_removed: None,
+        compare_changed: None,
+        spell_error: None,
     }
 }
 

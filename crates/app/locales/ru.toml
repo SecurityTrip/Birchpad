@@ -355,3 +355,12 @@
 "Hex Editor" = "Hex Editor"
 "View in Hex" = "Показать в шестнадцатеричном виде"
 "Apply Hex to Document" = "Применить шестнадцатеричные данные к документу"
+
+# Plugins: Compare
+"Compare" = "Сравнение"
+"Clear Results" = "Очистить результаты"
+"Next Difference" = "Следующее различие"
+"Previous Difference" = "Предыдущее различие"
+"Ignore Spaces" = "Игнорировать пробелы"
+"Ignore Case" = "Игнорировать регистр"
+"The documents are the same" = "Документы совпадают"

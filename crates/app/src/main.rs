@@ -14,6 +14,7 @@ mod app_state;
 mod banner;
 mod buffer;
 mod commands;
+mod compare;
 mod disk;
 #[cfg(test)]
 mod disk_tests;

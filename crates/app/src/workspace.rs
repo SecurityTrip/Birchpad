@@ -142,6 +142,7 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
     crate::encoding_ui::register_commands(registry);
     crate::file_ops::register_commands(registry);
     crate::find::register_commands(registry);
+    crate::compare::register_commands(registry);
     crate::help::register_commands(registry);
     crate::hex_view::register_commands(registry);
     crate::incremental::register_commands(registry);
@@ -224,6 +225,11 @@ pub(crate) fn dialog_close(label: &'static str) -> DialogClose {
             .label(crate::i18n::tr(label))
             .debug_selector(|| "dialog-close".into())
     })
+}
+
+/// Tells the user that something went well, without interrupting them.
+pub(crate) fn report_success(message: impl Into<String>, window: &mut Window, cx: &mut App) {
+    window.push_notification(Notification::success(message.into()), cx);
 }
 
 /// Shows a warning to the user without interrupting them.
@@ -846,6 +852,7 @@ impl Workspace {
             .active_view(cx)
             .is_some_and(|view| view.read(cx).buffer.read(cx).is_monitoring());
         let theme_name = crate::theme::current().name.clone();
+        let compare_options = crate::compare::options(cx);
         let checked = |invocation: &Invocation| {
             if let Some((_, read, _)) = VIEW_SWITCHES
                 .iter()
@@ -875,6 +882,9 @@ impl Workspace {
             if invocation.command == "language.set" {
                 return invocation.args.get("language").and_then(|id| id.as_str())
                     == language.as_deref();
+            }
+            if let Some(on) = crate::compare::is_checked(invocation, compare_options) {
+                return on;
             }
             if let Some(open) = crate::panels::is_checked(&self.docks, invocation) {
                 return open;
