@@ -6,6 +6,11 @@ version's release notes from its section here.
 
 ## [Unreleased]
 
+### Added
+
+- The `UserScripts` policy (`plugins.scripts`): administrators can turn user scripts off, as
+  `PluginInstall` and `AllowedPlugins` control plugins.
+
 ## [0.1.4] - 2026-10-12
 
 ### Added

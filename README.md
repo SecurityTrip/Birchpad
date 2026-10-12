@@ -120,12 +120,14 @@ downloading them. See [ADR 0020](docs/adr/0020-signed-updates-and-nightly-builds
 | `crates/view` | Layout of a document view in cells: tab stops, word wrap, visual rows. No UI. |
 | `crates/syntax` | Languages and syntax trees: detection, tree-sitter parsing, highlighting, folding. No UI. |
 | `crates/cli` | Notepad++-compatible command line and the single-instance hand-off. No UI. |
+| `crates/tools` | Built-in tools: JSON and XML formatting, hex dumps, comparing texts, spell checking. No UI. |
+| `crates/plugin` | Plugins as WebAssembly components (`wit/birchpad.wit`), Rhai scripts, the plugin manager. No UI. |
 | `crates/update` | Updates: the signed update manifest, channels, versions, installing (Velopack on Windows). No UI. |
 | `crates/release-tool` | `birchpad-release`: signing keys and the update manifest, for the release workflows. |
 | `crates/menu-bar` | The menu bar drawn in the window on Windows and Linux, with Windows' keyboard access. |
 | `crates/app` | The desktop application. |
 | `packaging/` | Release packaging: per-machine MSI, macOS app bundle, portable-mode marker, update signing setup. |
-| `docs/` | Roadmap and architecture decision records. |
+| `docs/` | Roadmap, architecture decision records, and [writing plugins and scripts](docs/plugins.md). |
 
 ## Contributing
 

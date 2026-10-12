@@ -228,10 +228,24 @@ What Phase 1 left for later is marked *(from Phase 1)* in the phases below.
 
 ## Phase 5: plugins
 
-- Plugin API as WebAssembly components (WIT): commands, documents, events, panels, menus
-- User scripting (Lua or Rhai)
-- Plugin manager; enterprise allowlist
-- Built-in versions of popular Notepad++ plugins: Compare, JSON/XML tools, hex view, spell check
+- [x] Plugin runtime: WebAssembly components of the `birchpad:plugin` WIT world in Wasmtime,
+      working on a copy of the document (one undo step a call), without files or network, with
+      fuel and memory limits ([ADR 0036](adr/0036-webassembly-plugins.md))
+- [ ] Plugins in the window: the Plugins menu with each plugin's commands, events, the plugin
+      panel
+- [x] User scripting in Rhai with the plugins' API and an operation limit
+      ([ADR 0037](adr/0037-rhai-scripts.md))
+- [ ] Scripts in the Plugins menu, from the `scripts` folder
+- [x] Plugins folder: `plugin.toml`, installing, updating, removing and turning plugins off;
+      the `PluginInstall` / `AllowedPlugins` allowlist and the `UserScripts` policy
+      ([ADR 0038](adr/0038-plugin-manager-and-allowlist.md))
+- [ ] Plugins Admin: the installed plugins, install from a file, remove, turn on and off
+- [x] Built-in tools without a window (`birchpad-tools`): JSON and XML checking, formatting
+      and linearizing, hex dumps, comparing texts, Hunspell spell checking
+      ([ADR 0039](adr/0039-built-in-tools.md))
+- [ ] Built-in versions of popular Notepad++ plugins in the window: Compare, JSON Viewer, XML
+      Tools, Hex Editor, DSpellCheck ([ADR 0039](adr/0039-built-in-tools.md))
+- [ ] Fuzzing `plugin.toml`, JSON, XML and hex dumps
 
 ## Phase 6: full parity with Notepad++
 
