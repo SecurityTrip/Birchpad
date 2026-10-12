@@ -296,10 +296,60 @@ this phase.
 - Everything Notepad++ has that Birchpad still lacks: the Window menu and its dialog, tab colors,
   pinned and multi-line or vertical tabs, the text's context menu (editable, as Notepad++'s
   Edit Popup ContextMenu), Insert date and time, Copy full path / file name / folder, Rename and
-  Delete file, Edit > Set Read-Only, and other menu commands not listed in the phases above
+  Delete file, Edit > Set Read-Only, and other menu commands not listed in the phases above.
+  Compared with Notepad++ 8 after Phase 5, these are missing:
+  - File: Open Containing Folder (in the file manager, a terminal, Folder as Workspace), Open in
+    Default Viewer, Reload from Disk, Save a Copy As, Move to Recycle Bin, Close Multiple
+    Documents (to the left, to the right, unchanged, all but pinned), Restore Recent Closed File,
+    Open All Recent Files, Print Now
+  - Edit: Paste Special (binary content, HTML, RTF), On Selection (open the file named,
+    its folder, search the Internet with a chosen engine), Begin/End Select in Column Mode,
+    Remove Consecutive Duplicate Lines, Clear Read-Only Flag, Increase/Decrease Line Indent as
+    menu commands
+  - Search: Find (Volatile) Next/Previous, Select and Find Previous, Find characters in range,
+    Change History (next and previous change, clear all changes), Find in Projects, the search
+    results' context menu as Notepad++'s (copy lines or paths, open all, wrap long lines, purge
+    for every search)
+  - View: Always on Top, Full Screen, Post-It, Distraction Free mode, View Current File in a
+    browser, Move/Clone to a new instance and Open in a new instance, go to the 1st-9th tab and
+    move the tab forward or backward, Hide Lines, Summary (counts of characters, words, lines),
+    Collapse/Expand by level from the menu
+  - The toolbar (small, large and fluent icons; customizable) and the tab bar's context menu and
+    options (double-click to close, lock, reduce, vertical, multi-line); the document peeker on a
+    tab; the Ctrl+Tab document switcher
+  - Clickable links: addresses underlined and opened with Ctrl+click or a double click
+    (Preferences > Cloud & Link); Ctrl+double click selection between delimiters
+  - Preferences > Language: tab size and spaces per language; new document defaults (encoding,
+    line ending, language); backup copies on save (simple or verbose); default folder; settings
+    in a folder of one's choice (cloud); minimize to the system tray; "remember inaccessible
+    files" in sessions
+  - Macro and Run: Modify Shortcut / Delete Macro or Command (the Macros and Run tabs of the
+    Shortcut Mapper)
+  - Language: Open User Defined Language Folder, the UDL collection link; Settings > Import
+    plugin(s)
+  - Help: Command Line Arguments, home page, online manual and forum, Debug Info (copyable),
+    Set Updater Proxy
+  - The command line options Birchpad accepts but ignores: -notabbar, -systemtray,
+    -alwaysOnTop, -loadingTime, -r (recursive wildcards), -quickPrint, -monitor,
+    -openFoldersAsWorkspace, -x and -y (window position), -qn, -qt, -qf, -qSpeed (ghost
+    typing), -settingsDir, -titleAdd, -udl, -pluginMessage
 - Verified on real systems: input methods (Windows TSF, macOS, IBus/Fcitx), screen readers
   *(from Phase 1)*
-- After Phase 5: what the plugins phase leaves out of Notepad++'s plugin behavior
+- After Phase 5, what the plugins phase leaves out of Notepad++'s plugins:
+  - Compare as ComparePlus: lines padded to stay aligned side by side, differences within a
+    line, comparing with the last save, the clipboard or Git; a navigation bar of the
+    differences
+  - JSON Viewer's tree panel (find a path, copy a value), sorting keys; XML Tools' XPath, XSD
+    and DTD validation, escaping and unescaping, closing tags as typed
+  - Hex Editor in place: the bytes edited in a hex view of the document itself (overwrite,
+    insert, the caret shared with the text), columns and grouping, Find in hex
+  - DSpellCheck's options (several languages at once, ignore rules, words in code by style) and
+    its dictionary download, a dictionary bundled for English
+  - Plugins Admin's online list of plugins (available, updates, installed), with checksums and
+    the `OnlineFeatures` policy
+  - A wider plugin API: settings of their own, files opened with the user's permission, a
+    panel of their own controls, items in the text's context menu, events while typing and
+    when the selection changes, work in the background; scripts' own commands and keys
 
 ## Phase 7: beyond Notepad++
 
