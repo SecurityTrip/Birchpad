@@ -14,6 +14,10 @@ change-detection = "all"
 vertical = true
 switcher-mru = false
 
+[toolbar]
+size = "large"
+buttons = ["file.new", "|", "edit.undo"]
+
 [session]
 backup-interval-seconds = 30
 

@@ -73,6 +73,13 @@ pub(crate) const ENTRIES: &[Entry] = &[
             ("ru", "Русский"),
         ]),
     ),
+    entry("Toolbar", "toolbar.show", "Show the toolbar", Kind::Bool),
+    entry(
+        "Toolbar",
+        "toolbar.size",
+        "Icons",
+        Kind::Choice(&[("small", "Small"), ("large", "Large")]),
+    ),
     entry("Tab Bar", "tabs.vertical", "Vertical", Kind::Bool),
     entry("Tab Bar", "tabs.multi-line", "Multi-line", Kind::Bool),
     entry("Tab Bar", "tabs.reduce", "Reduce", Kind::Bool),

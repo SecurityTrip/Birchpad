@@ -289,6 +289,8 @@ pub(crate) struct Workspace {
     pub(crate) docks: Docks,
     /// Always on Top, Full Screen, Post-It, Distraction Free.
     pub(crate) modes: crate::window_modes::WindowModes,
+    /// The toolbar's commands whose switch is on, shown pressed.
+    pub(crate) toolbar_checked: Vec<String>,
     _subscriptions: Vec<Subscription>,
 }
 
@@ -327,6 +329,7 @@ impl Workspace {
             navigation: History::default(),
             docks: Docks::default(),
             modes: Default::default(),
+            toolbar_checked: Vec::new(),
             _subscriptions: subscriptions,
         };
         // Back in front: files may have changed meanwhile.
@@ -976,6 +979,16 @@ impl Workspace {
             };
             crate::encoding_ui::is_current(invocation, format, ansi)
         };
+        let toolbar_checked: Vec<String> =
+            crate::toolbar::items(&AppState::global(cx).settings.toolbar)
+                .into_iter()
+                .filter_map(|item| match item {
+                    crate::toolbar::Item::Button(id) => {
+                        checked(&Invocation::new(&id)).then_some(id)
+                    }
+                    crate::toolbar::Item::Separator => None,
+                })
+                .collect();
         let recent_files = AppState::global(cx).state.recent_files.clone();
         let themes = crate::themes::names(crate::themes::themes_dir(cx).as_deref());
         let macros: Vec<String> = cx
@@ -1011,6 +1024,7 @@ impl Workspace {
             checked: &checked,
         };
         menus::install(&state, cx);
+        self.toolbar_checked = toolbar_checked;
         if let Some(menu_bar) = &self.menu_bar {
             menu_bar.update(cx, |menu_bar, cx| menu_bar.reload(cx));
         }
@@ -1088,6 +1102,9 @@ impl Render for Workspace {
                     )
                 },
             )
+            .when(!self.modes.text_only(), |this| {
+                this.children(self.render_toolbar(cx))
+            })
             .child({
                 let center = self.render_main_area(cx);
                 let main = if self.modes.distraction_free {

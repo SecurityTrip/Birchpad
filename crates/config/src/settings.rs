@@ -12,6 +12,7 @@ pub struct Settings {
     pub highlighting: HighlightingSettings,
     pub files: FileSettings,
     pub tabs: TabSettings,
+    pub toolbar: ToolbarSettings,
     pub instances: InstanceSettings,
     pub session: SessionSettings,
     pub updates: UpdateSettings,
@@ -319,6 +320,81 @@ impl Default for TabSettings {
             switcher_mru: true,
         }
     }
+}
+
+/// The toolbar under the menus, as Notepad++'s (Preferences > General > Toolbar).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, rename_all = "kebab-case")]
+pub struct ToolbarSettings {
+    /// Whether it shows.
+    pub show: bool,
+    pub size: ToolbarSize,
+    /// Its buttons, in order: command ids, and `|` for a separator. Commands it does not know
+    /// are left out.
+    pub buttons: Vec<String>,
+}
+
+/// The toolbar's buttons as Notepad++ has them.
+pub const DEFAULT_TOOLBAR: &[&str] = &[
+    "file.new",
+    "file.open",
+    "file.save",
+    "file.save-all",
+    "file.close",
+    "file.close-all",
+    "file.print",
+    "|",
+    "edit.cut",
+    "edit.copy",
+    "edit.paste",
+    "|",
+    "edit.undo",
+    "edit.redo",
+    "|",
+    "search.find",
+    "search.replace",
+    "|",
+    "view.zoom-in",
+    "view.zoom-out",
+    "|",
+    "view.sync-vertical-scroll",
+    "view.sync-horizontal-scroll",
+    "|",
+    "view.word-wrap",
+    "view.show-all-characters",
+    "view.indent-guides",
+    "|",
+    "panel.document-map",
+    "panel.document-list",
+    "panel.function-list",
+    "panel.folder-as-workspace",
+    "|",
+    "view.monitoring",
+    "|",
+    "macro.start-recording",
+    "macro.stop-recording",
+    "macro.playback",
+    "macro.run-multiple",
+    "macro.save",
+];
+
+impl Default for ToolbarSettings {
+    fn default() -> Self {
+        Self {
+            show: true,
+            size: ToolbarSize::default(),
+            buttons: DEFAULT_TOOLBAR.iter().map(|&id| id.to_owned()).collect(),
+        }
+    }
+}
+
+/// How big the toolbar's icons are.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum ToolbarSize {
+    #[default]
+    Small,
+    Large,
 }
 
 /// Notepad++'s Preferences > Multi-Instance & Date.

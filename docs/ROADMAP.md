@@ -281,7 +281,8 @@ step 6.11 brings in the sections no feature brings.
       Recent Files; Copy full path / file name / folder
 - [x] 6.4 Instances and the window: Move/Clone to a new instance, Open in a new instance;
       multi-instance in Preferences; Always on Top, Full Screen, Post-It, Distraction Free mode
-- [ ] 6.5 The toolbar: small, large and fluent icons; customizable
+- [x] 6.5 The toolbar: small and large icons (Lucide's line icons stand for Notepad++'s
+      Fluent ones, which are Microsoft's); customizable in `toolbar.buttons`
 
 ### Editing, search and view
 

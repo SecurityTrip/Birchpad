@@ -55,6 +55,7 @@ mod split_tests;
 mod status_bar;
 mod style_configurator;
 mod themes;
+mod toolbar;
 mod tools;
 mod updates;
 mod user_languages;

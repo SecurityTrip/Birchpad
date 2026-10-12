@@ -42,6 +42,9 @@ version's release notes from its section here.
   column in the middle); a button in the corner leaves the last two.
 - View > Move/Clone Current Document > Move to New Instance and Open in New Instance: the file
   opens at the caret in another Birchpad of its own.
+- The toolbar under the menus, with Notepad++'s buttons: they run their commands, show
+  switches that are on pressed, and have small or large icons (Preferences > Toolbar). Which
+  buttons it has, in what order, is `toolbar.buttons` in `settings.toml`; it can be hidden.
 - Preferences > Multi-Instance (`instances.mode`): every launch, or a launch opening a session,
   can start a Birchpad of its own instead of handing its files to the running one.
 

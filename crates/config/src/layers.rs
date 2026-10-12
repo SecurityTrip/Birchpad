@@ -323,6 +323,34 @@ mod tests {
     }
 
     #[test]
+    fn toolbar_settings() {
+        use crate::settings::{DEFAULT_TOOLBAR, ToolbarSize};
+        let default = resolve(Sources::default()).settings.toolbar;
+        assert!(default.show);
+        assert_eq!(default.size, ToolbarSize::Small);
+        assert_eq!(default.buttons, DEFAULT_TOOLBAR);
+        let resolved = resolve(Sources {
+            user: table(
+                "toolbar.size = 'large'
+toolbar.buttons = ['file.new', '|', 'no.such']
+                 toolbar.show = 1",
+            ),
+            ..Sources::default()
+        });
+        let toolbar = &resolved.settings.toolbar;
+        assert_eq!(toolbar.size, ToolbarSize::Large);
+        assert_eq!(toolbar.buttons, ["file.new", "|", "no.such"]);
+        assert!(toolbar.show, "a value of the wrong type keeps the default");
+        assert_eq!(resolved.diagnostics.len(), 1);
+        // No buttons at all is a toolbar without buttons.
+        let empty = resolve(Sources {
+            user: table("toolbar.buttons = []"),
+            ..Sources::default()
+        });
+        assert!(empty.settings.toolbar.buttons.is_empty());
+    }
+
+    #[test]
     fn instance_settings() {
         use crate::settings::InstanceMode;
         let instances = |toml: &str| {
