@@ -63,7 +63,9 @@ impl Runtime {
         config.consume_fuel(true);
         config.wasm_component_model(true);
         #[cfg(all(windows, target_arch = "aarch64"))]
-        config.target("pulley64")?;
+        config
+            .target("pulley64")
+            .map_err(|error| anyhow!("{error}"))?;
         let engine = Engine::new(&config).map_err(|error| anyhow!("{error}"))?;
         Ok(Self { engine, fuel })
     }
