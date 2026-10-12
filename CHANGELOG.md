@@ -26,6 +26,10 @@ version's release notes from its section here.
   the document peeker, and the document switcher with or without most recently used first.
 - A double click on the empty part of the tab bar opens a new document.
 - Pinned tabs and tab colors are kept in sessions, and read from Notepad++'s `session.xml`.
+- The Window menu: the documents of the active view, Sort By (name, path, type, content
+  length or modified time, either way), and Windows..., a list of the view's documents with
+  their path, type and size, sorted by any column, where the selected ones are activated,
+  saved or closed and Sort Tabs gives the tabs the order shown.
 
 ### Changed
 

@@ -318,6 +318,9 @@ pub const COMMANDS: &[CommandSpec] = &[
     workspace("macro.save", "Save Current Recorded Macro..."),
     workspace("macro.run-multiple", "Run a Macro Multiple Times..."),
     workspace("macro.run", "Run Macro"),
+    // Window; window.sort takes { "by": "name" | "path" | "type" | "size" | "modified", "descending": false }
+    workspace("window.sort", "Sort By"),
+    workspace("window.windows", "Windows..."),
     // Settings; settings.theme takes { "name": "Default" | "Dark" | <a theme file's name> }
     workspace("settings.preferences", "Preferences..."),
     workspace("settings.style-configurator", "Style Configurator..."),

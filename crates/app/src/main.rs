@@ -57,6 +57,7 @@ mod themes;
 mod tools;
 mod updates;
 mod user_languages;
+mod window_menu;
 mod workspace;
 
 pub(crate) use editor::theme;

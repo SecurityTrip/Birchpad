@@ -440,6 +440,27 @@ impl Pane {
         cx.notify();
     }
 
+    /// Puts the tabs in the order of `order` (Window > Sort By, Sort Tabs); tabs it leaves out
+    /// follow in their own order, and pinned tabs still come first.
+    pub(crate) fn reorder(&mut self, order: &[Entity<EditorView>], cx: &mut Context<Self>) {
+        let active = self.active_item().cloned();
+        let mut items: Vec<Entity<EditorView>> = Vec::with_capacity(self.items.len());
+        for item in order.iter().chain(self.items.iter()) {
+            if self.items.contains(item) && !items.contains(item) {
+                items.push(item.clone());
+            }
+        }
+        let (pinned, others): (Vec<_>, Vec<_>) =
+            items.into_iter().partition(|item| item.read(cx).tab.pinned);
+        self.items = pinned.into_iter().chain(others).collect();
+        if let Some(index) = active.and_then(|active| self.index_of(&active)) {
+            self.active = index;
+            self.tab_scroll.scroll_to_item(index);
+        }
+        cx.emit(PaneEvent::ActiveItemChanged);
+        cx.notify();
+    }
+
     /// Pins or unpins a tab: it goes to the end of the pinned tabs, or to the start of the
     /// others.
     pub(crate) fn set_pinned(

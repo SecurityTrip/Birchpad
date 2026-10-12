@@ -29,6 +29,9 @@ pub(crate) struct MenuState<'a> {
     pub(crate) scripts: &'a [String],
     /// The plugins ready to run: id, name and commands.
     pub(crate) plugins: &'a [(String, String, Vec<birchpad_plugin::PluginCommand>)],
+    /// The documents of the active view, and which one is active (the Window menu).
+    pub(crate) documents: &'a [String],
+    pub(crate) active_document: Option<usize>,
     /// Whether a command item shows a check mark (word wrap, current encoding, ...).
     pub(crate) checked: &'a dyn Fn(&Invocation) -> bool,
 }
@@ -216,6 +219,19 @@ fn build_menu(
                 for name in state.run_commands {
                     let invocation = Invocation::with_args("run.run", json!({ "name": name }));
                     items.push(GpuiMenuItem::action(name.clone(), RunCommand(invocation)));
+                }
+            }
+            MenuItem::Placeholder(Placeholder::Documents) => {
+                for (index, name) in state.documents.iter().enumerate() {
+                    let invocation =
+                        Invocation::with_args("view.go-to-tab", json!({ "index": index + 1 }));
+                    items.push(
+                        GpuiMenuItem::action(
+                            format!("{}: {name}", index + 1),
+                            RunCommand(invocation),
+                        )
+                        .checked(state.active_document == Some(index)),
+                    );
                 }
             }
             MenuItem::Placeholder(Placeholder::Macros) => {

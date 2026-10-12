@@ -49,6 +49,8 @@ pub enum Placeholder {
     Scripts,
     /// A submenu for each plugin, with its commands, each invoking `plugin.run`.
     Plugins,
+    /// The documents of the active view, each invoking `view.go-to-tab` (the Window menu).
+    Documents,
 }
 
 impl MenuItem {
@@ -764,13 +766,45 @@ pub fn main_menu() -> Vec<Menu> {
         ],
     );
 
+    let sort = |by: &str, descending: bool, label: &str| {
+        MenuItem::command_with(
+            "window.sort",
+            json!({ "by": by, "descending": descending }),
+            label,
+        )
+    };
+    let window = Menu::new(
+        "Window",
+        vec![
+            Submenu(Menu::new(
+                "Sort By",
+                vec![
+                    sort("name", false, "Name A to Z"),
+                    sort("name", true, "Name Z to A"),
+                    sort("path", false, "Path A to Z"),
+                    sort("path", true, "Path Z to A"),
+                    sort("type", false, "Type A to Z"),
+                    sort("type", true, "Type Z to A"),
+                    sort("size", false, "Content Length Ascending"),
+                    sort("size", true, "Content Length Descending"),
+                    sort("modified", false, "Modified Time Ascending"),
+                    sort("modified", true, "Modified Time Descending"),
+                ],
+            )),
+            cmd("window.windows"),
+            Separator,
+            Dynamic(Placeholder::Documents),
+        ],
+    );
+
     let help = Menu::new(
         "Help",
         vec![cmd("help.check-updates"), Separator, cmd("help.about")],
     );
 
     vec![
-        file, edit, search, view, encoding, language, settings, tools, macros, run, plugins, help,
+        file, edit, search, view, encoding, language, settings, tools, macros, run, plugins,
+        window, help,
     ]
 }
 
@@ -785,7 +819,7 @@ mod tests {
             titles,
             [
                 "File", "Edit", "Search", "View", "Encoding", "Language", "Settings", "Tools",
-                "Macro", "Run", "Plugins", "Help"
+                "Macro", "Run", "Plugins", "Window", "Help"
             ]
         );
     }

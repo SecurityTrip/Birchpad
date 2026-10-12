@@ -268,7 +268,8 @@ fn add_items(
                 | Placeholder::UserLanguages
                 | Placeholder::SpellLanguages
                 | Placeholder::Scripts
-                | Placeholder::Plugins,
+                | Placeholder::Plugins
+                | Placeholder::Documents,
             ) => {}
         }
     }

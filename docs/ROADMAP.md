@@ -274,7 +274,7 @@ step 6.11 brings in the sections no feature brings.
       the Ctrl+Tab document switcher; go to the 1st-9th tab, move the tab forward or backward;
       Close Multiple Documents (to the left, to the right, unchanged, all but pinned)
       ([ADR 0040](adr/0040-tab-bar.md))
-- [ ] 6.2 The Window menu and its Windows dialog (sort, activate, save, close)
+- [x] 6.2 The Window menu and its Windows dialog (sort, activate, save, close)
 - [ ] 6.3 File menu: Open Containing Folder (in the file manager, a terminal, Folder as
       Workspace), Open in Default Viewer, Reload from Disk, Save a Copy As, Rename, Delete and
       Move to Recycle Bin, Restore Recent Closed File, Open All Recent Files; Copy full path /

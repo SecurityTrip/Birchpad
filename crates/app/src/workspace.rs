@@ -168,6 +168,7 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
     crate::user_languages::register_commands(registry);
     crate::print::register_commands(registry);
     crate::pane::register_commands(registry);
+    crate::window_menu::register_commands(registry);
 }
 
 /// View menu switches kept in `state.toml`: command, current value, how to remember a new one.
@@ -986,7 +987,10 @@ impl Workspace {
         let spell_languages = crate::spell_check::languages(cx);
         let scripts = crate::extensions::scripts::names(cx);
         let plugin_menus = crate::extensions::plugins::menus(cx);
+        let (documents, active_document) = crate::window_menu::menu_documents(self, cx);
         let state = MenuState {
+            documents: &documents,
+            active_document,
             user_languages: &user_languages,
             spell_languages: &spell_languages,
             scripts: &scripts,
