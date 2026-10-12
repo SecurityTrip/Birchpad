@@ -243,8 +243,13 @@ What Phase 1 left for later is marked *(from Phase 1)* in the phases below.
 - [x] Built-in tools without a window (`birchpad-tools`): JSON and XML checking, formatting
       and linearizing, hex dumps, comparing texts, Hunspell spell checking
       ([ADR 0039](adr/0039-built-in-tools.md))
-- [ ] Built-in versions of popular Notepad++ plugins in the window: Compare, JSON Viewer, XML
-      Tools, Hex Editor, DSpellCheck ([ADR 0039](adr/0039-built-in-tools.md))
+- [x] The Plugins menu; JSON Viewer and XML Tools in it: format, compress or linearize, and
+      check the selection or the document ([ADR 0039](adr/0039-built-in-tools.md))
+- [ ] Hex Editor: the document's bytes as a hex dump, edited and applied back
+- [ ] Compare: two documents side by side with their differences marked, next and previous
+      difference
+- [ ] Spell checking as DSpellCheck: misspelled words underlined, next and previous, suggestions,
+      the user's words, the dictionary's language
 - [x] Fuzzing `plugin.toml`, JSON, XML and hex dumps
 
 ## Phase 6: full parity with Notepad++

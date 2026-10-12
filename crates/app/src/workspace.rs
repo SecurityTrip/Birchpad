@@ -144,6 +144,7 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
     crate::find::register_commands(registry);
     crate::help::register_commands(registry);
     crate::incremental::register_commands(registry);
+    crate::json_xml::register_commands(registry);
     crate::navigation::register_commands(registry);
     crate::panels::register_commands(registry);
     crate::session::register_commands(registry);

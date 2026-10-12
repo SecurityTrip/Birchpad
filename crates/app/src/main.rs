@@ -27,6 +27,7 @@ mod find_in_files;
 mod help;
 mod i18n;
 mod incremental;
+mod json_xml;
 #[cfg(test)]
 mod language_tests;
 mod macros;

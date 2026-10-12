@@ -636,13 +636,37 @@ pub fn main_menu() -> Vec<Menu> {
         ],
     );
 
+    let plugins = Menu::new(
+        "Plugins",
+        vec![
+            Submenu(Menu::new(
+                "JSON Viewer",
+                vec![
+                    cmd("json.format"),
+                    cmd("json.minify"),
+                    Separator,
+                    cmd("json.validate"),
+                ],
+            )),
+            Submenu(Menu::new(
+                "XML Tools",
+                vec![
+                    cmd("xml.pretty-print"),
+                    cmd("xml.linearize"),
+                    Separator,
+                    cmd("xml.check"),
+                ],
+            )),
+        ],
+    );
+
     let help = Menu::new(
         "Help",
         vec![cmd("help.check-updates"), Separator, cmd("help.about")],
     );
 
     vec![
-        file, edit, search, view, encoding, language, settings, tools, macros, run, help,
+        file, edit, search, view, encoding, language, settings, tools, macros, run, plugins, help,
     ]
 }
 
@@ -657,7 +681,7 @@ mod tests {
             titles,
             [
                 "File", "Edit", "Search", "View", "Encoding", "Language", "Settings", "Tools",
-                "Macro", "Run", "Help"
+                "Macro", "Run", "Plugins", "Help"
             ]
         );
     }

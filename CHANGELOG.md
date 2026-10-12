@@ -8,6 +8,11 @@ version's release notes from its section here.
 
 ### Added
 
+- The Plugins menu, with Birchpad's own versions of popular Notepad++ plugins.
+- Plugins > JSON Viewer: Format JSON (one value per line, with the editor's indentation),
+  Compress JSON and Validate JSON, for the selection or the whole document. Numbers and strings
+  stay as written; an error puts the caret where it is and says what is wrong.
+- Plugins > XML Tools: Pretty Print XML, Linearize XML and Check XML Syntax, likewise.
 - The `UserScripts` policy (`plugins.scripts`): administrators can turn user scripts off, as
   `PluginInstall` and `AllowedPlugins` control plugins.
 

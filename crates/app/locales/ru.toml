@@ -12,6 +12,7 @@
 "Tools" = "Инструменты"
 "Macro" = "Макросы"
 "Run" = "Запуск"
+"Plugins" = "Плагины"
 "Help" = "?"
 
 # File
@@ -337,3 +338,15 @@
 "Skip Current & Go to Next Multi-select" = "Пропустить текущее и перейти к следующему"
 "Paste to (Replace) Bookmarked Lines" = "Вставить вместо строк с закладками"
 "Undo the Latest Added Multi-Select" = "Отменить последнее добавленное выделение"
+
+# Plugins: JSON Viewer and XML Tools
+"JSON Viewer" = "JSON Viewer"
+"Format JSON" = "Форматировать JSON"
+"Compress JSON" = "Сжать JSON"
+"Validate JSON" = "Проверить JSON"
+"JSON is valid" = "JSON корректен"
+"XML Tools" = "XML Tools"
+"Pretty Print XML" = "Форматировать XML"
+"Linearize XML" = "XML в одну строку"
+"Check XML Syntax" = "Проверить синтаксис XML"
+"XML is valid" = "XML корректен"

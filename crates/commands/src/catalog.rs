@@ -305,6 +305,13 @@ pub const COMMANDS: &[CommandSpec] = &[
     workspace("settings.shortcut-mapper", "Shortcut Mapper..."),
     workspace("settings.theme", "Theme"),
     workspace("settings.import-theme", "Import Style Themes..."),
+    // Plugins: the built-in JSON Viewer and XML Tools work on the selection, or the whole text
+    editor("json.format", "Format JSON"),
+    editor("json.minify", "Compress JSON"),
+    editor("json.validate", "Validate JSON"),
+    editor("xml.pretty-print", "Pretty Print XML"),
+    editor("xml.linearize", "Linearize XML"),
+    editor("xml.check", "Check XML Syntax"),
     // Help
     workspace("help.check-updates", "Check for Updates..."),
     // From the update dialogs and notifications.
