@@ -135,6 +135,16 @@ downloading them. See [ADR 0020](docs/adr/0020-signed-updates-and-nightly-builds
 
 Contributions are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md) first.
 
+## Relationship to Notepad++
+
+Birchpad is an independent project, not affiliated with or endorsed by Notepad++ or its
+authors. It is a clean-room reimplementation: it contains no code from Notepad++, Scintilla or
+Notepad++'s plugins, and is written from Notepad++'s user manual, its behavior as a user sees it
+and its file formats, never from its source ([the rules](CONTRIBUTING.md#clean-room)). Birchpad
+reads Notepad++'s themes, sessions, user-defined languages and other files from the user's own
+copy so that they carry over, but does not ship them. "Notepad++" is named only to describe
+that compatibility.
+
 ## License
 
 Licensed under either of

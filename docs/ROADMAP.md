@@ -262,6 +262,7 @@ What Phases 1 to 4 built differently from Notepad++, or left out, is brought in 
 Phase 5 leaves for later is added once it is done. Birchpad goes beyond Notepad++ only after
 this phase. Closing it releases Birchpad 1.0.0.
 
+Every step follows the clean-room rules of [CONTRIBUTING.md](../CONTRIBUTING.md#clean-room).
 The steps are ordered by dependency; each one lands as its own commit with its tests, docs and
 a `CHANGELOG.md` entry. A step that adds a feature with options adds them to Preferences too;
 step 6.11 brings in the sections no feature brings.
@@ -325,7 +326,8 @@ step 6.11 brings in the sections no feature brings.
 - [ ] 6.18 Auto-completion: closing HTML and XML tags; API files for languages embedded in a
       document (scripts in HTML); cycling through a function's overloads in the call tip;
       Notepad++'s auto-completion options (ignore numbers, ignore case, completion from a number
-      of characters per source); bundled API files for common languages
+      of characters per source); bundled API files for common languages, written for Birchpad
+      (Notepad++'s are GPL)
 - [ ] 6.19 User Defined Languages: the UDL editor dialog; folding (code and comment folders);
       number prefixes, suffixes, extras and ranges; comments that must start a line; nested
       delimiters; colors from the theme where the UDL leaves them unset; Open User Defined
@@ -333,7 +335,8 @@ step 6.11 brings in the sections no feature brings.
 - [ ] 6.20 Right-to-left text: selections drawn piece by piece over mixed text; margins on the
       right in right-to-left mode; keys for Text Direction RTL and LTR; the direction
       remembered per document in sessions; very long rows reordered too
-- [ ] 6.21 Localization: more interface languages, including Notepad++'s `nativeLang` XML files
+- [ ] 6.21 Localization: more interface languages, translated for Birchpad; Notepad++'s
+      `nativeLang` XML files read from the user's own copy, not bundled
 
 ### Printing, tools and help
 
@@ -363,16 +366,21 @@ step 6.11 brings in the sections no feature brings.
 - [ ] 6.29 Hex Editor in place: the bytes edited in a hex view of the document itself
       (overwrite, insert, the caret shared with the text), columns and grouping, Find in hex
 - [ ] 6.30 DSpellCheck's options (several languages at once, ignore rules, words in code by
-      style); a dictionary bundled for English
+      style); a dictionary bundled for English under a license compatible with Birchpad's
 - [ ] 6.31 Online features under the `OnlineFeatures` policy: Plugins Admin's online list of
       plugins (available, updates, installed) with checksums; DSpellCheck's dictionary download
 
 ### Release 1.0.0
 
-- [ ] 6.32 Verified on real systems: input methods (Windows TSF, macOS, IBus/Fcitx), screen
+- [ ] 6.32 Documentation in Russian: the user's and the contributor's documents (README,
+      CONTRIBUTING, SECURITY, PRIVACY, the code of conduct, writing plugins and scripts, the
+      release checklist and this roadmap) as `*.ru.md` next to the English ones, linked from
+      each other; from then on a change to one updates the other. ADRs and the changelog stay
+      in English
+- [ ] 6.33 Verified on real systems: input methods (Windows TSF, macOS, IBus/Fcitx), screen
       readers *(from Phase 1)*; a last comparison with Notepad++ 8's menus, Preferences and
       command line, with what is still missing moved to Phase 7 or written down
-- [ ] 6.33 Release 1.0.0: the workspace version, `CHANGELOG.md` and this roadmap updated; the
+- [ ] 6.34 Release 1.0.0: the workspace version, `CHANGELOG.md` and this roadmap updated; the
       [release checklist](release-checklist.md) gone through with the draft's artifacts
 
 ## Phase 7: beyond Notepad++
