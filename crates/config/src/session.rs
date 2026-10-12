@@ -288,6 +288,20 @@ mod tests {
         session
     }
 
+    /// Removes a file that a virus scanner or indexer may still hold for a moment after it was
+    /// written (Windows refuses with a sharing violation meanwhile).
+    fn remove(path: &Path) {
+        for _ in 0..100 {
+            match fs::remove_file(path) {
+                Err(error) if error.raw_os_error() == Some(32) => {
+                    std::thread::sleep(std::time::Duration::from_millis(10));
+                }
+                result => return result.unwrap(),
+            }
+        }
+        panic!("{} stays in use", path.display());
+    }
+
     fn temp_dir(name: &str) -> PathBuf {
         let dir = std::env::temp_dir().join(format!("birchpad-{name}-{}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
@@ -350,7 +364,7 @@ mod tests {
         assert_eq!(Session::load(&path), Some(first.clone()));
 
         // Missing, as after a crash between the two renames of a save.
-        fs::remove_file(&path).unwrap();
+        remove(&path);
         assert_eq!(Session::load(&path), Some(first));
         // A temporary file left by an interrupted write is never read.
         fs::write(
@@ -358,7 +372,7 @@ mod tests {
             "version = 1\nactive-view = 1",
         )
         .unwrap();
-        fs::remove_file(previous(&path)).unwrap();
+        remove(&previous(&path));
         assert_eq!(Session::load(&path), None);
         fs::remove_dir_all(&dir).unwrap();
     }
