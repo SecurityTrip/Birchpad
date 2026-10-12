@@ -260,96 +260,119 @@ What Phase 1 left for later is marked *(from Phase 1)* in the phases below.
 
 What Phases 1 to 4 built differently from Notepad++, or left out, is brought in line here; what
 Phase 5 leaves for later is added once it is done. Birchpad goes beyond Notepad++ only after
-this phase.
+this phase. Closing it releases Birchpad 1.0.0.
 
-- Themes and Style Configurator: fonts (family, size, bold/italic per style) in themes, the
-  Style Configurator and Notepad++ theme import; saving changes to a Notepad++ theme back to its
-  XML; a closer match from Scintilla's style names to highlights, with a per-language table
-  where names differ; Notepad++'s separate Dark Mode for the interface, independent of the
-  editor theme
-- Preferences: the remaining sections and options of Notepad++'s dialog (tab bar,
-  multi-instance, delimiters, search engine, MISC and the rest), with OK/Close semantics where
-  Notepad++ has them
-- Shortcut Mapper: key sequences (`ctrl-k ctrl-c`) recorded in the dialog; bindings limited to
-  platforms shown and editable; command titles translated
-- Macros: Notepad++'s built-in "Trim Trailing Space and Save"; recording what dialogs a command
-  opens (Find, Replace) with their fields, as Notepad++ records search parameters
-- Run: Notepad++'s own Run menu entries as built-in items, not only saved command lines
-- Tools: hashes of files in a dialog with Copy, as Notepad++ shows them, besides the listing in a
-  new document
-- Code pages: EBCDIC 875 (Greek), whose standard table maps two bytes to one character; NEL as a
-  line break in EBCDIC documents
-- Auto-completion: closing HTML and XML tags; API files for languages embedded in a document
-  (scripts in HTML); cycling through a function's overloads in the call tip; Notepad++'s
-  auto-completion options (ignore numbers, ignore case, completion from a number of characters
-  per source); bundled API files for common languages
-- User Defined Languages: the UDL editor dialog; folding (code and comment folders); number
-  prefixes, suffixes, extras and ranges; comments that must start a line; nested delimiters;
-  colors from the theme where the UDL leaves them unset
-- Localization: more interface languages, including Notepad++'s `nativeLang` XML files
-- Printing: a print preview and page setup of Birchpad's own (margins, header and footer with
-  Notepad++'s variables, colors or black on white, line numbers), printing the selection;
-  native printing where the platform offers it
-- Right-to-left text: selections drawn piece by piece over mixed text; margins on the right in
-  right-to-left mode; keys for Text Direction RTL and LTR; the direction remembered per document
-  in sessions; very long rows reordered too
-- Everything Notepad++ has that Birchpad still lacks: the Window menu and its dialog, tab colors,
-  pinned and multi-line or vertical tabs, the text's context menu (editable, as Notepad++'s
-  Edit Popup ContextMenu), Insert date and time, Copy full path / file name / folder, Rename and
-  Delete file, Edit > Set Read-Only, and other menu commands not listed in the phases above.
-  Compared with Notepad++ 8 after Phase 5, these are missing:
-  - File: Open Containing Folder (in the file manager, a terminal, Folder as Workspace), Open in
-    Default Viewer, Reload from Disk, Save a Copy As, Move to Recycle Bin, Close Multiple
-    Documents (to the left, to the right, unchanged, all but pinned), Restore Recent Closed File,
-    Open All Recent Files, Print Now
-  - Edit: Paste Special (binary content, HTML, RTF), On Selection (open the file named,
-    its folder, search the Internet with a chosen engine), Begin/End Select in Column Mode,
-    Remove Consecutive Duplicate Lines, Clear Read-Only Flag, Increase/Decrease Line Indent as
-    menu commands
-  - Search: Find (Volatile) Next/Previous, Select and Find Previous, Find characters in range,
-    Change History (next and previous change, clear all changes), Find in Projects, the search
-    results' context menu as Notepad++'s (copy lines or paths, open all, wrap long lines, purge
-    for every search)
-  - View: Always on Top, Full Screen, Post-It, Distraction Free mode, View Current File in a
-    browser, Move/Clone to a new instance and Open in a new instance, go to the 1st-9th tab and
-    move the tab forward or backward, Hide Lines, Summary (counts of characters, words, lines),
-    Collapse/Expand by level from the menu
-  - The toolbar (small, large and fluent icons; customizable) and the tab bar's context menu and
-    options (double-click to close, lock, reduce, vertical, multi-line); the document peeker on a
-    tab; the Ctrl+Tab document switcher
-  - Clickable links: addresses underlined and opened with Ctrl+click or a double click
-    (Preferences > Cloud & Link); Ctrl+double click selection between delimiters
-  - Preferences > Language: tab size and spaces per language; new document defaults (encoding,
-    line ending, language); backup copies on save (simple or verbose); default folder; settings
-    in a folder of one's choice (cloud); minimize to the system tray; "remember inaccessible
-    files" in sessions
-  - Macro and Run: Modify Shortcut / Delete Macro or Command (the Macros and Run tabs of the
-    Shortcut Mapper)
-  - Language: Open User Defined Language Folder, the UDL collection link; Settings > Import
-    plugin(s)
-  - Help: Command Line Arguments, home page, online manual and forum, Debug Info (copyable),
-    Set Updater Proxy
-  - The command line options Birchpad accepts but ignores: -notabbar, -systemtray,
-    -alwaysOnTop, -loadingTime, -r (recursive wildcards), -quickPrint, -monitor,
-    -openFoldersAsWorkspace, -x and -y (window position), -qn, -qt, -qf, -qSpeed (ghost
-    typing), -settingsDir, -titleAdd, -udl, -pluginMessage
-- Verified on real systems: input methods (Windows TSF, macOS, IBus/Fcitx), screen readers
-  *(from Phase 1)*
-- After Phase 5, what the plugins phase leaves out of Notepad++'s plugins:
-  - Compare as ComparePlus: lines padded to stay aligned side by side, differences within a
-    line, comparing with the last save, the clipboard or Git; a navigation bar of the
-    differences
-  - JSON Viewer's tree panel (find a path, copy a value), sorting keys; XML Tools' XPath, XSD
-    and DTD validation, escaping and unescaping, closing tags as typed
-  - Hex Editor in place: the bytes edited in a hex view of the document itself (overwrite,
-    insert, the caret shared with the text), columns and grouping, Find in hex
-  - DSpellCheck's options (several languages at once, ignore rules, words in code by style) and
-    its dictionary download, a dictionary bundled for English
-  - Plugins Admin's online list of plugins (available, updates, installed), with checksums and
-    the `OnlineFeatures` policy
-  - A wider plugin API: settings of their own, files opened with the user's permission, a
-    panel of their own controls, items in the text's context menu, events while typing and
-    when the selection changes, work in the background; scripts' own commands and keys
+The steps are ordered by dependency; each one lands as its own commit with its tests, docs and
+a `CHANGELOG.md` entry. A step that adds a feature with options adds them to Preferences too;
+step 6.11 brings in the sections no feature brings.
+
+### Window, tabs and files
+
+- [ ] 6.1 Tabs: tab colors, pinned tabs, multi-line and vertical tabs; the tab bar's context
+      menu and options (double-click to close, lock, reduce); the document peeker on a tab;
+      the Ctrl+Tab document switcher; go to the 1st-9th tab, move the tab forward or backward;
+      Close Multiple Documents (to the left, to the right, unchanged, all but pinned)
+- [ ] 6.2 The Window menu and its Windows dialog (sort, activate, save, close)
+- [ ] 6.3 File menu: Open Containing Folder (in the file manager, a terminal, Folder as
+      Workspace), Open in Default Viewer, Reload from Disk, Save a Copy As, Rename, Delete and
+      Move to Recycle Bin, Restore Recent Closed File, Open All Recent Files; Copy full path /
+      file name / folder
+- [ ] 6.4 Instances and the window: Move/Clone to a new instance, Open in a new instance;
+      multi-instance in Preferences; Always on Top, Full Screen, Post-It, Distraction Free mode
+- [ ] 6.5 The toolbar: small, large and fluent icons; customizable
+
+### Editing, search and view
+
+- [ ] 6.6 Edit menu: Insert date and time, Set Read-Only and Clear Read-Only Flag, Paste Special
+      (binary content, HTML, RTF), On Selection (open the file named, its folder, search the
+      Internet with a chosen engine), Begin/End Select in Column Mode, Remove Consecutive
+      Duplicate Lines, Increase/Decrease Line Indent as menu commands
+- [ ] 6.7 The text's context menu, editable as Notepad++'s Edit Popup ContextMenu
+- [ ] 6.8 Search menu: Find (Volatile) Next/Previous, Select and Find Previous, Find characters
+      in range, Change History (next and previous change, clear all changes), Find in Projects;
+      the search results' context menu as Notepad++'s (copy lines or paths, open all, wrap long
+      lines, purge for every search)
+- [ ] 6.9 View menu: View Current File in a browser, Hide Lines, Summary (counts of
+      characters, words, lines), Collapse/Expand by level from the menu
+- [ ] 6.10 Clickable links: addresses underlined and opened with Ctrl+click or a double click
+      (Preferences > Cloud & Link); Ctrl+double click selection between delimiters
+
+### Customization
+
+- [ ] 6.11 Preferences: the remaining sections and options of Notepad++'s dialog (tab bar,
+      delimiters, search engine, MISC and the rest), with OK/Close semantics where Notepad++
+      has them; Language: tab size and spaces per language; new document defaults (encoding,
+      line ending, language); backup copies on save (simple or verbose); default folder;
+      settings in a folder of one's choice (cloud); minimize to the system tray; "remember
+      inaccessible files" in sessions
+- [ ] 6.12 Themes and Style Configurator: fonts (family, size, bold/italic per style) in
+      themes, the Style Configurator and Notepad++ theme import; saving changes to a Notepad++
+      theme back to its XML; a closer match from Scintilla's style names to highlights, with a
+      per-language table where names differ
+- [ ] 6.13 Notepad++'s separate Dark Mode for the interface, independent of the editor theme
+- [ ] 6.14 Shortcut Mapper: key sequences (`ctrl-k ctrl-c`) recorded in the dialog; bindings
+      limited to platforms shown and editable; command titles translated; the Macros and Run
+      tabs (Modify Shortcut / Delete Macro or Command)
+- [ ] 6.15 Macros: Notepad++'s built-in "Trim Trailing Space and Save"; recording what dialogs
+      a command opens (Find, Replace) with their fields, as Notepad++ records search parameters
+- [ ] 6.16 Run: Notepad++'s own Run menu entries as built-in items, not only saved command lines
+
+### Languages and text
+
+- [ ] 6.17 Code pages: EBCDIC 875 (Greek), whose standard table maps two bytes to one
+      character; NEL as a line break in EBCDIC documents
+- [ ] 6.18 Auto-completion: closing HTML and XML tags; API files for languages embedded in a
+      document (scripts in HTML); cycling through a function's overloads in the call tip;
+      Notepad++'s auto-completion options (ignore numbers, ignore case, completion from a number
+      of characters per source); bundled API files for common languages
+- [ ] 6.19 User Defined Languages: the UDL editor dialog; folding (code and comment folders);
+      number prefixes, suffixes, extras and ranges; comments that must start a line; nested
+      delimiters; colors from the theme where the UDL leaves them unset; Open User Defined
+      Language Folder, the UDL collection link
+- [ ] 6.20 Right-to-left text: selections drawn piece by piece over mixed text; margins on the
+      right in right-to-left mode; keys for Text Direction RTL and LTR; the direction
+      remembered per document in sessions; very long rows reordered too
+- [ ] 6.21 Localization: more interface languages, including Notepad++'s `nativeLang` XML files
+
+### Printing, tools and help
+
+- [ ] 6.22 Printing: a print preview and page setup of Birchpad's own (margins, header and
+      footer with Notepad++'s variables, colors or black on white, line numbers), printing the
+      selection, Print Now; native printing where the platform offers it
+- [ ] 6.23 Tools: hashes of files in a dialog with Copy, as Notepad++ shows them, besides the
+      listing in a new document
+- [ ] 6.24 Help menu: Command Line Arguments, home page, online manual and forum, Debug Info
+      (copyable), Set Updater Proxy
+- [ ] 6.25 The command line options Birchpad accepts but ignores: -notabbar, -systemtray,
+      -alwaysOnTop, -loadingTime, -r (recursive wildcards), -quickPrint, -monitor,
+      -openFoldersAsWorkspace, -x and -y (window position), -qn, -qt, -qf, -qSpeed (ghost
+      typing), -settingsDir, -titleAdd, -udl, -pluginMessage
+
+### Plugins
+
+- [ ] 6.26 A wider plugin API: settings of their own, files opened with the user's permission,
+      a panel of their own controls, items in the text's context menu, events while typing and
+      when the selection changes, work in the background; scripts' own commands and keys;
+      Settings > Import plugin(s)
+- [ ] 6.27 Compare as ComparePlus: lines padded to stay aligned side by side, differences
+      within a line, comparing with the last save, the clipboard or Git; a navigation bar of the
+      differences
+- [ ] 6.28 JSON Viewer's tree panel (find a path, copy a value), sorting keys; XML Tools'
+      XPath, XSD and DTD validation, escaping and unescaping, closing tags as typed
+- [ ] 6.29 Hex Editor in place: the bytes edited in a hex view of the document itself
+      (overwrite, insert, the caret shared with the text), columns and grouping, Find in hex
+- [ ] 6.30 DSpellCheck's options (several languages at once, ignore rules, words in code by
+      style); a dictionary bundled for English
+- [ ] 6.31 Online features under the `OnlineFeatures` policy: Plugins Admin's online list of
+      plugins (available, updates, installed) with checksums; DSpellCheck's dictionary download
+
+### Release 1.0.0
+
+- [ ] 6.32 Verified on real systems: input methods (Windows TSF, macOS, IBus/Fcitx), screen
+      readers *(from Phase 1)*; a last comparison with Notepad++ 8's menus, Preferences and
+      command line, with what is still missing moved to Phase 7 or written down
+- [ ] 6.33 Release 1.0.0: the workspace version, `CHANGELOG.md` and this roadmap updated; the
+      [release checklist](release-checklist.md) gone through with the draft's artifacts
 
 ## Phase 7: beyond Notepad++
 
