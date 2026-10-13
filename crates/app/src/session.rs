@@ -9,8 +9,10 @@ use std::sync::atomic::AtomicU64;
 use std::time::Duration;
 
 use anyhow::{Context as _, Result};
-use birchpad_config::{Session, SessionDocument, SessionTab, SessionView, write_private};
-use birchpad_core::{Document, Encoding, Format, LineEnding, Range, RevisionId, Rope, Selection};
+use birchpad_config::{
+    LanguageName, Session, SessionDocument, SessionTab, SessionView, write_private,
+};
+use birchpad_core::{Document, Encoding, Format, Range, RevisionId, Rope, Selection};
 use birchpad_io::LoadOptions;
 use gpui_kit::{App, AppContext as _, Context, Entity, Task, Window, px};
 
@@ -196,7 +198,7 @@ impl Workspace {
                 let display_name = buffer.display_name();
                 let revision = buffer.doc().revision();
                 let backup = buffer.backup.get_or_insert_with(|| Backup {
-                    name: backup_name(&display_name),
+                    name: birchpad_config::backup_name(&display_name),
                     revision: None,
                 });
                 if backup.revision != Some(revision) {
@@ -493,12 +495,16 @@ impl Workspace {
                     format.encoding = encoding;
                     format.bom = bom && encoding.is_unicode();
                 }
-                if let Some(line_ending) = document.line_ending.as_deref().and_then(line_ending) {
+                if let Some(line_ending) = document
+                    .line_ending
+                    .as_deref()
+                    .and_then(birchpad_config::parse_line_ending)
+                {
                     format.line_ending = line_ending;
                 }
                 let untitled = path
                     .is_none()
-                    .then(|| free_number(document.untitled, numbers));
+                    .then(|| birchpad_config::free_untitled_number(document.untitled, numbers));
                 let doc = Document::with_format(text, format);
                 let (modified, read_only) = (document.modified, document.read_only);
                 // The file as it was when the changes were backed up; unknown (an imported
@@ -535,19 +541,21 @@ impl Workspace {
             }
             (None, None) => return None,
         };
-        if let Some(name) = document.language.as_deref() {
-            match name.strip_prefix(crate::user_languages::ID_PREFIX) {
-                Some(name) => {
-                    if let Some(found) = crate::user_languages::find(name, cx) {
-                        buffer.update(cx, |buffer, cx| buffer.set_user_language(Some(found), cx));
-                    }
-                }
-                None => {
-                    if let Some(language) = language(name) {
-                        buffer.update(cx, |buffer, cx| buffer.set_language(language, cx));
-                    }
+        match document.language.as_deref().map(LanguageName::parse) {
+            Some(LanguageName::User(name)) => {
+                if let Some(found) = crate::user_languages::find(name, cx) {
+                    buffer.update(cx, |buffer, cx| buffer.set_user_language(Some(found), cx));
                 }
             }
+            Some(LanguageName::Text) => {
+                buffer.update(cx, |buffer, cx| buffer.set_language(None, cx));
+            }
+            Some(LanguageName::Builtin(name)) => {
+                if let Some(language) = language(name) {
+                    buffer.update(cx, |buffer, cx| buffer.set_language(Some(language), cx));
+                }
+            }
+            None => {}
         }
         if let Some(title) = document
             .title
@@ -592,18 +600,18 @@ fn document_of(buffer: &Buffer, backups: bool) -> Option<SessionDocument> {
         modified: backup.is_some() && buffer.is_modified(),
         line_ending: backup
             .is_some()
-            .then(|| line_ending_name(format.line_ending).to_owned()),
+            .then(|| birchpad_config::line_ending_name(format.line_ending).to_owned()),
         backup,
         encoding,
         language: match (buffer.chosen_language(), buffer.user_language()) {
-            (Some(_), Some(found)) => Some(format!(
-                "{}{}",
-                crate::user_languages::ID_PREFIX,
-                found.name
-            )),
-            (chosen, _) => {
-                chosen.map(|language| language.map_or("text", |language| language.id).to_owned())
-            }
+            (Some(_), Some(found)) => Some(LanguageName::User(&found.name).write()),
+            (chosen, _) => chosen.map(|language| {
+                language
+                    .map_or(LanguageName::Text, |language| {
+                        LanguageName::Builtin(language.id)
+                    })
+                    .write()
+            }),
         },
         read_only: buffer.requested_read_only(),
         bookmarks: buffer.bookmark_lines(),
@@ -623,30 +631,6 @@ fn needs_backup(buffer: &Buffer) -> bool {
         return false;
     }
     buffer.is_modified() || (buffer.path().is_none() && buffer.doc().text().len() > 0)
-}
-
-/// A new name for a backup copy, like Notepad++'s: the document's name and when.
-fn backup_name(display_name: &str) -> String {
-    use std::sync::atomic::{AtomicU32, Ordering};
-    static COUNTER: AtomicU32 = AtomicU32::new(0);
-    let millis = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map_or(0, |elapsed| elapsed.as_millis());
-    let count = COUNTER.fetch_add(1, Ordering::Relaxed);
-    let name: String = display_name
-        .chars()
-        .map(|ch| if r#"\/:*?"<>|"#.contains(ch) { '_' } else { ch })
-        .collect();
-    format!("{name}@{millis}-{count}")
-}
-
-/// `wanted` if no untitled document has that number yet, else the lowest free one.
-fn free_number(wanted: Option<usize>, numbers: &mut HashSet<usize>) -> usize {
-    let number = wanted
-        .filter(|number| *number > 0 && !numbers.contains(number))
-        .unwrap_or_else(|| (1..).find(|n| !numbers.contains(n)).expect("a free number"));
-    numbers.insert(number);
-    number
 }
 
 fn tab_of(document: usize, state: ViewState, marks: TabMarks) -> SessionTab {
@@ -697,33 +681,11 @@ fn state_of(tab: &SessionTab) -> ViewState {
     }
 }
 
-fn line_ending_name(line_ending: LineEnding) -> &'static str {
-    match line_ending {
-        LineEnding::CrLf => "crlf",
-        LineEnding::Lf => "lf",
-        LineEnding::Cr => "cr",
-    }
-}
-
-fn line_ending(name: &str) -> Option<LineEnding> {
-    match name {
-        "crlf" => Some(LineEnding::CrLf),
-        "lf" => Some(LineEnding::Lf),
-        "cr" => Some(LineEnding::Cr),
-        _ => None,
-    }
-}
-
-/// A chosen language: Birchpad's id, `text` for normal text, or a Notepad++ language name.
-fn language(name: &str) -> Option<Option<&'static birchpad_syntax::Language>> {
-    if name == "text" {
-        return Some(None);
-    }
-    birchpad_syntax::by_id(name)
-        .or_else(|| {
-            birchpad_syntax::LANGUAGES
-                .iter()
-                .find(|language| language.name.eq_ignore_ascii_case(name))
-        })
-        .map(Some)
+/// One of Birchpad's languages, by its id or its Notepad++ name.
+fn language(name: &str) -> Option<&'static birchpad_syntax::Language> {
+    birchpad_syntax::by_id(name).or_else(|| {
+        birchpad_syntax::LANGUAGES
+            .iter()
+            .find(|language| language.name.eq_ignore_ascii_case(name))
+    })
 }

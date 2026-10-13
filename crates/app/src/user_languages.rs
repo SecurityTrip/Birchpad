@@ -15,7 +15,7 @@ use crate::editor::theme::TextStyle;
 use crate::workspace::{Workspace, report_error};
 
 /// The prefix of a user defined language's id in `language.set` and sessions: `udl:Name`.
-pub(crate) const ID_PREFIX: &str = "udl:";
+pub(crate) const ID_PREFIX: &str = birchpad_config::USER_LANGUAGE_PREFIX;
 
 /// The user defined languages read at start or imported since.
 #[derive(Default)]

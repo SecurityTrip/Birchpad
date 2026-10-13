@@ -16,26 +16,24 @@ use std::collections::HashMap;
 use std::io;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use birchpad_config::FindInFilesState;
+use birchpad_core::Rope;
 use birchpad_core::search::{Query, Searcher};
-use birchpad_core::{ChangeSet, Edit, Encoding, Rope};
-use birchpad_io::{Filters, FolderOptions, LoadOptions, LoadedFile};
+use birchpad_io::search_files::{Skipped, read_for_search, replace_in_file, search_text};
+use birchpad_io::{Filters, FolderOptions};
 use gpui_kit::{App, AppContext as _, AsyncApp, Context, Entity, PromptLevel, WeakEntity, Window};
 
 use crate::app_state::AppState;
 use crate::buffer::ReadOnly;
 use crate::editor::EditorView;
 use crate::find::{FindTab, plural};
-use crate::search_results::{FileResults, LineHit, ResultLocation, SearchRun, line_hits};
+use crate::search_results::{FileResults, ResultLocation, SearchRun};
 use crate::workspace::Workspace;
 
 /// Files searched between two progress reports and chances to stop.
 const BATCH: usize = 32;
-/// How much of a file's text is looked at for a zero byte.
-const BINARY_SAMPLE: usize = 64 * 1024;
-
 /// Where and how to search, from the tab's fields.
 #[derive(Debug, Clone)]
 struct Request {
@@ -50,18 +48,6 @@ enum FileSource {
     Listing(Request),
     /// These.
     Files(Vec<PathBuf>),
-}
-
-/// Why a file was not searched or not changed.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum Skipped {
-    /// It could not be read or written.
-    Failed,
-    Binary,
-    /// It would not save back unchanged: a decoding problem, or a replacement with characters
-    /// its encoding lacks.
-    NotExact,
-    ReadOnly,
 }
 
 /// How many files were skipped, and why.
@@ -108,76 +94,6 @@ impl SkipCounts {
             ),
         }
     }
-}
-
-/// Whether `text` looks binary: a zero byte in its first [`BINARY_SAMPLE`] bytes.
-fn is_binary(text: &Rope) -> bool {
-    let mut seen = 0;
-    for chunk in text.chunks() {
-        let part = &chunk.as_bytes()[..chunk.len().min(BINARY_SAMPLE - seen)];
-        if part.contains(&0) {
-            return true;
-        }
-        seen += part.len();
-        if seen == BINARY_SAMPLE {
-            break;
-        }
-    }
-    false
-}
-
-/// Reads a file that is not open, as File > Open would.
-fn read(path: &Path, ansi: Encoding) -> Result<LoadedFile, Skipped> {
-    let options = LoadOptions {
-        encoding: None,
-        ansi,
-    };
-    let loaded =
-        birchpad_io::load(path, options, &AtomicU64::new(0)).map_err(|_| Skipped::Failed)?;
-    if is_binary(&loaded.text) {
-        return Err(Skipped::Binary);
-    }
-    Ok(loaded)
-}
-
-/// The lines of `text` with matches, and how many matches; `None` without any.
-fn search_text(text: &Rope, searcher: &Searcher) -> Option<(Vec<LineHit>, usize)> {
-    let matches = searcher.find_all(text);
-    (!matches.is_empty()).then(|| (line_hits(text, &matches), matches.len()))
-}
-
-/// Replace All in a file that is not open; the file is written only if something was
-/// replaced. Returns the number of replacements.
-fn replace_in_file(
-    path: &Path,
-    searcher: &Searcher,
-    template: &str,
-    ansi: Encoding,
-    recovery: Option<&Path>,
-) -> Result<usize, Skipped> {
-    let loaded = read(path, ansi)?;
-    let replacements = searcher.replacements(&loaded.text, 0..loaded.text.len(), template);
-    if replacements.is_empty() {
-        return Ok(0);
-    }
-    if loaded.problem.is_some() {
-        return Err(Skipped::NotExact);
-    }
-    if loaded.info.read_only {
-        return Err(Skipped::ReadOnly);
-    }
-    let count = replacements.len();
-    let mut text = loaded.text;
-    let edits = replacements
-        .into_iter()
-        .map(|(range, replacement)| Edit::replace(range, replacement));
-    ChangeSet::from_edits(&text, edits)
-        .expect("matches do not overlap")
-        .apply(&mut text);
-    let bytes = birchpad_io::encode(&text, loaded.format.encoding, loaded.format.bom)
-        .map_err(|_| Skipped::NotExact)?;
-    birchpad_io::save(path, &bytes, recovery).map_err(|_| Skipped::Failed)?;
-    Ok(count)
 }
 
 /// Lists the files to search; reports a folder that cannot be listed and ends the run.
@@ -466,7 +382,7 @@ impl Workspace {
                             .map(|path| {
                                 let result = match texts.get(&path) {
                                     Some(text) => Ok(search_text(text, &searcher)),
-                                    None => read(&path, ansi)
+                                    None => read_for_search(&path, ansi)
                                         .map(|loaded| search_text(&loaded.text, &searcher)),
                                 };
                                 (path, result)

@@ -29,28 +29,6 @@ fn run(
     result
 }
 
-#[test]
-fn urls_and_shell_lines() {
-    for line in ["https://example.com", "  HTTP://x", "https://"] {
-        assert!(is_url(line), "{line}");
-    }
-    for line in ["", "notepad.exe", "ftp://x", "start https://x"] {
-        assert!(!is_url(line), "{line}");
-    }
-    let command = shell_command("echo hi");
-    let args: Vec<_> = command
-        .get_args()
-        .map(|arg| arg.to_string_lossy().into_owned())
-        .collect();
-    if cfg!(windows) {
-        assert_eq!(command.get_program(), "cmd");
-        assert_eq!(args, ["/C", "echo hi"]);
-    } else {
-        assert_eq!(command.get_program(), "sh");
-        assert_eq!(args, ["-c", "echo hi"]);
-    }
-}
-
 #[gpui_kit::test]
 fn variables_come_from_the_active_document(cx: &mut TestAppContext) {
     let (workspace, cx, _dir) = setup(cx);

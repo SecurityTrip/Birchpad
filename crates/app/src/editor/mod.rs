@@ -4,7 +4,8 @@
 //! selection through the changes the others make. Layout in cells (tab stops, word wrap, rows)
 //! comes from `birchpad-view`; [`element::EditorElement`] turns it into pixels and paints it.
 
-mod bidi;
+#[cfg(test)]
+mod bidi_tests;
 #[cfg(test)]
 mod capture_coverage_tests;
 #[cfg(test)]
@@ -890,11 +891,15 @@ impl EditorView {
     fn place_caret(&mut self, target: CaretTarget, cx: &mut Context<Self>) {
         let text = self.text(cx).clone();
         let pos = match target {
-            CaretTarget::Position(offset) => {
-                crate::find::go_to_position(&text, crate::find::GoToTarget::Offset(offset))
-            }
+            CaretTarget::Position(offset) => birchpad_core::motion::go_to_position(
+                &text,
+                birchpad_core::motion::GoToTarget::Offset(offset),
+            ),
             CaretTarget::LineColumn { line, column } => {
-                let start = crate::find::go_to_position(&text, crate::find::GoToTarget::Line(line));
+                let start = birchpad_core::motion::go_to_position(
+                    &text,
+                    birchpad_core::motion::GoToTarget::Line(line),
+                );
                 let line_range = line_range(&text, line_of(&text, start));
                 let tab_width = self.display.config().tab_width;
                 birchpad_view::pos_at_column(&text, line_range, 0, column - 1, tab_width).0

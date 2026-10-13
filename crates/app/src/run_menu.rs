@@ -4,7 +4,7 @@
 //! browser; any other runs through the system's shell, without waiting for it.
 
 use anyhow::{Context as _, Result, anyhow, bail};
-use birchpad_commands::{RunEntry, RunVariables};
+use birchpad_commands::{RunEntry, RunVariables, is_url, shell_command};
 use birchpad_core::motion::{line_of, line_range, word_at};
 use gpui_kit::component::WindowExt as _;
 use gpui_kit::component::button::Button;
@@ -106,30 +106,6 @@ pub(crate) fn variables(workspace: &Workspace, cx: &App) -> RunVariables {
         }
     };
     vars
-}
-
-/// How a command line runs: through `cmd /C` on Windows, `sh -c` elsewhere.
-pub(crate) fn shell_command(line: &str) -> std::process::Command {
-    #[cfg(windows)]
-    {
-        use std::os::windows::process::CommandExt as _;
-        let mut command = std::process::Command::new("cmd");
-        // As typed: cmd reads its own quotes, which the usual escaping of arguments breaks.
-        command.arg("/C").raw_arg(line);
-        command
-    }
-    #[cfg(not(windows))]
-    {
-        let mut command = std::process::Command::new("sh");
-        command.args(["-c", line]);
-        command
-    }
-}
-
-/// Whether a command line is a web address, opened in the browser.
-pub(crate) fn is_url(line: &str) -> bool {
-    let lower = line.trim_start().to_ascii_lowercase();
-    lower.starts_with("http://") || lower.starts_with("https://")
 }
 
 /// Expands `line` with `vars` and runs it.

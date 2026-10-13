@@ -5,7 +5,9 @@
 //! Positions are byte offsets into the text, as everywhere in Birchpad.
 
 pub mod compare;
+pub mod date_time;
 pub mod hex;
+pub mod html;
 pub mod json;
 pub mod spell;
 pub mod xml;

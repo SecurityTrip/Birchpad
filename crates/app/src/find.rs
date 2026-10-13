@@ -12,9 +12,10 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use anyhow::{Context as _, Result, anyhow, bail};
 use birchpad_commands::Invocation;
-use birchpad_core::motion::{line_count, line_of, line_range, next_boundary, prev_boundary};
+use birchpad_core::motion::{line_count, line_of, next_boundary, prev_boundary};
+use birchpad_core::search::line_hits;
 use birchpad_core::search::{Direction, Query, SearchMode, Searcher, token_at};
-use birchpad_core::{Edit, Rope, Transaction, ops};
+use birchpad_core::{Edit, Transaction, ops};
 use gpui_kit::component::button::{Button, ButtonVariants as _};
 use gpui_kit::component::checkbox::Checkbox;
 use gpui_kit::component::dialog::DialogFooter;
@@ -31,7 +32,7 @@ use crate::app_state::AppState;
 use crate::commands::CommandRegistry;
 use crate::editor::EditorView;
 use crate::search_results::{
-    FileResults, ResultLocation, SearchResults, SearchResultsEvent, SearchRun, line_hits,
+    FileResults, ResultLocation, SearchResults, SearchResultsEvent, SearchRun,
 };
 use crate::workspace::Workspace;
 
@@ -1728,33 +1729,6 @@ impl Workspace {
     }
 }
 
-/// Go To: a line number (1-based) or a byte offset (0-based, Notepad++'s "position").
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum GoToTarget {
-    Line(usize),
-    Offset(usize),
-}
-
-/// Where Go To puts the caret; out-of-range values go to the last line or the end.
-pub(crate) fn go_to_position(text: &Rope, target: GoToTarget) -> usize {
-    match target {
-        GoToTarget::Line(line) => {
-            let line = line.clamp(1, line_count(text)) - 1;
-            line_range(text, line).start
-        }
-        GoToTarget::Offset(offset) => {
-            let offset = text.floor_char_boundary(offset.min(text.len()));
-            // Not between the CR and LF of a line break.
-            if offset > 0 && text.byte(offset - 1) == b'\r' && text.get_byte(offset) == Some(b'\n')
-            {
-                offset - 1
-            } else {
-                offset
-            }
-        }
-    }
-}
-
 struct GoTo {
     view: Entity<EditorView>,
     by_offset: bool,
@@ -1779,15 +1753,15 @@ impl GoTo {
             .parse()
             .map_err(|_| anyhow!("{}", t!("find.type-a-number")))?;
         let target = if self.by_offset {
-            GoToTarget::Offset(number)
+            birchpad_core::motion::GoToTarget::Offset(number)
         } else {
             if number == 0 {
                 bail!("{}", t!("find.lines-are-numbered-from-1"));
             }
-            GoToTarget::Line(number)
+            birchpad_core::motion::GoToTarget::Line(number)
         };
         let text = self.view.read(cx).text(cx).clone();
-        let pos = go_to_position(&text, target);
+        let pos = birchpad_core::motion::go_to_position(&text, target);
         self.view.update(cx, |view, cx| view.go_to(pos, cx));
         Ok(())
     }
@@ -2190,24 +2164,5 @@ mod tests {
         );
         cx.simulate_keystrokes("shift-f4");
         assert_eq!(active(cx), ("new 1".to_owned(), 8, 11));
-    }
-
-    #[test]
-    fn go_to_clamps_like_notepad_plus_plus() {
-        let text = Rope::from_str("one\r\ntwo\nthree");
-        assert_eq!(go_to_position(&text, GoToTarget::Line(2)), 5);
-        assert_eq!(go_to_position(&text, GoToTarget::Line(99)), 9);
-        assert_eq!(
-            go_to_position(&text, GoToTarget::Offset(4)),
-            3,
-            "not inside CRLF"
-        );
-        assert_eq!(go_to_position(&text, GoToTarget::Offset(999)), text.len());
-        let cyrillic = Rope::from_str("жж");
-        assert_eq!(
-            go_to_position(&cyrillic, GoToTarget::Offset(1)),
-            0,
-            "char boundary"
-        );
     }
 }

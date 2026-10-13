@@ -333,7 +333,7 @@ behavior does not change, and the tests move with the code.
       parsing, named arguments, plural forms, the current language, `tr_error`) as a crate of
       its own, so that the crates without a window translate their messages where they make
       them, not the application from their English
-- [ ] 6.18 The logic without a window left in `birchpad` moved to the crates that hold its kind:
+- [x] 6.18 The logic without a window left in `birchpad` moved to the crates that hold its kind:
       Find in Files' reading of one file (binary files skipped), its search and replace and the
       result lines (`line_hits`), Go To's positions to `birchpad-core` and `birchpad-io`; the
       bidirectional row (`BidiRow`) to `birchpad-view`; the date and time formats, Export to

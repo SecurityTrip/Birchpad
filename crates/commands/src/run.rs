@@ -152,6 +152,30 @@ pub fn write_run_commands(commands: &[RunEntry]) -> String {
     .expect("run commands serialize")
 }
 
+/// How a command line runs: through `cmd /C` on Windows, `sh -c` elsewhere.
+pub fn shell_command(line: &str) -> std::process::Command {
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt as _;
+        let mut command = std::process::Command::new("cmd");
+        // As typed: cmd reads its own quotes, which the usual escaping of arguments breaks.
+        command.arg("/C").raw_arg(line);
+        command
+    }
+    #[cfg(not(windows))]
+    {
+        let mut command = std::process::Command::new("sh");
+        command.args(["-c", line]);
+        command
+    }
+}
+
+/// Whether a command line is a web address, opened in the browser.
+pub fn is_url(line: &str) -> bool {
+    let lower = line.trim_start().to_ascii_lowercase();
+    lower.starts_with("http://") || lower.starts_with("https://")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -253,5 +277,50 @@ mod tests {
         ] {
             assert!(parse_run_commands(bad).is_err(), "{bad}");
         }
+    }
+
+    #[test]
+    fn urls_and_shell_lines() {
+        for line in ["https://example.com", "  HTTP://x", "https://", "http://"] {
+            assert!(is_url(line), "{line}");
+        }
+        for line in [
+            "",
+            "   ",
+            "notepad.exe",
+            "ftp://x",
+            "start https://x",
+            "http:/x",
+            "https:",
+        ] {
+            assert!(!is_url(line), "{line}");
+        }
+        let command = shell_command("echo hi");
+        let args: Vec<_> = command
+            .get_args()
+            .map(|arg| arg.to_string_lossy().into_owned())
+            .collect();
+        if cfg!(windows) {
+            assert_eq!(command.get_program(), "cmd");
+            assert_eq!(args, ["/C", "echo hi"]);
+        } else {
+            assert_eq!(command.get_program(), "sh");
+            assert_eq!(args, ["-c", "echo hi"]);
+        }
+    }
+
+    #[test]
+    fn a_line_runs_as_typed() {
+        // Quotes and the shell's own characters reach the shell untouched.
+        let line = r#"echo "a b" & echo 'c' | more"#;
+        let command = shell_command(line);
+        let last = command
+            .get_args()
+            .last()
+            .unwrap()
+            .to_string_lossy()
+            .into_owned();
+        assert_eq!(last, line);
+        assert_eq!(shell_command("").get_args().count(), 2, "an empty line too");
     }
 }

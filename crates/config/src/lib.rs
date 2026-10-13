@@ -11,6 +11,7 @@ mod notepad_session;
 mod policy;
 mod project;
 mod session;
+mod session_names;
 mod settings;
 mod state;
 mod write;
@@ -23,6 +24,10 @@ pub use project::{ProjectError, ProjectFolder, ProjectItem, ProjectWorkspace};
 pub use session::{
     SESSION_VERSION, Session, SessionDocument, SessionError, SessionTab, SessionView,
     create_private_dir, write_private,
+};
+pub use session_names::{
+    LanguageName, USER_LANGUAGE_PREFIX, backup_name, free_untitled_number, line_ending_name,
+    parse_line_ending,
 };
 pub use settings::{
     AppearanceSettings, AutoIndent, BackupOnSave, ChangeDetection, ChangeHistory, CloudSettings,

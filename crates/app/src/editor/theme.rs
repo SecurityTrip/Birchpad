@@ -33,6 +33,18 @@ pub(crate) struct TextStyle {
     pub(crate) underline: bool,
 }
 
+impl From<TextStyle> for birchpad_theme::Style {
+    fn from(style: TextStyle) -> Self {
+        Self {
+            color: style.color.map(birchpad_theme::Color),
+            background: style.background.map(birchpad_theme::Color),
+            bold: style.bold,
+            italic: style.italic,
+            underline: style.underline,
+        }
+    }
+}
+
 impl From<birchpad_theme::Style> for TextStyle {
     fn from(style: birchpad_theme::Style) -> Self {
         Self {

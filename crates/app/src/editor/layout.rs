@@ -95,7 +95,7 @@ pub(super) struct VisibleRow {
     pub(super) display: DisplayText,
     pub(super) shaped: ShapedLine,
     /// The order the characters show in, when it is not the order they are stored in.
-    pub(super) bidi: Option<super::bidi::BidiRow>,
+    pub(super) bidi: Option<birchpad_view::BidiRow>,
 }
 
 impl VisibleRow {
@@ -352,7 +352,7 @@ impl EditorView {
         for (row, y, mut x, display) in pending {
             // Rows shaped only in part (very long ones) keep the stored order.
             let bidi = (row.range.len() <= LONG_ROW)
-                .then(|| super::bidi::BidiRow::new(&display.text, self.rtl))
+                .then(|| birchpad_view::BidiRow::new(&display.text, self.rtl))
                 .flatten();
             let shaped = match &bidi {
                 Some(bidi) => self.shape_bidi_row(&display, bidi, &metrics, &styles, window),
@@ -543,7 +543,7 @@ impl EditorView {
     fn shape_bidi_row(
         &self,
         display: &DisplayText,
-        bidi: &super::bidi::BidiRow,
+        bidi: &birchpad_view::BidiRow,
         metrics: &Metrics,
         styles: &FrameStyles,
         window: &mut Window,

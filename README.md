@@ -116,15 +116,15 @@ downloading them. See [ADR 0020](docs/adr/0020-signed-updates-and-nightly-builds
 
 | Path | Contents |
 |---|---|
-| `crates/core` | Text model: rope buffer, selections, change sets, transactions, undo history. No UI. |
-| `crates/config` | Layered settings: defaults, machine defaults, user settings, administrator policies. |
+| `crates/core` | Text model: rope buffer, selections, change sets, transactions, undo history, search. No UI. |
+| `crates/config` | Layered settings: defaults, machine defaults, user settings, administrator policies; sessions. |
 | `crates/i18n` | The interface languages: YAML locales, texts by key, plural forms, the language in use. No UI. |
-| `crates/commands` | Command catalog, keymaps and the menu model, as data. No UI. |
-| `crates/io` | Encoding detection and conversion, reading and safely saving files. No UI. |
-| `crates/view` | Layout of a document view in cells: tab stops, word wrap, visual rows. No UI. |
+| `crates/commands` | Command catalog, keymaps, the menu model, macros and Run commands, as data. No UI. |
+| `crates/io` | Encoding detection and conversion, reading and safely saving files, searching them (Find in Files). No UI. |
+| `crates/view` | Layout of a document view in cells: tab stops, word wrap, visual rows, right-to-left text. No UI. |
 | `crates/syntax` | Languages and syntax trees: detection, tree-sitter parsing, highlighting, folding. No UI. |
 | `crates/cli` | Notepad++-compatible command line and the single-instance hand-off. No UI. |
-| `crates/tools` | Built-in tools: JSON and XML formatting, hex dumps, comparing texts, spell checking. No UI. |
+| `crates/tools` | Built-in tools: JSON and XML formatting, hex dumps, comparing texts, spell checking, date formats, HTML export. No UI. |
 | `crates/plugin` | Plugins as WebAssembly components (`wit/birchpad.wit`), Rhai scripts, the plugin manager. No UI. |
 | `crates/update` | Updates: the signed update manifest, channels, versions, installing (Velopack on Windows). No UI. |
 | `crates/release-tool` | `birchpad-release`: signing keys and the update manifest, for the release workflows. |

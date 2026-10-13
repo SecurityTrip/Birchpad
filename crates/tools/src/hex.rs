@@ -5,6 +5,8 @@
 //! 00000000  48 65 6C 6C 6F 2C 20 77  6F 72 6C 64 21 0A       |Hello, world!.|
 //! ```
 
+use birchpad_core::{Edit, InvalidEdit, Rope, Selection, Transaction};
+
 /// Bytes a row of the dump shows.
 pub const BYTES_PER_ROW: usize = 16;
 
@@ -86,6 +88,40 @@ pub fn parse(text: &str) -> Result<Vec<u8>, HexError> {
     Ok(bytes)
 }
 
+/// The edit that applies a dump read back to the document it shows: it turns `old` into `new`,
+/// touching only what differs between them, and leaves the caret after what was put in.
+pub fn replace_differing(old: &Rope, new: &str) -> Result<Transaction, InvalidEdit> {
+    let old_text = old.to_string();
+    let prefix = old_text
+        .char_indices()
+        .zip(new.chars())
+        .find(|((_, a), b)| a != b)
+        .map_or(old_text.len().min(new.len()), |((at, _), _)| at);
+    let prefix = (0..=prefix)
+        .rev()
+        .find(|&at| old_text.is_char_boundary(at) && new.is_char_boundary(at))
+        .unwrap_or(0);
+    let old_rest = &old_text[prefix..];
+    let new_rest = &new[prefix..];
+    let mut suffix = old_rest
+        .bytes()
+        .rev()
+        .zip(new_rest.bytes().rev())
+        .take_while(|(a, b)| a == b)
+        .count();
+    while !old_rest.is_char_boundary(old_rest.len() - suffix)
+        || !new_rest.is_char_boundary(new_rest.len() - suffix)
+    {
+        suffix -= 1;
+    }
+    let range = prefix..old_text.len() - suffix;
+    let inserted = &new_rest[..new_rest.len() - suffix];
+    Ok(
+        Transaction::from_edits(old, [Edit::replace(range.clone(), inserted)])?
+            .with_selection(Selection::point(range.start + inserted.len())),
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use proptest::prelude::*;
@@ -149,6 +185,40 @@ mod tests {
         fn reads_back_what_it_dumps(bytes in proptest::collection::vec(any::<u8>(), 0..100)) {
             prop_assert_eq!(parse(&dump(&bytes, "\n")).unwrap(), bytes.clone());
             prop_assert_eq!(parse(&dump(&bytes, "\r\n")).unwrap(), bytes);
+        }
+    }
+
+    #[test]
+    fn replaces_only_what_differs() {
+        // The caret ends after what was put in, so the edit touches only that.
+        for (old, new, caret) in [
+            ("abc", "abc", 3),
+            ("abc", "aXc", 2),
+            ("", "new", 3),
+            ("old", "", 0),
+            ("мир", "миф", 6),
+            ("aa", "aaa", 3),
+            ("ab", "b", 0),
+        ] {
+            let rope = Rope::from(old);
+            let transaction = replace_differing(&rope, new).unwrap();
+            let mut applied = rope.clone();
+            transaction.changes().apply(&mut applied);
+            assert_eq!(applied.to_string(), new, "{old} -> {new}");
+            assert_eq!(
+                transaction.selection().unwrap().primary().head,
+                caret,
+                "{old} -> {new}"
+            );
+        }
+    }
+
+    #[test]
+    fn replacing_with_the_same_text_changes_nothing() {
+        for text in ["", "a", "мир", "a\r\nb"] {
+            let rope = Rope::from(text);
+            let transaction = replace_differing(&rope, text).unwrap();
+            assert!(transaction.changes().is_identity(), "{text:?}");
         }
     }
 }

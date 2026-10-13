@@ -10,6 +10,7 @@ authors.workspace = true
 
 [dependencies]
 birchpad-core.workspace = true
+unicode-bidi = "0.3"
 unicode-width = "0.2"
 
 [dev-dependencies]

@@ -14,8 +14,7 @@
 use std::ops::Range;
 use std::path::PathBuf;
 
-use birchpad_core::Rope;
-use birchpad_core::motion::{line_of, line_range};
+use birchpad_core::search::LineHit;
 use gpui_kit::component::button::{Button, ButtonVariants as _};
 use gpui_kit::component::menu::{ContextMenuExt as _, PopupMenu, PopupMenuItem};
 use gpui_kit::component::{IconName, Sizable};
@@ -31,8 +30,6 @@ use birchpad_config::SearchResultsState;
 use crate::app_state::AppState;
 use crate::buffer::Buffer;
 
-/// The most of a line a result shows; longer lines are cut there.
-const MAX_LINE_SHOWN: usize = 1024;
 const ROW_HEIGHT: f32 = 20.;
 
 /// Where a document with results is.
@@ -42,21 +39,6 @@ pub(crate) enum ResultLocation {
     Buffer(WeakEntity<Buffer>),
     /// A file on disk (Find in Files).
     File(PathBuf),
-}
-
-/// A line with matches.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct LineHit {
-    /// 0-based.
-    pub(crate) line: usize,
-    /// The line, without its line break, cut at [`MAX_LINE_SHOWN`] bytes.
-    pub(crate) text: SharedString,
-    /// The matches within `text`.
-    pub(crate) highlights: Vec<Range<usize>>,
-    /// The first match, in bytes from the start of the line (it may run past its end).
-    pub(crate) target: Range<usize>,
-    /// How many matches start on the line.
-    pub(crate) matches: usize,
 }
 
 /// The results of one search in one document.
@@ -121,35 +103,6 @@ impl SearchRun {
             )
         )
     }
-}
-
-/// The lines of `text` with `matches` (sorted), each with its matches.
-pub(crate) fn line_hits(text: &Rope, matches: &[Range<usize>]) -> Vec<LineHit> {
-    let mut hits: Vec<LineHit> = Vec::new();
-    for found in matches {
-        let line = line_of(text, found.start);
-        let bounds = line_range(text, line);
-        if hits.last().is_none_or(|last| last.line != line) {
-            let mut end = bounds.end.min(bounds.start + MAX_LINE_SHOWN);
-            end = text.floor_char_boundary(end);
-            hits.push(LineHit {
-                line,
-                text: text.slice(bounds.start..end).to_string().into(),
-                highlights: Vec::new(),
-                target: found.start - bounds.start..found.end - bounds.start,
-                matches: 0,
-            });
-        }
-        let hit = hits.last_mut().expect("just pushed");
-        hit.matches += 1;
-        let shown = hit.text.len();
-        let start = found.start - bounds.start;
-        let end = (found.end.min(bounds.end) - bounds.start).min(shown);
-        if start < end {
-            hit.highlights.push(start..end);
-        }
-    }
-    hits
 }
 
 /// A row of the list.
@@ -330,7 +283,7 @@ impl SearchResults {
     /// The text of the line in row `index`, without its "Line N:".
     fn line_text(&self, index: usize) -> Option<SharedString> {
         match self.rows.get(index)? {
-            Row::Line(r, f, l) => Some(self.runs[*r].files[*f].lines[*l].text.clone()),
+            Row::Line(r, f, l) => Some(self.runs[*r].files[*f].lines[*l].text.clone().into()),
             _ => None,
         }
     }
@@ -745,7 +698,7 @@ mod tests {
     fn hit(line: usize, text: &str, matches: usize) -> LineHit {
         LineHit {
             line,
-            text: text.to_owned().into(),
+            text: text.to_owned(),
             highlights: Vec::new(),
             target: 0..1,
             matches,
@@ -943,43 +896,5 @@ mod tests {
             results.remove(3, cx);
             assert_eq!(results.rows_text().len(), 3);
         });
-    }
-
-    #[test]
-    fn lines_gather_their_matches() {
-        let text = Rope::from_str("foo bar foo\r\nbaz\nfoo-\nfoo\nbar");
-        let matches = [0..3, 8..11, 17..20, 22..29];
-        let hits = line_hits(&text, &matches);
-        let summary: Vec<(usize, &str, Vec<Range<usize>>, Range<usize>, usize)> = hits
-            .iter()
-            .map(|hit| {
-                (
-                    hit.line,
-                    hit.text.as_ref(),
-                    hit.highlights.clone(),
-                    hit.target.clone(),
-                    hit.matches,
-                )
-            })
-            .collect();
-        assert_eq!(
-            summary,
-            [
-                (0, "foo bar foo", vec![0..3, 8..11], 0..3, 2),
-                (2, "foo-", vec![0..3], 0..3, 1),
-                // A match over a line break shows its first line's part.
-                (3, "foo", vec![0..3], 0..7, 1),
-            ]
-        );
-    }
-
-    #[test]
-    fn long_lines_are_cut() {
-        let long = format!("{}needle", "x".repeat(2000));
-        let text = Rope::from_str(&long);
-        let hits = line_hits(&text, &[2000..2006]);
-        assert_eq!(hits[0].text.len(), MAX_LINE_SHOWN);
-        assert!(hits[0].highlights.is_empty(), "the match is past the cut");
-        assert_eq!(hits[0].target, 2000..2006, "but going there still works");
     }
 }
