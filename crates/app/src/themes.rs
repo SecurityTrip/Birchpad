@@ -8,7 +8,7 @@ use birchpad_theme::Theme;
 use gpui_kit::{App, Context, Window};
 
 use crate::app_state::AppState;
-use crate::commands::CommandRegistry;
+use crate::commands::{CommandRegistry, Register as _};
 use crate::workspace::{Workspace, report_error};
 
 /// The folder of theme files, next to the settings.

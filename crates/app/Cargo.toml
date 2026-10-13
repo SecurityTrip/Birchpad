@@ -21,6 +21,7 @@ birchpad-plugin.workspace = true
 birchpad-syntax.workspace = true
 birchpad-theme.workspace = true
 birchpad-tools.workspace = true
+birchpad-ui.workspace = true
 birchpad-update = { workspace = true, features = ["installer"] }
 birchpad-view.workspace = true
 chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
@@ -45,6 +46,7 @@ e2e = []
 embed-resource = "3"
 
 [dev-dependencies]
+birchpad-ui = { workspace = true, features = ["test-support"] }
 # Tests switch the language each in its own thread.
 birchpad-i18n = { workspace = true, features = ["per-thread"] }
 gpui-kit = { version = "0.7", features = ["test-support"] }

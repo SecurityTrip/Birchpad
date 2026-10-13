@@ -16,7 +16,7 @@ use gpui_kit::{
 };
 
 use crate::app_state::AppState;
-use crate::commands::{ActiveKeymap, CommandRegistry};
+use crate::commands::{ActiveKeymap, CommandRegistry, Register as _};
 use crate::theme::{paint, ui};
 use crate::workspace::Workspace;
 

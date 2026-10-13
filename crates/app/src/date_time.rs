@@ -6,7 +6,7 @@
 use birchpad_tools::date_time::{format, long, short};
 use serde::Deserialize;
 
-use crate::commands::CommandRegistry;
+use crate::commands::{CommandRegistry, Register as _};
 
 pub(crate) fn register_commands(registry: &mut CommandRegistry) {
     registry.editor("edit.insert-date-time", |this, args: DateArgs, _, cx| {

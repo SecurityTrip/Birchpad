@@ -18,7 +18,7 @@ use gpui_kit::{App, AppContext as _, Context, Entity, Task, Window, px};
 
 use crate::app_state::{AppState, SessionPaths};
 use crate::buffer::{Backup, Buffer, ReadOnly};
-use crate::commands::CommandRegistry;
+use crate::commands::{CommandRegistry, Register as _};
 use crate::editor::{EditorView, ViewState};
 use crate::pane::TabMarks;
 use crate::workspace::{Workspace, report_error};

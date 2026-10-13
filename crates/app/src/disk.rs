@@ -19,7 +19,7 @@ use notify::Watcher as _;
 
 use crate::app_state::AppState;
 use crate::buffer::{Buffer, ReadOnly};
-use crate::commands::CommandRegistry;
+use crate::commands::{CommandRegistry, Register as _};
 use crate::workspace::Workspace;
 
 pub(crate) fn register_commands(registry: &mut CommandRegistry) {

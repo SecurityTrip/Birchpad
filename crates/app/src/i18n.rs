@@ -2,7 +2,7 @@
 //! texts with, and the setting that chooses it, `appearance.language` (`auto` follows the
 //! system).
 
-pub(crate) use birchpad_i18n::{count, get_or, set_language, slug, system_language, tr_error};
+pub(crate) use birchpad_i18n::{count, get_or, set_language, slug, system_language};
 
 /// Takes `appearance.language` from the settings.
 pub(crate) fn apply(cx: &gpui_kit::App) {

@@ -279,9 +279,9 @@ mod tests {
     use gpui_kit::{Entity, TestAppContext, VisualTestContext};
 
     use super::*;
-    use crate::app_state::AppState;
     use crate::workspace::Workspace;
     use crate::workspace::tests::{active_text, document_start, open_workspace, secondary};
+    use birchpad_ui::AppState;
 
     fn view(workspace: &Entity<Workspace>, cx: &mut VisualTestContext) -> Entity<EditorView> {
         workspace.read_with(cx, |workspace, cx| workspace.active_view(cx).unwrap())

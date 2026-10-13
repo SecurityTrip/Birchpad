@@ -10,10 +10,7 @@ use birchpad_commands::Invocation;
 use birchpad_config::{SplitOrientation, UserState};
 use birchpad_core::Document;
 use birchpad_menu_bar::MenuBar;
-use gpui_kit::component::WindowExt as _;
 use gpui_kit::component::button::{Button, ButtonVariants as _};
-use gpui_kit::component::dialog::{DialogAction, DialogClose};
-use gpui_kit::component::notification::Notification;
 use gpui_kit::component::{IconName, Sizable as _};
 use gpui_kit::component::{h_resizable, resizable_panel, v_resizable};
 use gpui_kit::{
@@ -23,7 +20,7 @@ use gpui_kit::{
 
 use crate::app_state::AppState;
 use crate::buffer::{Buffer, BufferEvent};
-use crate::commands::{CommandRegistry, Handler, RunCommand};
+use crate::commands::{CommandRegistry, Register as _, RunCommand};
 use crate::disk::DiskState;
 use crate::editor::{EditorEvent, EditorView, ViewSettings};
 use crate::find::FindBar;
@@ -250,46 +247,9 @@ pub(crate) fn new_document(
     (format, language)
 }
 
-/// Shows an error to the user without interrupting them.
-pub(crate) fn report_error(error: &anyhow::Error, window: &mut Window, cx: &mut App) {
-    window.push_notification(Notification::error(crate::i18n::tr_error(error)), cx);
-}
-
-/// The confirming button of a dialog footer, at its natural width (`DialogAction` alone fills
-/// the footer).
-pub(crate) fn dialog_action(button: Button) -> impl IntoElement {
-    div()
-        .debug_selector(|| "dialog-action".into())
-        .child(DialogAction::new().child(button))
-}
-
-/// A button that closes a dialog without its action: `label` is the key of its text
-/// (`common.cancel`).
-pub(crate) fn dialog_close(label: &'static str) -> DialogClose {
-    DialogClose::new().trigger(move |button| {
-        button
-            .label(t!(label))
-            .debug_selector(|| "dialog-close".into())
-    })
-}
-
-/// Tells the user that something went well, without interrupting them.
-pub(crate) fn report_success(message: impl Into<String>, window: &mut Window, cx: &mut App) {
-    window.push_notification(Notification::success(message.into()), cx);
-}
-
-/// Tells the user something, without interrupting them.
-pub(crate) fn report_info(message: impl Into<String>, window: &mut Window, cx: &mut App) {
-    let message = message.into();
-    #[cfg(test)]
-    tests::INFO.with(|info| info.borrow_mut().push(message.clone()));
-    window.push_notification(Notification::info(message), cx);
-}
-
-/// Shows a warning to the user without interrupting them.
-pub(crate) fn report_warning(message: impl Into<String>, window: &mut Window, cx: &mut App) {
-    window.push_notification(Notification::warning(message.into()), cx);
-}
+pub(crate) use birchpad_ui::{
+    dialog_action, dialog_close, report_error, report_info, report_success, report_warning,
+};
 
 pub(crate) struct Workspace {
     focus_handle: FocusHandle,
@@ -909,24 +869,24 @@ impl Workspace {
         cx: &mut Context<Self>,
     ) -> Result<()> {
         let registry = cx.global::<CommandRegistry>();
-        if registry.get(&invocation.command).is_some()
-            && !registry.is_enabled(&invocation.command, cx)
-        {
+        if registry.contains(&invocation.command) && !registry.is_enabled(&invocation.command, cx) {
             anyhow::bail!(
                 "{}",
                 t!("workspace.is-turned-off", invocation = invocation.command)
             );
         }
-        let handler = registry.get(&invocation.command);
-        let result = match handler {
-            Some(Handler::Workspace(run)) => run(self, invocation, window, cx),
-            Some(Handler::Editor(run)) => match self.active_view(cx) {
+        let for_workspace = registry.handler::<Self>(&invocation.command);
+        let for_editor = registry.handler::<EditorView>(&invocation.command);
+        let result = match (for_workspace, for_editor) {
+            (Some(run), _) => run(self, invocation, window, cx),
+            (None, Some(run)) => match self.active_view(cx) {
                 Some(view) => view.update(cx, |view, cx| run(view, invocation, window, cx)),
                 None => Ok(()),
             },
-            None if cx
-                .global::<CommandRegistry>()
-                .is_pending(&invocation.command) =>
+            (None, None)
+                if cx
+                    .global::<CommandRegistry>()
+                    .is_pending(&invocation.command) =>
             {
                 anyhow::bail!(
                     "{}",
@@ -936,7 +896,7 @@ impl Workspace {
                     )
                 )
             }
-            None => anyhow::bail!(
+            (None, None) => anyhow::bail!(
                 "{}",
                 t!("workspace.unknown-command", invocation = invocation.command)
             ),
@@ -1462,15 +1422,7 @@ pub(crate) mod tests {
         cx.run_until_parked();
     }
 
-    thread_local! {
-        /// The messages shown with `report_info`, for tests to read.
-        pub(crate) static INFO: std::cell::RefCell<Vec<String>> = std::cell::RefCell::default();
-    }
-
-    /// The messages shown since the last call.
-    pub(crate) fn take_info() -> Vec<String> {
-        INFO.with(|info| std::mem::take(&mut *info.borrow_mut()))
-    }
+    pub(crate) use birchpad_ui::take_info;
 
     pub(crate) fn active_text(workspace: &Entity<Workspace>, cx: &mut VisualTestContext) -> String {
         workspace.read_with(cx, |workspace, cx| {

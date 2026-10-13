@@ -9,7 +9,7 @@ use gpui_kit::component::dialog::DialogFooter;
 use gpui_kit::{App, ClipboardItem, SharedString, Window, div, prelude::*, px};
 
 use crate::app_state::AppState;
-use crate::commands::CommandRegistry;
+use crate::commands::{CommandRegistry, Register as _};
 
 /// The version of this build: the workspace version, or a nightly version (see `build.rs`).
 pub(crate) const VERSION: &str = env!("BIRCHPAD_VERSION");

@@ -12,7 +12,7 @@ use gpui_kit::component::dialog::DialogFooter;
 use gpui_kit::{App, Window, div, prelude::*, px};
 use serde::Deserialize;
 
-use crate::commands::CommandRegistry;
+use crate::commands::{CommandRegistry, Register as _};
 use crate::file_commands::{Shell, shell};
 
 /// The browsers View > View Current File in offers besides the default one.

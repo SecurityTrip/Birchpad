@@ -20,7 +20,7 @@ use gpui_kit::{
 };
 
 use crate::buffer::Buffer;
-use crate::commands::CommandRegistry;
+use crate::commands::{CommandRegistry, Register as _};
 use crate::find::plural;
 use crate::workspace::Workspace;
 

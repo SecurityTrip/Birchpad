@@ -8,7 +8,7 @@ use birchpad_core::ops::{Conversion, encode_selections};
 use gpui_kit::{ClipboardItem, Context, Window};
 use serde::Deserialize;
 
-use crate::commands::CommandRegistry;
+use crate::commands::{CommandRegistry, Register as _};
 use crate::editor::EditorView;
 use crate::workspace::{Workspace, report_error};
 

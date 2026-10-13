@@ -12,9 +12,11 @@ use gpui_kit::{ClipboardItem, Context};
 use serde::Deserialize;
 
 use super::{EditorView, LastEdit};
-use crate::app_state::AppState;
 use crate::buffer::MARK_STYLES;
-use crate::commands::CommandRegistry;
+use birchpad_ui::AppState;
+use birchpad_ui::CommandRegistry;
+
+use crate::commands::Register as _;
 
 /// `{ "style": 1..5 }`.
 #[derive(Deserialize)]

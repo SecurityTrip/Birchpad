@@ -21,7 +21,7 @@ use serde::Deserialize;
 
 use super::plugins::{Plugins, State, plugins_dir};
 use crate::app_state::AppState;
-use crate::commands::CommandRegistry;
+use crate::commands::{CommandRegistry, Register as _};
 use crate::workspace::{Workspace, report_error};
 
 #[derive(Deserialize)]

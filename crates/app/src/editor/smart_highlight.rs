@@ -16,8 +16,8 @@ use birchpad_core::{RangeSet, RevisionId, Rope};
 use gpui_kit::App;
 
 use super::EditorView;
-use crate::app_state::AppState;
 use crate::find::ActiveFindOptions;
+use birchpad_ui::AppState;
 
 /// How long one frame may search.
 const BUDGET: Duration = Duration::from_millis(2);

@@ -8,7 +8,7 @@ use std::ffi::OsString;
 use anyhow::{Result, anyhow, bail};
 use gpui_kit::{Context, Window};
 
-use crate::commands::CommandRegistry;
+use crate::commands::{CommandRegistry, Register as _};
 use crate::workspace::Workspace;
 
 /// The window's modes.

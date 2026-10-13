@@ -21,7 +21,7 @@ use serde::Deserialize;
 
 use crate::app_state::AppState;
 use crate::buffer::Buffer;
-use crate::commands::CommandRegistry;
+use crate::commands::{CommandRegistry, Register as _};
 use crate::editor::EditorView;
 
 /// The file of the user's own words, in the dictionaries folder.

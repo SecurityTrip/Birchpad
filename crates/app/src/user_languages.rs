@@ -10,7 +10,7 @@ use birchpad_syntax::{UdlKind, UdlStyle, UserLanguage};
 use gpui_kit::{App, Context, Global, Window};
 
 use crate::app_state::AppState;
-use crate::commands::CommandRegistry;
+use crate::commands::{CommandRegistry, Register as _};
 use crate::editor::theme::TextStyle;
 use crate::workspace::{Workspace, report_error};
 

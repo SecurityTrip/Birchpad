@@ -6,7 +6,7 @@ use birchpad_core::{Edit, Range, Selection, Transaction};
 use birchpad_tools::{Indent, Layout, SyntaxError, json, xml};
 use gpui_kit::{Context, Window};
 
-use crate::commands::CommandRegistry;
+use crate::commands::{CommandRegistry, Register as _};
 use crate::editor::EditorView;
 
 pub(crate) fn register_commands(registry: &mut CommandRegistry) {

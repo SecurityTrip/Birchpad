@@ -40,8 +40,8 @@ pub(super) fn open(view: Entity<EditorView>, window: &mut Window, cx: &mut App) 
             .child(editor.clone())
             .footer(
                 DialogFooter::new()
-                    .child(crate::workspace::dialog_close("common.cancel"))
-                    .child(crate::workspace::dialog_action(
+                    .child(birchpad_ui::dialog_close("common.cancel"))
+                    .child(birchpad_ui::dialog_action(
                         Button::new("column-ok").label(t!("common.ok")),
                     )),
             )

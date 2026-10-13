@@ -18,7 +18,7 @@ use serde::Deserialize;
 
 use crate::app_state::AppState;
 use crate::buffer::Buffer;
-use crate::commands::CommandRegistry;
+use crate::commands::{CommandRegistry, Register as _};
 use crate::editor::EditorView;
 use crate::theme::{paint, ui};
 use crate::workspace::{Workspace, report_error, report_info};

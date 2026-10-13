@@ -15,8 +15,10 @@ use gpui_kit::{
 };
 
 use super::{EditorView, LastEdit, theme};
-use crate::app_state::AppState;
-use crate::commands::CommandRegistry;
+use birchpad_ui::AppState;
+use birchpad_ui::CommandRegistry;
+
+use crate::commands::Register as _;
 
 /// The most words of the document the list shows.
 const WORD_LIMIT: usize = 100;

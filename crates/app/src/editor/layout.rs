@@ -960,7 +960,7 @@ impl EditorView {
                 .map(|(range, _)| (range, incremental)),
         );
         // Clickable links, underlined.
-        let links = &crate::app_state::AppState::global(cx).settings.links;
+        let links = &birchpad_ui::AppState::global(cx).settings.links;
         if links.enabled && links.underline {
             let paint = Paint::Underline(theme::paint(theme::ui().accent));
             let extra = links.extra_schemes();

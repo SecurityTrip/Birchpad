@@ -10,7 +10,7 @@ use anyhow::{Context as _, Result, anyhow};
 use birchpad_tools::html::to_html;
 use gpui_kit::{App, Context, Window};
 
-use crate::commands::CommandRegistry;
+use crate::commands::{CommandRegistry, Register as _};
 use crate::editor::theme;
 use crate::workspace::{Workspace, report_error};
 

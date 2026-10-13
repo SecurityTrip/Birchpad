@@ -332,7 +332,7 @@ fn sweep_with_settings(scenario: Scenario, settings: fn(&mut Settings), cx: &mut
         COMMANDS
             .iter()
             .map(|spec| spec.id)
-            .filter(|id| !SKIPPED.contains(id) && registry.get(id).is_some())
+            .filter(|id| !SKIPPED.contains(id) && registry.contains(id))
             .collect()
     });
     let mut refused = Vec::new();

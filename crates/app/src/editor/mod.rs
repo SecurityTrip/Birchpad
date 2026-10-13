@@ -47,9 +47,11 @@ use serde::Deserialize;
 use birchpad_cli::CaretTarget;
 use birchpad_config::{AutoIndent, CurrentLine, Edge};
 
-use crate::app_state::AppState;
 use crate::buffer::{Buffer, BufferEvent, ReadOnly};
-use crate::commands::{CommandRegistry, Handler, RunCommand};
+use birchpad_ui::AppState;
+use birchpad_ui::{CommandRegistry, RunCommand};
+
+use crate::commands::Register as _;
 use element::EditorElement;
 use layout::Layout;
 
@@ -720,13 +722,15 @@ impl EditorView {
     ) {
         let invocation = &action.0;
         self.close_completion_for(&invocation.command);
-        let handler = cx.global::<CommandRegistry>().get(&invocation.command);
+        let handler = cx
+            .global::<CommandRegistry>()
+            .handler::<Self>(&invocation.command);
         match handler {
-            Some(Handler::Editor(run)) => match run(self, invocation, window, cx) {
+            Some(run) => match run(self, invocation, window, cx) {
                 Ok(()) => crate::macros::record(invocation, cx),
-                Err(error) => crate::workspace::report_error(&error, window, cx),
+                Err(error) => birchpad_ui::report_error(&error, window, cx),
             },
-            _ => cx.propagate(),
+            None => cx.propagate(),
         }
     }
 

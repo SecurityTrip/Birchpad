@@ -9,7 +9,7 @@ use birchpad_tools::hex;
 use gpui_kit::{App, Context, Entity, EntityId, Global, WeakEntity, Window};
 
 use crate::buffer::Buffer;
-use crate::commands::CommandRegistry;
+use crate::commands::{CommandRegistry, Register as _};
 use crate::workspace::Workspace;
 
 /// Hex documents and the documents whose bytes they show.

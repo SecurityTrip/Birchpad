@@ -10,7 +10,7 @@ use gpui_kit::{App, ClipboardItem, Context};
 use serde::{Deserialize, Serialize};
 
 use crate::app_state::AppState;
-use crate::commands::CommandRegistry;
+use crate::commands::{CommandRegistry, Register as _};
 use crate::editor::{EditorView, LastEdit};
 use crate::workspace::Workspace;
 

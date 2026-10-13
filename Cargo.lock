@@ -614,6 +614,7 @@ dependencies = [
  "birchpad-syntax",
  "birchpad-theme",
  "birchpad-tools",
+ "birchpad-ui",
  "birchpad-update",
  "birchpad-view",
  "chrono",
@@ -866,6 +867,21 @@ dependencies = [
  "similar 3.2.0",
  "spellbook",
  "thiserror 2.0.21",
+]
+
+[[package]]
+name = "birchpad-ui"
+version = "1.0.0"
+dependencies = [
+ "anyhow",
+ "birchpad-commands",
+ "birchpad-config",
+ "birchpad-core",
+ "birchpad-i18n",
+ "birchpad-io",
+ "gpui-kit",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

@@ -23,6 +23,10 @@ macOS, plus [`cargo-deny`](https://github.com/EmbarkStudios/cargo-deny) for lice
 ### Ground rules for the code
 
 - `birchpad-core` must never depend on UI crates. Everything in it is testable without a window.
+- Logic that needs no window goes to the crate of its kind (`core`, `io`, `config`, `tools`,
+  ...), not to the application. What parts of the window share (the command registry, the
+  application's settings, dialog buttons, messages to the user) is in `birchpad-ui`; a command
+  handler is registered for the view that runs it (`CommandTarget`), not in the registry.
 - Positions in the text model are **byte offsets** into the rope. Convert to chars, UTF-16 or
   visual columns only at the edges (rendering, LSP, status bar).
 - Test fixtures under `tests/fixtures` are committed byte-for-byte (see `.gitattributes`);

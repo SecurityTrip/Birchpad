@@ -6,7 +6,7 @@
 # Measured on Windows on 2026-10-07: app 89.3, cli 92.1, commands 97.8, config 96.2, core 98.8,
 # fuzz 97.8, io 97.6, menu-bar 96.8, release-tool 94.8, syntax 96.3, update 96.0, view 99.5.
 # Measured on Windows on 2026-10-12: plugin 96.5, tools 98.6.
-# Measured on Windows on 2026-10-13: i18n 96.0.
+# Measured on Windows on 2026-10-13: i18n 96.0, ui 96.6.
 
 [lines]
 app = 87
@@ -23,5 +23,6 @@ release-tool = 93
 syntax = 95
 theme = 97
 tools = 97
+ui = 95
 update = 93
 view = 98

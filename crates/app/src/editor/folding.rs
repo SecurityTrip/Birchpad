@@ -14,7 +14,9 @@ use gpui_kit::{App, Context};
 use serde::Deserialize;
 
 use super::EditorView;
-use crate::commands::CommandRegistry;
+use birchpad_ui::CommandRegistry;
+
+use crate::commands::Register as _;
 
 #[derive(Deserialize)]
 struct LevelArgs {

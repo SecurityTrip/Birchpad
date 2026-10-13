@@ -29,7 +29,7 @@ use gpui_kit::{
 };
 
 use crate::app_state::AppState;
-use crate::commands::CommandRegistry;
+use crate::commands::{CommandRegistry, Register as _};
 use crate::editor::EditorView;
 use crate::search_results::{
     FileResults, ResultLocation, SearchResults, SearchResultsEvent, SearchRun,

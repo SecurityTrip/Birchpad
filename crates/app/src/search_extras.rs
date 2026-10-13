@@ -16,7 +16,7 @@ use gpui_kit::component::{Sizable as _, WindowExt as _};
 use gpui_kit::{App, AppContext as _, Context, Entity, WeakEntity, Window, div, prelude::*, px};
 use serde::Deserialize;
 
-use crate::commands::CommandRegistry;
+use crate::commands::{CommandRegistry, Register as _};
 use crate::theme::{paint, ui};
 use crate::workspace::Workspace;
 

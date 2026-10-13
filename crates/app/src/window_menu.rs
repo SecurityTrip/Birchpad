@@ -16,7 +16,7 @@ use gpui_kit::{
 };
 use serde::Deserialize;
 
-use crate::commands::CommandRegistry;
+use crate::commands::{CommandRegistry, Register as _};
 use crate::editor::EditorView;
 use crate::file_ops::SaveMode;
 use crate::theme::{paint, ui};

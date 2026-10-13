@@ -15,7 +15,7 @@ use gpui_kit::{
 use serde::Deserialize;
 
 use crate::app_state::AppState;
-use crate::commands::CommandRegistry;
+use crate::commands::{CommandRegistry, Register as _};
 use crate::theme::{paint, ui};
 use crate::workspace::{Workspace, report_error};
 

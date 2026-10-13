@@ -1,156 +1,75 @@
-//! The command registry: maps command ids from `birchpad-commands` to handlers.
-//!
-//! GPUI sees a single action, [`RunCommand`], carrying an [`Invocation`]. Key bindings and menu
-//! items are built from the data in `birchpad-commands` and all dispatch that action; the focused
-//! editor view or the workspace looks the id up here and runs the handler. Nothing else invokes
-//! command code directly.
+//! The application's commands: every handler registered in `birchpad_ui`'s command registry,
+//! for the workspace or the editor, and the keymap that binds keys to them.
 
-use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
 use anyhow::Result;
-use birchpad_commands::{Invocation, Keymap, Layer, Platform, Scope};
+#[cfg(test)]
+use birchpad_commands::Invocation;
+use birchpad_commands::{Keymap, Layer, Platform, Scope};
+pub(crate) use birchpad_ui::{CommandRegistry, CommandTarget, RunCommand};
 use gpui_kit::{
-    Action, App, Context, Global, KeyBinding, KeyBindingContextPredicate, PlatformKeyboardMapper,
-    Window,
+    App, Context, KeyBinding, KeyBindingContextPredicate, PlatformKeyboardMapper, Window,
 };
 use serde::de::DeserializeOwned;
 
 use crate::editor::EditorView;
 use crate::workspace::Workspace;
 
-/// The one GPUI action of Birchpad: run a command from the catalog.
-#[derive(Clone, PartialEq, Debug, Action)]
-#[action(namespace = birchpad, no_json)]
-pub(crate) struct RunCommand(pub(crate) Invocation);
-
-impl RunCommand {
-    pub(crate) fn new(id: &str) -> Self {
-        Self(Invocation::new(id))
-    }
+impl CommandTarget for Workspace {
+    const SCOPE: Scope = Scope::Workspace;
 }
 
-type WorkspaceFn =
-    dyn Fn(&mut Workspace, &Invocation, &mut Window, &mut Context<Workspace>) -> Result<()>;
-type EditorFn =
-    dyn Fn(&mut EditorView, &Invocation, &mut Window, &mut Context<EditorView>) -> Result<()>;
-
-#[derive(Clone)]
-pub(crate) enum Handler {
-    Workspace(Rc<WorkspaceFn>),
-    Editor(Rc<EditorFn>),
+impl CommandTarget for EditorView {
+    const SCOPE: Scope = Scope::Editor;
 }
 
-#[derive(Default)]
-pub(crate) struct CommandRegistry {
-    handlers: HashMap<&'static str, Handler>,
-    /// Commands in the catalog that are not implemented yet: shown disabled in menus.
-    pending: HashSet<&'static str>,
-    /// Commands that are available only in some states (e.g. turned off by a setting).
-    enabled: HashMap<&'static str, fn(&App) -> bool>,
-}
-
-impl Global for CommandRegistry {}
-
-impl CommandRegistry {
-    /// A registry with every handler of the application.
-    pub(crate) fn new() -> Self {
-        let mut registry = Self::default();
-        crate::workspace::register_commands(&mut registry);
-        crate::editor::register_commands(&mut registry);
-        registry
-    }
-
+/// Registering the handlers of the workspace and of the editor.
+pub(crate) trait Register {
     /// Registers a workspace command whose arguments decode to `A` (`()` for none).
-    pub(crate) fn workspace<A: DeserializeOwned + 'static>(
+    fn workspace<A: DeserializeOwned + 'static>(
+        &mut self,
+        id: &'static str,
+        run: impl Fn(&mut Workspace, A, &mut Window, &mut Context<Workspace>) -> Result<()> + 'static,
+    );
+
+    /// Registers an editor command whose arguments decode to `A` (`()` for none).
+    fn editor<A: DeserializeOwned + 'static>(
+        &mut self,
+        id: &'static str,
+        run: impl Fn(&mut EditorView, A, &mut Window, &mut Context<EditorView>) -> Result<()> + 'static,
+    );
+}
+
+impl Register for CommandRegistry {
+    fn workspace<A: DeserializeOwned + 'static>(
         &mut self,
         id: &'static str,
         run: impl Fn(&mut Workspace, A, &mut Window, &mut Context<Workspace>) -> Result<()> + 'static,
     ) {
-        let handler = move |this: &mut Workspace,
-                            invocation: &Invocation,
-                            window: &mut Window,
-                            cx: &mut Context<Workspace>| {
-            run(this, invocation.args()?, window, cx)
-        };
-        self.insert(id, Scope::Workspace, Handler::Workspace(Rc::new(handler)));
+        self.register(id, run);
     }
 
-    /// Registers an editor command whose arguments decode to `A` (`()` for none).
-    pub(crate) fn editor<A: DeserializeOwned + 'static>(
+    fn editor<A: DeserializeOwned + 'static>(
         &mut self,
         id: &'static str,
         run: impl Fn(&mut EditorView, A, &mut Window, &mut Context<EditorView>) -> Result<()> + 'static,
     ) {
-        let handler = move |this: &mut EditorView,
-                            invocation: &Invocation,
-                            window: &mut Window,
-                            cx: &mut Context<EditorView>| {
-            run(this, invocation.args()?, window, cx)
-        };
-        self.insert(id, Scope::Editor, Handler::Editor(Rc::new(handler)));
+        self.register(id, run);
     }
+}
 
-    /// Marks a catalog command as not implemented yet.
-    #[expect(
-        dead_code,
-        reason = "every catalog command is implemented at the moment"
-    )]
-    pub(crate) fn pending(&mut self, id: &'static str) {
-        assert!(
-            birchpad_commands::find(id).is_some(),
-            "command {id} is not in the catalog"
-        );
-        assert!(
-            !self.handlers.contains_key(id),
-            "command {id} is implemented"
-        );
-        self.pending.insert(id);
-    }
-
-    pub(crate) fn is_pending(&self, id: &str) -> bool {
-        self.pending.contains(id)
-    }
-
-    /// Makes a registered command available only while `enabled` says so; menus show it
-    /// disabled otherwise.
-    pub(crate) fn enabled_when(&mut self, id: &'static str, enabled: fn(&App) -> bool) {
-        assert!(
-            self.handlers.contains_key(id),
-            "command {id} is not registered"
-        );
-        self.enabled.insert(id, enabled);
-    }
-
-    /// Whether the command can run now.
-    pub(crate) fn is_enabled(&self, id: &str, cx: &App) -> bool {
-        !self.is_pending(id) && self.enabled.get(id).is_none_or(|enabled| enabled(cx))
-    }
-
-    fn insert(&mut self, id: &'static str, scope: Scope, handler: Handler) {
-        let spec = birchpad_commands::find(id)
-            .unwrap_or_else(|| panic!("command {id} is not in the catalog"));
-        assert_eq!(
-            spec.scope, scope,
-            "command {id} is registered in the wrong scope"
-        );
-        let previous = self.handlers.insert(id, handler);
-        assert!(previous.is_none(), "command {id} is registered twice");
-    }
-
-    pub(crate) fn get(&self, id: &str) -> Option<Handler> {
-        self.handlers.get(id).cloned()
-    }
-
-    #[cfg(test)]
-    fn contains(&self, id: &str) -> bool {
-        self.handlers.contains_key(id)
-    }
+/// A registry with every handler of the application.
+pub(crate) fn registry() -> CommandRegistry {
+    let mut registry = CommandRegistry::default();
+    crate::workspace::register_commands(&mut registry);
+    crate::editor::register_commands(&mut registry);
+    registry
 }
 
 /// Installs the registry and the keymap (defaults plus the user's `keymap.toml`, if any).
 pub(crate) fn init(user_keymap: Option<&str>, cx: &mut App) -> Keymap {
-    cx.set_global(CommandRegistry::new());
+    cx.set_global(registry());
     let keymap = build_keymap(user_keymap);
     let mapper = cx.keyboard_mapper().clone();
     cx.bind_keys(key_bindings(&keymap, mapper.as_ref(), shifted_symbols()));
@@ -306,7 +225,7 @@ mod tests {
 
     #[test]
     fn every_catalog_command_has_a_handler() {
-        let registry = CommandRegistry::new();
+        let registry = registry();
         assert_eq!(unregistered(&registry), Vec::<&str>::new());
     }
 

@@ -340,7 +340,7 @@ behavior does not change, and the tests move with the code.
       HTML (in the theme's colors, not GPUI's) and the hex view's replacement to
       `birchpad-tools`; the session's names of line endings, languages and backup copies to
       `birchpad-config`; Run's command line and address check to `birchpad-commands`
-- [ ] 6.19 The command registry without the workspace: handlers registered for a kind of target
+- [x] 6.19 The command registry without the workspace: handlers registered for a kind of target
       rather than for `Workspace` and `EditorView` by name; the dialogs' buttons and error
       reporting (`dialog_close`, `dialog_action`, `report_error`) and the settings the editor
       reads from `AppState` in a small shared crate, so that the editor no longer reaches into

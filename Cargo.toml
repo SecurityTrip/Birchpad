@@ -22,6 +22,7 @@ birchpad-plugin = { path = "crates/plugin", version = "1.0.0" }
 birchpad-syntax = { path = "crates/syntax", version = "1.0.0" }
 birchpad-theme = { path = "crates/theme", version = "1.0.0" }
 birchpad-tools = { path = "crates/tools", version = "1.0.0" }
+birchpad-ui = { path = "crates/ui", version = "1.0.0" }
 birchpad-update = { path = "crates/update", version = "1.0.0" }
 birchpad-view = { path = "crates/view", version = "1.0.0" }
 

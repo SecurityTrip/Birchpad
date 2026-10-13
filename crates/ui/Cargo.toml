@@ -1,0 +1,30 @@
+[package]
+name = "birchpad-ui"
+description = "What the parts of Birchpad's window share: the command registry, the settings and state of the application, dialog buttons and messages to the user."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+birchpad-commands.workspace = true
+birchpad-config.workspace = true
+birchpad-core.workspace = true
+birchpad-i18n.workspace = true
+birchpad-io.workspace = true
+gpui-kit = "0.7"
+serde.workspace = true
+
+[features]
+# `take_info`: the messages shown to the user, for tests to read.
+test-support = []
+
+[dev-dependencies]
+gpui-kit = { version = "0.7", features = ["test-support"] }
+serde_json.workspace = true
+
+[lints]
+workspace = true

@@ -27,7 +27,7 @@ use gpui_kit::{AnyWindowHandle, App, AppContext as _, Context, Global, WeakEntit
 use semver::Version;
 
 use crate::app_state::AppState;
-use crate::commands::CommandRegistry;
+use crate::commands::{CommandRegistry, Register as _};
 use crate::help::{BUILD_CHANNEL, VERSION, show_message};
 use crate::workspace::{Workspace, report_error};
 

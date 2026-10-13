@@ -31,7 +31,7 @@ use gpui_kit::{AnyElement, AnyView, AppContext as _, Context, Window, div, prelu
 use serde::Deserialize;
 
 use crate::app_state::AppState;
-use crate::commands::CommandRegistry;
+use crate::commands::{CommandRegistry, Register as _};
 use crate::workspace::Workspace;
 
 pub(crate) use character_panel::CharacterPanel;

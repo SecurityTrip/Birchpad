@@ -128,6 +128,7 @@ downloading them. See [ADR 0020](docs/adr/0020-signed-updates-and-nightly-builds
 | `crates/plugin` | Plugins as WebAssembly components (`wit/birchpad.wit`), Rhai scripts, the plugin manager. No UI. |
 | `crates/update` | Updates: the signed update manifest, channels, versions, installing (Velopack on Windows). No UI. |
 | `crates/release-tool` | `birchpad-release`: signing keys and the update manifest, for the release workflows. |
+| `crates/ui` | What the window's parts share: the command registry, the settings and state of the application, dialog buttons, messages to the user. |
 | `crates/menu-bar` | The menu bar drawn in the window on Windows and Linux, with Windows' keyboard access. |
 | `crates/app` | The desktop application. |
 | `packaging/` | Release packaging: per-machine MSI, macOS app bundle, portable-mode marker, update signing setup. |

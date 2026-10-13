@@ -11,7 +11,7 @@ use serde::Deserialize;
 
 use crate::app_state::AppState;
 use crate::buffer::{Buffer, ReadOnly};
-use crate::commands::CommandRegistry;
+use crate::commands::{CommandRegistry, Register as _};
 use crate::editor::EditorView;
 use crate::workspace::{Workspace, report_warning};
 

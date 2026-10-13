@@ -12,7 +12,9 @@ use gpui_kit::{ClipboardItem, Context};
 use serde::{Deserialize, Serialize};
 
 use super::{EditorView, LastEdit};
-use crate::commands::CommandRegistry;
+use birchpad_ui::CommandRegistry;
+
+use crate::commands::Register as _;
 
 /// A rectangle and the selection it made; the rectangle is active only while the view's
 /// selection is still that one, so any other way of changing the selection leaves column

@@ -8,7 +8,7 @@
 use std::path::PathBuf;
 
 use crate::app_state::AppState;
-use crate::commands::CommandRegistry;
+use crate::commands::{CommandRegistry, Register as _};
 use crate::editor::{EditorEvent, EditorView};
 use crate::workspace::Workspace;
 use anyhow::anyhow;
