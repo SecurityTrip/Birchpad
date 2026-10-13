@@ -986,7 +986,7 @@ impl Workspace {
         match Searcher::new(&query) {
             Ok(searcher) => Some((searcher, query)),
             Err(error) => {
-                let error = crate::i18n::tr_text(&error.to_string());
+                let error = error.to_string();
                 self.report(Some(format!("{}: {error}", t!("find.find"))), true, cx);
                 None
             }
@@ -997,7 +997,7 @@ impl Workspace {
     pub(crate) fn report_failure(&mut self, searcher: &Searcher, cx: &mut Context<Self>) -> bool {
         match searcher.failure() {
             Some(error) => {
-                let error = crate::i18n::tr_text(&error.to_string());
+                let error = error.to_string();
                 self.report(Some(format!("{}: {error}", t!("find.find"))), true, cx);
                 true
             }

@@ -121,7 +121,7 @@ fn convert_to(
         report_warning(
             t!(
                 "encoding-ui.unencodable",
-                problem = crate::i18n::tr_text(&problem.to_string()),
+                problem = problem.to_string(),
                 first = first_position(&text, &problem)
             ),
             window,

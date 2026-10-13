@@ -1,0 +1,22 @@
+[package]
+name = "birchpad-i18n"
+description = "The languages of Birchpad's interface: YAML locales, texts by key with named arguments and plural forms, the current language. No UI."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+sys-locale = "0.3"
+yaml-rust2 = "0.13"
+
+[features]
+# The language is chosen for each thread, not for the process: tests that switch it run side by
+# side (`set_language` in one test does not change another's). Only for tests.
+per-thread = []
+
+[lints]
+workspace = true

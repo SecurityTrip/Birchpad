@@ -44,19 +44,19 @@ pub struct ProjectWorkspace {
 
 #[derive(Debug, thiserror::Error)]
 pub enum ProjectError {
-    #[error("cannot read {}: {source}", path.display())]
+    #[error("{}", birchpad_i18n::t!("config.cannot-read", path = .path.display(), reason = .source))]
     Read {
         path: PathBuf,
         #[source]
         source: io::Error,
     },
-    #[error("cannot write {}: {source}", path.display())]
+    #[error("{}", birchpad_i18n::t!("config.cannot-write", path = .path.display(), reason = .source))]
     Write {
         path: PathBuf,
         #[source]
         source: io::Error,
     },
-    #[error("{} is not a Notepad++ workspace: {reason}", path.display())]
+    #[error("{}", birchpad_i18n::t!("config.not-a-workspace", path = .path.display(), reason = .reason))]
     Format { path: PathBuf, reason: String },
 }
 

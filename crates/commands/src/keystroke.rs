@@ -55,13 +55,13 @@ pub struct Keystroke {
 
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum KeystrokeError {
-    #[error("empty keystroke")]
+    #[error("{}", birchpad_i18n::t!("commands.keystroke.empty"))]
     Empty,
-    #[error("unknown modifier or key `{0}`")]
+    #[error("{}", birchpad_i18n::t!("commands.keystroke.unknown-key", key = .0))]
     UnknownKey(String),
-    #[error("modifier `{0}` appears twice")]
+    #[error("{}", birchpad_i18n::t!("commands.keystroke.modifier-twice", modifier = .0))]
     DuplicateModifier(String),
-    #[error("keystroke `{0}` has no key, only modifiers")]
+    #[error("{}", birchpad_i18n::t!("commands.keystroke.no-key", keys = .0))]
     MissingKey(String),
 }
 

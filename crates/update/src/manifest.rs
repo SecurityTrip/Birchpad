@@ -101,30 +101,21 @@ pub const PLATFORM: Option<&str> = if cfg!(all(windows, target_arch = "x86_64"))
 
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum ManifestError {
-    #[error("the update manifest cannot be read: {0}")]
+    #[error("{}", birchpad_i18n::t!("update.manifest-does-not-read", reason = .0))]
     Format(String),
-    #[error("this build of Birchpad has no key to check update manifests with")]
+    #[error("{}", birchpad_i18n::t!("update.no-keys"))]
     NoKeys,
-    #[error("the update manifest is not signed with a key this Birchpad trusts")]
+    #[error("{}", birchpad_i18n::t!("update.untrusted"))]
     Untrusted,
-    #[error("the update manifest's signature is not valid")]
+    #[error("{}", birchpad_i18n::t!("update.bad-signature"))]
     BadSignature,
-    #[error("the update manifest is for {0:?}, not Birchpad")]
+    #[error("{}", birchpad_i18n::t!("update.other-product", product = format!("{:?}", .0)))]
     Product(String),
-    #[error(
-        "the update manifest has format {0} and this Birchpad reads format {SCHEMA}: update it \
-         from the download page"
-    )]
+    #[error("{}", birchpad_i18n::t!("update.newer-format", format = .0, known = SCHEMA))]
     Schema(u32),
-    #[error(
-        "the update manifest expired on {0}: the update server may be serving an old one to hide \
-         newer releases"
-    )]
+    #[error("{}", birchpad_i18n::t!("update.expired", date = .0))]
     Expired(String),
-    #[error(
-        "the update manifest was signed on {signed}, before one seen already or this build \
-         ({newest}): the update server may be serving an old one"
-    )]
+    #[error("{}", birchpad_i18n::t!("update.rollback", signed = .signed, newest = .newest))]
     Rollback { signed: String, newest: String },
 }
 

@@ -61,7 +61,7 @@ fn default_entry() -> String {
 /// A manifest that does not read or does not make sense.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum ManifestError {
-    #[error("plugin.toml does not read: {0}")]
+    #[error("{}", birchpad_i18n::t!("plugin.manifest-does-not-read", reason = .0))]
     Syntax(String),
     #[error("{0}")]
     Invalid(String),

@@ -284,9 +284,9 @@ impl ThemeFont {
 /// Why a theme did not read.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum ThemeError {
-    #[error("not a theme: {0}")]
+    #[error("{}", birchpad_i18n::t!("theme.not-a-theme", reason = .0))]
     Toml(String),
-    #[error("not a Notepad++ theme: {0}")]
+    #[error("{}", birchpad_i18n::t!("theme.not-a-notepad-theme", reason = .0))]
     Xml(String),
 }
 

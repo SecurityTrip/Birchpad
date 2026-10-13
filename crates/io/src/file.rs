@@ -40,20 +40,22 @@ impl FileInfo {
 
 #[derive(Debug, thiserror::Error)]
 pub enum ReadError {
-    #[error("{} does not exist", .0.display())]
+    #[error("{}", birchpad_i18n::t!("io.does-not-exist", path = .0.display()))]
     NotFound(PathBuf),
-    #[error("{} is a folder, not a file", .0.display())]
+    #[error("{}", birchpad_i18n::t!("io.not-a-file", path = .0.display()))]
     NotAFile(PathBuf),
-    #[error(
-        "{} is too large to open ({} MB; the limit is {} MB)",
-        path.display(), size / 1024 / 1024, limit / 1024 / 1024
-    )]
+    #[error("{}", birchpad_i18n::t!(
+        "io.too-large",
+        path = .path.display(),
+        size = .size / 1024 / 1024,
+        limit = .limit / 1024 / 1024
+    ))]
     TooLarge {
         path: PathBuf,
         size: u64,
         limit: u64,
     },
-    #[error("cannot read {}: {source}", path.display())]
+    #[error("{}", birchpad_i18n::t!("io.cannot-read", path = .path.display(), reason = .source))]
     Io {
         path: PathBuf,
         #[source]
@@ -178,22 +180,26 @@ pub fn decode_file(bytes: Vec<u8>, info: FileInfo, options: LoadOptions) -> Load
 
 #[derive(Debug, thiserror::Error)]
 pub enum SaveError {
-    #[error("{} is read-only", .0.display())]
+    #[error("{}", birchpad_i18n::t!("io.read-only", path = .0.display()))]
     ReadOnly(PathBuf),
-    #[error("{} is a folder, not a file", .0.display())]
+    #[error("{}", birchpad_i18n::t!("io.not-a-file", path = .0.display()))]
     NotAFile(PathBuf),
-    #[error("cannot save {}: {source}", path.display())]
+    #[error("{}", birchpad_i18n::t!("io.cannot-save", path = .path.display(), reason = .source))]
     Io {
         path: PathBuf,
         #[source]
         source: io::Error,
     },
     /// Writing failed after the file had been partly overwritten.
-    #[error(
-        "saving {} failed part way ({source}); the file may be damaged.{}",
-        path.display(),
-        recovery.as_ref().map(|r| format!(" A complete copy was kept in {}.", r.display())).unwrap_or_default()
-    )]
+    #[error("{}", birchpad_i18n::t!(
+        "io.interrupted",
+        path = .path.display(),
+        reason = .source,
+        copy = .recovery
+            .as_ref()
+            .map(|copy| format!(" {}", birchpad_i18n::t!("io.copy-kept", path = copy.display())))
+            .unwrap_or_default()
+    ))]
     Interrupted {
         path: PathBuf,
         recovery: Option<PathBuf>,

@@ -111,6 +111,9 @@ version's release notes from its section here.
 - Ctrl+Tab goes to the most recently used document instead of the next tab, as in Notepad++;
   Ctrl+PageDown and Ctrl+PageUp still go to the next and previous tab, and turning the
   document switcher off in Preferences > Tab Bar gives Ctrl+Tab its old meaning.
+- The localization is a crate of its own, `birchpad-i18n`, and the crates without a window make
+  their messages in the interface's language, instead of the application translating their
+  English afterwards; the rest of JSON validation's messages are translated now too.
 
 ## [0.1.5] - 2026-10-12
 

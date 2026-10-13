@@ -9,6 +9,7 @@ repository.workspace = true
 authors.workspace = true
 
 [dependencies]
+birchpad-i18n.workspace = true
 base64 = "0.23"
 birchpad-config.workspace = true
 ed25519-dalek = "3"

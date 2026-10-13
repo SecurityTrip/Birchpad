@@ -9,6 +9,7 @@ repository.workspace = true
 authors.workspace = true
 
 [dependencies]
+birchpad-i18n.workspace = true
 birchpad-core.workspace = true
 chardetng = "1"
 encoding_rs = "0.8"

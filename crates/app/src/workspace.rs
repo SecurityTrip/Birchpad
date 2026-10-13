@@ -275,10 +275,7 @@ pub(crate) fn dialog_close(label: &'static str) -> DialogClose {
 
 /// Tells the user that something went well, without interrupting them.
 pub(crate) fn report_success(message: impl Into<String>, window: &mut Window, cx: &mut App) {
-    window.push_notification(
-        Notification::success(crate::i18n::tr_text(&message.into())),
-        cx,
-    );
+    window.push_notification(Notification::success(message.into()), cx);
 }
 
 /// Tells the user something, without interrupting them.
@@ -286,15 +283,12 @@ pub(crate) fn report_info(message: impl Into<String>, window: &mut Window, cx: &
     let message = message.into();
     #[cfg(test)]
     tests::INFO.with(|info| info.borrow_mut().push(message.clone()));
-    window.push_notification(Notification::info(crate::i18n::tr_text(&message)), cx);
+    window.push_notification(Notification::info(message), cx);
 }
 
 /// Shows a warning to the user without interrupting them.
 pub(crate) fn report_warning(message: impl Into<String>, window: &mut Window, cx: &mut App) {
-    window.push_notification(
-        Notification::warning(crate::i18n::tr_text(&message.into())),
-        cx,
-    );
+    window.push_notification(Notification::warning(message.into()), cx);
 }
 
 pub(crate) struct Workspace {

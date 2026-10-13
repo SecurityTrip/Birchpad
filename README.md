@@ -118,6 +118,7 @@ downloading them. See [ADR 0020](docs/adr/0020-signed-updates-and-nightly-builds
 |---|---|
 | `crates/core` | Text model: rope buffer, selections, change sets, transactions, undo history. No UI. |
 | `crates/config` | Layered settings: defaults, machine defaults, user settings, administrator policies. |
+| `crates/i18n` | The interface languages: YAML locales, texts by key, plural forms, the language in use. No UI. |
 | `crates/commands` | Command catalog, keymaps and the menu model, as data. No UI. |
 | `crates/io` | Encoding detection and conversion, reading and safely saving files. No UI. |
 | `crates/view` | Layout of a document view in cells: tab stops, word wrap, visual rows. No UI. |

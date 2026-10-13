@@ -8,6 +8,7 @@
 //! call.
 
 use anyhow::{Context as _, Result, anyhow};
+use birchpad_i18n::t;
 use wasmtime::component::{Component, HasSelf, Linker};
 use wasmtime::{Config, Engine, Store, StoreLimits, StoreLimitsBuilder};
 
@@ -74,7 +75,7 @@ impl Runtime {
     pub fn compile(&self, bytes: &[u8]) -> Result<Component> {
         Component::new(&self.engine, bytes)
             .map_err(|error| anyhow!("{error}"))
-            .context("the plugin is not a WebAssembly component")
+            .with_context(|| t!("plugin.not-a-component"))
     }
 
     /// Instantiates a compiled component and asks it for its commands.
@@ -96,21 +97,28 @@ impl Runtime {
 fn check_commands(commands: Vec<types::Command>) -> Result<Vec<PluginCommand>> {
     if commands.len() > MAX_COMMANDS {
         anyhow::bail!(
-            "the plugin has {} commands, more than {MAX_COMMANDS}",
-            commands.len()
+            "{}",
+            t!(
+                "plugin.too-many-commands",
+                count = commands.len(),
+                limit = MAX_COMMANDS
+            )
         );
     }
     let mut checked: Vec<PluginCommand> = Vec::with_capacity(commands.len());
     for command in commands {
         if !is_valid_id(&command.id) {
-            anyhow::bail!("{:?} is not a command id", command.id);
+            anyhow::bail!(
+                "{}",
+                t!("plugin.not-a-command-id", id = format!("{:?}", command.id))
+            );
         }
         if checked.iter().any(|known| known.id == command.id) {
-            anyhow::bail!("the command {} comes twice", command.id);
+            anyhow::bail!("{}", t!("plugin.command-twice", id = command.id));
         }
         let title = command.title.trim();
         if title.is_empty() || title.contains(char::is_control) {
-            anyhow::bail!("the command {} needs a title of one line", command.id);
+            anyhow::bail!("{}", t!("plugin.title-of-one-line", id = command.id));
         }
         checked.push(PluginCommand {
             id: command.id,
@@ -155,7 +163,7 @@ impl Plugin {
             .map_err(|error| anyhow!("{error}"))?;
         let bindings = Bindings::instantiate(&mut store, &self.component, &linker)
             .map_err(|error| anyhow!("{error:#}"))
-            .context("the plugin does not start")?;
+            .with_context(|| t!("plugin.does-not-start"))?;
         Ok((store, bindings))
     }
 
@@ -189,7 +197,7 @@ impl Plugin {
     /// Runs the plugin's command `id`.
     pub fn run(&mut self, id: &str, session: Session) -> Result<Outcome> {
         if !self.commands.iter().any(|command| command.id == id) {
-            anyhow::bail!("the plugin has no command {id}");
+            anyhow::bail!("{}", t!("plugin.no-plugin-command", id = id));
         }
         let (result, outcome) =
             self.call(session, |bindings, store| bindings.call_run(store, id))?;
@@ -223,11 +231,11 @@ impl Plugin {
 fn describe_trap(error: &wasmtime::Error) -> anyhow::Error {
     if let Some(trap) = error.downcast_ref::<wasmtime::Trap>() {
         return match trap {
-            wasmtime::Trap::OutOfFuel => anyhow!("the plugin ran too long and was stopped"),
-            trap => anyhow!("the plugin failed: {trap}"),
+            wasmtime::Trap::OutOfFuel => anyhow!("{}", t!("plugin.too-long")),
+            trap => anyhow!("{}", t!("plugin.failed", reason = trap)),
         };
     }
-    anyhow!("the plugin failed: {error:#}")
+    anyhow!("{}", t!("plugin.failed", reason = format!("{error:#}")))
 }
 
 fn offset(value: u64) -> usize {

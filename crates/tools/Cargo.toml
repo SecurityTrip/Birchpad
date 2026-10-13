@@ -9,6 +9,7 @@ repository.workspace = true
 authors.workspace = true
 
 [dependencies]
+birchpad-i18n.workspace = true
 roxmltree = "0.21"
 similar = { version = "3.2", default-features = false, features = ["std"] }
 spellbook = "0.4"

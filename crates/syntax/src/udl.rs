@@ -62,7 +62,7 @@ pub struct UserLanguage {
 
 /// Why a UDL file did not read.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
-#[error("not a user defined language file: {0}")]
+#[error("{}", birchpad_i18n::t!("syntax.not-a-udl", reason = .0))]
 pub struct UdlError(String);
 
 /// Splits a list into its words; `"two words"` in quotes is one.

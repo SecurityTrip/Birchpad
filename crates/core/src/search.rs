@@ -50,13 +50,13 @@ pub struct Query {
 
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum SearchError {
-    #[error("the search text is empty")]
+    #[error("{}", birchpad_i18n::t!("core.search.empty"))]
     Empty,
-    #[error("invalid regular expression: {0}")]
+    #[error("{}", birchpad_i18n::t!("core.search.invalid-regex", reason = .0))]
     InvalidRegex(String),
     /// The regular expression could not be matched, typically because backtracking took too
     /// long (`(a*)*b` on a long run of `a`).
-    #[error("the regular expression is too complex to match: {0}")]
+    #[error("{}", birchpad_i18n::t!("core.search.too-complex", reason = .0))]
     RegexFailed(String),
 }
 

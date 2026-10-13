@@ -329,7 +329,7 @@ window and dialogs, but also logic that needs no window, and the editor view, wh
 to a panel or a dialog rebuilds. These steps move both out before the remaining features land;
 behavior does not change, and the tests move with the code.
 
-- [ ] 6.17 `birchpad-i18n`: the localization without a window (the YAML locales and their
+- [x] 6.17 `birchpad-i18n`: the localization without a window (the YAML locales and their
       parsing, named arguments, plural forms, the current language, `tr_error`) as a crate of
       its own, so that the crates without a window translate their messages where they make
       them, not the application from their English

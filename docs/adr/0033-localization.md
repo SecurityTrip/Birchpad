@@ -1,6 +1,7 @@
 # ADR 0033: Localization
 
-- Status: accepted (revised 2026-10-12: texts by key, in YAML)
+- Status: accepted (revised 2026-10-12: texts by key, in YAML; 2026-10-13: a crate of its own,
+  the crates without a window translate their messages)
 - Date: 2026-10-12
 
 ## Context
@@ -17,7 +18,9 @@ interface.
   `t!("macros.there-is-no-macro-named", name = name)` for a text with arguments. Keys are
   grouped by the part of the program that shows them (`find.*`, `status-bar.*`,
   `preferences.*`); texts used in several places are `common.*`.
-- **Locales are YAML files** in `crates/app/locales`, built into the program: `en.yaml` has
+- **A crate of its own, `birchpad-i18n`,** holds the locales, their parsing, `t!`, plural forms
+  and the language in use, with no window, so that every crate translates its texts.
+- **Locales are YAML files** in `crates/i18n/locales`, built into the program: `en.yaml` has
   every key and is the reference; `ru.yaml` translates them. A key a language lacks shows in
   English. Arguments are named (`{name}`), so a translation may put them in any order.
 - **Plural forms** are a mapping of CLDR's forms (`one`, `few`, `many`, `other`) with
@@ -25,11 +28,16 @@ interface.
 - **Data gets keys from its ids:** command titles are `command.<id>` (menus without their own
   label, the Shortcut Mapper), menu labels `menu.<label>`, panels `panel.<id>`, Preferences
   `preferences.<label>`; the English in the code stays as the fallback.
-- **The crates without a window speak English** (their errors are part of their API and their
-  tests). A locale's `text` section translates their sentences, English to translation, with
-  `{}` for any part; a sentence inside another (an error's cause) is translated too.
+- **The crates without a window translate their messages where they make them**, with keys
+  that start with the crate's name (`io.*`, `config.*`, `plugin.*`, `update.*`); an error's
+  `Display` is its text in the interface's language. (Until 2026-10-13 they spoke English and a
+  locale's `text` section matched their sentences, which broke silently when a sentence changed.)
+  Messages of the system and of other libraries are shown as they come.
+- **The language is the process's**, so that a message made on a background thread is in it
+  too; for tests the `per-thread` feature makes it each thread's, so tests that switch it run
+  side by side.
 - **Tests keep the locales whole:** every key of `en.yaml` is in every locale with the same
-  arguments, every `t!` key of the code is in `en.yaml`, every command, menu label and panel has
+  arguments, every `t!` key of the code of every crate is in `en.yaml`, every command, menu label and panel has
   its text.
 - **`appearance.language`:** `auto` (the default) follows the system's language
   (`sys-locale`), `en` and `ru` choose one; Preferences > Appearance changes it at once.

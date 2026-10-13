@@ -4,6 +4,7 @@
 //! Each plugin lives in `plugins/<id>/` with its `plugin.toml` and component;
 //! `plugins/disabled.toml` lists the plugins turned off.
 
+use birchpad_i18n::t;
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context as _, Result, anyhow, bail};
@@ -87,14 +88,17 @@ fn folder_name(dir: &Path) -> String {
 pub fn read_plugin(dir: &Path) -> Result<Installed> {
     let path = dir.join(MANIFEST);
     let text = std::fs::read_to_string(&path)
-        .with_context(|| format!("cannot read {}", path.display()))?;
+        .with_context(|| t!("plugin.cannot-read", path = path.display()))?;
     let manifest = Manifest::parse(&text)?;
     let installed = Installed {
         manifest,
         dir: dir.to_owned(),
     };
     if !installed.entry().is_file() {
-        bail!("there is no {}", installed.entry().display());
+        bail!(
+            "{}",
+            t!("plugin.no-entry", path = installed.entry().display())
+        );
     }
     Ok(installed)
 }
@@ -103,11 +107,9 @@ pub fn read_plugin(dir: &Path) -> Result<Installed> {
 pub fn permitted(id: &str, settings: &PluginSettings) -> Result<(), String> {
     match settings.install {
         PluginInstall::Allow => Ok(()),
-        PluginInstall::Deny => Err("plugins are turned off by your administrator".to_owned()),
+        PluginInstall::Deny => Err(t!("plugin.turned-off")),
         PluginInstall::Allowlist if settings.allowed.iter().any(|allowed| allowed == id) => Ok(()),
-        PluginInstall::Allowlist => {
-            Err(format!("your administrator does not allow the plugin {id}"))
-        }
+        PluginInstall::Allowlist => Err(t!("plugin.not-allowed", id = id)),
     }
 }
 
@@ -118,9 +120,12 @@ pub fn install(
     plugins_dir: &Path,
     settings: &PluginSettings,
 ) -> Result<Installed> {
-    let source = manifest_path
-        .parent()
-        .ok_or_else(|| anyhow!("{} is not in a folder", manifest_path.display()))?;
+    let source = manifest_path.parent().ok_or_else(|| {
+        anyhow!(
+            "{}",
+            t!("plugin.not-in-a-folder", path = manifest_path.display())
+        )
+    })?;
     let plugin = read_plugin(source)?;
     let id = plugin.manifest.id.clone();
     permitted(&id, settings).map_err(|message| anyhow!(message))?;
@@ -130,33 +135,43 @@ pub fn install(
         _ => false,
     };
     if same(source, &target) {
-        bail!("the plugin {id} is already installed from there");
+        bail!("{}", t!("plugin.already-installed", id = id));
     }
     let size = folder_size(source)?;
     if size > MAX_PLUGIN_BYTES {
-        bail!("the plugin {id} takes {size} bytes, more than the {MAX_PLUGIN_BYTES} a plugin may");
+        bail!(
+            "{}",
+            t!(
+                "plugin.too-large",
+                id = id,
+                size = size,
+                limit = MAX_PLUGIN_BYTES
+            )
+        );
     }
     // Copy next to the target first, so that a failed copy leaves the old version in place.
     let staging = plugins_dir.join(format!(".{id}.installing"));
     let _ = std::fs::remove_dir_all(&staging);
     std::fs::create_dir_all(plugins_dir)
-        .with_context(|| format!("cannot create {}", plugins_dir.display()))?;
+        .with_context(|| t!("plugin.cannot-create", path = plugins_dir.display()))?;
     if let Err(error) = copy_folder(source, &staging) {
         let _ = std::fs::remove_dir_all(&staging);
         return Err(error);
     }
     if target.exists() {
         std::fs::remove_dir_all(&target)
-            .with_context(|| format!("cannot remove the old {}", target.display()))?;
+            .with_context(|| t!("plugin.cannot-remove-old", path = target.display()))?;
     }
     std::fs::rename(&staging, &target)
-        .with_context(|| format!("cannot move the plugin into {}", target.display()))?;
+        .with_context(|| t!("plugin.cannot-move", path = target.display()))?;
     read_plugin(&target)
 }
 
 fn folder_size(dir: &Path) -> Result<u64> {
     let mut total = 0;
-    for entry in std::fs::read_dir(dir).with_context(|| format!("cannot read {}", dir.display()))? {
+    for entry in
+        std::fs::read_dir(dir).with_context(|| t!("plugin.cannot-read", path = dir.display()))?
+    {
         let entry = entry?;
         let kind = entry.file_type()?;
         if kind.is_dir() {
@@ -170,9 +185,9 @@ fn folder_size(dir: &Path) -> Result<u64> {
 
 /// Copies the files and folders of `from` into `to`; links are left out.
 fn copy_folder(from: &Path, to: &Path) -> Result<()> {
-    std::fs::create_dir_all(to).with_context(|| format!("cannot create {}", to.display()))?;
+    std::fs::create_dir_all(to).with_context(|| t!("plugin.cannot-create", path = to.display()))?;
     for entry in
-        std::fs::read_dir(from).with_context(|| format!("cannot read {}", from.display()))?
+        std::fs::read_dir(from).with_context(|| t!("plugin.cannot-read", path = from.display()))?
     {
         let entry = entry?;
         let kind = entry.file_type()?;
@@ -181,7 +196,7 @@ fn copy_folder(from: &Path, to: &Path) -> Result<()> {
             copy_folder(&entry.path(), &target)?;
         } else if kind.is_file() {
             std::fs::copy(entry.path(), &target)
-                .with_context(|| format!("cannot copy {}", entry.path().display()))?;
+                .with_context(|| t!("plugin.cannot-copy", path = entry.path().display()))?;
         }
     }
     Ok(())
@@ -190,13 +205,13 @@ fn copy_folder(from: &Path, to: &Path) -> Result<()> {
 /// Removes the plugin `id` from `plugins_dir`.
 pub fn uninstall(plugins_dir: &Path, id: &str) -> Result<()> {
     if !crate::manifest::is_valid_id(id) {
-        bail!("{id:?} is not a plugin id");
+        bail!("{}", t!("plugin.not-an-id", id = format!("{id:?}")));
     }
     let dir = plugins_dir.join(id);
     if !dir.join(MANIFEST).is_file() {
-        bail!("the plugin {id} is not installed");
+        bail!("{}", t!("plugin.not-installed", id = id));
     }
-    std::fs::remove_dir_all(&dir).with_context(|| format!("cannot remove {}", dir.display()))
+    std::fs::remove_dir_all(&dir).with_context(|| t!("plugin.cannot-remove", path = dir.display()))
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
@@ -223,10 +238,10 @@ pub fn set_enabled(plugins_dir: &Path, id: &str, enabled: bool) -> Result<()> {
     }
     disabled.sort();
     std::fs::create_dir_all(plugins_dir)
-        .with_context(|| format!("cannot create {}", plugins_dir.display()))?;
+        .with_context(|| t!("plugin.cannot-create", path = plugins_dir.display()))?;
     let path = plugins_dir.join(DISABLED);
     let text = toml::to_string(&DisabledFile { disabled }).unwrap_or_default();
-    std::fs::write(&path, text).with_context(|| format!("cannot write {}", path.display()))
+    std::fs::write(&path, text).with_context(|| t!("plugin.cannot-write", path = path.display()))
 }
 
 #[cfg(test)]

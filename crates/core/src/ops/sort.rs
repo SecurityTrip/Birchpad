@@ -30,7 +30,7 @@ pub enum SortKey {
 
 /// A line that has no number to sort by.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
-#[error("line {line} does not start with a number")]
+#[error("{}", birchpad_i18n::t!("core.sort.not-a-number", line = .line))]
 pub struct SortError {
     /// 1-based line number, as the user sees it.
     pub line: usize,

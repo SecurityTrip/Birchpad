@@ -607,6 +607,7 @@ dependencies = [
  "birchpad-commands",
  "birchpad-config",
  "birchpad-core",
+ "birchpad-i18n",
  "birchpad-io",
  "birchpad-menu-bar",
  "birchpad-plugin",
@@ -635,7 +636,6 @@ dependencies = [
  "unicode-bidi",
  "windows-sys 0.61.2",
  "x11rb",
- "yaml-rust2",
 ]
 
 [[package]]
@@ -652,6 +652,7 @@ dependencies = [
 name = "birchpad-commands"
 version = "1.0.0"
 dependencies = [
+ "birchpad-i18n",
  "serde",
  "serde_json",
  "thiserror 2.0.21",
@@ -663,6 +664,7 @@ dependencies = [
 name = "birchpad-config"
 version = "1.0.0"
 dependencies = [
+ "birchpad-i18n",
  "roxmltree 0.21.1",
  "serde",
  "tempfile",
@@ -677,6 +679,7 @@ name = "birchpad-core"
 version = "1.0.0"
 dependencies = [
  "base64 0.23.1",
+ "birchpad-i18n",
  "fancy-regex",
  "md-5 0.11.0",
  "memchr",
@@ -710,10 +713,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "birchpad-i18n"
+version = "1.0.0"
+dependencies = [
+ "anyhow",
+ "sys-locale",
+ "yaml-rust2",
+]
+
+[[package]]
 name = "birchpad-io"
 version = "1.0.0"
 dependencies = [
  "birchpad-core",
+ "birchpad-i18n",
  "chardetng",
  "encoding_rs 0.8.42",
  "proptest",
@@ -737,6 +750,7 @@ dependencies = [
  "birchpad-commands",
  "birchpad-config",
  "birchpad-core",
+ "birchpad-i18n",
  "rhai",
  "serde",
  "serde_json",
@@ -767,6 +781,7 @@ name = "birchpad-syntax"
 version = "1.0.0"
 dependencies = [
  "birchpad-core",
+ "birchpad-i18n",
  "insta",
  "proptest",
  "ropey",
@@ -831,6 +846,7 @@ dependencies = [
 name = "birchpad-theme"
 version = "1.0.0"
 dependencies = [
+ "birchpad-i18n",
  "roxmltree 0.21.1",
  "serde",
  "thiserror 2.0.21",
@@ -841,6 +857,7 @@ dependencies = [
 name = "birchpad-tools"
 version = "1.0.0"
 dependencies = [
+ "birchpad-i18n",
  "proptest",
  "roxmltree 0.21.1",
  "similar 3.2.0",
@@ -854,6 +871,7 @@ version = "1.0.0"
 dependencies = [
  "base64 0.23.1",
  "birchpad-config",
+ "birchpad-i18n",
  "ed25519-dalek",
  "rustls",
  "semver",

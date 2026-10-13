@@ -41,7 +41,7 @@ pub fn dump(bytes: &[u8], line_ending: &str) -> String {
 
 /// A row of a dump that does not read.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
-#[error("line {line}: {message}")]
+#[error("{}", birchpad_i18n::t!("tools.hex.line", line = .line, message = .message))]
 pub struct HexError {
     /// 1-based.
     pub line: usize,
@@ -64,14 +64,22 @@ pub fn parse(text: &str) -> Result<Vec<u8>, HexError> {
             continue;
         };
         if offset.is_empty() || !offset.bytes().all(|byte| byte.is_ascii_hexdigit()) {
-            return Err(error(format!("{offset:?} is not an offset")));
+            return Err(error(birchpad_i18n::t!(
+                "tools.hex.not-an-offset",
+                text = format!("{offset:?}")
+            )));
         }
         for field in fields {
             match u8::from_str_radix(field, 16) {
                 Ok(byte) if field.len() == 2 && field.bytes().all(|b| b.is_ascii_hexdigit()) => {
                     bytes.push(byte);
                 }
-                _ => return Err(error(format!("{field:?} is not a byte in hexadecimal"))),
+                _ => {
+                    return Err(error(birchpad_i18n::t!(
+                        "tools.hex.not-a-byte",
+                        text = format!("{field:?}")
+                    )));
+                }
             }
         }
     }

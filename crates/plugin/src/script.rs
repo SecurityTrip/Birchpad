@@ -17,6 +17,7 @@
 //!
 //! Scripts cannot touch files or the network, and stop after [`MAX_OPERATIONS`] operations.
 
+use birchpad_i18n::t;
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -133,18 +134,21 @@ pub fn run(name: &str, source: &str, session: Session) -> Result<Outcome> {
     let result = engine.run(source);
     drop(engine);
     let session = Rc::try_unwrap(shared)
-        .map_err(|_| anyhow!("the script {name} is still running"))?
+        .map_err(|_| anyhow!("{}", t!("plugin.script-running", name = name)))?
         .into_inner();
     match result {
         Ok(()) => Ok(session.finish()),
         Err(error) => {
             let error = match *error {
                 EvalAltResult::ErrorTooManyOperations(_) => {
-                    "it ran too long and was stopped".to_owned()
+                    t!("plugin.script-too-long")
                 }
                 error => error.to_string(),
             };
-            Err(anyhow!("the script {name} failed: {error}"))
+            Err(anyhow!(
+                "{}",
+                t!("plugin.script-failed", name = name, reason = error)
+            ))
         }
     }
 }

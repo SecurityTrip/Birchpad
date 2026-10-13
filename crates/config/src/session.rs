@@ -101,11 +101,11 @@ pub struct SessionTab {
 
 #[derive(Debug, thiserror::Error)]
 pub enum SessionError {
-    #[error("cannot read {path}: {source}")]
+    #[error("{}", birchpad_i18n::t!("config.cannot-read", path = .path.display(), reason = .source))]
     Read { path: PathBuf, source: io::Error },
     #[error("{0}")]
     Format(String),
-    #[error("the session was saved by a newer version of Birchpad (format {0})")]
+    #[error("{}", birchpad_i18n::t!("config.session-too-new", format = .0))]
     TooNew(u32),
 }
 

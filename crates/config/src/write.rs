@@ -11,15 +11,15 @@ use crate::settings::Settings;
 /// Why a setting could not be changed.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum SettingError {
-    #[error("there is no setting {0}")]
+    #[error("{}", birchpad_i18n::t!("config.no-setting", key = .0))]
     UnknownKey(String),
     #[error("{key}: {message}")]
     InvalidValue { key: String, message: String },
-    #[error("the settings file is not valid TOML: {0}")]
+    #[error("{}", birchpad_i18n::t!("config.not-toml", reason = .0))]
     Malformed(String),
-    #[error("{key} is in the way: it is not a table in the settings file")]
+    #[error("{}", birchpad_i18n::t!("config.not-a-table", key = .key))]
     NotATable { key: String },
-    #[error("cannot write the settings: {0}")]
+    #[error("{}", birchpad_i18n::t!("config.cannot-write-settings", reason = .0))]
     Io(String),
 }
 

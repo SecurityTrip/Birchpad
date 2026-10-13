@@ -29,19 +29,17 @@ impl fmt::Display for Unencodable {
             .iter()
             .map(|(_, ch)| format!("'{ch}' (U+{:04X})", u32::from(*ch)))
             .collect();
-        write!(
-            f,
-            "{} character{} cannot be saved in {}: {}{}",
-            self.count,
-            if self.count == 1 { "" } else { "s" },
-            display_name(self.encoding, false),
-            chars.join(", "),
-            if self.count > self.samples.len() {
-                ", ..."
-            } else {
-                ""
-            }
-        )
+        let more = if self.count > self.samples.len() {
+            ", ..."
+        } else {
+            ""
+        };
+        f.write_str(&birchpad_i18n::t!(
+            "io.unencodable",
+            characters = birchpad_i18n::count(self.count, "character", "characters"),
+            encoding = display_name(self.encoding, false),
+            samples = format!("{}{more}", chars.join(", "))
+        ))
     }
 }
 
