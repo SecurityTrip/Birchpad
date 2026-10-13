@@ -297,7 +297,7 @@ step 6.11 brings in the sections no feature brings.
       lines, purge for every search)
 - [x] 6.9 View menu: View Current File in a browser, Hide Lines, Summary (counts of
       characters, words, lines), Collapse/Expand by level from the menu
-- [ ] 6.10 Clickable links: addresses underlined and opened with Ctrl+click or a double click
+- [x] 6.10 Clickable links: addresses underlined and opened with Ctrl+click or a double click
       (Preferences > Cloud & Link); Ctrl+double click selection between delimiters
 
 ### Customization

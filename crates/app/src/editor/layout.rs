@@ -959,6 +959,23 @@ impl EditorView {
                 .overlapping(visible.clone())
                 .map(|(range, _)| (range, incremental)),
         );
+        // Clickable links, underlined.
+        let links = &crate::app_state::AppState::global(cx).settings.links;
+        if links.enabled && links.underline {
+            let paint = Paint::Underline(theme::paint(theme::ui().accent));
+            let extra = links.extra_schemes();
+            let lines = birchpad_core::motion::line_of(text, visible.start)
+                ..birchpad_core::motion::line_of(text, visible.end) + 1;
+            for line in lines {
+                let bounds = birchpad_core::motion::line_range(text, line);
+                let content = text.slice(bounds.clone()).to_string();
+                ranges.extend(
+                    birchpad_core::links::links_in(&content, &extra)
+                        .into_iter()
+                        .map(|link| (bounds.start + link.start..bounds.start + link.end, paint)),
+                );
+            }
+        }
         let spell = Paint::Underline(theme::paint(theme::editor().spell_error));
         let buffer = self.buffer.read(cx);
         let misspelled =

@@ -142,6 +142,32 @@ pub(crate) const ENTRIES: &[Entry] = &[
         Kind::Bool,
     ),
     entry(
+        "Cloud & Link",
+        "links.enabled",
+        "Enable clickable links",
+        Kind::Bool,
+    ),
+    entry(
+        "Cloud & Link",
+        "links.underline",
+        "Underline them",
+        Kind::Bool,
+    ),
+    entry(
+        "Cloud & Link",
+        "links.schemes",
+        "Schemes of one's own",
+        Kind::Text,
+    ),
+    entry("Delimiter", "delimiters.open", "Open", Kind::Text),
+    entry("Delimiter", "delimiters.close", "Close", Kind::Text),
+    entry(
+        "Delimiter",
+        "delimiters.multi-line",
+        "Allow on several lines",
+        Kind::Bool,
+    ),
+    entry(
         "Search Engine",
         "search-engine.engine",
         "Search on Internet with",

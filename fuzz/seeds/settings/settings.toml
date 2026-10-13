@@ -25,6 +25,15 @@ custom-format = "dd.MM.yyyy 'at' HH:mm"
 engine = "custom"
 custom-url = "https://example.com/?q=$(CURRENT_WORD)"
 
+[links]
+underline = false
+schemes = "svn:// irc://"
+
+[delimiters]
+open = "("
+close = ")"
+multi-line = true
+
 [session]
 backup-interval-seconds = 30
 

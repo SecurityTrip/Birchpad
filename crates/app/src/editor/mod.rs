@@ -18,6 +18,8 @@ mod folding;
 #[cfg(test)]
 mod hidden_lines_tests;
 mod layout;
+#[cfg(test)]
+mod links_tests;
 mod marks;
 mod multi;
 mod operations;
@@ -1339,6 +1341,48 @@ impl EditorView {
         }
     }
 
+    /// A double click or Ctrl+click on a link opens it; Ctrl+double click selects between the
+    /// delimiters around the click. Whether the click was taken.
+    fn link_or_delimiters(
+        &mut self,
+        event: &MouseDownEvent,
+        pos: usize,
+        cx: &mut Context<Self>,
+    ) -> bool {
+        let settings = AppState::global(cx).settings.clone();
+        let secondary = event.modifiers.secondary();
+        let text = self.text(cx).clone();
+        let opens = (event.click_count == 2 && !secondary) || (event.click_count == 1 && secondary);
+        if settings.links.enabled
+            && opens
+            && let Some(link) =
+                birchpad_core::links::link_at(&text, pos, &settings.links.extra_schemes())
+        {
+            let url = text.slice(link).to_string();
+            let _ = crate::file_commands::shell(crate::file_commands::Shell::Browse(url), cx);
+            self.drag = None;
+            return true;
+        }
+        if secondary
+            && event.click_count == 2
+            && let Some((open, close)) = settings.delimiters.pair()
+            && let Some(range) = birchpad_core::links::between_delimiters(
+                &text,
+                pos,
+                open,
+                close,
+                settings.delimiters.multi_line,
+            )
+        {
+            self.selection = Selection::single(Range::new(range.start, range.end));
+            self.drag = None;
+            self.goal_column = None;
+            cx.notify();
+            return true;
+        }
+        false
+    }
+
     /// A right click: the caret goes there, unless the click is in a selection (the context
     /// menu then acts on it).
     fn right_mouse_down(
@@ -1454,6 +1498,9 @@ impl EditorView {
             // Alt+drag selects a rectangle.
             self.set_block(Block::new(anchor, anchor), cx);
             self.drag = Some(Drag::Block { anchor });
+            return;
+        }
+        if !in_line_numbers && !event.modifiers.shift && self.link_or_delimiters(event, pos, cx) {
             return;
         }
         let unit = Self::unit_at(&text, pos, granularity);

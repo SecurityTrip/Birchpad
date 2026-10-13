@@ -16,6 +16,8 @@ pub struct Settings {
     pub instances: InstanceSettings,
     pub date: DateSettings,
     pub search_engine: SearchEngineSettings,
+    pub links: LinkSettings,
+    pub delimiters: DelimiterSettings,
     pub session: SessionSettings,
     pub updates: UpdateSettings,
     pub plugins: PluginSettings,
@@ -515,6 +517,71 @@ fn encode_query(text: &str) -> String {
     out
 }
 
+/// Clickable links: Notepad++'s Preferences > Cloud & Link.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, rename_all = "kebab-case")]
+pub struct LinkSettings {
+    /// Addresses can be opened with a double click or Ctrl+click.
+    pub enabled: bool,
+    /// They are underlined.
+    pub underline: bool,
+    /// Schemes besides http, https, ftp, ftps, file and mailto, separated by spaces
+    /// ("URI customized schemes").
+    pub schemes: String,
+}
+
+impl Default for LinkSettings {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            underline: true,
+            schemes: "svn:// git:// ssh:// sftp://".to_owned(),
+        }
+    }
+}
+
+impl LinkSettings {
+    /// The schemes of one's own.
+    pub fn extra_schemes(&self) -> Vec<String> {
+        self.schemes.split_whitespace().map(str::to_owned).collect()
+    }
+}
+
+/// Ctrl+double click selects between these: Notepad++'s Preferences > Delimiter.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, rename_all = "kebab-case")]
+pub struct DelimiterSettings {
+    /// One character each; anything else turns the selection off.
+    pub open: String,
+    pub close: String,
+    /// The delimiters may be on other lines ("Allow on several lines").
+    pub multi_line: bool,
+}
+
+impl Default for DelimiterSettings {
+    fn default() -> Self {
+        Self {
+            open: "\"".to_owned(),
+            close: "\"".to_owned(),
+            multi_line: false,
+        }
+    }
+}
+
+impl DelimiterSettings {
+    /// The opening and the closing character, if both are one character.
+    pub fn pair(&self) -> Option<(char, char)> {
+        let one = |text: &str| {
+            let mut chars = text.chars();
+            match (chars.next(), chars.next()) {
+                (Some(c), None) => Some(c),
+                _ => None,
+            }
+        };
+        Some((one(&self.open)?, one(&self.close)?))
+    }
+}
+
 /// Notepad++'s Preferences > Backup.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default, rename_all = "kebab-case")]
@@ -621,6 +688,40 @@ impl Default for NetworkSettings {
 pub struct DiagnosticsSettings {
     /// Send crash reports. Off unless the user opts in.
     pub crash_reports: bool,
+}
+
+#[cfg(test)]
+mod link_tests {
+    use super::*;
+
+    #[test]
+    fn schemes_and_delimiters() {
+        let links = LinkSettings::default();
+        assert_eq!(
+            links.extra_schemes(),
+            ["svn://", "git://", "ssh://", "sftp://"]
+        );
+        let none = LinkSettings {
+            schemes: "  ".into(),
+            ..LinkSettings::default()
+        };
+        assert!(none.extra_schemes().is_empty());
+        assert_eq!(DelimiterSettings::default().pair(), Some(('"', '"')));
+        let brackets = DelimiterSettings {
+            open: "(".into(),
+            close: ")".into(),
+            multi_line: true,
+        };
+        assert_eq!(brackets.pair(), Some(('(', ')')));
+        for (open, close) in [("", ")"), ("((", ")"), ("(", "")] {
+            let wrong = DelimiterSettings {
+                open: open.into(),
+                close: close.into(),
+                multi_line: false,
+            };
+            assert_eq!(wrong.pair(), None, "{open:?} {close:?}");
+        }
+    }
 }
 
 #[cfg(test)]

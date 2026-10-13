@@ -13,6 +13,7 @@ mod format;
 pub mod hash;
 mod history;
 mod line_ending;
+pub mod links;
 pub mod motion;
 pub mod ops;
 pub mod search;

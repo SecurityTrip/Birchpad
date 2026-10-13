@@ -74,6 +74,10 @@ version's release notes from its section here.
 - View > View Current File in the default browser, Firefox, Chrome, Edge or Safari.
 - View > Summary: the document's path, times, characters without line endings, words, lines
   and length, and the selection's.
+- Clickable links: addresses (http, https, ftp, ftps, file, mailto and schemes of one's own)
+  are underlined and open with a double click or Ctrl+click (Preferences > Cloud & Link).
+- Ctrl+double click selects the text between the delimiters around the click (Preferences >
+  Delimiter: the characters, and whether they may be on other lines).
 - Preferences > Multi-Instance (`instances.mode`): every launch, or a launch opening a session,
   can start a Birchpad of its own instead of handing its files to the running one.
 
