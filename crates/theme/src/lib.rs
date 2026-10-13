@@ -243,6 +243,42 @@ pub struct Theme {
     pub syntax: SyntaxStyles,
     /// Styles of one language that differ from [`Self::syntax`], by language id.
     pub languages: BTreeMap<String, SyntaxStyles>,
+    /// The text's font; unset parts are the application's.
+    pub font: ThemeFont,
+}
+
+/// A theme's font: Notepad++'s Default Style font.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(default, rename_all = "kebab-case")]
+pub struct ThemeFont {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub family: Option<String>,
+    /// In pixels.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub size: Option<f32>,
+}
+
+impl Eq for ThemeFont {}
+
+impl ThemeFont {
+    /// A size within reason: 4 to 72 pixels.
+    pub fn size(&self) -> Option<f32> {
+        self.size
+            .filter(|size| size.is_finite())
+            .map(|size| size.clamp(4., 72.))
+    }
+
+    /// A family that names something.
+    pub fn family(&self) -> Option<&str> {
+        self.family
+            .as_deref()
+            .map(str::trim)
+            .filter(|family| !family.is_empty())
+    }
+
+    fn is_empty(&self) -> bool {
+        self.family.is_none() && self.size.is_none()
+    }
 }
 
 /// Why a theme did not read.
@@ -255,7 +291,7 @@ pub enum ThemeError {
 }
 
 /// A theme file as written: any subset of the colors.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(default, rename_all = "kebab-case")]
 struct ThemeFile {
     /// Unset: dark when the editor's background is.
@@ -270,6 +306,8 @@ struct ThemeFile {
         deserialize_with = "read_languages"
     )]
     language: BTreeMap<String, SyntaxStyles>,
+    #[serde(skip_serializing_if = "ThemeFont::is_empty")]
+    font: ThemeFont,
 }
 
 /// The keys of a style table; other keys of a table under `[syntax]` are longer highlight names,
@@ -367,6 +405,10 @@ impl ThemeFile {
             ui: self.ui.over(&base.ui),
             syntax: merge(base.syntax.clone(), self.syntax),
             languages,
+            font: ThemeFont {
+                family: self.font.family.or_else(|| base.font.family.clone()),
+                size: self.font.size.or(base.font.size),
+            },
         }
     }
 }
@@ -494,6 +536,7 @@ impl Theme {
             },
             syntax: SyntaxStyles::new(),
             languages: BTreeMap::new(),
+            font: ThemeFont::default(),
         }
     }
 
@@ -513,8 +556,15 @@ impl Theme {
             ui: (&self.ui).into(),
             syntax: self.syntax.clone(),
             language: self.languages.clone(),
+            font: self.font.clone(),
         };
         toml::to_string(&file).expect("a theme always serializes")
+    }
+
+    /// `original`, a Notepad++ theme, with this theme's colors, styles and font written into
+    /// it: what Style Configurator changed goes back to the file it came from.
+    pub fn to_notepad_xml(&self, original: &str) -> Result<String, ThemeError> {
+        notepad::export(original, self)
     }
 
     /// Reads a Notepad++ theme (its `stylers.xml` or a file of its `themes` folder).

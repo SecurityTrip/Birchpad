@@ -289,6 +289,8 @@ enum Drag {
 /// The view-related settings, read from the application state on every frame.
 #[derive(Debug, Clone)]
 pub(crate) struct ViewSettings {
+    /// The theme's font, else the platform's monospace one.
+    pub(crate) font_family: gpui_kit::SharedString,
     pub(crate) tab_width: usize,
     pub(crate) insert_spaces: bool,
     pub(crate) word_wrap: bool,
@@ -314,11 +316,16 @@ impl ViewSettings {
         let app = AppState::global(cx);
         let editor = &app.settings.editor;
         let zoom = app.state.zoom.clamp(*ZOOM_RANGE.start(), *ZOOM_RANGE.end());
+        let theme_font = crate::theme::current().font.clone();
         Self {
             tab_width: usize::from(editor.tab_width.max(1)),
             insert_spaces: editor.insert_spaces,
             word_wrap: app.state.word_wrap.unwrap_or(editor.word_wrap),
-            font_size: px(BASE_FONT_SIZE + zoom as f32),
+            font_family: theme_font.family().map_or_else(
+                || crate::MONOSPACE.into(),
+                |family| family.to_owned().into(),
+            ),
+            font_size: px(theme_font.size().unwrap_or(BASE_FONT_SIZE) + zoom as f32),
             line_numbers: editor.line_numbers,
             bookmark_margin: editor.bookmark_margin,
             fold_margin: editor.fold_margin,

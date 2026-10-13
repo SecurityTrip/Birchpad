@@ -11,7 +11,8 @@
 use std::collections::BTreeMap;
 
 use crate::{
-    Color, PartialEditorColors, PartialUiColors, Style, SyntaxStyles, ThemeError, ThemeFile,
+    Color, PartialEditorColors, PartialUiColors, Style, SyntaxStyles, Theme, ThemeError, ThemeFile,
+    ThemeFont,
 };
 
 /// Converts the text of a Notepad++ theme into a theme file.
@@ -45,7 +46,21 @@ pub(crate) fn import(xml: &str) -> Result<ThemeFile, ThemeError> {
     let background = |name: &str| widget(name).and_then(|node| color(node.attribute("bgColor")));
 
     let default_background = background("Default Style");
+    let font = widget("Default Style").map_or_else(ThemeFont::default, |node| ThemeFont {
+        family: node
+            .attribute("fontName")
+            .map(str::trim)
+            .filter(|name| !name.is_empty())
+            .map(str::to_owned),
+        // Points, as Windows has 96 pixels to 72 points.
+        size: node
+            .attribute("fontSize")
+            .and_then(|size| size.trim().parse::<f32>().ok())
+            .filter(|size| *size > 0.)
+            .map(|points| (points * 4. / 3.).round()),
+    });
     let mut file = ThemeFile {
+        font,
         dark: None,
         editor: editor_colors(&foreground, &background),
         ui: ui_colors(&background, default_background.is_some_and(Color::is_dark)),
@@ -62,12 +77,10 @@ pub(crate) fn import(xml: &str) -> Result<ThemeFile, ThemeError> {
         let has_js = lexers.iter().any(|(name, _)| name == "javascript.js");
         let mut by_language: Vec<(String, SyntaxStyles)> = Vec::new();
         for (name, node) in &lexers {
-            let language = match name.as_str() {
-                "javascript.js" => "javascript",
-                "javascript" if has_js => continue,
-                // Notepad++'s own panels, not a language.
-                "searchresult" => continue,
-                name => name,
+            // Notepad++ 8 styles stand-alone JavaScript as `javascript.js`; its own panels
+            // (`searchresult`) are not a language.
+            let Some(language) = lexer_language(name, has_js) else {
+                continue;
             };
             let mut styles = SyntaxStyles::new();
             for words in node
@@ -158,6 +171,191 @@ fn ui_colors(background: &dyn Fn(&str) -> Option<Color>, dark: bool) -> PartialU
         tab_color_5: tab(5),
         ..PartialUiColors::default()
     }
+}
+
+/// The language a lexer's styles are for, as the import names it; `None` for lexers it leaves
+/// out.
+fn lexer_language(name: &str, has_js: bool) -> Option<&str> {
+    match name {
+        "javascript.js" => Some("javascript"),
+        "javascript" if has_js => None,
+        "searchresult" => None,
+        name => Some(name),
+    }
+}
+
+/// A color as Notepad++ writes it: `RRGGBB`, opaque.
+fn notepad_color(color: Color) -> String {
+    format!("{:06X}", color.0 >> 8)
+}
+
+/// Text for an XML attribute value.
+fn escape(text: &str) -> String {
+    text.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('"', "&quot;")
+        .replace('\'', "&apos;")
+}
+
+/// Writes `theme` into the Notepad++ theme `xml`: the global styles that are editor and tab
+/// colors, the Default Style's font, and each lexer style that maps to a highlight. Styles and
+/// attributes Birchpad has no counterpart for stay as they are.
+pub(crate) fn export(xml: &str, theme: &Theme) -> Result<String, ThemeError> {
+    let document =
+        roxmltree::Document::parse(xml).map_err(|error| ThemeError::Xml(error.to_string()))?;
+    let root = document.root_element();
+    if !root.has_tag_name("NotepadPlus") {
+        return Err(ThemeError::Xml(format!(
+            "the root element is <{}>, not <NotepadPlus>",
+            root.tag_name().name()
+        )));
+    }
+    // Replacements: a range of the text and what goes there.
+    let mut edits: Vec<(std::ops::Range<usize>, String)> = Vec::new();
+    let mut set = |node: roxmltree::Node, name: &str, value: String| {
+        let value = escape(&value);
+        match node.attributes().find(|attribute| attribute.name() == name) {
+            Some(attribute) => edits.push((attribute.range_value(), value)),
+            None => {
+                let at = node.range().start + 1 + node.tag_name().name().len();
+                edits.push((at..at, format!(" {name}=\"{value}\"")));
+            }
+        }
+    };
+    let editor = &theme.editor;
+    let widgets: Vec<(&str, Option<Color>, Option<Color>)> = vec![
+        ("Default Style", Some(editor.text), Some(editor.background)),
+        ("Selected text colour", None, Some(editor.selection)),
+        ("Caret colour", Some(editor.caret), None),
+        (
+            "Current line background colour",
+            None,
+            Some(editor.current_line),
+        ),
+        (
+            "Line number margin",
+            Some(editor.gutter_text),
+            Some(editor.gutter_background),
+        ),
+        (
+            "Change History modified",
+            None,
+            Some(editor.change_modified),
+        ),
+        ("Change History saved", None, Some(editor.change_saved)),
+        ("Fold", Some(editor.fold_mark), None),
+        ("White space symbol", Some(editor.whitespace), None),
+        ("EOL custom color", Some(editor.eol_text), None),
+        ("Indent guideline style", Some(editor.indent_guide), None),
+        ("Edge colour", Some(editor.edge), None),
+        ("Brace highlight style", Some(editor.brace_match), None),
+        ("Bad brace colour", Some(editor.brace_bad), None),
+        ("Smart Highlighting", None, Some(editor.smart_highlight)),
+        ("Find Mark Style", None, Some(editor.find_mark)),
+        (
+            "Incremental highlight all",
+            None,
+            Some(editor.incremental_highlight),
+        ),
+        ("Mark Style 1", None, Some(editor.mark_1)),
+        ("Mark Style 2", None, Some(editor.mark_2)),
+        ("Mark Style 3", None, Some(editor.mark_3)),
+        ("Mark Style 4", None, Some(editor.mark_4)),
+        ("Mark Style 5", None, Some(editor.mark_5)),
+    ];
+    let tab = if theme.dark {
+        "Tab color dark mode "
+    } else {
+        "Tab color "
+    };
+    let ui = &theme.ui;
+    let tabs = [
+        ui.tab_color_1,
+        ui.tab_color_2,
+        ui.tab_color_3,
+        ui.tab_color_4,
+        ui.tab_color_5,
+    ];
+    let globals = root
+        .children()
+        .find(|node| node.has_tag_name("GlobalStyles"));
+    for node in globals
+        .into_iter()
+        .flat_map(|globals| globals.children())
+        .filter(|node| node.has_tag_name("WidgetStyle"))
+    {
+        let Some(name) = node.attribute("name") else {
+            continue;
+        };
+        if let Some((_, foreground, background)) = widgets.iter().find(|(known, ..)| *known == name)
+        {
+            if let Some(color) = foreground {
+                set(node, "fgColor", notepad_color(*color));
+            }
+            if let Some(color) = background {
+                set(node, "bgColor", notepad_color(*color));
+            }
+        }
+        if name == "Default Style" {
+            if let Some(family) = theme.font.family() {
+                set(node, "fontName", family.to_owned());
+            }
+            if let Some(size) = theme.font.size() {
+                set(node, "fontSize", format!("{}", (size * 3. / 4.).round()));
+            }
+        }
+        if let Some(number) = name.strip_prefix(tab).and_then(|n| n.parse::<usize>().ok())
+            && let Some(color) = tabs.get(number.wrapping_sub(1))
+        {
+            set(node, "bgColor", notepad_color(*color));
+        }
+    }
+    let lexers: Vec<_> = root
+        .children()
+        .filter(|node| node.has_tag_name("LexerStyles"))
+        .flat_map(|lexers| lexers.children())
+        .filter(|node| node.has_tag_name("LexerType"))
+        .collect();
+    let has_js = lexers.iter().any(|node| {
+        node.attribute("name")
+            .is_some_and(|name| name.eq_ignore_ascii_case("javascript.js"))
+    });
+    for lexer in lexers {
+        let Some(name) = lexer.attribute("name").map(str::to_ascii_lowercase) else {
+            continue;
+        };
+        let Some(language) = lexer_language(&name, has_js) else {
+            continue;
+        };
+        for words in lexer
+            .children()
+            .filter(|node| node.has_tag_name("WordsStyle"))
+        {
+            let Some(highlight) = words
+                .attribute("name")
+                .and_then(|style| highlight_of(language, style))
+            else {
+                continue;
+            };
+            let Some(style) = theme.syntax_style(Some(language), highlight) else {
+                continue;
+            };
+            if let Some(color) = style.color {
+                set(words, "fgColor", notepad_color(color));
+            }
+            let background = style.background.unwrap_or(editor.background);
+            set(words, "bgColor", notepad_color(background));
+            let font_style =
+                u8::from(style.bold) | u8::from(style.italic) << 1 | u8::from(style.underline) << 2;
+            set(words, "fontStyle", font_style.to_string());
+        }
+    }
+    edits.sort_by_key(|(range, _)| std::cmp::Reverse(range.start));
+    let mut out = xml.to_owned();
+    for (range, text) in edits {
+        out.replace_range(range, &text);
+    }
+    Ok(out)
 }
 
 /// A Notepad++ color, `RRGGBB` without a `#`.
@@ -272,6 +470,18 @@ pub(crate) fn highlight_of(lexer: &str, name: &str) -> Option<&'static str> {
         ("batch", "COMMAND") => Some("function"),
         ("batch", "VARIABLE") => Some("variable.builtin"),
         ("rust", "LIFETIME") => Some("label"),
+        ("ruby", "SYMBOL") => Some("string.special.symbol"),
+        ("ruby", "INSTANCE VAR" | "CLASS VAR" | "GLOBAL") => Some("variable"),
+        ("perl", "SCALAR" | "ARRAY" | "HASH" | "SYMBOL TABLE") => Some("variable"),
+        ("bash", "SCALAR" | "PARAM" | "PARAMETER") => Some("variable"),
+        ("powershell", "CMDLET") => Some("function.builtin"),
+        ("powershell", "ALIAS") => Some("function"),
+        ("makefile", "TARGET") => Some("function"),
+        ("lua", "FUNC1") => Some("keyword"),
+        ("lua", "FUNC2" | "FUNC3") => Some("function.builtin"),
+        ("sql", "USER1" | "USER2" | "USER3" | "USER4") => Some("function.builtin"),
+        ("cpp" | "c" | "cs" | "java" | "javascript" | "typescript", "GLOBAL CLASS") => Some("type"),
+        ("go" | "swift" | "kotlin", "INSTRUCTION WORD 2" | "TYPE WORD") => Some("type"),
         _ => None,
     };
     if exact.is_some() {
@@ -312,6 +522,8 @@ pub(crate) fn highlight_of(lexer: &str, name: &str) -> Option<&'static str> {
         "attribute"
     } else if has("LABEL") {
         "label"
+    } else if has("VARIABLE") {
+        "variable"
     } else if has("HEADER") || has("HEADING") {
         "markup.heading"
     } else if has("LIST") {

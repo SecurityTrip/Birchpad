@@ -308,10 +308,12 @@ step 6.11 brings in the sections no feature brings.
       (encoding, line ending, language); backup copies on save (simple or verbose); default
       folder; settings in a folder of one's choice (cloud); "remember inaccessible files" in
       sessions. Minimizing to the system tray waits for a tray in GPUI (Phase 7)
-- [ ] 6.12 Themes and Style Configurator: fonts (family, size, bold/italic per style) in
+- [x] 6.12 Themes and Style Configurator: fonts (family, size, bold/italic per style) in
       themes, the Style Configurator and Notepad++ theme import; saving changes to a Notepad++
       theme back to its XML; a closer match from Scintilla's style names to highlights, with a
-      per-language table where names differ
+      per-language table where names differ. The theme's font is one family and size for the
+      whole text, Notepad++'s Default Style: the editor keeps a grid of cells, so a style's own
+      family or size is not used
 - [ ] 6.13 Notepad++'s separate Dark Mode for the interface, independent of the editor theme
 - [ ] 6.14 Shortcut Mapper: key sequences (`ctrl-k ctrl-c`) recorded in the dialog; bindings
       limited to platforms shown and editable; command titles translated; the Macros and Run

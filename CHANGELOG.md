@@ -78,6 +78,10 @@ version's release notes from its section here.
   are underlined and open with a double click or Ctrl+click (Preferences > Cloud & Link).
 - Ctrl+double click selects the text between the delimiters around the click (Preferences >
   Delimiter: the characters, and whether they may be on other lines).
+- Themes have a font (`[font] family`, `size`), set in Style Configurator and read from a
+  Notepad++ theme's Default Style; the text is drawn in it.
+- Style Configurator saves a Notepad++ theme back into its XML file, the rest of the file left
+  as it was; more of Scintilla's style names find their highlight.
 - Preferences > Language: each language's own tab size and spaces (`[languages.<id>]`).
 - Preferences > New Document: the encoding, line ending and language of new documents.
 - Preferences > Default Directory: Open and Save As start in the current document's folder,

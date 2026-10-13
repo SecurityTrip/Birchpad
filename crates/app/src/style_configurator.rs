@@ -97,6 +97,20 @@ pub(crate) fn read_fields(theme: &Theme, group: Group, item: &str) -> Fields {
     }
 }
 
+/// Reads the font size field: empty is unset; else pixels from 4 to 72.
+pub(crate) fn parse_font_size(text: &str) -> Result<Option<f32>> {
+    if text.trim().is_empty() {
+        return Ok(None);
+    }
+    match text.trim().parse::<f32>() {
+        Ok(size) if (4.0..=72.0).contains(&size) => Ok(Some(size)),
+        _ => Err(anyhow!(
+            "{}",
+            t!("style-configurator.is-not-a-font-size", text = text.trim())
+        )),
+    }
+}
+
 /// Reads a color field: empty is unset.
 fn parse(text: &str, what: &str) -> Result<Option<Color>> {
     let text = text.trim();
@@ -184,11 +198,23 @@ pub(crate) fn write_fields(
     Ok(())
 }
 
-/// Saves `theme` in `dir` as `<name>.toml`, which comes before a Notepad++ file of the same name
-/// and replaces a built-in theme of that name.
+/// Saves `theme` in `dir`: into the Notepad++ file `<name>.xml` it was read from, if it was
+/// read from one (Birchpad's own `<name>.toml` would come before it); else as `<name>.toml`,
+/// which replaces a built-in theme of that name.
 pub(crate) fn save(theme: &Theme, dir: &std::path::Path) -> Result<()> {
     std::fs::create_dir_all(dir).with_context(|| format!("cannot create {}", dir.display()))?;
-    let path = dir.join(format!("{}.toml", theme.name));
+    let xml = dir.join(format!("{}.xml", theme.name));
+    let toml = dir.join(format!("{}.toml", theme.name));
+    if xml.is_file() && !toml.exists() {
+        let original =
+            std::fs::read(&xml).with_context(|| format!("cannot read {}", xml.display()))?;
+        let original = String::from_utf8_lossy(&original);
+        let original = original.trim_start_matches('\u{feff}');
+        let written = theme.to_notepad_xml(original)?;
+        return std::fs::write(&xml, written)
+            .with_context(|| format!("cannot save the theme as {}", xml.display()));
+    }
+    let path = toml;
     std::fs::write(&path, theme.to_toml())
         .with_context(|| format!("cannot save the theme as {}", path.display()))
 }
@@ -205,6 +231,9 @@ pub(crate) struct StyleConfigurator {
     fields: Fields,
     color: Entity<InputState>,
     background: Entity<InputState>,
+    /// The theme's font: family and size in pixels.
+    font_family: Entity<InputState>,
+    font_size: Entity<InputState>,
     /// Set while the fields are filled in, so that it is not taken as an edit.
     filling: bool,
     error: Option<String>,
@@ -251,6 +280,28 @@ impl StyleConfigurator {
             })
             .detach();
         }
+        let font_family = cx.new(|cx| {
+            InputState::new(window, cx)
+                .placeholder(crate::MONOSPACE)
+                .default_value(original.font.family().unwrap_or_default().to_owned())
+        });
+        let font_size = cx.new(|cx| {
+            InputState::new(window, cx).placeholder("14").default_value(
+                original
+                    .font
+                    .size()
+                    .map(|size| size.to_string())
+                    .unwrap_or_default(),
+            )
+        });
+        for input in [&font_family, &font_size] {
+            cx.subscribe_in(input, window, |this, _, event: &InputEvent, _, cx| {
+                if matches!(event, InputEvent::Change) {
+                    this.edit_font(cx);
+                }
+            })
+            .detach();
+        }
         let mut this = Self {
             workspace,
             names: themes::names(themes::themes_dir(cx).as_deref()),
@@ -262,6 +313,8 @@ impl StyleConfigurator {
             fields: Fields::default(),
             color,
             background,
+            font_family,
+            font_size,
             filling: false,
             error: None,
         };
@@ -288,6 +341,25 @@ impl StyleConfigurator {
         self.background
             .update(cx, |input, cx| input.set_value(background, window, cx));
         self.filling = false;
+        cx.notify();
+    }
+
+    /// The font fields changed: the theme takes them, and shows them.
+    pub(crate) fn edit_font(&mut self, cx: &mut Context<Self>) {
+        let family = self.font_family.read(cx).value().trim().to_owned();
+        let size = self.font_size.read(cx).value().trim().to_owned();
+        match parse_font_size(&size) {
+            Ok(size) => {
+                self.theme.font.family = (!family.is_empty()).then_some(family);
+                self.theme.font.size = size;
+                self.error = None;
+                themes::apply(self.theme.clone(), cx);
+                self.workspace
+                    .update(cx, |workspace, cx| workspace.refresh_views(cx))
+                    .ok();
+            }
+            Err(error) => self.error = Some(format!("{error:#}")),
+        }
         cx.notify();
     }
 
@@ -477,6 +549,21 @@ impl Render for StyleConfigurator {
                     .gap_1()
                     .child(div().mr_2().child(t!("style-configurator.theme")))
                     .children(themes),
+            )
+            .child(
+                field_row()
+                    .child(label("Font:"))
+                    .child(
+                        div()
+                            .w(px(220.))
+                            .child(Input::new(&self.font_family).id("style-font")),
+                    )
+                    .child(label("Size:"))
+                    .child(
+                        div()
+                            .w(px(70.))
+                            .child(Input::new(&self.font_size).id("style-font-size")),
+                    ),
             )
             .child(
                 div()

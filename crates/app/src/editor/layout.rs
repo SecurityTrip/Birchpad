@@ -1201,7 +1201,7 @@ fn shown_ranges(rows: &[(Row, Pixels, Pixels, DisplayText)]) -> Vec<ByteRange<us
 }
 
 fn metrics(settings: &ViewSettings, window: &mut Window) -> Metrics {
-    let font = font(crate::MONOSPACE);
+    let font = font(settings.font_family.clone());
     let font_size = settings.font_size;
     let line_height = (font_size * 1.45).round();
     let text_system = window.text_system();

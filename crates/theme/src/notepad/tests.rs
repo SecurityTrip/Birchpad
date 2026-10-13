@@ -329,3 +329,68 @@ fn style_names_become_highlights() {
         assert_eq!(highlight_of(lexer, name), expected, "{lexer} {name}");
     }
 }
+
+#[test]
+fn the_default_styles_font() {
+    let theme = sample();
+    assert_eq!(theme.font.family(), Some("Consolas"));
+    assert_eq!(theme.font.size(), Some(13.), "10 points");
+    // None given: the built-in theme's, which has none.
+    let plain = Theme::from_notepad_xml(
+        "Plain",
+        r#"<NotepadPlus><GlobalStyles><WidgetStyle name="Default Style" fgColor="000000" bgColor="FFFFFF" fontName=" " fontSize="0" /></GlobalStyles></NotepadPlus>"#,
+    )
+    .unwrap();
+    assert_eq!(plain.font, crate::ThemeFont::default());
+}
+
+#[test]
+fn changes_go_back_into_the_notepad_file() {
+    let mut theme = sample();
+    theme.editor.caret = Color::rgb(0x123456);
+    theme.editor.text = Color::rgb(0xabcdef);
+    theme.font.family = Some("Fira \"Code\" & Co".into());
+    theme.font.size = Some(16.);
+    let mut keyword = theme.syntax["keyword"];
+    keyword.color = Some(Color::rgb(0x010203));
+    keyword.italic = true;
+    theme.syntax.insert("keyword".into(), keyword);
+    let written = theme.to_notepad_xml(SAMPLE).unwrap();
+    let again = Theme::from_notepad_xml("Zenburnish", &written).unwrap();
+    assert_eq!(again.editor.caret, Color::rgb(0x123456));
+    assert_eq!(again.editor.text, Color::rgb(0xabcdef));
+    assert_eq!(again.font.family(), Some("Fira \"Code\" & Co"));
+    assert_eq!(again.font.size(), Some(16.));
+    let keyword = again.syntax["keyword"];
+    assert_eq!(keyword.color, Some(Color::rgb(0x010203)));
+    assert!(keyword.italic);
+    // What Birchpad has no counterpart for stays as it was.
+    assert!(written.contains(r#"name="Global override" styleID="0" fgColor="FFFF80""#));
+    assert!(written.contains("<LexerType name=\"cpp\" desc=\"C++\""));
+    // An unchanged theme writes the same colors back.
+    let same = sample().to_notepad_xml(SAMPLE).unwrap();
+    assert_eq!(
+        Theme::from_notepad_xml("Zenburnish", &same).unwrap(),
+        sample()
+    );
+    // Not a Notepad++ theme.
+    assert!(theme.to_notepad_xml("<Other/>").is_err());
+    assert!(theme.to_notepad_xml("not xml").is_err());
+}
+
+#[test]
+fn more_of_the_lexers_names() {
+    assert_eq!(
+        highlight_of("ruby", "SYMBOL"),
+        Some("string.special.symbol")
+    );
+    assert_eq!(highlight_of("perl", "SCALAR"), Some("variable"));
+    assert_eq!(
+        highlight_of("powershell", "CMDLET"),
+        Some("function.builtin")
+    );
+    assert_eq!(highlight_of("makefile", "TARGET"), Some("function"));
+    assert_eq!(highlight_of("php", "VARIABLE"), Some("variable"));
+    assert_eq!(highlight_of("cpp", "GLOBAL CLASS"), Some("type"));
+    assert_eq!(highlight_of("cpp", "DEFAULT"), None);
+}
