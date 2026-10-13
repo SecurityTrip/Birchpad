@@ -371,6 +371,15 @@ impl Workspace {
             }
         });
         this._subscriptions.push(activation);
+        // Preferences > Appearance > Interface: as the system follows it.
+        let appearance = cx.observe_window_appearance(window, |_, _, cx| {
+            if AppState::global(cx).settings.appearance.interface
+                == birchpad_config::InterfaceMode::System
+            {
+                crate::themes::reapply(cx);
+            }
+        });
+        this._subscriptions.push(appearance);
         this.refresh_menus(cx);
         // The window's close button: ask about unsaved changes first, unless they are backed
         // up, and save the session.

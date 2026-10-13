@@ -314,7 +314,7 @@ step 6.11 brings in the sections no feature brings.
       per-language table where names differ. The theme's font is one family and size for the
       whole text, Notepad++'s Default Style: the editor keeps a grid of cells, so a style's own
       family or size is not used
-- [ ] 6.13 Notepad++'s separate Dark Mode for the interface, independent of the editor theme
+- [x] 6.13 Notepad++'s separate Dark Mode for the interface, independent of the editor theme
 - [ ] 6.14 Shortcut Mapper: key sequences (`ctrl-k ctrl-c`) recorded in the dialog; bindings
       limited to platforms shown and editable; command titles translated; the Macros and Run
       tabs (Modify Shortcut / Delete Macro or Command)

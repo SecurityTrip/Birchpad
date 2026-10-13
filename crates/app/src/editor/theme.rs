@@ -78,6 +78,16 @@ pub(crate) fn set(theme: Theme) {
     });
 }
 
+thread_local! {
+    /// The interface's colors when they do not follow the theme (Preferences > Dark Mode).
+    static INTERFACE: std::cell::Cell<Option<UiColors>> = const { std::cell::Cell::new(None) };
+}
+
+/// The interface's colors apart from the theme's, or the theme's again (`None`).
+pub(crate) fn set_interface(colors: Option<UiColors>) {
+    INTERFACE.with(|interface| interface.set(colors));
+}
+
 /// The theme in use.
 pub(crate) fn current() -> Rc<Theme> {
     active().theme.clone()
@@ -93,7 +103,9 @@ pub(crate) fn editor() -> EditorColors {
 }
 
 pub(crate) fn ui() -> UiColors {
-    active().theme.ui
+    INTERFACE
+        .with(std::cell::Cell::get)
+        .unwrap_or_else(|| active().theme.ui)
 }
 
 /// A theme color as GPUI paints it.

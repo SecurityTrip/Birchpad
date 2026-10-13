@@ -43,6 +43,22 @@ pub struct AppearanceSettings {
     /// The title bar shows the file's name, not its whole path ("Show only filename in title
     /// bar").
     pub title_file_name_only: bool,
+    /// The colors of menus, tabs, panels and dialogs, apart from the editor's theme: Notepad++'s
+    /// Preferences > Dark Mode.
+    pub interface: InterfaceMode,
+}
+
+/// Notepad++'s Dark Mode for the interface.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum InterfaceMode {
+    /// The theme's own interface colors.
+    #[default]
+    Theme,
+    Light,
+    Dark,
+    /// Light or dark as the system is ("Follow Windows").
+    System,
 }
 
 impl Default for AppearanceSettings {
@@ -51,6 +67,7 @@ impl Default for AppearanceSettings {
             theme: "Default".to_owned(),
             language: "auto".to_owned(),
             title_file_name_only: false,
+            interface: InterfaceMode::default(),
         }
     }
 }

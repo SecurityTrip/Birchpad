@@ -81,6 +81,17 @@ pub(crate) const ENTRIES: &[Entry] = &[
     ),
     entry(
         "Appearance",
+        "appearance.interface",
+        "Interface (Dark Mode)",
+        Kind::Choice(&[
+            ("theme", "As the theme"),
+            ("light", "Light"),
+            ("dark", "Dark"),
+            ("system", "As the system"),
+        ]),
+    ),
+    entry(
+        "Appearance",
         "appearance.title-file-name-only",
         "Show only the file name in the title bar",
         Kind::Bool,
@@ -578,6 +589,8 @@ pub(crate) fn set(key: &str, value: Option<Value>, cx: &mut App) -> Result<()> {
     }
     cx.global_mut::<AppState>().set_settings(resolved);
     crate::i18n::apply(cx);
+    // Preferences > Appearance > Interface.
+    crate::themes::reapply(cx);
     cx.refresh_windows();
     Ok(())
 }

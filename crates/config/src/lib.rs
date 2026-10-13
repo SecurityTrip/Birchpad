@@ -28,10 +28,10 @@ pub use settings::{
     AppearanceSettings, AutoIndent, BackupOnSave, ChangeDetection, ChangeHistory, CloudSettings,
     CompletionSettings, CurrentLine, DEFAULT_TOOLBAR, DateSettings, DefaultDirectory,
     DiagnosticsSettings, Edge, EditorSettings, FileSettings, HighlightingSettings, InstanceMode,
-    InstanceSettings, LanguageSettings, LinkSettings, NetworkSettings, NewDocumentSettings,
-    PluginInstall, PluginSettings, SearchEngine, SearchEngineSettings, SessionSettings, Settings,
-    SmartHighlighting, TabSettings, TokenMatching, ToolbarSettings, ToolbarSize, UpdateChannel,
-    UpdateMode, UpdateSettings,
+    InstanceSettings, InterfaceMode, LanguageSettings, LinkSettings, NetworkSettings,
+    NewDocumentSettings, PluginInstall, PluginSettings, SearchEngine, SearchEngineSettings,
+    SessionSettings, Settings, SmartHighlighting, TabSettings, TokenMatching, ToolbarSettings,
+    ToolbarSize, UpdateChannel, UpdateMode, UpdateSettings,
 };
 pub use state::{
     FindInFilesState, MAX_RECENT_FILES, PanelsState, SearchResultsState, SpellCheckState,
