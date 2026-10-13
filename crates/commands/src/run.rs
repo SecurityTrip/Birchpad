@@ -97,15 +97,29 @@ struct RunFile {
 
 /// The commands a new `run.toml` starts with, as Notepad++'s Run menu has.
 pub fn default_run_commands() -> Vec<RunEntry> {
+    Vec::new()
+}
+
+/// Notepad++'s own Run menu entries: always there, before the saved ones (`run.builtin`).
+pub fn builtin_run_commands() -> Vec<RunEntry> {
+    let entry = |name: &str, line: &str| RunEntry {
+        name: name.to_owned(),
+        line: line.to_owned(),
+    };
     vec![
-        RunEntry {
-            name: "Wikipedia Search".into(),
-            line: "https://en.wikipedia.org/wiki/Special:Search?search=$(CURRENT_WORD)".into(),
-        },
-        RunEntry {
-            name: "Open File in Another Instance".into(),
-            line: "\"$(NPP_FULL_FILE_PATH)\" \"$(FULL_CURRENT_PATH)\" -multiInst -nosession".into(),
-        },
+        entry("Get PHP Help", "https://www.php.net/$(CURRENT_WORD)"),
+        entry(
+            "Google Search",
+            "https://www.google.com/search?q=$(CURRENT_WORD)",
+        ),
+        entry(
+            "Wikipedia Search",
+            "https://en.wikipedia.org/wiki/Special:Search?search=$(CURRENT_WORD)",
+        ),
+        entry(
+            "Open File in Another Instance",
+            "\"$(NPP_FULL_FILE_PATH)\" \"$(FULL_CURRENT_PATH)\" -multiInst -nosession",
+        ),
     ]
 }
 
@@ -219,7 +233,12 @@ mod tests {
 
     #[test]
     fn run_commands_round_trip() {
-        let commands = default_run_commands();
+        assert!(
+            default_run_commands().is_empty(),
+            "the built-in ones are not saved"
+        );
+        let commands = builtin_run_commands();
+        assert_eq!(commands.len(), 4);
         assert_eq!(
             parse_run_commands(&write_run_commands(&commands)).unwrap(),
             commands

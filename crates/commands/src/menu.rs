@@ -775,10 +775,15 @@ pub fn main_menu() -> Vec<Menu> {
         ],
     );
 
-    let run = Menu::new(
-        "Run",
-        vec![cmd("run.run"), Separator, Dynamic(Placeholder::RunCommands)],
-    );
+    let run = Menu::new("Run", {
+        let mut items = vec![cmd("run.run"), Separator];
+        items.extend(crate::run::builtin_run_commands().into_iter().map(|entry| {
+            MenuItem::command_with("run.builtin", json!({ "name": entry.name }), &entry.name)
+        }));
+        items.push(Separator);
+        items.push(Dynamic(Placeholder::RunCommands));
+        items
+    });
 
     let settings = Menu::new(
         "Settings",

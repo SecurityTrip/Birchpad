@@ -320,7 +320,7 @@ step 6.11 brings in the sections no feature brings.
       tabs (Modify Shortcut / Delete Macro or Command)
 - [x] 6.15 Macros: Notepad++'s built-in "Trim Trailing Space and Save"; recording what dialogs
       a command opens (Find, Replace) with their fields, as Notepad++ records search parameters
-- [ ] 6.16 Run: Notepad++'s own Run menu entries as built-in items, not only saved command lines
+- [x] 6.16 Run: Notepad++'s own Run menu entries as built-in items, not only saved command lines
 
 ### Languages and text
 

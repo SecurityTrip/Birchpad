@@ -78,6 +78,9 @@ version's release notes from its section here.
   are underlined and open with a double click or Ctrl+click (Preferences > Cloud & Link).
 - Ctrl+double click selects the text between the delimiters around the click (Preferences >
   Delimiter: the characters, and whether they may be on other lines).
+- Run: Notepad++'s own entries (Get PHP Help, Google Search, Wikipedia Search, Open File in
+  Another Instance) are built in, before the saved command lines, which no longer start with
+  copies of them.
 - Macro > Trim Trailing Space and Save (Alt+Shift+S), Notepad++'s built-in macro.
 - Macros record searches with their text and options (Find, Find Next, Replace, Replace All),
   so that they play back the same whatever the find panel holds then.

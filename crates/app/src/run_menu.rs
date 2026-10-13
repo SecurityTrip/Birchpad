@@ -244,6 +244,28 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
         let vars = variables(this, cx);
         launch(&line, vars, cx)
     });
+    registry.workspace("run.builtin", |this, args: BuiltinArgs, _, cx| {
+        let line = birchpad_commands::builtin_run_commands()
+            .into_iter()
+            .find(|entry| entry.name == args.name)
+            .map(|entry| entry.line)
+            .ok_or_else(|| {
+                anyhow!(
+                    "{}",
+                    t!(
+                        "run-menu.there-is-no-built-in-command-named",
+                        name = args.name
+                    )
+                )
+            })?;
+        let vars = variables(this, cx);
+        launch(&line, vars, cx)
+    });
+}
+
+#[derive(Deserialize)]
+struct BuiltinArgs {
+    name: String,
 }
 
 /// The Run... dialog.

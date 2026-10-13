@@ -24,6 +24,6 @@ pub use keystroke::{Keystroke, KeystrokeError, Modifiers, Platform};
 pub use macros::{Macro, is_recordable, parse_macros, record, write_macros};
 pub use menu::{Menu, MenuItem, Placeholder, main_menu};
 pub use run::{
-    RunEntry, RunVariables, default_run_commands, expand_variables, parse_run_commands,
-    write_run_commands,
+    RunEntry, RunVariables, builtin_run_commands, default_run_commands, expand_variables,
+    parse_run_commands, write_run_commands,
 };
