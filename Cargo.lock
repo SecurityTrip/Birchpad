@@ -600,7 +600,7 @@ dependencies = [
 
 [[package]]
 name = "birchpad"
-version = "0.1.5"
+version = "1.0.0"
 dependencies = [
  "anyhow",
  "birchpad-cli",
@@ -640,7 +640,7 @@ dependencies = [
 
 [[package]]
 name = "birchpad-cli"
-version = "0.1.5"
+version = "1.0.0"
 dependencies = [
  "interprocess",
  "serde",
@@ -650,7 +650,7 @@ dependencies = [
 
 [[package]]
 name = "birchpad-commands"
-version = "0.1.5"
+version = "1.0.0"
 dependencies = [
  "serde",
  "serde_json",
@@ -661,7 +661,7 @@ dependencies = [
 
 [[package]]
 name = "birchpad-config"
-version = "0.1.5"
+version = "1.0.0"
 dependencies = [
  "roxmltree 0.21.1",
  "serde",
@@ -674,7 +674,7 @@ dependencies = [
 
 [[package]]
 name = "birchpad-core"
-version = "0.1.5"
+version = "1.0.0"
 dependencies = [
  "base64 0.23.1",
  "fancy-regex",
@@ -691,7 +691,7 @@ dependencies = [
 
 [[package]]
 name = "birchpad-fuzz"
-version = "0.1.5"
+version = "1.0.0"
 dependencies = [
  "base64 0.23.1",
  "birchpad-cli",
@@ -711,7 +711,7 @@ dependencies = [
 
 [[package]]
 name = "birchpad-io"
-version = "0.1.5"
+version = "1.0.0"
 dependencies = [
  "birchpad-core",
  "chardetng",
@@ -724,14 +724,14 @@ dependencies = [
 
 [[package]]
 name = "birchpad-menu-bar"
-version = "0.1.5"
+version = "1.0.0"
 dependencies = [
  "gpui-kit",
 ]
 
 [[package]]
 name = "birchpad-plugin"
-version = "0.1.5"
+version = "1.0.0"
 dependencies = [
  "anyhow",
  "birchpad-commands",
@@ -748,7 +748,7 @@ dependencies = [
 
 [[package]]
 name = "birchpad-release-tool"
-version = "0.1.5"
+version = "1.0.0"
 dependencies = [
  "anyhow",
  "birchpad-update",
@@ -764,7 +764,7 @@ dependencies = [
 
 [[package]]
 name = "birchpad-syntax"
-version = "0.1.5"
+version = "1.0.0"
 dependencies = [
  "birchpad-core",
  "insta",
@@ -829,7 +829,7 @@ dependencies = [
 
 [[package]]
 name = "birchpad-theme"
-version = "0.1.5"
+version = "1.0.0"
 dependencies = [
  "roxmltree 0.21.1",
  "serde",
@@ -839,7 +839,7 @@ dependencies = [
 
 [[package]]
 name = "birchpad-tools"
-version = "0.1.5"
+version = "1.0.0"
 dependencies = [
  "proptest",
  "roxmltree 0.21.1",
@@ -850,7 +850,7 @@ dependencies = [
 
 [[package]]
 name = "birchpad-update"
-version = "0.1.5"
+version = "1.0.0"
 dependencies = [
  "base64 0.23.1",
  "birchpad-config",
@@ -868,7 +868,7 @@ dependencies = [
 
 [[package]]
 name = "birchpad-view"
-version = "0.1.5"
+version = "1.0.0"
 dependencies = [
  "birchpad-core",
  "proptest",
