@@ -322,68 +322,141 @@ step 6.11 brings in the sections no feature brings.
       a command opens (Find, Replace) with their fields, as Notepad++ records search parameters
 - [x] 6.16 Run: Notepad++'s own Run menu entries as built-in items, not only saved command lines
 
+### Splitting the application crate
+
+`birchpad` holds more than half of the workspace's code (about 48,000 of 83,000 lines): its
+window and dialogs, but also logic that needs no window, and the editor view, which every change
+to a panel or a dialog rebuilds. These steps move both out before the remaining features land;
+behavior does not change, and the tests move with the code.
+
+- [ ] 6.17 `birchpad-i18n`: the localization without a window (the YAML locales and their
+      parsing, named arguments, plural forms, the current language, `tr_error`) as a crate of
+      its own, so that the crates without a window translate their messages where they make
+      them, not the application from their English
+- [ ] 6.18 The logic without a window left in `birchpad` moved to the crates that hold its kind:
+      Find in Files' reading of one file (binary files skipped), its search and replace and the
+      result lines (`line_hits`), Go To's positions to `birchpad-core` and `birchpad-io`; the
+      bidirectional row (`BidiRow`) to `birchpad-view`; the date and time formats, Export to
+      HTML (in the theme's colors, not GPUI's) and the hex view's replacement to
+      `birchpad-tools`; the session's names of line endings, languages and backup copies to
+      `birchpad-config`; Run's command line and address check to `birchpad-commands`
+- [ ] 6.19 The command registry without the workspace: handlers registered for a kind of target
+      rather than for `Workspace` and `EditorView` by name; the dialogs' buttons and error
+      reporting (`dialog_close`, `dialog_action`, `report_error`) and the settings the editor
+      reads from `AppState` in a small shared crate, so that the editor no longer reaches into
+      the application
+- [ ] 6.20 `birchpad-editor`: the editor view (`editor/`), the buffer and the active theme as a
+      GPUI crate that `birchpad` builds on, with its own tests (`cargo test -p
+      birchpad-editor`); find options, spelling and user languages reach it through what it
+      exposes, not the application's globals. An ADR records the crates' layout
+
+### Tests
+
+Measured on Windows on 2026-10-13, the tests run 93.2% of the lines: 92 to 99.5% in the crates
+without a window, 89.4% in `birchpad`, where Preferences, the column editor and the Tools menu
+stay under 65%. The gaps are mostly the negative scenarios and limits CONTRIBUTING.md asks for
+(failed reads and writes, refused input, interrupted downloads). Each step covers the positive
+scenario, the negative ones and the boundary values, and raises the crates' floors in
+`.github/coverage-floors.toml` with its tests.
+
+- [ ] 6.21 Dialogs and menus driven in a test window, every control: Preferences (62.8% of lines
+      run), the Shortcut Mapper (76.9%), the column editor (64.1%), the path dialog, the Tools
+      menu (62.4%), the banners, the menus and the window modes; the command catalog of
+      `birchpad-commands` (63.2%)
+- [ ] 6.22 The editor view (`editor/mod.rs`, 83.8%): smart highlighting (78.7%), the Edit menu's
+      extras (81.2%), what clicks, drags and the keyboard do at the edges of the text, in
+      wrapped and folded rows and with several carets
+- [ ] 6.23 Files, folders and sessions when the file system refuses: a file changed or deleted
+      outside (`disk.rs`, 71.6%), saving, renaming and moving that fail (`file_ops.rs`,
+      `file_commands.rs`, about 84%), sessions with missing files and broken backups (84.0%),
+      Folder as Workspace (78.1%), Find in Files over unreadable files; the configuration
+      folders (`config/load.rs`, 86.1%) and the hand-off to a running instance
+      (`cli/instance.rs`, 87.8%)
+- [ ] 6.24 Updates and Plugins Admin against a local server: checks, downloads cut short, a
+      wrong signature or checksum, an older version offered, installing and rolling back
+      (`updates.rs` 76.2%, `update/install.rs` 87.6%, `extensions/admin.rs` 80.7%)
+- [ ] 6.25 Property tests where there are none yet: the bidirectional row (logical and visual
+      positions map one to one), comparing texts (the differences applied give the other
+      text), search and replace against a plain reference implementation, keystrokes and key
+      sequences that read back as written, syntax trees reparsed after an edit equal to a
+      fresh parse, the column editor's numbering
+- [ ] 6.26 Fuzzing what reads outside input and is not fuzzed yet: Hunspell dictionaries
+      (`.aff`, `.dic`), search queries (regular expressions, the extended mode's escapes, Find
+      in Files' filters), plugins' calls into the host with any arguments, Rhai scripts under
+      their time and memory limits
+- [ ] 6.27 End-to-end scenarios beyond the four of `tests/e2e.rs`: Find in Files and Replace in
+      Files, recording and playing a macro, a second instance handing over its files,
+      restoring unsaved text after the process is killed, a plugin installed and run, Export
+      to HTML; the run counted in the coverage report, so that `main.rs` (0%) is measured
+- [ ] 6.28 Performance in CI: the timing checks (`view/tests/performance.rs`, now ignored) and
+      new ones for opening, searching and editing a 100 MB file and for a frame of the editor
+      view run nightly in release, failing when a time grows past its limit
+- [ ] 6.29 Mutation testing: `cargo-mutants` nightly over the crates without a window; the
+      mutants that survive get tests, and the share caught gets a floor that only rises, as
+      coverage does
+
 ### Languages and text
 
-- [ ] 6.17 Code pages: EBCDIC 875 (Greek), whose standard table maps two bytes to one
+- [ ] 6.30 Code pages: EBCDIC 875 (Greek), whose standard table maps two bytes to one
       character; NEL as a line break in EBCDIC documents
-- [ ] 6.18 Auto-completion: closing HTML and XML tags; API files for languages embedded in a
+- [ ] 6.31 Auto-completion: closing HTML and XML tags; API files for languages embedded in a
       document (scripts in HTML); cycling through a function's overloads in the call tip;
       Notepad++'s auto-completion options (ignore numbers, ignore case, completion from a number
       of characters per source); bundled API files for common languages, written for Birchpad
       (Notepad++'s are GPL)
-- [ ] 6.19 User Defined Languages: the UDL editor dialog; folding (code and comment folders);
+- [ ] 6.32 User Defined Languages: the UDL editor dialog; folding (code and comment folders);
       number prefixes, suffixes, extras and ranges; comments that must start a line; nested
       delimiters; colors from the theme where the UDL leaves them unset; Open User Defined
       Language Folder, the UDL collection link
-- [ ] 6.20 Right-to-left text: selections drawn piece by piece over mixed text; margins on the
+- [ ] 6.33 Right-to-left text: selections drawn piece by piece over mixed text; margins on the
       right in right-to-left mode; keys for Text Direction RTL and LTR; the direction
       remembered per document in sessions; very long rows reordered too
-- [ ] 6.21 Localization: more interface languages, translated for Birchpad; Notepad++'s
+- [ ] 6.34 Localization: more interface languages, translated for Birchpad; Notepad++'s
       `nativeLang` XML files read from the user's own copy, not bundled
 
 ### Printing, tools and help
 
-- [ ] 6.22 Printing: a print preview and page setup of Birchpad's own (margins, header and
+- [ ] 6.35 Printing: a print preview and page setup of Birchpad's own (margins, header and
       footer with Notepad++'s variables, colors or black on white, line numbers), printing the
       selection, Print Now; native printing where the platform offers it
-- [ ] 6.23 Tools: hashes of files in a dialog with Copy, as Notepad++ shows them, besides the
+- [ ] 6.36 Tools: hashes of files in a dialog with Copy, as Notepad++ shows them, besides the
       listing in a new document
-- [ ] 6.24 Help menu: Command Line Arguments, home page, online manual and forum, Debug Info
+- [ ] 6.37 Help menu: Command Line Arguments, home page, online manual and forum, Debug Info
       (copyable), Set Updater Proxy
-- [ ] 6.25 The command line options Birchpad accepts but ignores: -notabbar, -systemtray,
+- [ ] 6.38 The command line options Birchpad accepts but ignores: -notabbar, -systemtray,
       -alwaysOnTop, -loadingTime, -r (recursive wildcards), -quickPrint, -monitor,
       -openFoldersAsWorkspace, -x and -y (window position), -qn, -qt, -qf, -qSpeed (ghost
       typing), -settingsDir, -titleAdd, -udl, -pluginMessage
 
 ### Plugins
 
-- [ ] 6.26 A wider plugin API: settings of their own, files opened with the user's permission,
+- [ ] 6.39 A wider plugin API: settings of their own, files opened with the user's permission,
       a panel of their own controls, items in the text's context menu, events while typing and
       when the selection changes, work in the background; scripts' own commands and keys;
       Settings > Import plugin(s)
-- [ ] 6.27 Compare as ComparePlus: lines padded to stay aligned side by side, differences
+- [ ] 6.40 Compare as ComparePlus: lines padded to stay aligned side by side, differences
       within a line, comparing with the last save, the clipboard or Git; a navigation bar of the
       differences
-- [ ] 6.28 JSON Viewer's tree panel (find a path, copy a value), sorting keys; XML Tools'
+- [ ] 6.41 JSON Viewer's tree panel (find a path, copy a value), sorting keys; XML Tools'
       XPath, XSD and DTD validation, escaping and unescaping, closing tags as typed
-- [ ] 6.29 Hex Editor in place: the bytes edited in a hex view of the document itself
+- [ ] 6.42 Hex Editor in place: the bytes edited in a hex view of the document itself
       (overwrite, insert, the caret shared with the text), columns and grouping, Find in hex
-- [ ] 6.30 DSpellCheck's options (several languages at once, ignore rules, words in code by
+- [ ] 6.43 DSpellCheck's options (several languages at once, ignore rules, words in code by
       style); a dictionary bundled for English under a license compatible with Birchpad's
-- [ ] 6.31 Online features under the `OnlineFeatures` policy: Plugins Admin's online list of
+- [ ] 6.44 Online features under the `OnlineFeatures` policy: Plugins Admin's online list of
       plugins (available, updates, installed) with checksums; DSpellCheck's dictionary download
 
 ### Release 1.0.0
 
-- [ ] 6.32 Documentation in Russian: the user's and the contributor's documents (README,
+- [ ] 6.45 Documentation in Russian: the user's and the contributor's documents (README,
       CONTRIBUTING, SECURITY, PRIVACY, the code of conduct, writing plugins and scripts, the
       release checklist and this roadmap) as `*.ru.md` next to the English ones, linked from
       each other; from then on a change to one updates the other. ADRs and the changelog stay
       in English
-- [ ] 6.33 Verified on real systems: input methods (Windows TSF, macOS, IBus/Fcitx), screen
+- [ ] 6.46 Verified on real systems: input methods (Windows TSF, macOS, IBus/Fcitx), screen
       readers *(from Phase 1)*; a last comparison with Notepad++ 8's menus, Preferences and
       command line, with what is still missing moved to Phase 7 or written down
-- [ ] 6.34 Release 1.0.0: the workspace version, `CHANGELOG.md` and this roadmap updated; the
+- [ ] 6.47 Release 1.0.0: the workspace version, `CHANGELOG.md` and this roadmap updated; the
       [release checklist](release-checklist.md) gone through with the draft's artifacts
 
 ## Phase 7: beyond Notepad++
