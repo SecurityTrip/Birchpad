@@ -7,7 +7,7 @@ use birchpad_tools::{Indent, Layout, SyntaxError, json, xml};
 use gpui_kit::{Context, Window};
 
 use crate::commands::CommandRegistry;
-use crate::editor::{EditorView, ViewSettings};
+use crate::editor::EditorView;
 
 pub(crate) fn register_commands(registry: &mut CommandRegistry) {
     registry.editor("json.format", |this, (), _, cx| {
@@ -79,7 +79,7 @@ fn reformat(
         bail!("{}", t!("json-xml.the-document-cannot-be-changed"));
     }
     let (range, part) = target(view, cx);
-    let settings = ViewSettings::read(cx);
+    let settings = view.view_settings(cx);
     let eol = view.buffer.read(cx).doc().line_ending();
     let layout = Layout {
         indent: if settings.insert_spaces {

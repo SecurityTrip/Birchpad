@@ -295,6 +295,32 @@ mod tests {
     }
 
     #[test]
+    fn languages_new_documents_and_files() {
+        use crate::settings::{BackupOnSave, DefaultDirectory};
+        let resolved = resolve(Sources {
+            user: table(
+                "languages.python.tab-width = 4\nlanguages.makefile.insert-spaces = false\n\
+                 new-document.encoding = 'utf-8-bom'\nfiles.backup-on-save = 'verbose'\n\
+                 files.default-directory = 'remember'\nlanguages.rust.tab-width = 'x'",
+            ),
+            ..Sources::default()
+        });
+        let settings = &resolved.settings;
+        assert_eq!(settings.languages["python"].tab_width, Some(4));
+        assert_eq!(settings.languages["makefile"].insert_spaces, Some(false));
+        assert_eq!(settings.new_document.encoding, "utf-8-bom");
+        assert_eq!(settings.new_document.line_ending, "system", "default");
+        assert_eq!(settings.files.backup_on_save, BackupOnSave::Verbose);
+        assert_eq!(settings.files.default_directory, DefaultDirectory::Remember);
+        assert!(!settings.session.remember_inaccessible);
+        assert!(!settings.tabs.exit_on_last_close);
+        assert_eq!(resolved.diagnostics.len(), 1, "{:?}", resolved.diagnostics);
+        assert!(crate::check_setting("languages.go.tab-width", &toml::Value::Integer(8)).is_ok());
+        assert!(crate::check_setting("languages.go.width", &toml::Value::Integer(8)).is_err());
+        assert!(crate::check_setting("languages..tab-width", &toml::Value::Integer(8)).is_err());
+    }
+
+    #[test]
     fn tab_settings() {
         let defaults = resolve(Sources::default()).settings.tabs;
         assert!(defaults.close_button && defaults.peeker, "as in Notepad++");

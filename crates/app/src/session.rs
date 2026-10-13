@@ -72,6 +72,9 @@ pub(crate) struct SessionState {
     /// The session was saved for quitting; quitting again does not save it again.
     saved_for_quit: bool,
     timer: Option<Task<()>>,
+    /// Files of the restored session that could not be read (Remember inaccessible files):
+    /// they stay in the sessions written, to open once they can be.
+    pub(crate) inaccessible: Vec<SessionDocument>,
 }
 
 /// What a snapshot writes: backup copies of unsaved text, then the session.
@@ -147,6 +150,21 @@ impl Workspace {
                     .push(tab_of(document, editor.view_state(cx), editor.tab));
             }
             *session.views_mut()[index] = view;
+        }
+        // Files that could not be read stay, at the end of the main view.
+        for document in &self.session_state.inaccessible {
+            if document.path.is_some()
+                && !session
+                    .documents
+                    .iter()
+                    .any(|known| known.path == document.path)
+            {
+                session.documents.push(document.clone());
+                session.main_view.tabs.push(SessionTab {
+                    document: session.documents.len() - 1,
+                    ..SessionTab::default()
+                });
+            }
         }
         if session.views()[session.active_view].tabs.is_empty() {
             session.active_view = 0;
@@ -365,6 +383,22 @@ impl Workspace {
             .iter()
             .map(|document| self.restore_document(document, backups, &mut numbers, window, cx))
             .collect();
+        // Preferences > Backup > Remember inaccessible files.
+        if AppState::global(cx).settings.session.remember_inaccessible {
+            let missing = session
+                .documents
+                .iter()
+                .zip(&buffers)
+                .filter(|(document, buffer)| {
+                    buffer.is_none() && document.path.as_ref().is_some_and(|path| !path.exists())
+                })
+                .map(|(document, _)| SessionDocument {
+                    backup: None,
+                    modified: false,
+                    ..document.clone()
+                });
+            self.session_state.inaccessible.extend(missing);
+        }
         let mut shown_tabs = 0;
         for (index, view) in session.views().into_iter().enumerate() {
             let pane = self.panes()[index].clone();

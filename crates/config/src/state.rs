@@ -46,6 +46,9 @@ pub struct UserState {
     pub spell_check: SpellCheckState,
     /// The search results' options.
     pub search_results: SearchResultsState,
+    /// The folder last chosen in an Open or Save As dialog (Default Directory > Remember).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub last_directory: Option<PathBuf>,
 }
 
 /// The search results' context menu switches.

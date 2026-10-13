@@ -215,7 +215,7 @@ impl EditorView {
         cx: &mut Context<Self>,
     ) {
         self.track_focus(window, cx);
-        let settings = ViewSettings::read(cx);
+        let settings = self.view_settings(cx);
         let text = self.text(cx).clone();
         let metrics = metrics(&settings, window);
         let line_height = metrics.line_height;

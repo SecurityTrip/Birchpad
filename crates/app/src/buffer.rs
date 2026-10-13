@@ -901,6 +901,15 @@ impl Buffer {
         }
     }
 
+    /// The language as `languages.<key>` names it: an id, `text`, or `udl:<name>`.
+    pub(crate) fn language_key(&self) -> String {
+        match (self.language(), self.user_language()) {
+            (Some(language), _) => language.id.to_owned(),
+            (None, Some(user)) => format!("{}{}", crate::user_languages::ID_PREFIX, user.name),
+            (None, None) => "text".to_owned(),
+        }
+    }
+
     /// The name an untitled document was given, if any.
     pub(crate) fn title(&self) -> Option<&str> {
         self.title.as_deref().filter(|_| self.path.is_none())

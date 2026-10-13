@@ -99,7 +99,7 @@ fn main() {
     for warning in &command_line.warnings {
         eprintln!("birchpad: {warning}");
     }
-    let paths = birchpad_config::ConfigPaths::current();
+    let paths = birchpad_config::ConfigPaths::current().following_cloud();
     let settings = birchpad_config::resolve(birchpad_config::load(&paths));
 
     // A second launch hands its files to the running instance and exits, unless it asks for

@@ -3,15 +3,19 @@
 //! Settings an administrator's policy sets are shown but cannot be changed.
 
 use std::collections::HashMap;
+use std::path::Path;
 
 use anyhow::{Result, anyhow, bail};
 use birchpad_config::Settings;
+use gpui_kit::component::button::Button;
 use gpui_kit::component::checkbox::Checkbox;
 use gpui_kit::component::dialog::DialogFooter;
 use gpui_kit::component::input::{Input, InputEvent, InputState};
 use gpui_kit::component::radio::RadioGroup;
-use gpui_kit::component::{Disableable as _, WindowExt as _};
-use gpui_kit::{App, AppContext as _, Context, Entity, WeakEntity, Window, div, prelude::*, px};
+use gpui_kit::component::{Disableable as _, Sizable as _, WindowExt as _};
+use gpui_kit::{
+    AnyElement, App, AppContext as _, Context, Entity, WeakEntity, Window, div, prelude::*, px,
+};
 use toml::Value;
 
 use crate::app_state::AppState;
@@ -37,6 +41,8 @@ pub(crate) enum Kind {
         min: i64,
         max: i64,
     },
+    /// Preferences > Language: tab size and spaces of each language (`languages`).
+    LanguageTabs,
 }
 
 /// A setting the dialog shows.
@@ -72,6 +78,12 @@ pub(crate) const ENTRIES: &[Entry] = &[
             ("en", "English"),
             ("ru", "Русский"),
         ]),
+    ),
+    entry(
+        "Appearance",
+        "appearance.title-file-name-only",
+        "Show only the file name in the title bar",
+        Kind::Bool,
     ),
     entry("Toolbar", "toolbar.show", "Show the toolbar", Kind::Bool),
     entry(
@@ -120,6 +132,58 @@ pub(crate) const ENTRIES: &[Entry] = &[
         Kind::Bool,
     ),
     entry(
+        "Tab Bar",
+        "tabs.exit-on-last-close",
+        "Exit on close the last tab",
+        Kind::Bool,
+    ),
+    entry(
+        "New Document",
+        "new-document.encoding",
+        "Encoding",
+        Kind::Choice(&[
+            ("utf-8", "UTF-8"),
+            ("utf-8-bom", "UTF-8 with BOM"),
+            ("utf-16le-bom", "UTF-16 LE BOM"),
+            ("utf-16be-bom", "UTF-16 BE BOM"),
+            ("ansi", "ANSI"),
+        ]),
+    ),
+    entry(
+        "New Document",
+        "new-document.line-ending",
+        "Line ending",
+        Kind::Choice(&[
+            ("system", "The system's"),
+            ("crlf", "Windows (CR LF)"),
+            ("lf", "Unix (LF)"),
+            ("cr", "Macintosh (CR)"),
+        ]),
+    ),
+    entry(
+        "New Document",
+        "new-document.language",
+        "Language (its id: python, rust, text)",
+        Kind::Text,
+    ),
+    entry("Language", "languages", "Tab settings", Kind::LanguageTabs),
+    entry(
+        "Default Directory",
+        "files.default-directory",
+        "Open and Save As start in",
+        Kind::Choice(&[
+            ("follow", "The current document's folder"),
+            ("remember", "The folder last used"),
+            ("custom", "This folder"),
+        ]),
+    ),
+    entry(
+        "Default Directory",
+        "files.default-directory-path",
+        "Folder",
+        Kind::Text,
+    ),
+    entry(
         "Multi-Instance & Date",
         "instances.mode",
         "Instances",
@@ -157,6 +221,12 @@ pub(crate) const ENTRIES: &[Entry] = &[
         "Cloud & Link",
         "links.schemes",
         "Schemes of one's own",
+        Kind::Text,
+    ),
+    entry(
+        "Cloud & Link",
+        "cloud.folder",
+        "Settings in this folder (from the next start)",
         Kind::Text,
     ),
     entry("Delimiter", "delimiters.open", "Open", Kind::Text),
@@ -349,6 +419,28 @@ pub(crate) const ENTRIES: &[Entry] = &[
     ),
     entry(
         "Backup",
+        "files.backup-on-save",
+        "Backup on save",
+        Kind::Choice(&[
+            ("none", "None"),
+            ("simple", "Simple (.bak)"),
+            ("verbose", "Verbose (with the time)"),
+        ]),
+    ),
+    entry(
+        "Backup",
+        "files.backup-folder",
+        "Folder of verbose backups",
+        Kind::Text,
+    ),
+    entry(
+        "Backup",
+        "session.remember-inaccessible",
+        "Remember inaccessible files",
+        Kind::Bool,
+    ),
+    entry(
+        "Backup",
         "session.remember",
         "Remember the session",
         Kind::Bool,
@@ -452,7 +544,7 @@ pub(crate) fn parse_field(kind: Kind, text: &str) -> Result<Option<Value>> {
             let text = text.trim();
             Ok((!text.is_empty()).then(|| Value::String(text.to_owned())))
         }
-        Kind::Bool | Kind::Choice(_) => {
+        Kind::Bool | Kind::Choice(_) | Kind::LanguageTabs => {
             bail!("{}", t!("preferences.this-setting-has-no-text-field"))
         }
     }
@@ -468,12 +560,16 @@ pub(crate) fn set(key: &str, value: Option<Value>, cx: &mut App) -> Result<()> {
             t!("preferences.is-set-by-your-administrator", key = key)
         );
     }
-    let path = state.paths.user_settings.clone().ok_or_else(|| {
-        anyhow!(
-            "{}",
-            t!("preferences.there-is-no-settings-file-to-write-to")
-        )
-    })?;
+    let path = state
+        .paths
+        .settings_file_for(key)
+        .map(Path::to_owned)
+        .ok_or_else(|| {
+            anyhow!(
+                "{}",
+                t!("preferences.there-is-no-settings-file-to-write-to")
+            )
+        })?;
     birchpad_config::write_setting(&path, key, value.as_ref())?;
     let paths = AppState::global(cx).paths.clone();
     let resolved = birchpad_config::resolve(birchpad_config::load(&paths));
@@ -500,6 +596,10 @@ pub(crate) struct Preferences {
     inputs: HashMap<&'static str, Entity<InputState>>,
     /// What went wrong with a setting, by key.
     errors: HashMap<&'static str, String>,
+    /// Preferences > Language: the language and the tab size to set.
+    language_input: Entity<InputState>,
+    language_width: Entity<InputState>,
+    language_spaces: bool,
 }
 
 /// Opens the dialog.
@@ -519,7 +619,10 @@ impl Preferences {
         let settings = AppState::global(cx).settings.clone();
         let mut inputs = HashMap::new();
         for entry in ENTRIES {
-            if matches!(entry.kind, Kind::Bool | Kind::Choice(_)) {
+            if matches!(
+                entry.kind,
+                Kind::Bool | Kind::Choice(_) | Kind::LanguageTabs
+            ) {
                 continue;
             }
             let value = display(current_value(&settings, entry.key).as_ref());
@@ -538,6 +641,10 @@ impl Preferences {
             section: 0,
             inputs,
             errors: HashMap::new(),
+            language_input: cx
+                .new(|cx| InputState::new(window, cx).placeholder(t!("preferences.language-id"))),
+            language_width: cx.new(|cx| InputState::new(window, cx).default_value("4")),
+            language_spaces: false,
         }
     }
 
@@ -564,10 +671,134 @@ impl Preferences {
         self.apply(entry.key, result, cx);
     }
 
+    /// Preferences > Language > Set: the language's own tab size and spaces.
+    pub(crate) fn set_language_tabs(&mut self, cx: &mut Context<Self>) {
+        let typed = self.language_input.read(cx).value().to_string();
+        let width = self.language_width.read(cx).value().to_string();
+        let result = language_id(&typed).and_then(|id| {
+            let width = parse_field(Kind::Number { min: 1, max: 16 }, &width)?;
+            set(&format!("languages.{id}.tab-width"), width, cx)?;
+            set(
+                &format!("languages.{id}.insert-spaces"),
+                Some(Value::Boolean(self.language_spaces)),
+                cx,
+            )
+        });
+        self.after_language_change(result, cx);
+    }
+
+    /// Preferences > Language > Remove: the language takes the editor's tab settings again.
+    pub(crate) fn remove_language_tabs(&mut self, id: &str, cx: &mut Context<Self>) {
+        let result = set(&format!("languages.{id}.tab-width"), None, cx)
+            .and_then(|()| set(&format!("languages.{id}.insert-spaces"), None, cx));
+        self.after_language_change(result, cx);
+    }
+
+    fn after_language_change(&mut self, result: Result<()>, cx: &mut Context<Self>) {
+        match result {
+            Ok(()) => {
+                self.errors.remove("languages");
+                self.workspace
+                    .update(cx, |workspace, cx| workspace.refresh_views(cx))
+                    .ok();
+            }
+            Err(error) => {
+                self.errors.insert("languages", format!("{error:#}"));
+            }
+        }
+        cx.notify();
+    }
+
+    /// The language table: one row per language with its own settings, then the fields that
+    /// set one.
+    fn render_language_tabs(&self, locked: bool, cx: &mut Context<Self>) -> AnyElement {
+        let settings = AppState::global(cx).settings.languages.clone();
+        let rows = settings
+            .iter()
+            .filter(|(_, own)| own.tab_width.is_some() || own.insert_spaces.is_some())
+            .enumerate()
+            .map(|(index, (id, own))| {
+                let id = id.clone();
+                let describe = format!(
+                    "{id}: {}{}",
+                    own.tab_width
+                        .map_or_else(String::new, |width| width.to_string()),
+                    match own.insert_spaces {
+                        Some(true) => format!(", {}", t!("preferences.spaces")),
+                        Some(false) => format!(", {}", t!("preferences.tabs")),
+                        None => String::new(),
+                    }
+                );
+                div()
+                    .flex()
+                    .flex_row()
+                    .items_center()
+                    .gap_2()
+                    .child(div().w(px(260.)).child(describe))
+                    .child(
+                        Button::new(("language-remove", index))
+                            .small()
+                            .label(t!("common.remove"))
+                            .disabled(locked)
+                            .on_click(cx.listener(move |this, _, _, cx| {
+                                this.remove_language_tabs(&id, cx);
+                            })),
+                    )
+            });
+        let spaces = self.language_spaces;
+        div()
+            .flex()
+            .flex_col()
+            .gap_2()
+            .child(label("Tab settings"))
+            .children(rows)
+            .child(
+                div()
+                    .flex()
+                    .flex_row()
+                    .items_center()
+                    .gap_2()
+                    .child(div().w(px(160.)).child(Input::new(&self.language_input)))
+                    .child(div().w(px(60.)).child(Input::new(&self.language_width)))
+                    .child(
+                        Checkbox::new("language-spaces")
+                            .label(label("Replace tabs by spaces"))
+                            .checked(spaces)
+                            .on_click(cx.listener(|this, checked: &bool, _, cx| {
+                                this.language_spaces = *checked;
+                                cx.notify();
+                            })),
+                    )
+                    .child(
+                        Button::new("language-set")
+                            .small()
+                            .label(t!("preferences.set"))
+                            .disabled(locked)
+                            .on_click(cx.listener(|this, _, _, cx| this.set_language_tabs(cx))),
+                    ),
+            )
+            .into_any_element()
+    }
+
     fn select_section(&mut self, index: usize, cx: &mut Context<Self>) {
         self.section = index;
         cx.notify();
     }
+}
+
+/// The id of a language as typed: its id or its name, without regard to case.
+pub(crate) fn language_id(typed: &str) -> Result<String> {
+    let typed = typed.trim();
+    if typed.eq_ignore_ascii_case("text") || typed.eq_ignore_ascii_case("normal text") {
+        return Ok("text".to_owned());
+    }
+    birchpad_syntax::LANGUAGES
+        .iter()
+        .find(|language| {
+            language.id.eq_ignore_ascii_case(typed) || language.name.eq_ignore_ascii_case(typed)
+        })
+        .map(|language| language.id.to_owned())
+        .ok_or_else(|| anyhow!("{}", t!("preferences.there-is-no-language", name = typed)))
 }
 
 /// A section's, a setting's or a choice's text: `preferences.<text>`.
@@ -581,7 +812,14 @@ impl Render for Preferences {
         let sections = sections();
         let state = AppState::global(cx);
         let settings = state.settings.clone();
+        let locked_keys: Vec<&str> = ENTRIES
+            .iter()
+            .map(|entry| entry.key)
+            .filter(|key| state.is_locked(key))
+            .collect();
         let section = sections[self.section.min(sections.len() - 1)];
+        let mut language_tabs = (section == "Language")
+            .then(|| self.render_language_tabs(locked_keys.contains(&"languages"), cx));
         let list = sections.iter().enumerate().map(|(index, name)| {
             div()
                 .id(("preferences-section", index))
@@ -598,7 +836,7 @@ impl Render for Preferences {
             .enumerate()
             .map(|(index, entry)| {
                 let key = entry.key;
-                let locked = state.is_locked(key);
+                let locked = locked_keys.contains(&key);
                 let value = current_value(&settings, key);
                 let control = match entry.kind {
                     Kind::Bool => {
@@ -633,6 +871,9 @@ impl Render for Preferences {
                             )
                             .into_any_element()
                     }
+                    Kind::LanguageTabs => language_tabs
+                        .take()
+                        .unwrap_or_else(|| div().into_any_element()),
                     Kind::Number { .. } | Kind::Numbers { .. } | Kind::Text => div()
                         .flex()
                         .flex_row()
@@ -685,3 +926,6 @@ impl Render for Preferences {
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod more_tests;

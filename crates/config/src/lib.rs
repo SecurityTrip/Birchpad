@@ -25,12 +25,13 @@ pub use session::{
     create_private_dir, write_private,
 };
 pub use settings::{
-    AppearanceSettings, AutoIndent, ChangeDetection, ChangeHistory, CompletionSettings,
-    CurrentLine, DEFAULT_TOOLBAR, DateSettings, DiagnosticsSettings, Edge, EditorSettings,
-    FileSettings, HighlightingSettings, InstanceMode, InstanceSettings, LinkSettings,
-    NetworkSettings, PluginInstall, PluginSettings, SearchEngine, SearchEngineSettings,
-    SessionSettings, Settings, SmartHighlighting, TabSettings, TokenMatching, ToolbarSettings,
-    ToolbarSize, UpdateChannel, UpdateMode, UpdateSettings,
+    AppearanceSettings, AutoIndent, BackupOnSave, ChangeDetection, ChangeHistory, CloudSettings,
+    CompletionSettings, CurrentLine, DEFAULT_TOOLBAR, DateSettings, DefaultDirectory,
+    DiagnosticsSettings, Edge, EditorSettings, FileSettings, HighlightingSettings, InstanceMode,
+    InstanceSettings, LanguageSettings, LinkSettings, NetworkSettings, NewDocumentSettings,
+    PluginInstall, PluginSettings, SearchEngine, SearchEngineSettings, SessionSettings, Settings,
+    SmartHighlighting, TabSettings, TokenMatching, ToolbarSettings, ToolbarSize, UpdateChannel,
+    UpdateMode, UpdateSettings,
 };
 pub use state::{
     FindInFilesState, MAX_RECENT_FILES, PanelsState, SearchResultsState, SpellCheckState,

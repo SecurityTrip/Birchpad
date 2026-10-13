@@ -18,6 +18,11 @@ pub struct Settings {
     pub search_engine: SearchEngineSettings,
     pub links: LinkSettings,
     pub delimiters: DelimiterSettings,
+    pub new_document: NewDocumentSettings,
+    /// Tab size and spaces of a language, by its id (`python`), over `editor`'s
+    /// ("Preferences > Language > Tab Settings").
+    pub languages: std::collections::BTreeMap<String, LanguageSettings>,
+    pub cloud: CloudSettings,
     pub session: SessionSettings,
     pub updates: UpdateSettings,
     pub plugins: PluginSettings,
@@ -35,6 +40,9 @@ pub struct AppearanceSettings {
     pub theme: String,
     /// The interface's language: `en`, `ru`, or `auto` for the system's.
     pub language: String,
+    /// The title bar shows the file's name, not its whole path ("Show only filename in title
+    /// bar").
+    pub title_file_name_only: bool,
 }
 
 impl Default for AppearanceSettings {
@@ -42,6 +50,7 @@ impl Default for AppearanceSettings {
         Self {
             theme: "Default".to_owned(),
             language: "auto".to_owned(),
+            title_file_name_only: false,
         }
     }
 }
@@ -256,6 +265,39 @@ pub struct FileSettings {
     /// After reloading, go to the end of the document ("Scroll to the last line after
     /// update").
     pub reload_scrolls_to_end: bool,
+    /// A copy of the file as it was before each save ("Backup on save").
+    pub backup_on_save: BackupOnSave,
+    /// Where verbose backups go; empty: a `nppBackup` folder next to the file.
+    pub backup_folder: String,
+    /// Where Open and Save As start ("Default Directory").
+    pub default_directory: DefaultDirectory,
+    /// With `default-directory = "custom"`, the folder.
+    pub default_directory_path: String,
+}
+
+/// Notepad++'s "Backup on save".
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum BackupOnSave {
+    #[default]
+    None,
+    /// `name.ext.bak` next to the file, replaced at every save.
+    Simple,
+    /// `name.ext.YYYY-MM-DD_HHMMSS.bak`, one for each save, in `backup-folder`.
+    Verbose,
+}
+
+/// Where Open and Save As start.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum DefaultDirectory {
+    /// The active document's folder.
+    #[default]
+    Follow,
+    /// The folder last used in a dialog.
+    Remember,
+    /// `default-directory-path`.
+    Custom,
 }
 
 impl Default for FileSettings {
@@ -267,6 +309,10 @@ impl Default for FileSettings {
             change_detection: ChangeDetection::default(),
             reload_silently: false,
             reload_scrolls_to_end: false,
+            backup_on_save: BackupOnSave::default(),
+            backup_folder: String::new(),
+            default_directory: DefaultDirectory::default(),
+            default_directory_path: String::new(),
         }
     }
 }
@@ -308,6 +354,8 @@ pub struct TabSettings {
     /// The switcher lists the documents most recently used first, instead of in tab order
     /// ("Enable MRU behaviour").
     pub switcher_mru: bool,
+    /// Closing the last tab quits ("Exit on close the last tab").
+    pub exit_on_last_close: bool,
 }
 
 impl Default for TabSettings {
@@ -322,6 +370,7 @@ impl Default for TabSettings {
             peeker: true,
             switcher: true,
             switcher_mru: true,
+            exit_on_last_close: false,
         }
     }
 }
@@ -582,6 +631,47 @@ impl DelimiterSettings {
     }
 }
 
+/// Notepad++'s Preferences > New Document.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, rename_all = "kebab-case")]
+pub struct NewDocumentSettings {
+    /// As the Encoding menu names them: `utf-8`, `utf-8-bom`, `utf-16le-bom`, `ansi`...
+    pub encoding: String,
+    /// `crlf`, `lf` or `cr`; `system`: the platform's.
+    pub line_ending: String,
+    /// A language id, or `text`.
+    pub language: String,
+}
+
+impl Default for NewDocumentSettings {
+    fn default() -> Self {
+        Self {
+            encoding: "utf-8".to_owned(),
+            line_ending: "system".to_owned(),
+            language: "text".to_owned(),
+        }
+    }
+}
+
+/// One language's tab settings; unset ones are `editor`'s.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, rename_all = "kebab-case")]
+pub struct LanguageSettings {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tab_width: Option<u8>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub insert_spaces: Option<bool>,
+}
+
+/// Settings kept in a folder of one's choice (Notepad++'s Preferences > Cloud & Link).
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, rename_all = "kebab-case")]
+pub struct CloudSettings {
+    /// The folder whose `settings.toml` (and `keymap.toml`, themes...) Birchpad uses from the
+    /// next start; empty: the usual place. Only the local settings file can set it.
+    pub folder: String,
+}
+
 /// Notepad++'s Preferences > Backup.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default, rename_all = "kebab-case")]
@@ -595,6 +685,9 @@ pub struct SessionSettings {
     pub backup_unsaved: bool,
     /// How often unsaved changes are backed up, in seconds.
     pub backup_interval_seconds: u32,
+    /// Files of the session that cannot be read now (a network drive away) stay in it, to open
+    /// when they can ("Remember inaccessible files").
+    pub remember_inaccessible: bool,
 }
 
 impl Default for SessionSettings {
@@ -603,6 +696,7 @@ impl Default for SessionSettings {
             remember: true,
             backup_unsaved: true,
             backup_interval_seconds: 7,
+            remember_inaccessible: false,
         }
     }
 }

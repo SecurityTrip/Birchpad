@@ -302,12 +302,12 @@ step 6.11 brings in the sections no feature brings.
 
 ### Customization
 
-- [ ] 6.11 Preferences: the remaining sections and options of Notepad++'s dialog (tab bar,
-      delimiters, search engine, MISC and the rest), with OK/Close semantics where Notepad++
-      has them; Language: tab size and spaces per language; new document defaults (encoding,
-      line ending, language); backup copies on save (simple or verbose); default folder;
-      settings in a folder of one's choice (cloud); minimize to the system tray; "remember
-      inaccessible files" in sessions
+- [x] 6.11 Preferences: the remaining sections and options of Notepad++'s dialog (tab bar,
+      delimiters, search engine, MISC and the rest; changes apply at once, as most of
+      Notepad++'s do); Language: tab size and spaces per language; new document defaults
+      (encoding, line ending, language); backup copies on save (simple or verbose); default
+      folder; settings in a folder of one's choice (cloud); "remember inaccessible files" in
+      sessions. Minimizing to the system tray waits for a tray in GPUI (Phase 7)
 - [ ] 6.12 Themes and Style Configurator: fonts (family, size, bold/italic per style) in
       themes, the Style Configurator and Notepad++ theme import; saving changes to a Notepad++
       theme back to its XML; a closer match from Scintilla's style names to highlights, with a
@@ -387,6 +387,7 @@ step 6.11 brings in the sections no feature brings.
 ## Phase 7: beyond Notepad++
 
 - LSP client; command palette and fuzzy file finder
+- Minimize to the system tray (Notepad++'s Preferences > MISC), once GPUI has a tray icon
 - Git: gutter changes, blame, diff
 - Integrated terminal
 - Syntax-aware selection, sticky scroll

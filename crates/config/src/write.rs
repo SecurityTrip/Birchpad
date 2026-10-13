@@ -31,7 +31,12 @@ pub fn check_setting(key: &str, value: &Value) -> Result<(), SettingError> {
     let known = first.and_then(|first| parts.try_fold(first, |value, part| value.get(part)));
     // `files.ansi-encoding` and `updates.url` have no default, and are known all the same.
     let optional = ["files.ansi-encoding", "updates.url"];
-    if known.is_none() && !optional.contains(&key) {
+    // `languages.<id>.tab-width` and `.insert-spaces`, for any language.
+    let language = matches!(
+        key.split('.').collect::<Vec<_>>().as_slice(),
+        ["languages", id, "tab-width" | "insert-spaces"] if !id.is_empty()
+    );
+    if known.is_none() && !optional.contains(&key) && !language {
         return Err(SettingError::UnknownKey(key.to_owned()));
     }
     let mut table = Table::new();

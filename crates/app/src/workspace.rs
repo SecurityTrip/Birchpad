@@ -142,6 +142,8 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
             let buffer = view.read(cx).buffer.clone();
             buffer.update(cx, |buffer, cx| buffer.set_language(language, cx));
         }
+        // Its tab settings may differ.
+        this.refresh_views(cx);
         Ok(())
     });
     crate::encoding_ui::register_commands(registry);
@@ -221,6 +223,31 @@ fn all_characters(view: &ViewSettings) -> bool {
 #[derive(serde::Deserialize)]
 struct LanguageArgs {
     language: String,
+}
+
+/// The format and language of a new document: Preferences > New Document. Names it does not
+/// know give UTF-8, the platform's line ending and plain text.
+pub(crate) fn new_document(
+    cx: &App,
+) -> (
+    birchpad_core::Format,
+    Option<&'static birchpad_syntax::Language>,
+) {
+    let app = AppState::global(cx);
+    let settings = &app.settings.new_document;
+    let mut format = birchpad_core::Format::new();
+    if let Some((encoding, bom)) = birchpad_io::parse_encoding(&settings.encoding, app.ansi) {
+        format.encoding = encoding;
+        format.bom = bom && encoding.is_unicode();
+    }
+    format.line_ending = match settings.line_ending.trim().to_ascii_lowercase().as_str() {
+        "crlf" | "windows" => birchpad_core::LineEnding::CrLf,
+        "lf" | "unix" => birchpad_core::LineEnding::Lf,
+        "cr" | "mac" => birchpad_core::LineEnding::Cr,
+        _ => format.line_ending,
+    };
+    let language = birchpad_syntax::by_id(settings.language.trim());
+    (format, language)
 }
 
 /// Shows an error to the user without interrupting them.
@@ -597,7 +624,15 @@ impl Workspace {
 
     pub(crate) fn new_file(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let number = self.next_untitled_number(cx);
-        let buffer = cx.new(|_| Buffer::untitled(number));
+        let (format, language) = new_document(cx);
+        let buffer = cx.new(|cx| {
+            let doc = Document::with_format(birchpad_core::Rope::new(), format);
+            let mut buffer = Buffer::untitled_with(number, doc);
+            if language.is_some() {
+                buffer.set_language(language, cx);
+            }
+            buffer
+        });
         self.add_buffer(buffer, window, cx);
     }
 
@@ -837,7 +872,12 @@ impl Workspace {
         self.buffer_subscriptions.retain(|id, _| live.contains(id));
         self.view_subscriptions.remove(&view.entity_id());
         self.sync_watches(cx);
-        if self.all_views(cx).is_empty() {
+        if self.all_views(cx).is_empty() && AppState::global(cx).settings.tabs.exit_on_last_close {
+            // Preferences > Tab Bar > Exit on close the last tab.
+            cx.defer_in(window, |this, window, cx| this.exit(window, cx));
+            self.active_pane = 0;
+            self.new_file(window, cx);
+        } else if self.all_views(cx).is_empty() {
             // Like Notepad++, closing the last document leaves an empty "new 1".
             self.active_pane = 0;
             self.new_file(window, cx);
@@ -1052,23 +1092,34 @@ impl Workspace {
     }
 
     fn update_title(&mut self, window: &mut Window, cx: &App) {
-        let title = match self.active_view(cx) {
+        let title = self.window_title(cx);
+        if title != self.title {
+            window.set_window_title(&title);
+            // macOS shows a dot in the close button of a window with unsaved changes.
+            window.set_window_edited(title.starts_with('*'));
+            self.title = title;
+        }
+    }
+
+    /// The window's title: `*` for unsaved changes, the active file's path (or only its name,
+    /// Preferences > Appearance), and Birchpad.
+    pub(crate) fn window_title(&self, cx: &App) -> String {
+        match self.active_view(cx) {
             Some(view) => {
                 let buffer = view.read(cx).buffer.read(cx);
+                let name_only = AppState::global(cx)
+                    .settings
+                    .appearance
+                    .title_file_name_only;
                 let name = buffer
                     .path()
+                    .filter(|_| !name_only)
                     .map(|path| path.display().to_string())
                     .unwrap_or_else(|| buffer.display_name());
                 let modified = if buffer.is_modified() { "*" } else { "" };
                 format!("{modified}{name} - Birchpad")
             }
             None => "Birchpad".to_owned(),
-        };
-        if title != self.title {
-            window.set_window_title(&title);
-            // macOS shows a dot in the close button of a window with unsaved changes.
-            window.set_window_edited(title.starts_with('*'));
-            self.title = title;
         }
     }
 }

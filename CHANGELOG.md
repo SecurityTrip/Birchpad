@@ -78,6 +78,16 @@ version's release notes from its section here.
   are underlined and open with a double click or Ctrl+click (Preferences > Cloud & Link).
 - Ctrl+double click selects the text between the delimiters around the click (Preferences >
   Delimiter: the characters, and whether they may be on other lines).
+- Preferences > Language: each language's own tab size and spaces (`[languages.<id>]`).
+- Preferences > New Document: the encoding, line ending and language of new documents.
+- Preferences > Default Directory: Open and Save As start in the current document's folder,
+  the folder last used, or one of one's own.
+- Preferences > Backup: a copy of the file before each save, `.bak` next to it or one per save
+  with the time in a folder; Remember inaccessible files keeps files that cannot be read now in
+  the session.
+- Preferences > Cloud & Link: settings in a folder of one's choice (`cloud.folder`), from the
+  next start.
+- Preferences: only the file name in the title bar; exit on closing the last tab.
 - Preferences > Multi-Instance (`instances.mode`): every launch, or a launch opening a session,
   can start a Birchpad of its own instead of handing its files to the running one.
 

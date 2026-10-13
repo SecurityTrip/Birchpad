@@ -7,7 +7,7 @@ use birchpad_core::{LineEnding, Rope, Selection, Transaction};
 use gpui_kit::Context;
 use serde::Deserialize;
 
-use super::{EditorView, LastEdit, ViewSettings};
+use super::{EditorView, LastEdit};
 use crate::commands::CommandRegistry;
 
 #[derive(Deserialize)]
@@ -119,7 +119,8 @@ pub(super) fn register_commands(registry: &mut CommandRegistry) {
     });
     registry.editor("edit.split-lines", |this, (), _, cx| {
         // At the edge while it is shown, else at the width of the view, as in Notepad++.
-        let width = ViewSettings::read(cx)
+        let width = this
+            .view_settings(cx)
             .split_column()
             .or_else(|| this.visible_columns())
             .unwrap_or(80);
@@ -198,7 +199,7 @@ pub(super) fn register_commands(registry: &mut CommandRegistry) {
         },
     );
     registry.editor("edit.tabs-to-spaces", |this, (), _, cx| {
-        let tab_width = ViewSettings::read(cx).tab_width;
+        let tab_width = this.view_settings(cx).tab_width;
         this.run_op(cx, |text, selection, eol| {
             ops::tabs_to_spaces(text, selection, tab_width, eol)
         });
@@ -208,7 +209,7 @@ pub(super) fn register_commands(registry: &mut CommandRegistry) {
         "edit.spaces-to-tabs",
         |this, args: Option<LeadingArgs>, _, cx| {
             let leading = args.unwrap_or_default().leading;
-            let tab_width = ViewSettings::read(cx).tab_width;
+            let tab_width = this.view_settings(cx).tab_width;
             this.run_op(cx, |text, selection, eol| {
                 ops::spaces_to_tabs(text, selection, tab_width, leading, eol)
             });

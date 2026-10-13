@@ -342,6 +342,26 @@ impl ViewSettings {
         }
     }
 
+    /// The settings for a document in `language` (an id, `text`, or `udl:<name>`): its tab
+    /// size and spaces from `languages.<id>` where set.
+    pub(crate) fn for_language(language: &str, cx: &App) -> Self {
+        let mut settings = Self::read(cx);
+        if let Some(own) = AppState::global(cx).settings.languages.get(language) {
+            if let Some(width) = own.tab_width {
+                settings.tab_width = usize::from(width.max(1));
+            }
+            if let Some(spaces) = own.insert_spaces {
+                settings.insert_spaces = spaces;
+            }
+        }
+        settings
+    }
+
+    /// The settings for `buffer`'s document.
+    pub(crate) fn for_buffer(buffer: &Buffer, cx: &App) -> Self {
+        Self::for_language(&buffer.language_key(), cx)
+    }
+
     /// The column where Split Lines breaks lines: the first edge column while the edge is
     /// shown, as in Notepad++.
     pub(crate) fn split_column(&self) -> Option<usize> {
@@ -519,7 +539,7 @@ impl EditorView {
         });
         let focus_handle = cx.focus_handle();
         let text = buffer.read(cx).doc().text().clone();
-        let settings = ViewSettings::read(cx);
+        let settings = ViewSettings::for_buffer(buffer.read(cx), cx);
         let display = DisplayMap::new(
             &text,
             LayoutConfig {
@@ -924,6 +944,11 @@ impl EditorView {
         cx.notify();
     }
 
+    /// The view settings for this document's language.
+    pub(crate) fn view_settings(&self, cx: &App) -> ViewSettings {
+        ViewSettings::for_buffer(self.buffer.read(cx), cx)
+    }
+
     pub(crate) fn tab_width(&self) -> usize {
         self.display.config().tab_width
     }
@@ -1054,7 +1079,7 @@ impl EditorView {
             .language()
             .is_some_and(|language| language.id == "python");
         let mode = AppState::global(cx).settings.editor.auto_indent;
-        let settings = ViewSettings::read(cx);
+        let settings = self.view_settings(cx);
         let unit = if settings.insert_spaces {
             " ".repeat(settings.tab_width)
         } else {
@@ -1136,7 +1161,7 @@ impl EditorView {
     /// Increase (`more`) or Decrease Line Indent: the lines of every selection, by a tab or by
     /// `editor.tab-width` spaces with `editor.insert-spaces`.
     fn indent(&mut self, more: bool, cx: &mut Context<Self>) {
-        let settings = ViewSettings::read(cx);
+        let settings = self.view_settings(cx);
         let unit = if settings.insert_spaces {
             " ".repeat(settings.tab_width.max(1))
         } else {
@@ -1154,7 +1179,7 @@ impl EditorView {
 
     /// Tab: a tab character, or spaces up to the next tab stop with `editor.insert-spaces`.
     fn insert_tab(&mut self, cx: &mut Context<Self>) {
-        let settings = ViewSettings::read(cx);
+        let settings = self.view_settings(cx);
         if !settings.insert_spaces {
             self.insert("\t", LastEdit::Typing, cx);
             return;
