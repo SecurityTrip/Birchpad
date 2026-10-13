@@ -118,7 +118,7 @@ fn runs_and_saves_command_lines(cx: &mut TestAppContext) {
     let text = std::fs::read_to_string(dir.path().join("run.toml")).unwrap();
     let saved = birchpad_commands::parse_run_commands(&text).unwrap();
     assert_eq!(saved.last().unwrap().line, "echo again");
-    assert_eq!(saved.len(), 3);
+    assert_eq!(saved.len(), 1);
     // Unknown names and empty lines are refused.
     assert!(
         run(

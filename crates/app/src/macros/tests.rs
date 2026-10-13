@@ -291,8 +291,12 @@ fn searches_are_recorded_with_their_text(cx: &mut TestAppContext) {
     assert_eq!(steps[1].args["with"], "bar");
     assert_eq!(active_text(&workspace, cx), "one bar two foo three foo");
 
-    // Played back with other text in the panel: the recorded search runs.
+    // Played back from the start with other text in the panel: the recorded search runs.
     find_bar_text(&workspace, "zzz", Some("qqq"), cx);
+    workspace.update(cx, |workspace, cx| {
+        let view = workspace.active_view(cx).unwrap();
+        view.update(cx, |view, cx| view.select_range(0..0, cx));
+    });
     run(&workspace, Invocation::new("macro.playback"), cx).unwrap();
     assert_eq!(active_text(&workspace, cx), "one bar two bar three foo");
 

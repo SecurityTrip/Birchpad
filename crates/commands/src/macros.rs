@@ -146,7 +146,7 @@ mod tests {
 
     #[test]
     fn what_is_recorded() {
-        for command in ["edit.type", "file.save", "search.find-next", "edit.undo"] {
+        for command in ["edit.type", "file.save", "search.mark", "edit.undo"] {
             assert!(is_recordable(command), "{command}");
         }
         for command in [

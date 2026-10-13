@@ -477,8 +477,6 @@ pub(crate) fn highlight_of(lexer: &str, name: &str) -> Option<&'static str> {
         ("powershell", "CMDLET") => Some("function.builtin"),
         ("powershell", "ALIAS") => Some("function"),
         ("makefile", "TARGET") => Some("function"),
-        ("lua", "FUNC1") => Some("keyword"),
-        ("lua", "FUNC2" | "FUNC3") => Some("function.builtin"),
         ("sql", "USER1" | "USER2" | "USER3" | "USER4") => Some("function.builtin"),
         ("cpp" | "c" | "cs" | "java" | "javascript" | "typescript", "GLOBAL CLASS") => Some("type"),
         ("go" | "swift" | "kotlin", "INSTRUCTION WORD 2" | "TYPE WORD") => Some("type"),
