@@ -50,6 +50,14 @@ pub(super) fn register_commands(registry: &mut CommandRegistry) {
         this.fold_level(args.level()?, false, cx);
         Ok(())
     });
+    registry.editor("view.hide-lines", |this, (), _, cx| this.hide_lines(cx));
+    registry.editor("view.show-hidden-lines", |this, (), _, cx| {
+        let text = this.text(cx).clone();
+        this.user_hidden.set_lines(&text, Vec::new());
+        this.sync_hidden(cx);
+        cx.notify();
+        Ok(())
+    });
     registry.editor("view.fold-current", |this, (), _, cx| {
         this.fold_current(true, cx);
         Ok(())
@@ -115,12 +123,84 @@ impl EditorView {
         self.collapsed.contains(self.text(cx), line)
     }
 
-    /// Hides the lines of the collapsed folds in the display map.
+    /// Hides the lines of the collapsed folds and of View > Hide Lines in the display map.
     pub(super) fn sync_hidden(&mut self, cx: &App) {
         let text = self.text(cx).clone();
         let collapsed = self.collapsed.lines(&text);
-        let hidden = hidden_lines(self.folds(cx), &collapsed);
-        self.display.set_hidden(hidden);
+        let mut hidden = hidden_lines(self.folds(cx), &collapsed);
+        hidden.extend(self.hidden_blocks(&text));
+        hidden.sort_by_key(|range| range.start);
+        let mut merged: Vec<std::ops::Range<usize>> = Vec::with_capacity(hidden.len());
+        for range in hidden {
+            match merged.last_mut() {
+                Some(last) if range.start <= last.end => last.end = last.end.max(range.end),
+                _ => merged.push(range),
+            }
+        }
+        self.display.set_hidden(merged);
+    }
+
+    /// The blocks of lines View > Hide Lines hid, in order.
+    pub(super) fn hidden_blocks(&self, text: &birchpad_core::Rope) -> Vec<std::ops::Range<usize>> {
+        let mut blocks: Vec<std::ops::Range<usize>> = Vec::new();
+        for line in self.user_hidden.lines(text) {
+            match blocks.last_mut() {
+                Some(last) if last.end == line => last.end = line + 1,
+                _ => blocks.push(line..line + 1),
+            }
+        }
+        blocks
+    }
+
+    /// The lines just above hidden blocks, in `lines`: where they are shown again.
+    pub(super) fn hidden_anchors(
+        &self,
+        text: &birchpad_core::Rope,
+        lines: std::ops::Range<usize>,
+    ) -> Vec<usize> {
+        self.hidden_blocks(text)
+            .into_iter()
+            .map(|block| block.start - 1)
+            .filter(|anchor| lines.contains(anchor))
+            .collect()
+    }
+
+    /// View > Hide Lines (Alt+H): the lines of the selection. The first line stays, as the
+    /// line the hidden ones are shown again from.
+    fn hide_lines(&mut self, cx: &mut Context<Self>) -> anyhow::Result<()> {
+        let text = self.text(cx).clone();
+        let lines: Vec<usize> = birchpad_core::ops::line_blocks(&text, &self.selection)
+            .into_iter()
+            .flatten()
+            .filter(|line| *line > 0)
+            .collect();
+        if lines.is_empty() {
+            anyhow::bail!("{}", t!("folding.the-first-line-cannot-be-hidden"));
+        }
+        for line in lines {
+            self.user_hidden.add(&text, line);
+        }
+        self.set_collapsed(Vec::new(), true, cx);
+        cx.notify();
+        Ok(())
+    }
+
+    /// Shows again the lines hidden below `anchor` (a click on its mark).
+    pub(super) fn show_hidden_below(&mut self, anchor: usize, cx: &mut Context<Self>) -> bool {
+        let text = self.text(cx).clone();
+        let Some(block) = self
+            .hidden_blocks(&text)
+            .into_iter()
+            .find(|block| block.start == anchor + 1)
+        else {
+            return false;
+        };
+        for line in block {
+            self.user_hidden.remove(&text, line);
+        }
+        self.sync_hidden(cx);
+        cx.notify();
+        true
     }
 
     /// Forgets collapsed headers that are no longer fold points (after a reparse). Before the
@@ -210,6 +290,17 @@ impl EditorView {
         let text = self.text(cx).clone();
         for range in self.selection.ranges().to_vec() {
             let line = line_of(&text, range.head);
+            // Hidden by View > Hide Lines: its block shows again.
+            if let Some(block) = self
+                .hidden_blocks(&text)
+                .into_iter()
+                .find(|block| block.contains(&line))
+            {
+                for hidden in block {
+                    self.user_hidden.remove(&text, hidden);
+                }
+                self.sync_hidden(cx);
+            }
             while self.display.is_hidden(line) {
                 // The outermost collapsed fold hiding the line is its visible header.
                 let header = self.display.visible_line(line);

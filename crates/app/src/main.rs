@@ -63,6 +63,7 @@ mod toolbar;
 mod tools;
 mod updates;
 mod user_languages;
+mod view_extras;
 mod window_menu;
 mod window_modes;
 mod workspace;

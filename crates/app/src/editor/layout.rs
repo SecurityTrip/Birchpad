@@ -186,6 +186,9 @@ pub(super) struct Layout {
     pub(super) change_bars: Vec<(Bounds<Pixels>, LineChange)>,
     /// Fold boxes in the folding margin, and whether each fold is collapsed.
     pub(super) fold_boxes: Vec<(Bounds<Pixels>, bool)>,
+    /// Lines with hidden lines below them (View > Hide Lines), with the band across the
+    /// margins and the text that marks them; a click in the margins shows them again.
+    pub(super) hidden_marks: Vec<(usize, Bounds<Pixels>)>,
     /// The lines of expanded folds in the folding margin.
     pub(super) fold_lines: Vec<Bounds<Pixels>>,
     /// A line under each collapsed fold's header, across the text.
@@ -388,6 +391,7 @@ impl EditorView {
             bookmarks: Vec::new(),
             change_bars: Vec::new(),
             fold_boxes: Vec::new(),
+            hidden_marks: Vec::new(),
             fold_lines: Vec::new(),
             fold_underlines: Vec::new(),
             decorations: Vec::new(),
@@ -402,6 +406,7 @@ impl EditorView {
         layout.bookmarks = self.bookmark_symbols(&layout, &text, cx);
         layout.change_bars = self.change_bars(&layout, &text, cx);
         self.fold_marks(&mut layout, &text);
+        self.hidden_marks(&mut layout, &text);
         layout.decorations = self.decoration_bounds(&layout, &text, cx);
         layout.selections = self.selection_bounds(&layout, &text);
         layout.carets = self.caret_bounds(&layout, &text);
@@ -802,6 +807,26 @@ impl EditorView {
                 Some((bar, change))
             })
             .collect()
+    }
+
+    /// A band under the last row of each line with hidden lines below it.
+    fn hidden_marks(&self, layout: &mut Layout, text: &Rope) {
+        let (Some(first), Some(last)) = (layout.rows.first(), layout.rows.last()) else {
+            return;
+        };
+        let anchors = self.hidden_anchors(text, first.row.line..last.row.line + 1);
+        let line_height = layout.metrics.line_height;
+        let left = layout.margins.gutter.left();
+        let right = layout.text_bounds.right();
+        for row in layout.rows.iter().filter(|row| row.row.last_in_line) {
+            if anchors.contains(&row.row.line) {
+                let bottom = row.y + line_height;
+                layout.hidden_marks.push((
+                    row.row.line,
+                    Bounds::from_corners(point(left, bottom - px(2.)), point(right, bottom)),
+                ));
+            }
+        }
     }
 
     /// Fold boxes, the lines of expanded folds, and underlines of collapsed headers, for the

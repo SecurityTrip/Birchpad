@@ -68,6 +68,12 @@ version's release notes from its section here.
 - Search > Change History: Go to Next and Previous Change, Clear All Changes.
 - The search results' context menu: Open Selected Pathname, Open All, Wrap Long Lines and
   Purge for Every Search (both remembered); its texts are translated.
+- View > Hide Lines (Alt+H): the selected lines are hidden, the line above them marked; a click
+  in its margin, or View > Show Hidden Lines, shows them again, and so does a caret that lands
+  in them.
+- View > View Current File in the default browser, Firefox, Chrome, Edge or Safari.
+- View > Summary: the document's path, times, characters without line endings, words, lines
+  and length, and the selection's.
 - Preferences > Multi-Instance (`instances.mode`): every launch, or a launch opening a session,
   can start a Birchpad of its own instead of handing its files to the running one.
 

@@ -319,6 +319,11 @@ pub const COMMANDS: &[CommandSpec] = &[
     workspace("view.zoom-in", "Zoom In"),
     workspace("view.zoom-out", "Zoom Out"),
     workspace("view.zoom-reset", "Restore Default Zoom"),
+    // { "browser": "default" | "firefox" | "chrome" | "edge" | "safari" }: the active file
+    workspace("view.in-browser", "View Current File in"),
+    editor("view.hide-lines", "Hide Lines"),
+    editor("view.show-hidden-lines", "Show Hidden Lines"),
+    workspace("view.summary", "Summary..."),
     workspace("view.always-on-top", "Always on Top"),
     workspace("view.full-screen", "Toggle Full Screen Mode"),
     workspace("view.post-it", "Post-It"),

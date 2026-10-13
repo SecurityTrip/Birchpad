@@ -130,6 +130,8 @@ pub(crate) enum Shell {
     Open(PathBuf),
     /// The web browser, at this address.
     Browse(String),
+    /// A browser by name (`firefox`, `chrome`, `edge`, `safari`), showing this file.
+    Browser(String, PathBuf),
 }
 
 #[cfg(test)]
@@ -157,11 +159,54 @@ pub(crate) fn shell(request: Shell, cx: &mut App) -> Result<()> {
             cx.open_with_system(&path);
             Ok(())
         }
+        Shell::Browser(browser, path) => open_in_browser(&browser, &path),
         Shell::Browse(url) => {
             cx.open_url(&url);
             Ok(())
         }
     }
+}
+
+/// Opens `path` in the browser named `browser`.
+#[cfg(not(test))]
+fn open_in_browser(browser: &str, path: &Path) -> Result<()> {
+    use std::process::Command;
+    let started = if cfg!(windows) {
+        let program = match browser {
+            "chrome" => "chrome",
+            "edge" => "msedge",
+            other => other,
+        };
+        Command::new("cmd")
+            .args(["/C", "start", "", program])
+            .arg(path)
+            .spawn()
+    } else if cfg!(target_os = "macos") {
+        let app = match browser {
+            "firefox" => "Firefox",
+            "chrome" => "Google Chrome",
+            "edge" => "Microsoft Edge",
+            _ => "Safari",
+        };
+        Command::new("open").args(["-a", app]).arg(path).spawn()
+    } else {
+        let program = match browser {
+            "chrome" => "google-chrome",
+            "edge" => "microsoft-edge",
+            other => other,
+        };
+        Command::new(program).arg(path).spawn()
+    };
+    started.map(|_| ()).map_err(|error| {
+        anyhow!(
+            "{}",
+            t!(
+                "file-commands.cannot-start-the-browser",
+                browser = browser,
+                error = error
+            )
+        )
+    })
 }
 
 /// Moves `path` to the system's recycle bin (in tests, deletes it).

@@ -15,6 +15,8 @@ mod command_sweep_tests;
 mod completion;
 mod element;
 mod folding;
+#[cfg(test)]
+mod hidden_lines_tests;
 mod layout;
 mod marks;
 mod multi;
@@ -421,6 +423,8 @@ pub(crate) struct EditorView {
     smart_highlight: Option<smart_highlight::SmartHighlight>,
     /// Headers of this view's collapsed folds.
     collapsed: LineMarkers,
+    /// View > Hide Lines: the lines hidden, each marked; shown again from the line above them.
+    pub(super) user_hidden: LineMarkers,
     /// The buffer's folds in lines.
     fold_cache: Option<folding::FoldCache>,
     /// The rectangular selection, valid while `selection` is still the one it made.
@@ -550,6 +554,7 @@ impl EditorView {
             highlight_cache: None,
             smart_highlight: None,
             collapsed: LineMarkers::new(),
+            user_hidden: LineMarkers::new(),
             fold_cache: None,
             block: None,
             multi_order: None,
@@ -977,6 +982,7 @@ impl EditorView {
         let text = self.text(cx).clone();
         self.display.edit(&text, &changes);
         self.collapsed.map(&changes, &text);
+        self.user_hidden.map(&changes, &text);
         self.follow_folds(&changes, cx);
         self.sync_hidden(cx);
         self.selection = selection.clip_virtual(&text);
@@ -1385,6 +1391,16 @@ impl EditorView {
             };
             self.drag = Some(Drag::HorizontalThumb { grab });
             self.drag_scrollbar(event.position, cx);
+            return;
+        }
+        // A click in the margins of a line with hidden lines below shows them again.
+        if layout.margins.gutter.contains(&event.position)
+            && let Some(line) = layout
+                .row_at_y(event.position.y)
+                .map(|row| row.row.line)
+                .filter(|line| layout.hidden_marks.iter().any(|(anchor, _)| anchor == line))
+        {
+            self.show_hidden_below(line, cx);
             return;
         }
         if let Some(margin) = layout.margins.folding

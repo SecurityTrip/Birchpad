@@ -15,6 +15,38 @@ pub fn line_count(text: &Rope) -> usize {
     text.len_lines(LINE_TYPE)
 }
 
+/// What View > Summary counts in a text.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct TextCounts {
+    /// Characters, line breaks left out (CRLF is one line break).
+    pub characters: usize,
+    /// Runs of letters, digits and `_`.
+    pub words: usize,
+    pub lines: usize,
+    pub bytes: usize,
+}
+
+/// Counts characters, words and lines of `text`.
+pub fn count_text(text: &Rope) -> TextCounts {
+    let mut counts = TextCounts {
+        lines: line_count(text),
+        bytes: text.len(),
+        ..TextCounts::default()
+    };
+    let mut in_word = false;
+    for c in text.chars() {
+        if c != '\n' && c != '\r' {
+            counts.characters += 1;
+        }
+        let word = c.is_alphanumeric() || c == '_';
+        if word && !in_word {
+            counts.words += 1;
+        }
+        in_word = word;
+    }
+    counts
+}
+
 /// The line containing byte `pos`.
 pub fn line_of(text: &Rope, pos: usize) -> usize {
     text.byte_to_line_idx(pos, LINE_TYPE)
@@ -246,5 +278,40 @@ mod tests {
         assert_eq!(prev_boundary(&text, 5), 3);
         assert_eq!(next_boundary(&text, 5), 5);
         assert_eq!(prev_boundary(&text, 0), 0);
+    }
+}
+
+#[cfg(test)]
+mod count_tests {
+    use super::*;
+
+    #[test]
+    fn counts_of_a_text() {
+        let counts = count_text(&Rope::from("Hello, wörld_1!\r\nсвет 2\n"));
+        assert_eq!(
+            counts,
+            TextCounts {
+                characters: 21,
+                words: 4,
+                lines: 3,
+                bytes: 29,
+            }
+        );
+        assert_eq!(
+            count_text(&Rope::new()),
+            TextCounts {
+                characters: 0,
+                words: 0,
+                lines: 1,
+                bytes: 0
+            }
+        );
+        let one = count_text(&Rope::from("日本"));
+        assert_eq!(
+            (one.characters, one.words, one.lines, one.bytes),
+            (2, 1, 1, 6)
+        );
+        let marks = count_text(&Rope::from("- . -\r"));
+        assert_eq!((marks.characters, marks.words, marks.lines), (5, 0, 2));
     }
 }

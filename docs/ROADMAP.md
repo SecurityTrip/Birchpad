@@ -295,7 +295,7 @@ step 6.11 brings in the sections no feature brings.
       in range, Change History (next and previous change, clear all changes), Find in Projects;
       the search results' context menu as Notepad++'s (copy lines or paths, open all, wrap long
       lines, purge for every search)
-- [ ] 6.9 View menu: View Current File in a browser, Hide Lines, Summary (counts of
+- [x] 6.9 View menu: View Current File in a browser, Hide Lines, Summary (counts of
       characters, words, lines), Collapse/Expand by level from the menu
 - [ ] 6.10 Clickable links: addresses underlined and opened with Ctrl+click or a double click
       (Preferences > Cloud & Link); Ctrl+double click selection between delimiters

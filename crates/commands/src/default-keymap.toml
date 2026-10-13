@@ -405,6 +405,11 @@ keys = "f8"
 command = "view.focus-other-view"
 
 [[binding]]
+keys = "alt-h"
+command = "view.hide-lines"
+context = "Editor"
+
+[[binding]]
 keys = "f11"
 command = "view.full-screen"
 

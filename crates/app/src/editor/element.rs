@@ -180,6 +180,9 @@ impl Element for EditorElement {
                         theme::paint(theme::editor().fold_underline),
                     ));
                 }
+                for (_, band) in &layout.hidden_marks {
+                    window.paint_quad(fill(*band, theme::paint(theme::ui().accent)));
+                }
                 for selection in &layout.selections {
                     window.paint_quad(fill(*selection, theme::paint(theme::editor().selection)));
                 }

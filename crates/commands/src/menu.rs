@@ -580,6 +580,9 @@ pub fn main_menu() -> Vec<Menu> {
             .collect::<Vec<_>>()
     };
     // In Notepad++'s order.
+    let browser = |name: &str, label: &str| {
+        MenuItem::command_with("view.in-browser", json!({ "browser": name }), label)
+    };
     let view = Menu::new(
         "View",
         vec![
@@ -587,6 +590,16 @@ pub fn main_menu() -> Vec<Menu> {
             cmd("view.full-screen"),
             cmd("view.post-it"),
             cmd("view.distraction-free"),
+            Submenu(Menu::new(
+                "View Current File in",
+                vec![
+                    browser("default", "Default Browser"),
+                    browser("firefox", "Firefox"),
+                    browser("chrome", "Chrome"),
+                    browser("edge", "Edge"),
+                    browser("safari", "Safari"),
+                ],
+            )),
             Separator,
             Submenu(Menu::new(
                 "Show Symbol",
@@ -618,6 +631,8 @@ pub fn main_menu() -> Vec<Menu> {
             )),
             Submenu(Menu::new("Tab", tab_items())),
             cmd("view.word-wrap"),
+            cmd("view.hide-lines"),
+            cmd("view.show-hidden-lines"),
             cmd("view.focus-other-view"),
             cmd("view.rotate-split"),
             Separator,
@@ -649,6 +664,7 @@ pub fn main_menu() -> Vec<Menu> {
             cmd("panel.document-list"),
             cmd("panel.function-list"),
             Separator,
+            cmd("view.summary"),
             cmd("view.monitoring"),
         ],
     );
