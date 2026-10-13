@@ -770,6 +770,7 @@ pub fn main_menu() -> Vec<Menu> {
             cmd("macro.save"),
             cmd("macro.run-multiple"),
             Separator,
+            cmd("macro.trim-and-save"),
             Dynamic(Placeholder::Macros),
         ],
     );

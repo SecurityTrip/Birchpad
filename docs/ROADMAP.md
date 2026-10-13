@@ -318,7 +318,7 @@ step 6.11 brings in the sections no feature brings.
 - [x] 6.14 Shortcut Mapper: key sequences (`ctrl-k ctrl-c`) recorded in the dialog; bindings
       limited to platforms shown and editable; command titles translated; the Macros and Run
       tabs (Modify Shortcut / Delete Macro or Command)
-- [ ] 6.15 Macros: Notepad++'s built-in "Trim Trailing Space and Save"; recording what dialogs
+- [x] 6.15 Macros: Notepad++'s built-in "Trim Trailing Space and Save"; recording what dialogs
       a command opens (Find, Replace) with their fields, as Notepad++ records search parameters
 - [ ] 6.16 Run: Notepad++'s own Run menu entries as built-in items, not only saved command lines
 

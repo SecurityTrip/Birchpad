@@ -1210,3 +1210,8 @@ context = "CallTip"
 [[binding]]
 keys = "secondary-p"
 command = "file.print"
+
+# Notepad++'s built-in macro.
+[[binding]]
+keys = "alt-shift-s"
+command = "macro.trim-and-save"

@@ -208,3 +208,104 @@ fn the_run_multiple_dialog(cx: &mut TestAppContext) {
     run(&workspace, Invocation::new("macro.run-multiple"), cx).unwrap();
     assert!(cx.update(|window, cx| window.has_active_dialog(cx)));
 }
+
+#[gpui_kit::test]
+fn trim_trailing_space_and_save(cx: &mut TestAppContext) {
+    let (workspace, cx, dir) = setup(cx);
+    let path = dir.path().join("a.txt");
+    std::fs::write(&path, "a  \nb\t\n").unwrap();
+    workspace.update_in(cx, |workspace, window, cx| {
+        workspace.open_path(&path, window, cx)
+    });
+    cx.run_until_parked();
+    cx.simulate_keystrokes("alt-shift-s");
+    cx.run_until_parked();
+    assert_eq!(std::fs::read_to_string(&path).unwrap(), "a\nb\n");
+    // Untitled: saving asks for a path; cancelled, the text is trimmed all the same.
+    cx.simulate_keystrokes(&secondary("n"));
+    cx.simulate_input("x ");
+    run(&workspace, Invocation::new("macro.trim-and-save"), cx).unwrap();
+    cx.simulate_new_path_selection(|_| None);
+    cx.run_until_parked();
+    assert_eq!(active_text(&workspace, cx), "x");
+}
+
+fn find_bar_text(
+    workspace: &Entity<Workspace>,
+    text: &str,
+    replace: Option<&str>,
+    cx: &mut VisualTestContext,
+) {
+    workspace.update_in(cx, |workspace, window, cx| {
+        workspace.find_bar.update(cx, |bar, cx| {
+            bar.show(
+                crate::find::FindTab::Replace,
+                Some(text.to_owned()),
+                None,
+                window,
+                cx,
+            );
+            if let Some(replace) = replace {
+                bar.replace_input_for_tests(replace, window, cx);
+            }
+        });
+    });
+    cx.run_until_parked();
+}
+
+fn bar_event(
+    workspace: &Entity<Workspace>,
+    event: crate::find::FindBarEvent,
+    cx: &mut VisualTestContext,
+) {
+    workspace.update_in(cx, |workspace, window, cx| {
+        let bar = workspace.find_bar.clone();
+        workspace.on_find_bar_event(&bar, &event, window, cx);
+    });
+    cx.run_until_parked();
+}
+
+#[gpui_kit::test]
+fn searches_are_recorded_with_their_text(cx: &mut TestAppContext) {
+    use birchpad_core::search::Direction;
+    let (workspace, cx, _dir) = setup(cx);
+    cx.simulate_input("one foo two foo three foo");
+    cx.simulate_keystrokes(&secondary("home"));
+    run(&workspace, Invocation::new("macro.start-recording"), cx).unwrap();
+    find_bar_text(&workspace, "foo", Some("bar"), cx);
+    bar_event(
+        &workspace,
+        crate::find::FindBarEvent::Find(Direction::Forward),
+        cx,
+    );
+    bar_event(&workspace, crate::find::FindBarEvent::Replace, cx);
+    run(&workspace, Invocation::new("macro.stop-recording"), cx).unwrap();
+    let steps = recorded(cx);
+    let commands: Vec<&str> = steps.iter().map(|step| step.command.as_str()).collect();
+    assert_eq!(
+        commands,
+        ["search.find-text", "search.replace-text"],
+        "{steps:?}"
+    );
+    assert_eq!(steps[0].args["text"], "foo");
+    assert_eq!(steps[1].args["with"], "bar");
+    assert_eq!(active_text(&workspace, cx), "one bar two foo three foo");
+
+    // Played back with other text in the panel: the recorded search runs.
+    find_bar_text(&workspace, "zzz", Some("qqq"), cx);
+    run(&workspace, Invocation::new("macro.playback"), cx).unwrap();
+    assert_eq!(active_text(&workspace, cx), "one bar two bar three foo");
+
+    // A recorded search that names a mode Birchpad does not know is refused.
+    let wrong = Invocation::with_args("search.find-text", json!({ "text": "x", "mode": "fuzzy" }));
+    assert!(run(&workspace, wrong, cx).is_err());
+    // Replace All, recorded as one step with `all`.
+    run(&workspace, Invocation::new("macro.start-recording"), cx).unwrap();
+    find_bar_text(&workspace, "foo", Some("X"), cx);
+    bar_event(&workspace, crate::find::FindBarEvent::ReplaceAll, cx);
+    run(&workspace, Invocation::new("macro.stop-recording"), cx).unwrap();
+    let steps = recorded(cx);
+    assert_eq!(steps.len(), 1);
+    assert_eq!(steps[0].args["all"], true);
+    assert_eq!(active_text(&workspace, cx), "one bar two bar three X");
+}

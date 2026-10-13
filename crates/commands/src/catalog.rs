@@ -221,6 +221,11 @@ pub const COMMANDS: &[CommandSpec] = &[
     workspace("search.find", "Find..."),
     workspace("search.replace", "Replace..."),
     workspace("search.find-next", "Find Next"),
+    // What macros record of a search: { "text", "match-case", "whole-word", "mode": "normal" |
+    // "extended" | "regex", "dot-all", "backward", "wrap" }; replace-text also takes "with" and
+    // "all"
+    workspace("search.find-text", "Find Text"),
+    workspace("search.replace-text", "Replace Text"),
     workspace("search.find-previous", "Find Previous"),
     workspace("search.select-and-find-next", "Select and Find Next"),
     workspace(
@@ -372,6 +377,7 @@ pub const COMMANDS: &[CommandSpec] = &[
     workspace("macro.save", "Save Current Recorded Macro..."),
     workspace("macro.run-multiple", "Run a Macro Multiple Times..."),
     workspace("macro.run", "Run Macro"),
+    workspace("macro.trim-and-save", "Trim Trailing Space and Save"),
     // Window; window.sort takes { "by": "name" | "path" | "type" | "size" | "modified", "descending": false }
     workspace("window.sort", "Sort By"),
     workspace("window.windows", "Windows..."),

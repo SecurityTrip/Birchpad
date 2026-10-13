@@ -170,6 +170,7 @@ command:
     save: "Save Current Recorded Macro..."
     start-recording: "Start Recording"
     stop-recording: "Stop Recording"
+    trim-and-save: "Trim Trailing Space and Save"
   mark:
     clear: "Clear Style"
     clear-all: "Clear all Styles"
@@ -215,6 +216,7 @@ command:
     find-in-range: "Find Character in Range"
     find-next: "Find Next"
     find-previous: "Find Previous"
+    find-text: "Find Text"
     find-volatile-next: "Find (Volatile) Next"
     find-volatile-previous: "Find (Volatile) Previous"
     go-to: "Go To..."
@@ -226,6 +228,7 @@ command:
     previous-change: "Go to Previous Change"
     previous-result: "Previous Search Result"
     replace: "Replace..."
+    replace-text: "Replace Text"
     results-window: "Search Results Window"
     select-and-find-next: "Select and Find Next"
     select-and-find-previous: "Select and Find Previous"
@@ -498,6 +501,7 @@ find:
   the-document-is-read-only: "The document is read-only"
   the-document-was-closed: "The document was closed"
   type-a-number: "Type a number"
+  unknown-search-mode: "{mode} is not a search mode (normal, extended, regex)"
   you-are-here: "You are here: {here}"
   you-can-t-go-further-than: "You can't go further than: {limit}"
 folding:

@@ -172,6 +172,7 @@ command:
     save: "Сохранить записанный макрос..."
     start-recording: "Начать запись"
     stop-recording: "Остановить запись"
+    trim-and-save: "Удалить пробелы в конце строк и сохранить"
   mark:
     clear: "Убрать стиль"
     clear-all: "Убрать все стили"
@@ -217,6 +218,7 @@ command:
     find-in-range: "Найти символ в диапазоне"
     find-next: "Найти далее"
     find-previous: "Найти ранее"
+    find-text: "Найти текст"
     find-volatile-next: "Найти далее (не запоминая)"
     find-volatile-previous: "Найти ранее (не запоминая)"
     go-to: "Перейти..."
@@ -228,6 +230,7 @@ command:
     previous-change: "К предыдущему изменению"
     previous-result: "Предыдущий результат поиска"
     replace: "Заменить..."
+    replace-text: "Заменить текст"
     results-window: "Окно результатов поиска"
     select-and-find-next: "Выделить и найти далее"
     select-and-find-previous: "Выделить и найти ранее"
@@ -500,6 +503,7 @@ find:
   the-document-is-read-only: "Документ только для чтения"
   the-document-was-closed: "Документ закрыт"
   type-a-number: "Введите число"
+  unknown-search-mode: "{mode} — не режим поиска (normal, extended, regex)"
   you-are-here: "Вы здесь: {here}"
   you-can-t-go-further-than: "Дальше нельзя: {limit}"
 folding:

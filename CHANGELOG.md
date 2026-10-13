@@ -78,6 +78,9 @@ version's release notes from its section here.
   are underlined and open with a double click or Ctrl+click (Preferences > Cloud & Link).
 - Ctrl+double click selects the text between the delimiters around the click (Preferences >
   Delimiter: the characters, and whether they may be on other lines).
+- Macro > Trim Trailing Space and Save (Alt+Shift+S), Notepad++'s built-in macro.
+- Macros record searches with their text and options (Find, Find Next, Replace, Replace All),
+  so that they play back the same whatever the find panel holds then.
 - Shortcut Mapper: shortcuts of several keys pressed one after the other (Ctrl+K Ctrl+C), for
   every platform or this one only (shown next to them); Macros and Run Commands tabs to give
   saved macros and command lines shortcuts, or delete them.

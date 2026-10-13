@@ -11,6 +11,7 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use anyhow::{Context as _, Result, anyhow, bail};
+use birchpad_commands::Invocation;
 use birchpad_core::motion::{line_count, line_of, line_range, next_boundary, prev_boundary};
 use birchpad_core::search::{Direction, Query, SearchMode, Searcher, token_at};
 use birchpad_core::{Edit, Rope, Transaction, ops};
@@ -55,6 +56,28 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
         this.open_find(FindTab::Mark, window, cx);
         Ok(())
     });
+    registry.workspace("search.find-text", |this, args: SearchArgs, window, cx| {
+        this.take_search(&args, window, cx)?;
+        let direction = if args.backward {
+            Direction::Backward
+        } else {
+            Direction::Forward
+        };
+        this.find(direction, window, cx);
+        Ok(())
+    });
+    registry.workspace(
+        "search.replace-text",
+        |this, args: SearchArgs, window, cx| {
+            this.take_search(&args, window, cx)?;
+            if args.all {
+                this.replace_all(window, cx);
+            } else {
+                this.replace(window, cx);
+            }
+            Ok(())
+        },
+    );
     registry.workspace("search.find-next", |this, (), window, cx| {
         this.find(Direction::Forward, window, cx);
         Ok(())
@@ -102,6 +125,50 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
     registry.workspace("search.go-to", |this, (), window, cx| {
         this.open_go_to(window, cx)
     });
+}
+
+/// A search as macros record it: the text and the options of the find panel at the time.
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(default, rename_all = "kebab-case")]
+pub(crate) struct SearchArgs {
+    pub(crate) text: String,
+    pub(crate) match_case: bool,
+    pub(crate) whole_word: bool,
+    /// `normal`, `extended` or `regex`.
+    pub(crate) mode: String,
+    pub(crate) dot_all: bool,
+    pub(crate) backward: bool,
+    pub(crate) wrap: bool,
+    /// Replace: the replacement.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) with: Option<String>,
+    /// Replace: all of them.
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub(crate) all: bool,
+}
+
+impl Default for SearchArgs {
+    fn default() -> Self {
+        Self {
+            text: String::new(),
+            match_case: false,
+            whole_word: false,
+            mode: "normal".to_owned(),
+            dot_all: false,
+            backward: false,
+            wrap: true,
+            with: None,
+            all: false,
+        }
+    }
+}
+
+fn mode_name(mode: SearchMode) -> &'static str {
+    match mode {
+        SearchMode::Normal => "normal",
+        SearchMode::Extended => "extended",
+        SearchMode::Regex => "regex",
+    }
 }
 
 /// The tabs of the find panel.
@@ -963,6 +1030,7 @@ impl Workspace {
         let Some((searcher, query)) = self.searcher(cx) else {
             return;
         };
+        self.record_search("search.find-text", direction, None, false, cx);
         let wrap_around = self.find_bar.read(cx).options.wrap_around;
         self.find_with(&view, &searcher, &query, wrap_around, direction, cx);
     }
@@ -1302,6 +1370,20 @@ impl Workspace {
             return;
         };
         let template = self.find_bar.read(cx).replacement(cx);
+        self.record_search(
+            "search.replace-text",
+            Direction::Forward,
+            Some(&template),
+            false,
+            cx,
+        );
+        // The Find Next that follows is part of it.
+        let recording = cx
+            .try_global::<crate::macros::Macros>()
+            .is_some_and(crate::macros::Macros::is_recording);
+        if recording {
+            crate::macros::pause(true, cx);
+        }
         let (text, selected) = {
             let view = view.read(cx);
             let range = view.selection.primary();
@@ -1323,11 +1405,81 @@ impl Workspace {
                 applied
             });
             if !applied {
+                if recording {
+                    crate::macros::pause(false, cx);
+                }
                 self.report(Some(t!("find.the-document-is-read-only")), true, cx);
                 return;
             }
         }
         self.find(Direction::Forward, window, cx);
+        if recording {
+            crate::macros::pause(false, cx);
+        }
+    }
+
+    /// Notes a search, with the find panel's text and options, if a macro is being recorded.
+    fn record_search(
+        &mut self,
+        command: &str,
+        direction: Direction,
+        replacement: Option<&str>,
+        all: bool,
+        cx: &mut Context<Self>,
+    ) {
+        let bar = self.find_bar.read(cx);
+        let options = bar.options;
+        let args = SearchArgs {
+            text: bar.find_input.read(cx).value().to_string(),
+            match_case: options.match_case,
+            whole_word: options.whole_word,
+            mode: mode_name(options.mode).to_owned(),
+            dot_all: options.dot_matches_newline,
+            backward: direction == Direction::Backward,
+            wrap: options.wrap_around,
+            with: replacement.map(str::to_owned),
+            all,
+        };
+        let args = serde_json::to_value(args).expect("search arguments serialize");
+        crate::macros::record_always(&Invocation::with_args(command, args), cx);
+    }
+
+    /// A recorded search: the find panel takes its text and options, as if they were typed.
+    fn take_search(
+        &mut self,
+        args: &SearchArgs,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Result<()> {
+        let mode = match args.mode.as_str() {
+            "normal" => SearchMode::Normal,
+            "extended" => SearchMode::Extended,
+            "regex" => SearchMode::Regex,
+            other => bail!("{}", t!("find.unknown-search-mode", mode = other)),
+        };
+        let text = args.text.clone();
+        let with = args.with.clone();
+        self.find_bar.update(cx, |bar, cx| {
+            bar.find_input
+                .update(cx, |input, cx| input.set_value(text, window, cx));
+            if let Some(with) = with {
+                bar.replace_input
+                    .update(cx, |input, cx| input.set_value(with, window, cx));
+            }
+            let (match_case, whole_word, dot_all, wrap) =
+                (args.match_case, args.whole_word, args.dot_all, args.wrap);
+            bar.set_options(
+                |options| {
+                    options.match_case = match_case;
+                    options.whole_word = whole_word;
+                    options.mode = mode;
+                    options.dot_matches_newline = dot_all;
+                    options.wrap_around = wrap;
+                },
+                cx,
+            );
+        });
+        Ok(())
     }
 
     /// The edits of Replace All in `view` (in its scope), and how many there are.
@@ -1353,7 +1505,7 @@ impl Workspace {
     }
 
     /// Replace All: every match in the document or the selection, as one undo step.
-    fn replace_all(&mut self, _: &mut Window, cx: &mut Context<Self>) {
+    pub(crate) fn replace_all(&mut self, _: &mut Window, cx: &mut Context<Self>) {
         let Some(view) = self.active_view(cx) else {
             return;
         };
@@ -1361,6 +1513,13 @@ impl Workspace {
             return;
         };
         let template = self.find_bar.read(cx).replacement(cx);
+        self.record_search(
+            "search.replace-text",
+            Direction::Forward,
+            Some(&template),
+            true,
+            cx,
+        );
         let scope = self.scope(&view, cx);
         let edits = self.replace_all_edits(&searcher, &template, &view, scope.range.clone(), cx);
         if self.report_failure(&searcher, cx) {
