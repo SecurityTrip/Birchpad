@@ -24,18 +24,18 @@ const BACKGROUND_WRAP: usize = 4 * 1024 * 1024;
 const LONG_ROW: usize = 2048;
 /// Extra columns shaped on each side of the visible ones in a long row.
 const LONG_ROW_MARGIN: usize = 16;
-pub(super) const SCROLLBAR: Pixels = px(12.);
+pub const SCROLLBAR: Pixels = px(12.);
 const TEXT_PADDING: Pixels = px(4.);
 /// Columns kept between the caret and the left or right edge when scrolling horizontally.
 const CARET_MARGIN_COLUMNS: f32 = 4.;
 
 #[derive(Debug, Clone)]
-pub(super) struct Metrics {
-    pub(super) font: Font,
-    pub(super) font_size: Pixels,
-    pub(super) line_height: Pixels,
+pub struct Metrics {
+    pub font: Font,
+    pub font_size: Pixels,
+    pub line_height: Pixels,
     /// Width of one cell of the monospace grid.
-    pub(super) cell: Pixels,
+    pub cell: Pixels,
 }
 
 /// Gaps smaller than this between the parts of the text shown in a frame are highlighted with
@@ -44,7 +44,7 @@ const QUERY_GAP: usize = 4096;
 
 /// Syntax highlights of the text shown in the last frame, reused while the tree and the
 /// visible text stay the same (as when the caret blinks).
-pub(super) struct HighlightCache {
+pub struct HighlightCache {
     language: &'static str,
     version: u64,
     /// The theme's generation: a new theme colors the text again.
@@ -86,16 +86,16 @@ impl FrameStyles {
 }
 
 /// A row painted in this frame.
-pub(super) struct VisibleRow {
-    pub(super) row: Row,
+pub struct VisibleRow {
+    pub row: Row,
     /// Top of the row, in window coordinates.
-    pub(super) y: Pixels,
+    pub y: Pixels,
     /// Where `display` starts, in window coordinates.
-    pub(super) x: Pixels,
-    pub(super) display: DisplayText,
-    pub(super) shaped: ShapedLine,
+    pub x: Pixels,
+    pub display: DisplayText,
+    pub shaped: ShapedLine,
     /// The order the characters show in, when it is not the order they are stored in.
-    pub(super) bidi: Option<birchpad_view::BidiRow>,
+    pub bidi: Option<birchpad_view::BidiRow>,
 }
 
 impl VisibleRow {
@@ -104,7 +104,7 @@ impl VisibleRow {
         self.display.doc_start() <= pos && pos <= self.display.doc_end()
     }
 
-    pub(super) fn x_for(&self, pos: usize) -> Option<Pixels> {
+    pub fn x_for(&self, pos: usize) -> Option<Pixels> {
         self.covers(pos).then(|| {
             let index = self.display.to_display(pos);
             let index = self
@@ -121,20 +121,20 @@ impl VisibleRow {
     }
 }
 
-pub(super) struct Scrollbar {
-    pub(super) track: Bounds<Pixels>,
-    pub(super) thumb: Bounds<Pixels>,
+pub struct Scrollbar {
+    pub track: Bounds<Pixels>,
+    pub thumb: Bounds<Pixels>,
 }
 
 /// The margins left of the text, as in Notepad++: line numbers, symbols (bookmarks), the change
 /// history, folding. A margin that is turned off is `None`.
-pub(super) struct Margins {
+pub struct Margins {
     /// All margins together.
-    pub(super) gutter: Bounds<Pixels>,
-    pub(super) line_numbers: Option<Bounds<Pixels>>,
-    pub(super) symbols: Option<Bounds<Pixels>>,
-    pub(super) changes: Option<Bounds<Pixels>>,
-    pub(super) folding: Option<Bounds<Pixels>>,
+    pub gutter: Bounds<Pixels>,
+    pub line_numbers: Option<Bounds<Pixels>>,
+    pub symbols: Option<Bounds<Pixels>>,
+    pub changes: Option<Bounds<Pixels>>,
+    pub folding: Option<Bounds<Pixels>>,
 }
 
 impl Margins {
@@ -172,43 +172,43 @@ impl Margins {
     }
 }
 
-pub(super) struct Layout {
-    pub(super) metrics: Metrics,
-    pub(super) margins: Margins,
-    pub(super) text_bounds: Bounds<Pixels>,
+pub struct Layout {
+    pub metrics: Metrics,
+    pub margins: Margins,
+    pub text_bounds: Bounds<Pixels>,
     /// Window x of column 0 of an unwrapped row (scrolled).
-    pub(super) column_zero: Pixels,
-    pub(super) rows: Vec<VisibleRow>,
-    pub(super) line_numbers: Vec<(Point<Pixels>, ShapedLine)>,
+    pub column_zero: Pixels,
+    pub rows: Vec<VisibleRow>,
+    pub line_numbers: Vec<(Point<Pixels>, ShapedLine)>,
     /// Bookmark symbols in the symbol margin.
-    pub(super) bookmarks: Vec<Bounds<Pixels>>,
+    pub bookmarks: Vec<Bounds<Pixels>>,
     /// Bars of changed lines in the change history margin.
-    pub(super) change_bars: Vec<(Bounds<Pixels>, LineChange)>,
+    pub change_bars: Vec<(Bounds<Pixels>, LineChange)>,
     /// Fold boxes in the folding margin, and whether each fold is collapsed.
-    pub(super) fold_boxes: Vec<(Bounds<Pixels>, bool)>,
+    pub fold_boxes: Vec<(Bounds<Pixels>, bool)>,
     /// Lines with hidden lines below them (View > Hide Lines), with the band across the
     /// margins and the text that marks them; a click in the margins shows them again.
-    pub(super) hidden_marks: Vec<(usize, Bounds<Pixels>)>,
+    pub hidden_marks: Vec<(usize, Bounds<Pixels>)>,
     /// The lines of expanded folds in the folding margin.
-    pub(super) fold_lines: Vec<Bounds<Pixels>>,
+    pub fold_lines: Vec<Bounds<Pixels>>,
     /// A line under each collapsed fold's header, across the text.
-    pub(super) fold_underlines: Vec<Bounds<Pixels>>,
+    pub fold_underlines: Vec<Bounds<Pixels>>,
     /// Decoration ranges (token styles, matches) drawn behind or around the text.
-    pub(super) decorations: Vec<(Bounds<Pixels>, Paint)>,
-    pub(super) selections: Vec<Bounds<Pixels>>,
-    pub(super) carets: Vec<Bounds<Pixels>>,
-    pub(super) vertical_bar: Option<Scrollbar>,
-    pub(super) horizontal_bar: Option<Scrollbar>,
+    pub decorations: Vec<(Bounds<Pixels>, Paint)>,
+    pub selections: Vec<Bounds<Pixels>>,
+    pub carets: Vec<Bounds<Pixels>>,
+    pub vertical_bar: Option<Scrollbar>,
+    pub horizontal_bar: Option<Scrollbar>,
     /// Show Symbol, the edge and the current line.
-    pub(super) symbols: Symbols,
-    pub(super) total_rows: usize,
+    pub symbols: Symbols,
+    pub total_rows: usize,
     /// Rows that fit completely.
-    pub(super) full_rows: usize,
+    pub full_rows: usize,
 }
 
 impl EditorView {
     /// Computes the frame's layout for `bounds`, applying pending scroll requests.
-    pub(super) fn compute_layout(
+    pub fn compute_layout(
         &mut self,
         bounds: Bounds<Pixels>,
         window: &mut Window,
@@ -496,9 +496,10 @@ impl EditorView {
                     let visible = ranges
                         .iter()
                         .any(|range| piece.start < range.end && piece.end > range.start);
-                    if let (true, Some(style)) =
-                        (visible, crate::user_languages::style_of(language, *kind))
-                    {
+                    if let (true, Some(style)) = (
+                        visible,
+                        (crate::EditorHooks::get(cx).user_language_style)(language, *kind),
+                    ) {
                         styles.spans.push((piece.clone(), style));
                     }
                 }
@@ -674,7 +675,7 @@ impl EditorView {
 
     /// x of `pos` in `row`, from the shaped text or, outside the shaped part of a long row, from
     /// its column.
-    pub(super) fn x_in_row(
+    pub fn x_in_row(
         &mut self,
         layout: &Layout,
         row: &VisibleRow,
@@ -713,7 +714,7 @@ impl EditorView {
     }
 
     /// Bounds of `range` in each visible row it touches (line breaks excluded).
-    pub(super) fn range_bounds(
+    pub fn range_bounds(
         &mut self,
         layout: &Layout,
         text: &Rope,
@@ -978,8 +979,12 @@ impl EditorView {
         }
         let spell = Paint::Underline(theme::paint(theme::editor().spell_error));
         let buffer = self.buffer.read(cx);
-        let misspelled =
-            crate::spell_check::underlined(buffer, self.buffer.entity_id(), visible.clone(), cx);
+        let misspelled = (crate::EditorHooks::get(cx).misspelled)(
+            buffer,
+            self.buffer.entity_id(),
+            visible.clone(),
+            cx,
+        );
         ranges.extend(misspelled.iter().map(|range| (range.clone(), spell)));
         let marks = buffer.marks();
         let mut quads = Vec::new();
@@ -1094,20 +1099,20 @@ impl EditorView {
 
 impl Layout {
     /// Columns that fit across the text area.
-    pub(super) fn text_columns(&self) -> usize {
+    pub fn text_columns(&self) -> usize {
         let usable = self.text_bounds.size.width - TEXT_PADDING * 2.;
         ((usable / self.metrics.cell).floor() as usize).max(1)
     }
 
     /// The visible row at window y, if any.
-    pub(super) fn row_at_y(&self, y: Pixels) -> Option<&VisibleRow> {
+    pub fn row_at_y(&self, y: Pixels) -> Option<&VisibleRow> {
         self.rows
             .iter()
             .find(|row| row.y <= y && y < row.y + self.metrics.line_height)
     }
 
     /// The document position under a window point; above or below the rows, the nearest row.
-    pub(super) fn position_for_point(
+    pub fn position_for_point(
         &self,
         point: Point<Pixels>,
         text: &Rope,
@@ -1146,7 +1151,7 @@ impl Layout {
 
     /// The rectangle corner under a window point: the line and column of the nearest
     /// character boundary, or past the end of a line, the column under the point.
-    pub(super) fn block_point_for_point(
+    pub fn block_point_for_point(
         &self,
         point: Point<Pixels>,
         text: &Rope,
@@ -1170,7 +1175,7 @@ impl Layout {
     }
 
     /// Screen bounds of a range (for input method candidate windows).
-    pub(super) fn bounds_for_range(&self, range: ByteRange<usize>) -> Option<Bounds<Pixels>> {
+    pub fn bounds_for_range(&self, range: ByteRange<usize>) -> Option<Bounds<Pixels>> {
         let row = self
             .rows
             .iter()

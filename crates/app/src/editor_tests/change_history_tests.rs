@@ -8,11 +8,11 @@ use birchpad_config::ChangeHistory;
 use birchpad_core::{Edit, LineChange, Selection, Transaction, UndoGrouping};
 use gpui_kit::{Context, Entity, Modifiers, TestAppContext, VisualTestContext, point};
 
-use super::EditorView;
-use crate::app_state::AppState;
 use crate::buffer::Buffer;
+use crate::editor::EditorView;
 use crate::workspace::Workspace;
 use crate::workspace::tests::{active_text, document_start, open_workspace, secondary};
+use birchpad_ui::AppState;
 
 fn open(workspace: &Entity<Workspace>, path: &Path, cx: &mut VisualTestContext) {
     workspace.update_in(cx, |workspace, window, cx| {
@@ -180,7 +180,7 @@ fn the_margin_shows_bars_and_the_setting_turns_it_off(cx: &mut TestAppContext) {
     cx.run_until_parked();
     let bars = |cx: &mut VisualTestContext| {
         active(&workspace, cx).read_with(cx, |view, _| {
-            let layout = view.layout.as_ref().expect("a frame was drawn");
+            let layout = view.layout().expect("a frame was drawn");
             let lines: Vec<_> = layout
                 .change_bars
                 .iter()
@@ -201,7 +201,7 @@ fn the_margin_shows_bars_and_the_setting_turns_it_off(cx: &mut TestAppContext) {
     // Between the symbol margin and the folding margin.
     let margin = margin.expect("the change history margin");
     let (symbols, first_row) = active(&workspace, cx).read_with(cx, |view, _| {
-        let layout = view.layout.as_ref().unwrap();
+        let layout = view.layout().unwrap();
         let row = &layout.rows[0];
         (
             layout.margins.symbols.unwrap(),

@@ -1,32 +1,39 @@
-//! The editor view: one view of a buffer, with its own selection, scroll position and layout.
+//! Birchpad's editor: a document ([`buffer::Buffer`]) and the editor view, one view of a buffer,
+//! with its own selection, scroll position and layout; the active theme ([`theme`]).
 //!
 //! Several views may show the same buffer (split view, "Clone to Other View"); each maps its
 //! selection through the changes the others make. Layout in cells (tab stops, word wrap, rows)
 //! comes from `birchpad-view`; [`element::EditorElement`] turns it into pixels and paints it.
+//!
+//! The editor registers its commands in `birchpad_ui`'s registry ([`register_commands`]) and
+//! asks the application for the rest through [`EditorHooks`] and [`ActiveFindOptions`].
+
+#[macro_use]
+extern crate birchpad_i18n;
+
+pub mod banner;
+pub mod buffer;
+mod hooks;
+#[cfg(test)]
+mod test_support;
 
 #[cfg(test)]
 mod bidi_tests;
 #[cfg(test)]
 mod capture_coverage_tests;
-#[cfg(test)]
-mod change_history_tests;
 mod column_editor;
-#[cfg(test)]
-mod command_sweep_tests;
 mod completion;
 mod element;
 mod folding;
-#[cfg(test)]
-mod hidden_lines_tests;
-mod layout;
-#[cfg(test)]
-mod links_tests;
+pub mod layout;
 mod marks;
 mod multi;
 mod operations;
 mod smart_highlight;
-mod symbols;
-pub(crate) mod theme;
+pub mod symbols;
+pub mod theme;
+
+pub use hooks::{ActiveFindOptions, EditorHooks, Ranges};
 
 use std::ops::Range as ByteRange;
 use std::time::Duration;
@@ -48,17 +55,61 @@ use birchpad_cli::CaretTarget;
 use birchpad_config::{AutoIndent, CurrentLine, Edge};
 
 use crate::buffer::{Buffer, BufferEvent, ReadOnly};
-use birchpad_ui::AppState;
-use birchpad_ui::{CommandRegistry, RunCommand};
-
-use crate::commands::Register as _;
+use anyhow::Result;
+use birchpad_commands::Scope;
+use birchpad_ui::{AppState, CommandRegistry, CommandTarget, RunCommand};
 use element::EditorElement;
 use layout::Layout;
+
+impl CommandTarget for EditorView {
+    const SCOPE: Scope = Scope::Editor;
+}
+
+/// Registering the handlers of editor commands.
+pub trait EditorCommands {
+    /// Registers an editor command whose arguments decode to `A` (`()` for none).
+    fn editor<A: serde::de::DeserializeOwned + 'static>(
+        &mut self,
+        id: &'static str,
+        run: impl Fn(&mut EditorView, A, &mut Window, &mut Context<EditorView>) -> Result<()> + 'static,
+    );
+}
+
+impl EditorCommands for CommandRegistry {
+    fn editor<A: serde::de::DeserializeOwned + 'static>(
+        &mut self,
+        id: &'static str,
+        run: impl Fn(&mut EditorView, A, &mut Window, &mut Context<EditorView>) -> Result<()> + 'static,
+    ) {
+        self.register(id, run);
+    }
+}
+
+/// The platform's monospaced font: the editor's when the theme names none.
+pub const MONOSPACE: &str = if cfg!(windows) {
+    "Consolas"
+} else if cfg!(target_os = "macos") {
+    "Menlo"
+} else {
+    "DejaVu Sans Mono"
+};
+
+/// How many colors a tab can be given (Notepad++'s five).
+pub const TAB_COLORS: u8 = 5;
+
+/// What a tab carries besides its document: pinned, and its color.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct TabMarks {
+    /// Pinned tabs stay at the start of the bar and Close All but Pinned leaves them.
+    pub pinned: bool,
+    /// 1 to [`TAB_COLORS`]; none if unset.
+    pub color: Option<u8>,
+}
 
 /// Font size at zoom level 0, in pixels.
 const BASE_FONT_SIZE: f32 = 14.;
 /// Zoom levels are font size steps of one pixel, like Notepad++'s points.
-pub(crate) const ZOOM_RANGE: std::ops::RangeInclusive<i32> = -8..=40;
+pub const ZOOM_RANGE: std::ops::RangeInclusive<i32> = -8..=40;
 const CARET_BLINK: Duration = Duration::from_millis(530);
 
 /// Caret motions; each is registered as `cursor.<name>` and `select.<name>`.
@@ -119,7 +170,7 @@ struct ConvertEolArgs {
     eol: EolName,
 }
 
-pub(crate) fn register_commands(registry: &mut CommandRegistry) {
+pub fn register_commands(registry: &mut CommandRegistry) {
     completion::register_commands(registry);
     folding::register_commands(registry);
     marks::register_commands(registry);
@@ -255,7 +306,7 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
 
 /// Which kind of edit was made last, to group consecutive typing into one undo step.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum LastEdit {
+pub enum LastEdit {
     None,
     Typing,
     Deleting,
@@ -289,33 +340,73 @@ enum Drag {
     },
 }
 
+/// View menu switches kept in `state.toml`: command, current value, how to remember a new one.
+pub type ViewSwitch = (
+    &'static str,
+    fn(&ViewSettings) -> bool,
+    fn(&mut birchpad_config::UserState, bool),
+);
+
+pub const VIEW_SWITCHES: &[ViewSwitch] = &[
+    (
+        "view.word-wrap",
+        |view| view.word_wrap,
+        |state, on| state.word_wrap = Some(on),
+    ),
+    (
+        "view.show-whitespace",
+        |view| view.show_whitespace,
+        |state, on| state.show_whitespace = Some(on),
+    ),
+    (
+        "view.show-eol",
+        |view| view.show_eol,
+        |state, on| state.show_eol = Some(on),
+    ),
+    (
+        "view.indent-guides",
+        |view| view.indent_guides,
+        |state, on| state.indent_guides = Some(on),
+    ),
+    (
+        "view.wrap-symbol",
+        |view| view.wrap_symbol,
+        |state, on| state.wrap_symbol = Some(on),
+    ),
+];
+
+/// View > Show Symbol > Show All Characters: whitespace and line ends both shown.
+pub fn all_characters(view: &ViewSettings) -> bool {
+    view.show_whitespace && view.show_eol
+}
+
 /// The view-related settings, read from the application state on every frame.
 #[derive(Debug, Clone)]
-pub(crate) struct ViewSettings {
+pub struct ViewSettings {
     /// The theme's font, else the platform's monospace one.
-    pub(crate) font_family: gpui_kit::SharedString,
-    pub(crate) tab_width: usize,
-    pub(crate) insert_spaces: bool,
-    pub(crate) word_wrap: bool,
-    pub(crate) font_size: Pixels,
-    pub(crate) line_numbers: bool,
-    pub(crate) bookmark_margin: bool,
-    pub(crate) fold_margin: bool,
+    pub font_family: gpui_kit::SharedString,
+    pub tab_width: usize,
+    pub insert_spaces: bool,
+    pub word_wrap: bool,
+    pub font_size: Pixels,
+    pub line_numbers: bool,
+    pub bookmark_margin: bool,
+    pub fold_margin: bool,
     /// The change history margin.
-    pub(crate) change_history: bool,
+    pub change_history: bool,
     /// View > Show Symbol.
-    pub(crate) show_whitespace: bool,
-    pub(crate) show_eol: bool,
-    pub(crate) indent_guides: bool,
-    pub(crate) wrap_symbol: bool,
-    pub(crate) current_line: CurrentLine,
-    pub(crate) current_line_frame_width: Pixels,
-    pub(crate) edge: Edge,
-    pub(crate) edge_columns: Vec<usize>,
+    pub show_whitespace: bool,
+    pub show_eol: bool,
+    pub indent_guides: bool,
+    pub wrap_symbol: bool,
+    pub current_line: CurrentLine,
+    pub current_line_frame_width: Pixels,
+    pub edge: Edge,
+    pub edge_columns: Vec<usize>,
 }
 
 impl ViewSettings {
-    pub(crate) fn read(cx: &App) -> Self {
+    pub fn read(cx: &App) -> Self {
         let app = AppState::global(cx);
         let editor = &app.settings.editor;
         let zoom = app.state.zoom.clamp(*ZOOM_RANGE.start(), *ZOOM_RANGE.end());
@@ -354,7 +445,7 @@ impl ViewSettings {
 
     /// The settings for a document in `language` (an id, `text`, or `udl:<name>`): its tab
     /// size and spaces from `languages.<id>` where set.
-    pub(crate) fn for_language(language: &str, cx: &App) -> Self {
+    pub fn for_language(language: &str, cx: &App) -> Self {
         let mut settings = Self::read(cx);
         if let Some(own) = AppState::global(cx).settings.languages.get(language) {
             if let Some(width) = own.tab_width {
@@ -368,13 +459,13 @@ impl ViewSettings {
     }
 
     /// The settings for `buffer`'s document.
-    pub(crate) fn for_buffer(buffer: &Buffer, cx: &App) -> Self {
+    pub fn for_buffer(buffer: &Buffer, cx: &App) -> Self {
         Self::for_language(&buffer.language_key(), cx)
     }
 
     /// The column where Split Lines breaks lines: the first edge column while the edge is
     /// shown, as in Notepad++.
-    pub(crate) fn split_column(&self) -> Option<usize> {
+    pub fn split_column(&self) -> Option<usize> {
         match self.edge {
             Edge::Off => None,
             Edge::Line | Edge::Background => self.edge_columns.first().copied(),
@@ -390,7 +481,7 @@ struct WrapJob {
 }
 
 /// What a view tells the workspace.
-pub(crate) enum EditorEvent {
+pub enum EditorEvent {
     /// The view scrolled by this many rows and pixels since the last frame (for synchronized
     /// scrolling).
     Scrolled { rows: f64, x: Pixels },
@@ -400,27 +491,27 @@ pub(crate) enum EditorEvent {
 
 /// Where a view is in its buffer: what Clone to Other View copies and sessions save.
 #[derive(Debug, Clone, PartialEq)]
-pub(crate) struct ViewState {
-    pub(crate) selection: Selection,
-    pub(crate) scroll_top: f64,
-    pub(crate) scroll_left: Pixels,
+pub struct ViewState {
+    pub selection: Selection,
+    pub scroll_top: f64,
+    pub scroll_left: Pixels,
     /// First lines of the collapsed folds.
-    pub(crate) collapsed: Vec<usize>,
+    pub collapsed: Vec<usize>,
 }
 
-pub(crate) struct EditorView {
-    pub(crate) focus_handle: FocusHandle,
-    pub(crate) buffer: Entity<Buffer>,
-    pub(crate) selection: Selection,
+pub struct EditorView {
+    pub focus_handle: FocusHandle,
+    pub buffer: Entity<Buffer>,
+    pub selection: Selection,
     /// Text being composed by an input method, as a byte range.
-    pub(crate) marked: Option<ByteRange<usize>>,
-    pub(crate) overwrite: bool,
+    pub marked: Option<ByteRange<usize>>,
+    pub overwrite: bool,
     /// Edit > Text Direction RTL: rows run right to left and end at the right edge.
-    pub(crate) rtl: bool,
+    pub rtl: bool,
     /// The completion list, while it shows.
-    pub(crate) completion: Option<completion::Popup>,
+    pub completion: Option<completion::Popup>,
     /// A function's parameters, while they show.
-    pub(crate) call_tip: Option<completion::CallTip>,
+    pub call_tip: Option<completion::CallTip>,
     display: DisplayMap,
     wrap_job: Option<WrapJob>,
     /// Where to put the caret once the file has been read (`-n`, `-c`, `-p`).
@@ -431,7 +522,7 @@ pub(crate) struct EditorView {
     /// Where to put the view once the file has been read (a restored session).
     pending_state: Option<ViewState>,
     /// Whether its tab is pinned, and its color.
-    pub(crate) tab: crate::pane::TabMarks,
+    pub tab: crate::TabMarks,
     /// First visible row; fractional while scrolling smoothly.
     scroll_top: f64,
     /// Horizontal scroll offset of the text.
@@ -456,7 +547,7 @@ pub(crate) struct EditorView {
     /// Headers of this view's collapsed folds.
     collapsed: LineMarkers,
     /// View > Hide Lines: the lines hidden, each marked; shown again from the line above them.
-    pub(super) user_hidden: LineMarkers,
+    pub(crate) user_hidden: LineMarkers,
     /// The buffer's folds in lines.
     fold_cache: Option<folding::FoldCache>,
     /// The rectangular selection, valid while `selection` is still the one it made.
@@ -476,11 +567,7 @@ pub(crate) struct EditorView {
 impl EventEmitter<EditorEvent> for EditorView {}
 
 impl EditorView {
-    pub(crate) fn new(
-        buffer: Entity<Buffer>,
-        _window: &mut Window,
-        cx: &mut Context<Self>,
-    ) -> Self {
+    pub fn new(buffer: Entity<Buffer>, _window: &mut Window, cx: &mut Context<Self>) -> Self {
         let events = cx.subscribe(&buffer, |this, buffer, event, cx| match event {
             BufferEvent::Edited {
                 transaction,
@@ -571,7 +658,7 @@ impl EditorView {
             pending_caret: None,
             pending_match: None,
             pending_state: None,
-            tab: crate::pane::TabMarks::default(),
+            tab: crate::TabMarks::default(),
             scroll_top: 0.,
             scroll_left: px(0.),
             scroll_width: px(0.),
@@ -630,7 +717,7 @@ impl EditorView {
     }
 
     /// Where the view is, or will be once its file has been read.
-    pub(crate) fn view_state(&self, cx: &App) -> ViewState {
+    pub fn view_state(&self, cx: &App) -> ViewState {
         if let Some(pending) = &self.pending_state {
             return pending.clone();
         }
@@ -644,7 +731,7 @@ impl EditorView {
 
     /// Puts the view where `state` says, now or, while the file is being read, once it has
     /// been. Positions past the end of the text (the file changed meanwhile) move to the end.
-    pub(crate) fn restore(&mut self, state: ViewState, cx: &mut Context<Self>) {
+    pub fn restore(&mut self, state: ViewState, cx: &mut Context<Self>) {
         if self.buffer.read(cx).read_only() == Some(ReadOnly::Loading) {
             self.pending_state = Some(state);
             return;
@@ -674,20 +761,26 @@ impl EditorView {
         cx.notify();
     }
 
+    /// The last frame's layout.
+    #[cfg(any(test, feature = "test-support"))]
+    pub fn layout(&self) -> Option<&Layout> {
+        self.layout.as_ref()
+    }
+
     /// Where the text was drawn in the last frame.
-    #[cfg(test)]
-    pub(crate) fn bounds(&self) -> Option<Bounds<Pixels>> {
+    #[cfg(any(test, feature = "test-support"))]
+    pub fn bounds(&self) -> Option<Bounds<Pixels>> {
         self.layout.as_ref().map(|layout| layout.text_bounds)
     }
 
     /// The first visible row and the horizontal scroll offset.
-    #[cfg(test)]
-    pub(crate) fn scroll_position(&self) -> (f64, Pixels) {
+    #[cfg(any(test, feature = "test-support"))]
+    pub fn scroll_position(&self) -> (f64, Pixels) {
         (self.scroll_top, self.scroll_left)
     }
 
     /// Scrolls along with the other view (synchronized scrolling).
-    pub(crate) fn scroll_by(&mut self, rows: f64, x: Pixels, cx: &mut Context<Self>) {
+    pub fn scroll_by(&mut self, rows: f64, x: Pixels, cx: &mut Context<Self>) {
         self.scroll_top = (self.scroll_top + rows).max(0.);
         self.scroll_left = (self.scroll_left + x).max(px(0.));
         self.synced_scroll = true;
@@ -710,11 +803,11 @@ impl EditorView {
         }
     }
 
-    pub(crate) fn text<'a>(&self, cx: &'a App) -> &'a Rope {
+    pub fn text<'a>(&self, cx: &'a App) -> &'a Rope {
         self.buffer.read(cx).doc().text()
     }
 
-    pub(crate) fn run_command(
+    pub fn run_command(
         &mut self,
         action: &RunCommand,
         window: &mut Window,
@@ -727,7 +820,7 @@ impl EditorView {
             .handler::<Self>(&invocation.command);
         match handler {
             Some(run) => match run(self, invocation, window, cx) {
-                Ok(()) => crate::macros::record(invocation, cx),
+                Ok(()) => (crate::EditorHooks::get(cx).ran)(invocation, cx),
                 Err(error) => birchpad_ui::report_error(&error, window, cx),
             },
             None => cx.propagate(),
@@ -768,7 +861,7 @@ impl EditorView {
     }
 
     /// Zoom, word wrap or Show Symbol changed: keep the caret in view after the relayout.
-    pub(crate) fn settings_changed(&mut self, cx: &mut Context<Self>) {
+    pub fn settings_changed(&mut self, cx: &mut Context<Self>) {
         self.scroll_width = px(0.);
         self.request_autoscroll(cx);
     }
@@ -878,13 +971,13 @@ impl EditorView {
     }
 
     /// Column of `pos` counted in cells from the line start (tabs to their stops).
-    pub(crate) fn column_of(&mut self, pos: usize, cx: &App) -> usize {
+    pub fn column_of(&mut self, pos: usize, cx: &App) -> usize {
         let text = self.text(cx).clone();
         self.display.column(&text, pos)
     }
 
     /// Puts the caret where the command line asked, now or once the file has been read.
-    pub(crate) fn set_caret_target(&mut self, target: CaretTarget, cx: &mut Context<Self>) {
+    pub fn set_caret_target(&mut self, target: CaretTarget, cx: &mut Context<Self>) {
         if self.buffer.read(cx).read_only() == Some(ReadOnly::Loading) {
             self.pending_caret = Some(target);
         } else {
@@ -913,7 +1006,7 @@ impl EditorView {
     }
 
     /// Selects `range` (a search match) and scrolls it into view.
-    pub(crate) fn select_range(&mut self, range: ByteRange<usize>, cx: &mut Context<Self>) {
+    pub fn select_range(&mut self, range: ByteRange<usize>, cx: &mut Context<Self>) {
         self.selection = Selection::single(Range::new(range.start, range.end));
         self.goal_column = None;
         self.last_edit = LastEdit::None;
@@ -924,7 +1017,7 @@ impl EditorView {
     /// line past the end is the last line, and a target past the line's end or inside a
     /// character is cut to fit, since the text may have changed since the search. Waits for a
     /// file that is still being read.
-    pub(crate) fn select_in_line(
+    pub fn select_in_line(
         &mut self,
         line: usize,
         target: ByteRange<usize>,
@@ -943,7 +1036,7 @@ impl EditorView {
     }
 
     /// The lines the last frame showed, the last one partly perhaps.
-    pub(crate) fn visible_lines(&self) -> Option<std::ops::Range<usize>> {
+    pub fn visible_lines(&self) -> Option<std::ops::Range<usize>> {
         let layout = self.layout.as_ref()?;
         let first = layout.rows.first()?.row.line;
         let last = layout.rows.last()?.row.line;
@@ -952,7 +1045,7 @@ impl EditorView {
 
     /// Scrolls so that `line` is the first one shown, or the first shown of its fold (the
     /// Document Map).
-    pub(crate) fn scroll_to_line(&mut self, line: usize, cx: &mut Context<Self>) {
+    pub fn scroll_to_line(&mut self, line: usize, cx: &mut Context<Self>) {
         let text = self.text(cx).clone();
         let line = line.min(motion::line_count(&text).saturating_sub(1));
         let visible = self.display.visible_line(line);
@@ -961,26 +1054,22 @@ impl EditorView {
     }
 
     /// The view settings for this document's language.
-    pub(crate) fn view_settings(&self, cx: &App) -> ViewSettings {
+    pub fn view_settings(&self, cx: &App) -> ViewSettings {
         ViewSettings::for_buffer(self.buffer.read(cx), cx)
     }
 
-    pub(crate) fn tab_width(&self) -> usize {
+    pub fn tab_width(&self) -> usize {
         self.display.config().tab_width
     }
 
     /// Puts a single caret at `pos` and scrolls to it (Go To).
-    pub(crate) fn go_to(&mut self, pos: usize, cx: &mut Context<Self>) {
+    pub fn go_to(&mut self, pos: usize, cx: &mut Context<Self>) {
         self.select_range(pos..pos, cx);
     }
 
     /// Applies an edit made on behalf of the user by a command (Replace All) as one undo step.
     /// Returns false if the document is read-only.
-    pub(crate) fn apply_command_edit(
-        &mut self,
-        transaction: Transaction,
-        cx: &mut Context<Self>,
-    ) -> bool {
+    pub fn apply_command_edit(&mut self, transaction: Transaction, cx: &mut Context<Self>) -> bool {
         if !self.is_editable(cx) {
             return false;
         }
@@ -998,7 +1087,7 @@ impl EditorView {
     // --- Editing -------------------------------------------------------------------------------
 
     /// False while the buffer is loading, has a decoding problem or is a read-only file.
-    pub(crate) fn is_editable(&self, cx: &App) -> bool {
+    pub fn is_editable(&self, cx: &App) -> bool {
         self.buffer.read(cx).read_only().is_none()
     }
 
@@ -1036,7 +1125,7 @@ impl EditorView {
 
     /// Replaces every selection range with `text`. In a rectangular selection, every line gets `text`, and the rectangle stays as a caret
     /// on each line unless `text` breaks lines.
-    pub(crate) fn insert(&mut self, text: &str, kind: LastEdit, cx: &mut Context<Self>) {
+    pub fn insert(&mut self, text: &str, kind: LastEdit, cx: &mut Context<Self>) {
         if !self.is_editable(cx) {
             return;
         }
@@ -1290,7 +1379,7 @@ impl EditorView {
         self.request_autoscroll(cx);
     }
 
-    pub(crate) fn selected_text(&self, cx: &App) -> Option<String> {
+    pub fn selected_text(&self, cx: &App) -> Option<String> {
         let doc = self.buffer.read(cx).doc();
         let parts: Vec<String> = self
             .selection
@@ -1400,7 +1489,7 @@ impl EditorView {
                 birchpad_core::links::link_at(&text, pos, &settings.links.extra_schemes())
         {
             let url = text.slice(link).to_string();
-            let _ = crate::file_commands::shell(crate::file_commands::Shell::Browse(url), cx);
+            (crate::EditorHooks::get(cx).open_link)(url, cx);
             self.drag = None;
             return true;
         }
@@ -1727,17 +1816,7 @@ impl Render for EditorView {
                     .context_menu({
                         let view = cx.entity().downgrade();
                         move |menu, window, cx| {
-                            let (nodes, problem) = crate::context_menu::load(cx);
-                            let menu = match problem {
-                                Some(problem) => menu
-                                    .item(
-                                        gpui_kit::component::menu::PopupMenuItem::new(problem)
-                                            .disabled(true),
-                                    )
-                                    .separator(),
-                                None => menu,
-                            };
-                            crate::context_menu::build(menu, &nodes, &view, window, cx)
+                            (crate::EditorHooks::get(cx).context_menu)(menu, &view, window, cx)
                         }
                     }),
             )
@@ -1806,7 +1885,7 @@ impl EntityInputHandler for EditorView {
             Some(range) => self.replace_range(range, text, cx),
             None => self.type_text(text, cx),
         }
-        crate::macros::record_typing(text, cx);
+        (crate::EditorHooks::get(cx).typed)(text, cx);
     }
 
     fn replace_and_mark_text_in_range(
@@ -1889,8 +1968,8 @@ mod tests {
     use gpui_kit::{Modifiers, TestAppContext, VisualTestContext};
 
     use super::*;
-    use crate::workspace::Workspace;
-    use crate::workspace::tests::{active_text, document_start, open_workspace};
+    use crate::test_support::Workspace;
+    use crate::test_support::{active_text, document_start, open_workspace};
 
     /// Ctrl (Option on macOS) with an arrow or Backspace/Delete: by words.
     fn word(key: &str) -> String {

@@ -14,20 +14,20 @@ use serde::{Deserialize, Serialize};
 use super::{EditorView, LastEdit};
 use birchpad_ui::CommandRegistry;
 
-use crate::commands::Register as _;
+use crate::EditorCommands as _;
 
 /// A rectangle and the selection it made; the rectangle is active only while the view's
 /// selection is still that one, so any other way of changing the selection leaves column
 /// mode without having to say so.
 #[derive(Debug, Clone)]
-pub(super) struct BlockState {
+pub(crate) struct BlockState {
     block: Block,
     selection: Selection,
 }
 
 /// The start that the first Begin/End Select remembered.
 #[derive(Debug, Clone, Copy)]
-pub(super) struct BeginSelect {
+pub(crate) struct BeginSelect {
     pos: usize,
     virtual_cells: usize,
     column: bool,
@@ -65,7 +65,7 @@ impl From<MultiSelectArgs> for MatchOptions {
 
 #[derive(Deserialize, Serialize, Debug, Clone, Copy, PartialEq, Eq, Default)]
 #[serde(rename_all = "kebab-case")]
-pub(super) enum LeadingName {
+pub(crate) enum LeadingName {
     #[default]
     None,
     Zeros,
@@ -74,7 +74,7 @@ pub(super) enum LeadingName {
 
 #[derive(Deserialize, Serialize, Debug, Clone, Copy, PartialEq, Eq, Default)]
 #[serde(rename_all = "kebab-case")]
-pub(super) enum FormatName {
+pub(crate) enum FormatName {
     #[default]
     Dec,
     Hex,
@@ -107,19 +107,19 @@ const fn yes() -> bool {
 
 /// Number to Insert, as `edit.column-insert` takes it.
 #[derive(Deserialize, Serialize, Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) struct NumberArgs {
+pub(crate) struct NumberArgs {
     #[serde(default = "one_i64")]
-    pub(super) initial: i64,
+    pub(crate) initial: i64,
     #[serde(default = "one_i64")]
-    pub(super) step: i64,
+    pub(crate) step: i64,
     #[serde(default = "one_usize")]
-    pub(super) repeat: usize,
+    pub(crate) repeat: usize,
     #[serde(default)]
-    pub(super) leading: LeadingName,
+    pub(crate) leading: LeadingName,
     #[serde(default)]
-    pub(super) format: FormatName,
+    pub(crate) format: FormatName,
     #[serde(default = "yes")]
-    pub(super) uppercase: bool,
+    pub(crate) uppercase: bool,
 }
 
 impl From<NumberArgs> for NumberSequence {
@@ -142,7 +142,7 @@ impl From<NumberArgs> for NumberSequence {
 /// What `edit.column-insert` inserts: `{ "text": "..." }` or the numbers.
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(untagged)]
-pub(super) enum ColumnInsertArgs {
+pub(crate) enum ColumnInsertArgs {
     Text { text: String },
     Numbers(NumberArgs),
 }
@@ -154,7 +154,7 @@ struct RectangleClipboard {
     rows: usize,
 }
 
-pub(super) fn register_commands(registry: &mut CommandRegistry) {
+pub(crate) fn register_commands(registry: &mut CommandRegistry) {
     let motions = [
         ("select.block-left", BlockMotion::Left),
         ("select.block-right", BlockMotion::Right),
@@ -232,7 +232,7 @@ pub(super) fn register_commands(registry: &mut CommandRegistry) {
 
 /// The rows of a rectangle copied to the clipboard, if `item` is one. The marker is checked
 /// against the text, in case another program replaced the text but not the marker.
-pub(super) fn rectangle_rows(item: &ClipboardItem, text: &str) -> Option<Vec<String>> {
+pub(crate) fn rectangle_rows(item: &ClipboardItem, text: &str) -> Option<Vec<String>> {
     let marker: RectangleClipboard = serde_json::from_str(item.metadata()?).ok()?;
     if !marker.rectangular {
         return None;
@@ -259,7 +259,7 @@ fn split_lines(text: &str) -> Vec<String> {
 
 impl EditorView {
     /// The rectangle, if the selection is still the one it made.
-    pub(super) fn active_block(&self) -> Option<Block> {
+    pub(crate) fn active_block(&self) -> Option<Block> {
         self.block
             .as_ref()
             .filter(|state| state.selection == self.selection)
@@ -267,7 +267,7 @@ impl EditorView {
     }
 
     /// Selects `block`: one range per line, the caret's line primary.
-    pub(super) fn set_block(&mut self, block: Block, cx: &mut Context<Self>) {
+    pub fn set_block(&mut self, block: Block, cx: &mut Context<Self>) {
         let text = self.text(cx).clone();
         self.selection = block.selection(&text, &mut self.display);
         self.block = Some(BlockState {
@@ -282,7 +282,7 @@ impl EditorView {
     /// After typing or deleting in `block`: a zero-width rectangle at the primary caret's
     /// column, over the carets the edit left (which may not all be at that column when tabs
     /// or wide characters are involved).
-    pub(super) fn keep_thin_block(&mut self, block: Block, cx: &mut Context<Self>) {
+    pub(crate) fn keep_thin_block(&mut self, block: Block, cx: &mut Context<Self>) {
         let text = self.text(cx).clone();
         let primary = self.selection.primary();
         let column = self.display.column(&text, primary.head) + primary.head_virtual;
@@ -399,7 +399,7 @@ impl EditorView {
     /// Backspace and Delete in a rectangle. Deleting the rectangle's text leaves a caret on
     /// each line; with carets, each deletes one character on its line (never the line break).
     /// A caret in virtual space moves one cell left on Backspace and stays on Delete.
-    pub(super) fn delete_in_block(
+    pub(crate) fn delete_in_block(
         &mut self,
         cx: &mut Context<Self>,
         target: fn(&Rope, usize) -> usize,
@@ -440,7 +440,7 @@ impl EditorView {
 
     /// The rectangle as clipboard text (each row ended by a line break, as Scintilla copies
     /// it), marked so that pasting it back inserts a rectangle.
-    pub(super) fn block_clipboard_item(&self, cx: &Context<Self>) -> ClipboardItem {
+    pub(crate) fn block_clipboard_item(&self, cx: &Context<Self>) -> ClipboardItem {
         let doc = self.buffer.read(cx).doc();
         let eol = doc.line_ending().as_str();
         let mut text = String::new();
@@ -460,7 +460,7 @@ impl EditorView {
     /// Pastes `rows` as a rectangle: the selection is deleted, then each row goes into the
     /// next line at the caret's column, filling short lines with spaces and adding lines at
     /// the end of the document if needed. One undo step.
-    pub(super) fn paste_rectangle(&mut self, rows: &[String], cx: &mut Context<Self>) {
+    pub(crate) fn paste_rectangle(&mut self, rows: &[String], cx: &mut Context<Self>) {
         if !self.is_editable(cx) {
             return;
         }
@@ -552,12 +552,12 @@ impl EditorView {
 
     /// Whether Begin/End Select is waiting for its second call (for a check mark in menus).
     #[cfg_attr(not(test), expect(dead_code, reason = "menus have no check marks yet"))]
-    pub(super) fn begin_select_pending(&self) -> Option<bool> {
+    pub(crate) fn begin_select_pending(&self) -> Option<bool> {
         self.begin_select.map(|start| start.column)
     }
 
     /// Keeps Begin/End Select's start on its text through an edit.
-    pub(super) fn map_begin_select(&mut self, changes: &ChangeSet) {
+    pub(crate) fn map_begin_select(&mut self, changes: &ChangeSet) {
         if let Some(start) = &mut self.begin_select {
             let range = Range::virtual_point(start.pos, start.virtual_cells).map(changes);
             start.pos = range.head;
@@ -649,7 +649,7 @@ impl EditorView {
 
     /// `edit.column-insert`: the Column Editor's text or numbers into every target row, as
     /// one undo step.
-    pub(super) fn column_insert(&mut self, args: ColumnInsertArgs, cx: &mut Context<Self>) {
+    pub(crate) fn column_insert(&mut self, args: ColumnInsertArgs, cx: &mut Context<Self>) {
         if !self.is_editable(cx) {
             return;
         }
@@ -667,7 +667,7 @@ impl EditorView {
 
     /// Sorting with a rectangle keys lines by its columns; the rectangle stays over the same
     /// lines and columns.
-    pub(super) fn sort_by_block(
+    pub(crate) fn sort_by_block(
         &mut self,
         key: ops::SortKey,
         descending: bool,
@@ -748,8 +748,8 @@ mod gpui_tests {
     use serde_json::json;
 
     use super::*;
-    use crate::workspace::Workspace;
-    use crate::workspace::tests::{
+    use crate::test_support::Workspace;
+    use crate::test_support::{
         active_text, begin_end_column, block, column_editor, document_start, open_workspace,
         secondary,
     };

@@ -16,7 +16,7 @@ use birchpad_core::{RangeSet, RevisionId, Rope};
 use gpui_kit::App;
 
 use super::EditorView;
-use crate::find::ActiveFindOptions;
+use crate::ActiveFindOptions;
 use birchpad_ui::AppState;
 
 /// How long one frame may search.
@@ -27,14 +27,14 @@ const MARGIN: usize = 16 * 1024;
 const MAX_TOKEN: usize = 64 * 1024;
 
 /// The occurrences of the selected token around the visible text.
-pub(super) struct SmartHighlight {
+pub(crate) struct SmartHighlight {
     revision: RevisionId,
     query: Query,
     searcher: Searcher,
     /// One scan per searched range; sorted and disjoint.
     scans: Vec<Scan>,
     /// What the scans found so far.
-    pub(super) matches: RangeSet<()>,
+    pub(crate) matches: RangeSet<()>,
 }
 
 impl SmartHighlight {
@@ -59,7 +59,7 @@ impl SmartHighlight {
 impl EditorView {
     /// Brings the smart highlights up to date for `shown`, the sorted ranges of text shown in
     /// this frame. Returns true if searching is not finished and needs another frame.
-    pub(super) fn update_smart_highlight(
+    pub(crate) fn update_smart_highlight(
         &mut self,
         shown: &[ByteRange<usize>],
         text: &Rope,
@@ -124,7 +124,7 @@ impl EditorView {
         let (match_case, whole_word) = if smart.use_find_options {
             let options = cx
                 .try_global::<ActiveFindOptions>()
-                .map(|active| active.0)
+                .copied()
                 .unwrap_or_default();
             (options.match_case, options.whole_word)
         } else {
@@ -172,8 +172,8 @@ mod tests {
     };
 
     use super::*;
-    use crate::workspace::Workspace;
-    use crate::workspace::tests::{document_start, open_workspace};
+    use crate::test_support::Workspace;
+    use crate::test_support::{document_start, open_workspace};
 
     fn view(workspace: &Entity<Workspace>, cx: &mut VisualTestContext) -> Entity<EditorView> {
         workspace.read_with(cx, |workspace, cx| workspace.active_view(cx).unwrap())
@@ -289,9 +289,7 @@ mod tests {
         let (workspace, cx) = open_workspace(cx);
         let text = "word other word\n".repeat(10);
         let view = view(&workspace, cx);
-        view.update(cx, |view, cx| {
-            view.insert(&text, crate::editor::LastEdit::None, cx)
-        });
+        view.update(cx, |view, cx| view.insert(&text, crate::LastEdit::None, cx));
         select(&workspace, 0..4, cx);
         assert_eq!(highlights(&workspace, cx).len(), 20);
         settings(cx, |s| s.files.large_file_limit_mb = 0);
@@ -308,7 +306,7 @@ mod tests {
         assert_eq!(search_ranges(&[10..20], &text), [0..20 + MARGIN]);
     }
 
-    /// `cargo test -p birchpad --release smart_highlighting_cost -- --ignored --nocapture`
+    /// `cargo test -p birchpad-editor --release smart_highlighting_cost -- --ignored --nocapture`
     #[gpui_kit::test]
     #[ignore = "performance check; run in release"]
     fn smart_highlighting_cost(cx: &mut TestAppContext) {
@@ -316,9 +314,7 @@ mod tests {
         let line = "let value = compute(value, other_value) + value * 2; // value again value\n";
         let text = line.repeat(10_000);
         let view = view(&workspace, cx);
-        view.update(cx, |view, cx| {
-            view.insert(&text, crate::editor::LastEdit::None, cx)
-        });
+        view.update(cx, |view, cx| view.insert(&text, crate::LastEdit::None, cx));
         // Scroll to the middle and select a word that occurs six times per line.
         let middle = text.len() / 2;
         let start = middle - middle % line.len() + 4;

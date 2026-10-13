@@ -14,8 +14,6 @@
 extern crate birchpad_i18n;
 
 mod app_state;
-mod banner;
-mod buffer;
 mod commands;
 mod compare;
 mod context_menu;
@@ -26,7 +24,9 @@ mod disk_tests;
 #[cfg(feature = "e2e")]
 mod e2e;
 mod edit_extras;
-mod editor;
+mod editor_hooks;
+#[cfg(test)]
+mod editor_tests;
 mod encoding_ui;
 mod extensions;
 mod file_commands;
@@ -70,7 +70,7 @@ mod window_menu;
 mod window_modes;
 mod workspace;
 
-pub(crate) use editor::theme;
+pub(crate) use birchpad_editor::{self as editor, buffer, theme};
 
 use std::fmt::Write as _;
 
@@ -86,13 +86,7 @@ use crate::workspace::Workspace;
 /// The application's id: the macOS bundle identifier, and the Linux desktop file's name.
 const APP_ID: &str = "io.github.securitytrip.birchpad";
 
-pub(crate) const MONOSPACE: &str = if cfg!(windows) {
-    "Consolas"
-} else if cfg!(target_os = "macos") {
-    "Menlo"
-} else {
-    "DejaVu Sans Mono"
-};
+pub(crate) use birchpad_editor::MONOSPACE;
 
 fn main() {
     birchpad_update::install::run_hooks();

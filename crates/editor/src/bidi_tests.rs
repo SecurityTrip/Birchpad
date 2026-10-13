@@ -3,10 +3,10 @@
 fn editor(
     cx: &mut gpui_kit::TestAppContext,
 ) -> (
-    gpui_kit::Entity<crate::workspace::Workspace>,
+    gpui_kit::Entity<crate::test_support::Workspace>,
     &mut gpui_kit::VisualTestContext,
 ) {
-    crate::workspace::tests::open_workspace(cx)
+    crate::test_support::open_workspace(cx)
 }
 
 #[gpui_kit::test]

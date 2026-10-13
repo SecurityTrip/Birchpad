@@ -16,11 +16,11 @@ use birchpad_io::{
 use birchpad_syntax::{Language, Parsed, Syntax, UdlKind, UserLanguage};
 use gpui_kit::{AppContext as _, Context, EntityId, EventEmitter, Task};
 
-use crate::app_state::AppState;
+use birchpad_ui::AppState;
 
 /// What changed in a buffer, so that every view showing it can follow.
 #[derive(Debug, Clone)]
-pub(crate) enum BufferEvent {
+pub enum BufferEvent {
     /// The text changed. `origin` is the view that made the change; it has already updated its
     /// own selection, the other views map theirs through `transaction`.
     Edited {
@@ -45,7 +45,7 @@ pub(crate) enum BufferEvent {
 
 /// Why a buffer cannot be edited.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum ReadOnly {
+pub enum ReadOnly {
     /// The file is still being read.
     Loading,
     /// View > Monitoring (tail -f): the document follows the file.
@@ -59,26 +59,26 @@ pub(crate) enum ReadOnly {
 }
 
 /// Number of styles of Search > Style All Occurrences of Token, as in Notepad++.
-pub(crate) const MARK_STYLES: usize = 5;
+pub const MARK_STYLES: usize = 5;
 
 /// Decorations that belong to the document, so every view of it shows them: bookmarks, the
 /// token styles and the matches of Search > Mark. They follow every edit, undo and redo.
 #[derive(Debug, Clone, Default)]
-pub(crate) struct DocumentMarks {
-    pub(crate) bookmarks: LineMarkers,
-    pub(crate) styles: [RangeSet<()>; MARK_STYLES],
+pub struct DocumentMarks {
+    pub bookmarks: LineMarkers,
+    pub styles: [RangeSet<()>; MARK_STYLES],
     /// Marked by the Mark tab of the find panel ("Find Mark Style" in Notepad++).
-    pub(crate) found: RangeSet<()>,
+    pub found: RangeSet<()>,
     /// The matches of incremental search with Highlight all.
-    pub(crate) incremental: RangeSet<()>,
+    pub incremental: RangeSet<()>,
     /// The lines Plugins > Compare found different, whole with their line breaks.
-    pub(crate) compare: RangeSet<birchpad_tools::compare::Change>,
+    pub compare: RangeSet<birchpad_tools::compare::Change>,
 }
 
 impl DocumentMarks {
     /// Bookmarks the line where each of `ranges` starts: the "Bookmark line" option of Mark
     /// All.
-    pub(crate) fn bookmark_lines_of(&mut self, text: &Rope, ranges: &[ByteRange<usize>]) {
+    pub fn bookmark_lines_of(&mut self, text: &Rope, ranges: &[ByteRange<usize>]) {
         let mut lines = self.bookmarks.lines(text);
         lines.extend(
             ranges
@@ -195,14 +195,14 @@ struct Comparing {
 
 /// The backup copy of a buffer's unsaved text (sessions, ADR 0017).
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct Backup {
+pub struct Backup {
     /// The file name in the backup folder.
-    pub(crate) name: String,
+    pub name: String,
     /// The revision the file holds; `None` until it is first written.
-    pub(crate) revision: Option<RevisionId>,
+    pub revision: Option<RevisionId>,
 }
 
-pub(crate) struct Buffer {
+pub struct Buffer {
     doc: Document,
     path: Option<PathBuf>,
     /// The number of an untitled buffer: 1 for "new 1".
@@ -221,7 +221,7 @@ pub(crate) struct Buffer {
     changes: ChangeTracking,
     /// Bookmarks to set once the file has been read (a restored session).
     pending_bookmarks: Option<Vec<usize>>,
-    pub(crate) backup: Option<Backup>,
+    pub backup: Option<Backup>,
     /// The file as last read or written; `None` while it does not exist.
     disk: Option<DiskStamp>,
     /// A fingerprint of the file's first bytes, to recognize appends (tail -f).
@@ -240,7 +240,7 @@ pub(crate) struct Buffer {
 impl EventEmitter<BufferEvent> for Buffer {}
 
 impl Buffer {
-    pub(crate) fn untitled(number: usize) -> Self {
+    pub fn untitled(number: usize) -> Self {
         Self {
             doc: Document::new(),
             path: None,
@@ -268,7 +268,7 @@ impl Buffer {
 
     /// A buffer put back from a session with the text of a backup copy: unsaved changes of
     /// `path`, or an untitled document.
-    pub(crate) fn restored(
+    pub fn restored(
         path: Option<PathBuf>,
         untitled: Option<usize>,
         mut doc: Document,
@@ -296,7 +296,7 @@ impl Buffer {
     }
 
     /// An untitled buffer with existing text.
-    pub(crate) fn untitled_with(number: usize, doc: Document) -> Self {
+    pub fn untitled_with(number: usize, doc: Document) -> Self {
         Self {
             changes: ChangeTracking::new(doc.text().clone()),
             doc,
@@ -305,7 +305,7 @@ impl Buffer {
     }
 
     /// A buffer for `path` whose content is read in the background.
-    pub(crate) fn open(
+    pub fn open(
         path: PathBuf,
         options: LoadOptions,
         read_only: bool,
@@ -340,7 +340,7 @@ impl Buffer {
 
     /// (Re)reads the file, replacing the document when done. If `bom` is given and differs from
     /// the file, it is applied afterwards as an undoable format change.
-    pub(crate) fn load(&mut self, options: LoadOptions, bom: Option<bool>, cx: &mut Context<Self>) {
+    pub fn load(&mut self, options: LoadOptions, bom: Option<bool>, cx: &mut Context<Self>) {
         let Some(path) = self.path.clone() else {
             return;
         };
@@ -455,12 +455,12 @@ impl Buffer {
         cx.notify();
     }
 
-    pub(crate) fn doc(&self) -> &Document {
+    pub fn doc(&self) -> &Document {
         &self.doc
     }
 
     /// Bookmarks `lines` now, or once the file has been read.
-    pub(crate) fn restore_bookmarks(&mut self, lines: Vec<usize>, cx: &mut Context<Self>) {
+    pub fn restore_bookmarks(&mut self, lines: Vec<usize>, cx: &mut Context<Self>) {
         self.pending_bookmarks = Some(lines);
         if self.loading.is_none() {
             self.set_pending_bookmarks();
@@ -475,7 +475,7 @@ impl Buffer {
     }
 
     /// Bookmarked lines, including those waiting for the file to be read.
-    pub(crate) fn bookmark_lines(&self) -> Vec<usize> {
+    pub fn bookmark_lines(&self) -> Vec<usize> {
         match &self.pending_bookmarks {
             Some(lines) => lines.clone(),
             None => self.marks.bookmarks.lines(self.doc.text()),
@@ -483,51 +483,51 @@ impl Buffer {
     }
 
     /// The language chosen in the Language menu or with `-l`, if any.
-    pub(crate) fn chosen_language(&self) -> Option<Option<&'static Language>> {
+    pub fn chosen_language(&self) -> Option<Option<&'static Language>> {
         self.syntax.chosen.then_some(self.syntax.language)
     }
 
-    pub(crate) fn chosen_encoding(&self) -> Option<Encoding> {
+    pub fn chosen_encoding(&self) -> Option<Encoding> {
         self.chosen_encoding
     }
 
     /// Opened read-only on purpose (`-ro`).
-    pub(crate) fn requested_read_only(&self) -> bool {
+    pub fn requested_read_only(&self) -> bool {
         self.requested_read_only
     }
 
     /// Edit > Set Read-Only: the document cannot be edited, whatever its file allows.
-    pub(crate) fn set_requested_read_only(&mut self, on: bool, cx: &mut Context<Self>) {
+    pub fn set_requested_read_only(&mut self, on: bool, cx: &mut Context<Self>) {
         self.requested_read_only = on;
         cx.emit(BufferEvent::StateChanged);
         cx.notify();
     }
 
     /// Edit > Clear Read-Only Flag made the file writable.
-    pub(crate) fn file_made_writable(&mut self, cx: &mut Context<Self>) {
+    pub fn file_made_writable(&mut self, cx: &mut Context<Self>) {
         self.file_read_only = false;
         cx.emit(BufferEvent::StateChanged);
         cx.notify();
     }
 
     /// Whether the folds may still change on their own: a language's first parse is running.
-    pub(crate) fn folds_pending(&self) -> bool {
+    pub fn folds_pending(&self) -> bool {
         self.syntax.folds_pending
     }
 
-    pub(crate) fn marks(&self) -> &DocumentMarks {
+    pub fn marks(&self) -> &DocumentMarks {
         &self.marks
     }
 
     /// The lines changed since the document was opened: those that differ from the saved text,
     /// and those changed and saved.
-    pub(crate) fn changed_lines(&self) -> (&LineMarkers, &LineMarkers) {
+    pub fn changed_lines(&self) -> (&LineMarkers, &LineMarkers) {
         (&self.changes.modified, &self.changes.saved)
     }
 
     /// Search > Change History > Clear All Changes: the text as it is now is where changes
     /// count from.
-    pub(crate) fn clear_change_history(&mut self, cx: &mut Context<Self>) {
+    pub fn clear_change_history(&mut self, cx: &mut Context<Self>) {
         self.changes = ChangeTracking::new(self.doc.text().clone());
         cx.emit(BufferEvent::MarksChanged);
         cx.notify();
@@ -610,7 +610,7 @@ impl Buffer {
     }
 
     /// Changes the document's decorations (bookmarks, token styles) and redraws its views.
-    pub(crate) fn update_marks(
+    pub fn update_marks(
         &mut self,
         cx: &mut Context<Self>,
         change: impl FnOnce(&mut DocumentMarks, &Rope),
@@ -620,18 +620,18 @@ impl Buffer {
         cx.notify();
     }
 
-    pub(crate) fn language(&self) -> Option<&'static Language> {
+    pub fn language(&self) -> Option<&'static Language> {
         self.syntax.language
     }
 
     /// The user defined language, if the buffer has one.
-    pub(crate) fn user_language(&self) -> Option<&std::rc::Rc<UserLanguage>> {
+    pub fn user_language(&self) -> Option<&std::rc::Rc<UserLanguage>> {
         self.syntax.user_language.as_ref()
     }
 
     /// The pieces the user defined language colors up to `end` at least, lexed from the start
     /// of the text (comments may begin far above) and kept until the text changes.
-    pub(crate) fn udl_pieces(&self, end: usize) -> std::rc::Rc<Vec<(ByteRange<usize>, UdlKind)>> {
+    pub fn udl_pieces(&self, end: usize) -> std::rc::Rc<Vec<(ByteRange<usize>, UdlKind)>> {
         let Some(language) = &self.syntax.user_language else {
             return std::rc::Rc::default();
         };
@@ -656,7 +656,7 @@ impl Buffer {
     }
 
     /// Uses a user defined language (`None`: normal text), as chosen in the Language menu.
-    pub(crate) fn set_user_language(
+    pub fn set_user_language(
         &mut self,
         language: Option<std::rc::Rc<UserLanguage>>,
         cx: &mut Context<Self>,
@@ -670,13 +670,13 @@ impl Buffer {
     }
 
     /// The syntax tree, unless the buffer is plain text or over the large file limit.
-    pub(crate) fn syntax(&self) -> Option<&Syntax> {
+    pub fn syntax(&self) -> Option<&Syntax> {
         self.syntax.syntax.as_ref()
     }
 
     /// Fold points as byte ranges sorted by start, their version, and the version they were
     /// mapped from if the last change was an edit mapping them.
-    pub(crate) fn folds(&self) -> (&[ByteRange<usize>], u64, Option<u64>) {
+    pub fn folds(&self) -> (&[ByteRange<usize>], u64, Option<u64>) {
         (
             &self.syntax.folds,
             self.syntax.folds_version,
@@ -703,11 +703,7 @@ impl Buffer {
     /// Sets the language from the Language menu or the command line (`None` for normal text).
     /// A chosen language is kept when the file is saved under another name, and it applies
     /// even over the large file limit.
-    pub(crate) fn set_language(
-        &mut self,
-        language: Option<&'static Language>,
-        cx: &mut Context<Self>,
-    ) {
+    pub fn set_language(&mut self, language: Option<&'static Language>, cx: &mut Context<Self>) {
         self.syntax.chosen = true;
         self.install_language(language, cx);
     }
@@ -739,7 +735,8 @@ impl Buffer {
                 .as_deref()
                 .and_then(|path| path.file_name()?.to_str())
         {
-            self.syntax.user_language = crate::user_languages::for_file(name, cx);
+            self.syntax.user_language =
+                (crate::EditorHooks::get(cx).user_language_for_file)(name, cx);
         }
     }
 
@@ -879,17 +876,17 @@ impl Buffer {
         }
     }
 
-    pub(crate) fn path(&self) -> Option<&Path> {
+    pub fn path(&self) -> Option<&Path> {
         self.path.as_deref()
     }
 
-    pub(crate) fn untitled_number(&self) -> Option<usize> {
+    pub fn untitled_number(&self) -> Option<usize> {
         self.untitled
     }
 
     /// The name shown on the tab: the file name, the name an untitled document was given, or
     /// "new N".
-    pub(crate) fn display_name(&self) -> String {
+    pub fn display_name(&self) -> String {
         match (&self.path, &self.title, self.untitled) {
             (Some(path), _, _) => path.file_name().map_or_else(
                 || path.display().to_string(),
@@ -902,28 +899,28 @@ impl Buffer {
     }
 
     /// The language as `languages.<key>` names it: an id, `text`, or `udl:<name>`.
-    pub(crate) fn language_key(&self) -> String {
+    pub fn language_key(&self) -> String {
         match (self.language(), self.user_language()) {
             (Some(language), _) => language.id.to_owned(),
-            (None, Some(user)) => format!("{}{}", crate::user_languages::ID_PREFIX, user.name),
+            (None, Some(user)) => format!("{}{}", birchpad_config::USER_LANGUAGE_PREFIX, user.name),
             (None, None) => "text".to_owned(),
         }
     }
 
     /// The name an untitled document was given, if any.
-    pub(crate) fn title(&self) -> Option<&str> {
+    pub fn title(&self) -> Option<&str> {
         self.title.as_deref().filter(|_| self.path.is_none())
     }
 
     /// Gives an untitled document a name (File > Rename); `None` goes back to "new N".
-    pub(crate) fn set_title(&mut self, title: Option<String>, cx: &mut Context<Self>) {
+    pub fn set_title(&mut self, title: Option<String>, cx: &mut Context<Self>) {
         self.title = title;
         cx.emit(BufferEvent::StateChanged);
         cx.notify();
     }
 
     /// The file was renamed to `path` (File > Rename): the document follows it.
-    pub(crate) fn renamed(&mut self, path: PathBuf, cx: &mut Context<Self>) {
+    pub fn renamed(&mut self, path: PathBuf, cx: &mut Context<Self>) {
         self.disk = birchpad_io::stamp(&path).ok().flatten();
         self.path = Some(path);
         self.detect_language(cx);
@@ -931,44 +928,44 @@ impl Buffer {
         cx.notify();
     }
 
-    pub(crate) fn is_modified(&self) -> bool {
+    pub fn is_modified(&self) -> bool {
         self.doc.is_modified()
     }
 
     /// A save starts: until it ends, changes of the file are its own.
-    pub(crate) fn begin_save(&mut self) {
+    pub fn begin_save(&mut self) {
         self.saving += 1;
     }
 
     /// A save failed.
-    pub(crate) fn end_save(&mut self) {
+    pub fn end_save(&mut self) {
         self.saving = self.saving.saturating_sub(1);
     }
 
-    pub(crate) fn is_saving(&self) -> bool {
+    pub fn is_saving(&self) -> bool {
         self.saving > 0
     }
 
     /// The file as last read or written; `None` while it does not exist.
-    pub(crate) fn disk(&self) -> Option<DiskStamp> {
+    pub fn disk(&self) -> Option<DiskStamp> {
         self.disk
     }
 
-    pub(crate) fn head(&self) -> Option<Head> {
+    pub fn head(&self) -> Option<Head> {
         self.head
     }
 
     /// For text restored from a backup copy: how the file looked when the copy was made.
-    pub(crate) fn assume_disk(&mut self, disk: Option<DiskStamp>) {
+    pub fn assume_disk(&mut self, disk: Option<DiskStamp>) {
         self.disk = disk;
     }
 
-    pub(crate) fn is_monitoring(&self) -> bool {
+    pub fn is_monitoring(&self) -> bool {
         self.monitoring
     }
 
     /// View > Monitoring (tail -f): the document becomes read-only and follows the file.
-    pub(crate) fn set_monitoring(&mut self, monitoring: bool, cx: &mut Context<Self>) {
+    pub fn set_monitoring(&mut self, monitoring: bool, cx: &mut Context<Self>) {
         self.monitoring = monitoring;
         if monitoring {
             cx.emit(BufferEvent::FollowEnd);
@@ -979,7 +976,7 @@ impl Buffer {
 
     /// Reads the file again because another program changed it. Views keep their places;
     /// with `follow_end`, they go to the end.
-    pub(crate) fn reload(&mut self, follow_end: bool, cx: &mut Context<Self>) {
+    pub fn reload(&mut self, follow_end: bool, cx: &mut Context<Self>) {
         self.follow_end = follow_end;
         let options = AppState::global(cx).load_options(self.chosen_encoding);
         self.load(options, None, cx);
@@ -987,7 +984,7 @@ impl Buffer {
 
     /// Adds text that was appended to the file (tail -f). It is not an edit: the document
     /// stays unmodified and has nothing to undo.
-    pub(crate) fn append_from_disk(
+    pub fn append_from_disk(
         &mut self,
         text: &str,
         stamp: DiskStamp,
@@ -1019,7 +1016,7 @@ impl Buffer {
     }
 
     /// The file was deleted and the user keeps the document: saving creates it again.
-    pub(crate) fn keep_deleted(&mut self, cx: &mut Context<Self>) {
+    pub fn keep_deleted(&mut self, cx: &mut Context<Self>) {
         self.disk = None;
         self.head = None;
         self.doc.mark_unsaved();
@@ -1029,7 +1026,7 @@ impl Buffer {
 
     /// The file changed and the user keeps the document as it is: it differs from the file
     /// now, and that change is not asked about again.
-    pub(crate) fn keep_changed(&mut self, stamp: Option<DiskStamp>, cx: &mut Context<Self>) {
+    pub fn keep_changed(&mut self, stamp: Option<DiskStamp>, cx: &mut Context<Self>) {
         self.disk = stamp;
         self.head = None;
         if !self.doc.is_modified() {
@@ -1041,7 +1038,7 @@ impl Buffer {
 
     /// Records that `revision` of the document, `text`, was written to `path` (a new path after
     /// Save As), which then looked like `disk`.
-    pub(crate) fn did_save(
+    pub fn did_save(
         &mut self,
         path: PathBuf,
         revision: RevisionId,
@@ -1069,7 +1066,7 @@ impl Buffer {
     }
 
     /// Fraction of the file read so far, while loading.
-    pub(crate) fn loading_progress(&self) -> Option<f32> {
+    pub fn loading_progress(&self) -> Option<f32> {
         self.loading.as_ref().map(|loading| {
             let read = loading.progress.load(Ordering::Relaxed);
             if loading.total == 0 {
@@ -1081,20 +1078,20 @@ impl Buffer {
     }
 
     /// Where saving would change a file that did not decode exactly.
-    pub(crate) fn decode_changes(&self) -> &ByteChanges {
+    pub fn decode_changes(&self) -> &ByteChanges {
         &self.decode_changes
     }
 
     /// Makes a document that did not decode exactly editable: the user accepted that saving
     /// changes the bytes in [`Self::decode_changes`].
-    pub(crate) fn edit_anyway(&mut self, cx: &mut Context<Self>) {
+    pub fn edit_anyway(&mut self, cx: &mut Context<Self>) {
         if self.problem.take().is_some() {
             cx.emit(BufferEvent::StateChanged);
             cx.notify();
         }
     }
 
-    pub(crate) fn read_only(&self) -> Option<ReadOnly> {
+    pub fn read_only(&self) -> Option<ReadOnly> {
         if self.loading.is_some() {
             Some(ReadOnly::Loading)
         } else if let Some(problem) = self.problem {
@@ -1110,7 +1107,7 @@ impl Buffer {
         }
     }
 
-    pub(crate) fn apply(
+    pub fn apply(
         &mut self,
         transaction: Transaction,
         selection_before: &Selection,
@@ -1134,7 +1131,7 @@ impl Buffer {
     }
 
     /// Changes how the document is saved, as an undoable edit ("Convert to").
-    pub(crate) fn set_format(
+    pub fn set_format(
         &mut self,
         encoding: Encoding,
         bom: bool,
@@ -1153,7 +1150,7 @@ impl Buffer {
         self.apply(transaction, selection, UndoGrouping::NewStep, None, cx);
     }
 
-    pub(crate) fn undo(
+    pub fn undo(
         &mut self,
         origin: Option<EntityId>,
         cx: &mut Context<Self>,
@@ -1164,7 +1161,7 @@ impl Buffer {
         Some(transaction)
     }
 
-    pub(crate) fn redo(
+    pub fn redo(
         &mut self,
         origin: Option<EntityId>,
         cx: &mut Context<Self>,

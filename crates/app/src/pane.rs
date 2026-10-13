@@ -33,17 +33,7 @@ use crate::editor::EditorView;
 use crate::theme::{paint, ui};
 use crate::workspace::Workspace;
 
-/// How many colors a tab may have (View > Tab > Apply Color 1-5).
-pub(crate) const TAB_COLORS: u8 = 5;
-
-/// What a tab carries besides its document: pinned, and its color.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-pub(crate) struct TabMarks {
-    /// Pinned tabs stay at the start of the bar and Close All but Pinned leaves them.
-    pub(crate) pinned: bool,
-    /// 1 to [`TAB_COLORS`]; none if unset.
-    pub(crate) color: Option<u8>,
-}
+pub(crate) use birchpad_editor::{TAB_COLORS, TabMarks};
 
 /// The theme's color `number` (1 to 5) for a tab.
 fn tab_color(number: u8) -> Option<birchpad_theme::Color> {

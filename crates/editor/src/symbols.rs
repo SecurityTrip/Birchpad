@@ -12,30 +12,30 @@ use super::{EditorView, ViewSettings, theme};
 
 /// Positions of the visual aids in one frame.
 #[derive(Default)]
-pub(super) struct Symbols {
+pub struct Symbols {
     /// The rows of the primary caret's line, across the text area.
-    pub(super) current_line: Option<Bounds<Pixels>>,
+    pub current_line: Option<Bounds<Pixels>>,
     /// Draw the current line as a frame of this width rather than a background.
-    pub(super) current_line_frame: Option<Pixels>,
+    pub current_line_frame: Option<Pixels>,
     /// Vertical lines at the edge columns, across the text area.
-    pub(super) edge_lines: Vec<Bounds<Pixels>>,
+    pub(crate) edge_lines: Vec<Bounds<Pixels>>,
     /// Text past the edge column, in background mode.
-    pub(super) edge_backgrounds: Vec<Bounds<Pixels>>,
+    pub(crate) edge_backgrounds: Vec<Bounds<Pixels>>,
     /// Indentation guides, one pixel wide, drawn dotted.
-    pub(super) indent_guides: Vec<Bounds<Pixels>>,
+    pub(crate) indent_guides: Vec<Bounds<Pixels>>,
     /// A dot for each space.
-    pub(super) spaces: Vec<Bounds<Pixels>>,
+    pub(crate) spaces: Vec<Bounds<Pixels>>,
     /// The cells of each tab, drawn as an arrow across them.
-    pub(super) tabs: Vec<Bounds<Pixels>>,
+    pub(crate) tabs: Vec<Bounds<Pixels>>,
     /// Boxes labeled CR, LF or CRLF after the end of lines.
-    pub(super) line_breaks: Vec<(Bounds<Pixels>, ShapedLine)>,
+    pub(crate) line_breaks: Vec<(Bounds<Pixels>, ShapedLine)>,
     /// The cells where wrapped rows show the wrap symbol.
-    pub(super) wrap_marks: Vec<Bounds<Pixels>>,
+    pub(crate) wrap_marks: Vec<Bounds<Pixels>>,
 }
 
 impl EditorView {
     /// Computes the visual aids for the rows of `layout`.
-    pub(super) fn layout_symbols(
+    pub(crate) fn layout_symbols(
         &mut self,
         layout: &mut Layout,
         text: &Rope,
@@ -279,8 +279,8 @@ mod tests {
     use gpui_kit::{Entity, TestAppContext, VisualTestContext};
 
     use super::*;
-    use crate::workspace::Workspace;
-    use crate::workspace::tests::{active_text, document_start, open_workspace, secondary};
+    use crate::test_support::Workspace;
+    use crate::test_support::{active_text, document_start, open_workspace, secondary};
     use birchpad_ui::AppState;
 
     fn view(workspace: &Entity<Workspace>, cx: &mut VisualTestContext) -> Entity<EditorView> {

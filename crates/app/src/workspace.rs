@@ -7,7 +7,7 @@ use std::path::Path;
 use anyhow::Result;
 use birchpad_cli::CommandLine;
 use birchpad_commands::Invocation;
-use birchpad_config::{SplitOrientation, UserState};
+use birchpad_config::SplitOrientation;
 use birchpad_core::Document;
 use birchpad_menu_bar::MenuBar;
 use gpui_kit::component::button::{Button, ButtonVariants as _};
@@ -48,7 +48,7 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
             .update(cx, |pane, cx| pane.cycle(-1, window, cx));
         Ok(())
     });
-    for &(id, read, write) in VIEW_SWITCHES {
+    for &(id, read, write) in crate::editor::VIEW_SWITCHES {
         registry.workspace(id, move |this, (), _, cx| {
             let on = !read(&ViewSettings::read(cx));
             AppState::update_state(cx, |state, _| write(state, on));
@@ -88,7 +88,7 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
     });
     // Checked when both are shown; turns both on, or both off if they are.
     registry.workspace("view.show-all-characters", |this, (), _, cx| {
-        let on = !all_characters(&ViewSettings::read(cx));
+        let on = !crate::editor::all_characters(&ViewSettings::read(cx));
         AppState::update_state(cx, |state, _| {
             state.show_whitespace = Some(on);
             state.show_eol = Some(on);
@@ -176,45 +176,6 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
     crate::context_menu::register_commands(registry);
     crate::search_extras::register_commands(registry);
     crate::view_extras::register_commands(registry);
-}
-
-/// View menu switches kept in `state.toml`: command, current value, how to remember a new one.
-type ViewSwitch = (
-    &'static str,
-    fn(&ViewSettings) -> bool,
-    fn(&mut UserState, bool),
-);
-
-const VIEW_SWITCHES: &[ViewSwitch] = &[
-    (
-        "view.word-wrap",
-        |view| view.word_wrap,
-        |state, on| state.word_wrap = Some(on),
-    ),
-    (
-        "view.show-whitespace",
-        |view| view.show_whitespace,
-        |state, on| state.show_whitespace = Some(on),
-    ),
-    (
-        "view.show-eol",
-        |view| view.show_eol,
-        |state, on| state.show_eol = Some(on),
-    ),
-    (
-        "view.indent-guides",
-        |view| view.indent_guides,
-        |state, on| state.indent_guides = Some(on),
-    ),
-    (
-        "view.wrap-symbol",
-        |view| view.wrap_symbol,
-        |state, on| state.wrap_symbol = Some(on),
-    ),
-];
-
-fn all_characters(view: &ViewSettings) -> bool {
-    view.show_whitespace && view.show_eol
 }
 
 #[derive(serde::Deserialize)]
@@ -958,14 +919,14 @@ impl Workspace {
             if invocation.command == "edit.toggle-read-only" {
                 return requested_read_only;
             }
-            if let Some((_, read, _)) = VIEW_SWITCHES
+            if let Some((_, read, _)) = crate::editor::VIEW_SWITCHES
                 .iter()
                 .find(|(id, _, _)| *id == invocation.command)
             {
                 return read(&view);
             }
             if invocation.command == "view.show-all-characters" {
-                return all_characters(&view);
+                return crate::editor::all_characters(&view);
             }
             if invocation.command == "view.monitoring" {
                 return monitoring;
@@ -1289,35 +1250,6 @@ pub(crate) mod tests {
             "cmd-f2"
         } else {
             "ctrl-f2"
-        }
-    }
-
-    /// The keystroke that extends a rectangular selection towards `key`: Alt+Shift+<key> on
-    /// Windows and Linux, Cmd+Alt+Shift+<key> on macOS.
-    pub(crate) fn block(key: &str) -> String {
-        if cfg!(target_os = "macos") {
-            format!("cmd-alt-shift-{key}")
-        } else {
-            format!("alt-shift-{key}")
-        }
-    }
-
-    /// Column-mode Begin/End Select: Alt+Shift+B on Windows and Linux, Cmd+Alt+Shift+B on
-    /// macOS.
-    pub(crate) fn begin_end_column() -> &'static str {
-        if cfg!(target_os = "macos") {
-            "cmd-alt-shift-b"
-        } else {
-            "alt-shift-b"
-        }
-    }
-
-    /// The Column Editor: Alt+C on Windows and Linux, Cmd+Alt+C on macOS.
-    pub(crate) fn column_editor() -> &'static str {
-        if cfg!(target_os = "macos") {
-            "cmd-alt-c"
-        } else {
-            "alt-c"
         }
     }
 

@@ -24,7 +24,7 @@ fn visible_lines(workspace: &Entity<Workspace>, cx: &mut VisualTestContext) -> V
     cx.update(|window, _| window.refresh());
     cx.run_until_parked();
     view.read_with(cx, |view, _| {
-        let layout = view.layout.as_ref().expect("drawn");
+        let layout = view.layout().expect("drawn");
         let mut lines: Vec<usize> = layout.rows.iter().map(|row| row.row.line).collect();
         lines.dedup();
         lines
@@ -53,7 +53,7 @@ fn hiding_lines_and_showing_them_again(cx: &mut TestAppContext) {
     // A click in the margin of the line above shows them again.
     let view = pane_views(&workspace, 0, cx)[0].clone();
     let (gutter, band) = view.read_with(cx, |view, _| {
-        let layout = view.layout.as_ref().unwrap();
+        let layout = view.layout().unwrap();
         (layout.margins.gutter, layout.hidden_marks[0].1)
     });
     let at = point(gutter.left() + px(2.), band.top() - px(4.));

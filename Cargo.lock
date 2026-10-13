@@ -607,6 +607,7 @@ dependencies = [
  "birchpad-commands",
  "birchpad-config",
  "birchpad-core",
+ "birchpad-editor",
  "birchpad-i18n",
  "birchpad-io",
  "birchpad-menu-bar",
@@ -691,6 +692,28 @@ dependencies = [
  "similar 3.2.0",
  "smallvec",
  "thiserror 2.0.21",
+]
+
+[[package]]
+name = "birchpad-editor"
+version = "1.0.0"
+dependencies = [
+ "anyhow",
+ "birchpad-cli",
+ "birchpad-commands",
+ "birchpad-config",
+ "birchpad-core",
+ "birchpad-i18n",
+ "birchpad-io",
+ "birchpad-syntax",
+ "birchpad-theme",
+ "birchpad-tools",
+ "birchpad-ui",
+ "birchpad-view",
+ "gpui-kit",
+ "serde",
+ "serde_json",
+ "tempfile",
 ]
 
 [[package]]

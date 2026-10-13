@@ -6,10 +6,10 @@ use gpui_kit::{
     VisualTestContext, point, px,
 };
 
-use crate::app_state::AppState;
 use crate::file_commands::{SHELL, Shell};
 use crate::workspace::Workspace;
 use crate::workspace::tests::{open_workspace, pane_views};
+use birchpad_ui::AppState;
 
 /// The window point of byte `pos`, in the middle of its row's height.
 fn point_of(
@@ -21,7 +21,7 @@ fn point_of(
     cx.update(|window, _| window.refresh());
     cx.run_until_parked();
     view.read_with(cx, |view, _| {
-        let layout = view.layout.as_ref().expect("drawn");
+        let layout = view.layout().expect("drawn");
         let row = layout
             .rows
             .iter()

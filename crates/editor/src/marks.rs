@@ -16,7 +16,7 @@ use crate::buffer::MARK_STYLES;
 use birchpad_ui::AppState;
 use birchpad_ui::CommandRegistry;
 
-use crate::commands::Register as _;
+use crate::EditorCommands as _;
 
 /// `{ "style": 1..5 }`.
 #[derive(Deserialize)]
@@ -49,7 +49,7 @@ fn any_style(args: Option<AnyStyleArgs>) -> Result<Option<usize>> {
     args.unwrap_or_default().style.map(style_index).transpose()
 }
 
-pub(super) fn register_commands(registry: &mut CommandRegistry) {
+pub(crate) fn register_commands(registry: &mut CommandRegistry) {
     registry.editor("mark.style-all", |this, args: StyleArgs, _, cx| {
         let style = style_index(args.style)?;
         this.style_token(style, true, cx);
@@ -344,8 +344,8 @@ mod tests {
     use serde_json::json;
 
     use super::*;
-    use crate::workspace::Workspace;
-    use crate::workspace::tests::{
+    use crate::test_support::Workspace;
+    use crate::test_support::{
         active_text, document_start, open_workspace, secondary, toggle_bookmark,
     };
 

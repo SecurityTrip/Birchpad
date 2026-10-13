@@ -222,13 +222,6 @@ pub(crate) struct FindOptions {
     pub(crate) purge: bool,
 }
 
-/// The find panel's options, for smart highlighting with
-/// `highlighting.smart.use-find-options`.
-#[derive(Debug, Clone, Copy, Default)]
-pub(crate) struct ActiveFindOptions(pub(crate) FindOptions);
-
-impl gpui_kit::Global for ActiveFindOptions {}
-
 impl Default for FindOptions {
     fn default() -> Self {
         Self {
@@ -480,9 +473,12 @@ impl FindBar {
 
     fn set_options(&mut self, change: impl FnOnce(&mut FindOptions), cx: &mut Context<Self>) {
         change(&mut self.options);
-        cx.set_global(ActiveFindOptions(self.options));
+        // Smart highlighting may follow the case and whole-word options.
+        cx.set_global(birchpad_editor::ActiveFindOptions {
+            match_case: self.options.match_case,
+            whole_word: self.options.whole_word,
+        });
         cx.notify();
-        // Smart highlighting may follow these options.
         cx.refresh_windows();
     }
 

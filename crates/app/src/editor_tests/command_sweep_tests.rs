@@ -18,12 +18,12 @@ use birchpad_view::{Block, BlockPoint};
 use gpui_kit::{ClipboardItem, Entity, TestAppContext, VisualTestContext};
 use serde_json::{Value, json};
 
-use super::EditorView;
-use crate::app_state::AppState;
 use crate::buffer::Buffer;
 use crate::commands::CommandRegistry;
+use crate::editor::EditorView;
 use crate::workspace::Workspace;
 use crate::workspace::tests::open_workspace;
+use birchpad_ui::AppState;
 
 /// Commands that open a dialog of their own, leave the application or go to the network; their
 /// own tests cover them.

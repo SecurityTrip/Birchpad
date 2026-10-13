@@ -11,12 +11,12 @@ use gpui_kit::{
 use super::EditorView;
 use super::theme::{self, Paint};
 
-pub(super) struct EditorElement {
+pub(crate) struct EditorElement {
     view: Entity<EditorView>,
 }
 
 impl EditorElement {
-    pub(super) fn new(view: Entity<EditorView>) -> Self {
+    pub(crate) fn new(view: Entity<EditorView>) -> Self {
         Self { view }
     }
 }

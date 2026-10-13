@@ -3,12 +3,12 @@ use gpui_kit::{Entity, TestAppContext, VisualTestContext};
 use serde_json::json;
 
 use super::*;
-use crate::workspace::Workspace;
-use crate::workspace::tests::{active_text, secondary};
+use crate::test_support::Workspace;
+use crate::test_support::{active_text, secondary};
 
 /// A window with auto-completion as Birchpad starts with it.
 fn open_workspace(cx: &mut TestAppContext) -> (Entity<Workspace>, &mut VisualTestContext) {
-    let (workspace, cx) = crate::workspace::tests::open_workspace(cx);
+    let (workspace, cx) = crate::test_support::open_workspace(cx);
     cx.update(|_, cx| {
         cx.global_mut::<AppState>().settings.completion =
             birchpad_config::CompletionSettings::default();
@@ -99,7 +99,7 @@ fn words_of_the_document_are_offered_while_typing(cx: &mut TestAppContext) {
     run(&workspace, Invocation::new("cursor.document-start"), cx);
     view.update_in(cx, |view, window, cx| {
         view.run_command(
-            &crate::commands::RunCommand(Invocation::new("cursor.document-end")),
+            &birchpad_ui::RunCommand(Invocation::new("cursor.document-end")),
             window,
             cx,
         );

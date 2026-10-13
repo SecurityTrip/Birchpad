@@ -18,7 +18,7 @@ use super::{EditorView, LastEdit, theme};
 use birchpad_ui::AppState;
 use birchpad_ui::CommandRegistry;
 
-use crate::commands::Register as _;
+use crate::EditorCommands as _;
 
 /// The most words of the document the list shows.
 const WORD_LIMIT: usize = 100;
@@ -27,25 +27,25 @@ const VISIBLE_ROWS: usize = 10;
 
 /// An entry of the list.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct Item {
-    pub(crate) label: String,
+pub struct Item {
+    pub label: String,
     /// A function's signature, from the API file.
-    pub(crate) detail: Option<String>,
+    pub detail: Option<String>,
 }
 
 /// The completion list, for the word that starts at `start` and ends at the caret.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct Popup {
-    pub(crate) start: usize,
-    pub(crate) items: Vec<Item>,
-    pub(crate) selected: usize,
+pub struct Popup {
+    pub start: usize,
+    pub items: Vec<Item>,
+    pub selected: usize,
 }
 
 /// A function's parameters, shown from its opening bracket at `open`.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct CallTip {
-    pub(crate) open: usize,
-    pub(crate) text: String,
+pub struct CallTip {
+    pub open: usize,
+    pub text: String,
 }
 
 thread_local! {
@@ -125,7 +125,7 @@ impl EditorView {
     }
 
     /// Typing `typed` with auto-closing: true when it paired or stepped over a partner.
-    pub(super) fn type_paired(&mut self, typed: &str, cx: &mut Context<Self>) -> bool {
+    pub(crate) fn type_paired(&mut self, typed: &str, cx: &mut Context<Self>) -> bool {
         let mut chars = typed.chars();
         let (Some(ch), None) = (chars.next(), chars.next()) else {
             return false;
@@ -145,7 +145,7 @@ impl EditorView {
     }
 
     /// Backspace between an empty pair: true when it deleted both.
-    pub(super) fn backspace_pair(&mut self, cx: &mut Context<Self>) -> bool {
+    pub(crate) fn backspace_pair(&mut self, cx: &mut Context<Self>) -> bool {
         if !self.is_editable(cx) {
             return false;
         }
@@ -161,7 +161,7 @@ impl EditorView {
     }
 
     /// After text was typed: the list and the call tip follow it.
-    pub(super) fn after_typing(&mut self, typed: &str, cx: &mut Context<Self>) {
+    pub(crate) fn after_typing(&mut self, typed: &str, cx: &mut Context<Self>) {
         let settings = AppState::global(cx).settings.completion.clone();
         let api = api_file(self.language_id(cx), cx);
         let head = self.selection.primary().head;
@@ -189,7 +189,7 @@ impl EditorView {
     }
 
     /// Shows or refreshes the list for the word before the caret, if it has `min_chars`.
-    pub(crate) fn update_completion(&mut self, min_chars: usize, cx: &mut Context<Self>) {
+    pub fn update_completion(&mut self, min_chars: usize, cx: &mut Context<Self>) {
         let text = self.text(cx).clone();
         let head = self.selection.primary().head;
         let start = word_start(&text, head);
@@ -247,7 +247,7 @@ impl EditorView {
 
     /// Offers `choices` for the text of `range` (a misspelled word) in the completion list,
     /// with the caret at its end; the one taken replaces it.
-    pub(crate) fn show_choices(
+    pub fn show_choices(
         &mut self,
         range: std::ops::Range<usize>,
         choices: Vec<String>,
@@ -270,7 +270,7 @@ impl EditorView {
     }
 
     /// Takes the selected entry in place of the word typed.
-    pub(crate) fn accept_completion(&mut self, cx: &mut Context<Self>) {
+    pub fn accept_completion(&mut self, cx: &mut Context<Self>) {
         let Some(popup) = self.completion.take() else {
             return;
         };
@@ -287,7 +287,7 @@ impl EditorView {
 
     /// Closes the list and the call tip when the caret goes elsewhere: any command but typing,
     /// deleting and the list's own.
-    pub(super) fn close_completion_for(&mut self, command: &str) {
+    pub(crate) fn close_completion_for(&mut self, command: &str) {
         let keeps =
             command.starts_with("completion.") || matches!(command, "edit.type" | "edit.backspace");
         if !keeps {
@@ -297,7 +297,7 @@ impl EditorView {
     }
 
     /// The key context of the editor: the list and the call tip take some keys.
-    pub(super) fn key_context(&self) -> &'static str {
+    pub(crate) fn key_context(&self) -> &'static str {
         match (&self.completion, &self.call_tip) {
             (Some(_), _) => "Editor Completion",
             (None, Some(_)) => "Editor CallTip",
@@ -306,7 +306,7 @@ impl EditorView {
     }
 
     /// The list or the call tip, drawn below the caret.
-    pub(super) fn render_completion(&self, cx: &mut Context<Self>) -> Option<AnyElement> {
+    pub(crate) fn render_completion(&self, cx: &mut Context<Self>) -> Option<AnyElement> {
         if self.completion.is_none() && self.call_tip.is_none() {
             return None;
         }
@@ -391,7 +391,7 @@ fn move_selection(view: &mut EditorView, step: isize) {
     }
 }
 
-pub(super) fn register_commands(registry: &mut CommandRegistry) {
+pub(crate) fn register_commands(registry: &mut CommandRegistry) {
     registry.editor("completion.complete", |this, (), _, cx| {
         this.update_completion(1, cx);
         Ok(())

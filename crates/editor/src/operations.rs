@@ -10,7 +10,7 @@ use serde::Deserialize;
 use super::{EditorView, LastEdit};
 use birchpad_ui::CommandRegistry;
 
-use crate::commands::Register as _;
+use crate::EditorCommands as _;
 
 #[derive(Deserialize)]
 #[serde(rename_all = "kebab-case")]
@@ -90,7 +90,7 @@ type Op = fn(&Rope, &Selection, LineEnding) -> Option<Transaction>;
 /// A comment operation, given the language's comment tokens.
 type CommentOp = fn(&Rope, &Selection, CommentTokens) -> Option<Transaction>;
 
-pub(super) fn register_commands(registry: &mut CommandRegistry) {
+pub(crate) fn register_commands(registry: &mut CommandRegistry) {
     let simple: [(&'static str, Op); 6] = [
         ("edit.duplicate-line", ops::duplicate),
         ("edit.delete-line", |text, selection, _| {
@@ -263,7 +263,7 @@ fn random_seed() -> u64 {
 
 impl EditorView {
     /// Runs an operation on the text and the selection as one undo step.
-    pub(super) fn run_op(
+    pub(crate) fn run_op(
         &mut self,
         cx: &mut Context<Self>,
         op: impl FnOnce(&Rope, &Selection, LineEnding) -> Option<Transaction>,
@@ -272,7 +272,7 @@ impl EditorView {
     }
 
     /// [`Self::try_op`] for operations elsewhere that need neither the line ending nor more.
-    pub(crate) fn try_op_public(
+    pub fn try_op_public(
         &mut self,
         cx: &mut Context<Self>,
         op: impl FnOnce(&Rope, &Selection) -> Result<Option<Transaction>>,
@@ -305,8 +305,8 @@ mod tests {
     use gpui_kit::{Entity, TestAppContext, VisualTestContext};
     use serde_json::json;
 
-    use crate::workspace::Workspace;
-    use crate::workspace::tests::{active_text, document_start, open_workspace, secondary};
+    use crate::test_support::Workspace;
+    use crate::test_support::{active_text, document_start, open_workspace, secondary};
 
     fn dispatch(
         workspace: &Entity<Workspace>,

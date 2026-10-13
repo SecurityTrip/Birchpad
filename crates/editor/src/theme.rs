@@ -12,11 +12,10 @@ use gpui_kit::{Rgba, rgba};
 
 /// How a decoration range is drawn.
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub(crate) enum Paint {
+pub enum Paint {
     /// A translucent background behind the text.
     Fill(Rgba),
     /// A rectangle around the text.
-    #[expect(dead_code, reason = "used by later decorations")]
     Outline(Rgba),
     /// A line under the text.
     Underline(Rgba),
@@ -24,13 +23,13 @@ pub(crate) enum Paint {
 
 /// How highlighted text looks. Colors are `0xRRGGBBAA`.
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub(crate) struct TextStyle {
+pub struct TextStyle {
     /// Unset: the theme's text color.
-    pub(crate) color: Option<u32>,
-    pub(crate) background: Option<u32>,
-    pub(crate) bold: bool,
-    pub(crate) italic: bool,
-    pub(crate) underline: bool,
+    pub color: Option<u32>,
+    pub background: Option<u32>,
+    pub bold: bool,
+    pub italic: bool,
+    pub underline: bool,
 }
 
 impl From<TextStyle> for birchpad_theme::Style {
@@ -79,7 +78,7 @@ fn active() -> Rc<Active> {
 }
 
 /// Makes `theme` the one everything is drawn with. Windows repaint on their next frame.
-pub(crate) fn set(theme: Theme) {
+pub fn set(theme: Theme) {
     ACTIVE.with(|active| {
         let generation = active.borrow().generation + 1;
         *active.borrow_mut() = Rc::new(Active {
@@ -96,47 +95,47 @@ thread_local! {
 }
 
 /// The interface's colors apart from the theme's, or the theme's again (`None`).
-pub(crate) fn set_interface(colors: Option<UiColors>) {
+pub fn set_interface(colors: Option<UiColors>) {
     INTERFACE.with(|interface| interface.set(colors));
 }
 
 /// The theme in use.
-pub(crate) fn current() -> Rc<Theme> {
+pub fn current() -> Rc<Theme> {
     active().theme.clone()
 }
 
 /// Changes with every [`set`].
-pub(crate) fn generation() -> u64 {
+pub fn generation() -> u64 {
     active().generation
 }
 
-pub(crate) fn editor() -> EditorColors {
+pub fn editor() -> EditorColors {
     active().theme.editor
 }
 
-pub(crate) fn ui() -> UiColors {
+pub fn ui() -> UiColors {
     INTERFACE
         .with(std::cell::Cell::get)
         .unwrap_or_else(|| active().theme.ui)
 }
 
 /// A theme color as GPUI paints it.
-pub(crate) fn paint(color: Color) -> Rgba {
+pub fn paint(color: Color) -> Rgba {
     rgba(color.0)
 }
 
 /// Search > Style All Occurrences of Token, styles 1 to 5.
-pub(crate) fn mark_style(index: usize) -> Paint {
+pub fn mark_style(index: usize) -> Paint {
     Paint::Fill(paint(editor().mark_styles()[index]))
 }
 
 /// A bracket at the caret and its partner.
-pub(crate) fn brace_match() -> TextStyle {
+pub fn brace_match() -> TextStyle {
     brace(editor().brace_match)
 }
 
 /// A bracket without a partner.
-pub(crate) fn brace_bad() -> TextStyle {
+pub fn brace_bad() -> TextStyle {
     brace(editor().brace_bad)
 }
 
@@ -151,7 +150,7 @@ fn brace(color: Color) -> TextStyle {
 }
 
 /// The style of a syntax highlight in a document of `language`, if it has one.
-pub(crate) fn syntax_style(
+pub fn syntax_style(
     language: Option<&'static str>,
     highlight: birchpad_syntax::Highlight,
 ) -> Option<TextStyle> {

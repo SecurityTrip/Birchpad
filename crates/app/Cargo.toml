@@ -14,6 +14,7 @@ birchpad-cli.workspace = true
 birchpad-commands.workspace = true
 birchpad-config.workspace = true
 birchpad-core.workspace = true
+birchpad-editor.workspace = true
 birchpad-i18n.workspace = true
 birchpad-io.workspace = true
 birchpad-menu-bar.workspace = true
@@ -46,6 +47,7 @@ e2e = []
 embed-resource = "3"
 
 [dev-dependencies]
+birchpad-editor = { workspace = true, features = ["test-support"] }
 birchpad-ui = { workspace = true, features = ["test-support"] }
 # Tests switch the language each in its own thread.
 birchpad-i18n = { workspace = true, features = ["per-thread"] }

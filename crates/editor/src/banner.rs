@@ -8,7 +8,7 @@ use gpui_kit::component::menu::{DropdownMenu, PopupMenu};
 use gpui_kit::{AnyElement, Context, FocusHandle, Window, div, prelude::*, px, rgb};
 use serde_json::json;
 
-use crate::commands::RunCommand;
+use birchpad_ui::RunCommand;
 
 fn bar(color: u32, border: u32) -> gpui_kit::Div {
     div()
@@ -27,7 +27,7 @@ fn bar(color: u32, border: u32) -> gpui_kit::Div {
 
 /// The text does not represent the file: read-only, with a way to pick another encoding or to
 /// edit it anyway. `changes` is how many places saving would change; `editor` is the view's.
-pub(crate) fn decoding_problem(
+pub fn decoding_problem(
     encoding: &str,
     problem: DecodeProblem,
     changes: usize,
@@ -71,19 +71,19 @@ pub(crate) fn decoding_problem(
         .into_any_element()
 }
 
-pub(crate) fn read_only_requested() -> AnyElement {
+pub fn read_only_requested() -> AnyElement {
     bar(0xf6f8fa, 0xd0d7de)
         .child(t!("banner.opened-read-only-from-the-command-line-ro"))
         .into_any_element()
 }
 
-pub(crate) fn monitoring() -> AnyElement {
+pub fn monitoring() -> AnyElement {
     bar(0xddf4ff, 0x54aeff)
         .child(t!("banner.monitoring-tail-f-the-document-follows-the-file-and-cannot-be-edited-view-monitoring-stops-it"))
         .into_any_element()
 }
 
-pub(crate) fn read_only_file() -> AnyElement {
+pub fn read_only_file() -> AnyElement {
     bar(0xf6f8fa, 0xd0d7de)
         .child(t!(
             "banner.this-file-is-read-only-use-save-as-to-keep-your-changes-in-another-file"
@@ -92,7 +92,7 @@ pub(crate) fn read_only_file() -> AnyElement {
 }
 
 /// Centered progress over the text area while the file is read.
-pub(crate) fn loading(progress: f32) -> AnyElement {
+pub fn loading(progress: f32) -> AnyElement {
     div()
         .absolute()
         .top_0()

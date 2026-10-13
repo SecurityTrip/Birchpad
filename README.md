@@ -129,8 +129,9 @@ downloading them. See [ADR 0020](docs/adr/0020-signed-updates-and-nightly-builds
 | `crates/update` | Updates: the signed update manifest, channels, versions, installing (Velopack on Windows). No UI. |
 | `crates/release-tool` | `birchpad-release`: signing keys and the update manifest, for the release workflows. |
 | `crates/ui` | What the window's parts share: the command registry, the settings and state of the application, dialog buttons, messages to the user. |
+| `crates/editor` | The editor: the buffer, the editor view drawn and edited in GPUI, the active theme. |
 | `crates/menu-bar` | The menu bar drawn in the window on Windows and Linux, with Windows' keyboard access. |
-| `crates/app` | The desktop application. |
+| `crates/app` | The desktop application: the workspace, panes, panels, dialogs and menus. See ADR 0041 for the layout. |
 | `packaging/` | Release packaging: per-machine MSI, macOS app bundle, portable-mode marker, update signing setup. |
 | `docs/` | Roadmap, architecture decision records, and [writing plugins and scripts](docs/plugins.md). |
 

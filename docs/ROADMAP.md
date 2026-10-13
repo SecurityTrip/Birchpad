@@ -345,7 +345,7 @@ behavior does not change, and the tests move with the code.
       reporting (`dialog_close`, `dialog_action`, `report_error`) and the settings the editor
       reads from `AppState` in a small shared crate, so that the editor no longer reaches into
       the application
-- [ ] 6.20 `birchpad-editor`: the editor view (`editor/`), the buffer and the active theme as a
+- [x] 6.20 `birchpad-editor`: the editor view (`editor/`), the buffer and the active theme as a
       GPUI crate that `birchpad` builds on, with its own tests (`cargo test -p
       birchpad-editor`); find options, spelling and user languages reach it through what it
       exposes, not the application's globals. An ADR records the crates' layout

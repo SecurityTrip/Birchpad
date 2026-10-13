@@ -15,7 +15,7 @@ use gpui_kit::{App, AppContext as _, Context, Entity, Window, div, prelude::*, p
 use super::EditorView;
 use super::multi::{ColumnInsertArgs, FormatName, LeadingName, NumberArgs};
 
-pub(super) struct ColumnEditor {
+pub(crate) struct ColumnEditor {
     view: Entity<EditorView>,
     numbers: bool,
     text: Entity<InputState>,
@@ -29,7 +29,7 @@ pub(super) struct ColumnEditor {
 }
 
 /// Opens the dialog for `view`.
-pub(super) fn open(view: Entity<EditorView>, window: &mut Window, cx: &mut App) {
+pub(crate) fn open(view: Entity<EditorView>, window: &mut Window, cx: &mut App) {
     let editor = cx.new(|cx| ColumnEditor::new(view, window, cx));
     let focus = editor.read(cx).text.clone();
     window.open_dialog(cx, move |dialog, _, _| {
@@ -60,7 +60,7 @@ pub(super) fn open(view: Entity<EditorView>, window: &mut Window, cx: &mut App) 
 }
 
 impl ColumnEditor {
-    pub(super) fn new(
+    pub(crate) fn new(
         view: Entity<EditorView>,
         window: &mut Window,
         cx: &mut Context<Self>,
@@ -142,7 +142,7 @@ impl ColumnEditor {
         }))
     }
 
-    pub(super) fn insert(&mut self, cx: &mut Context<Self>) -> Result<()> {
+    pub(crate) fn insert(&mut self, cx: &mut Context<Self>) -> Result<()> {
         let args = self.args(cx)?;
         self.view
             .update(cx, |view, cx| view.column_insert(args, cx));
@@ -287,7 +287,7 @@ impl Render for ColumnEditor {
 #[cfg(test)]
 impl ColumnEditor {
     /// Fills the dialog as a user would, for tests.
-    pub(super) fn fill_numbers(
+    pub(crate) fn fill_numbers(
         &mut self,
         initial: &str,
         step: &str,
