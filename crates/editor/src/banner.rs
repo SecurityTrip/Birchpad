@@ -50,9 +50,11 @@ pub fn decoding_problem(
         ),
     };
     bar(0xfff8c5, 0xd4a72c)
+        .debug_selector(|| "banner-decoding".into())
         .child(div().flex_1().child(message))
         .child(
             Button::new("reopen-with-encoding")
+                .debug_selector(|| "banner-reopen".into())
                 .small()
                 .outline()
                 .label(t!("banner.reopen-with-encoding"))
@@ -60,6 +62,7 @@ pub fn decoding_problem(
         )
         .child(
             Button::new("edit-anyway")
+                .debug_selector(|| "banner-edit-anyway".into())
                 .small()
                 .outline()
                 .label(t!("banner.edit-anyway"))

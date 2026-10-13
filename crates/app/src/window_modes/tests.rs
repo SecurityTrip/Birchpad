@@ -169,3 +169,20 @@ fn a_new_instance_gets_its_own_window_without_the_session() {
     assert_eq!((line.line, line.column), (Some(7), Some(3)));
     assert_eq!(line.files.len(), 1);
 }
+
+/// The platform's own call refuses a window it does not know; on Windows, a handle that is no
+/// window.
+#[test]
+fn always_on_top_refuses_what_is_not_a_window_of_the_platform() {
+    use raw_window_handle::{RawWindowHandle, WebWindowHandle};
+    let web = RawWindowHandle::Web(WebWindowHandle::new(1));
+    assert!(super::native::set_always_on_top(web, true).is_err());
+    assert!(super::native::set_always_on_top(web, false).is_err());
+    #[cfg(windows)]
+    {
+        use raw_window_handle::Win32WindowHandle;
+        let gone = Win32WindowHandle::new(std::num::NonZeroIsize::new(1).unwrap());
+        let error = super::native::set_always_on_top(RawWindowHandle::Win32(gone), true);
+        assert!(error.is_err(), "no window has that handle");
+    }
+}

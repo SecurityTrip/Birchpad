@@ -8,7 +8,7 @@ use gpui_kit::component::button::Button;
 use gpui_kit::component::checkbox::Checkbox;
 use gpui_kit::component::dialog::DialogFooter;
 use gpui_kit::component::input::{Input, InputState};
-use gpui_kit::component::radio::RadioGroup;
+use gpui_kit::component::radio::{Radio, RadioGroup};
 use gpui_kit::component::{Disableable as _, WindowExt as _};
 use gpui_kit::{App, AppContext as _, Context, Entity, Window, div, prelude::*, px};
 
@@ -28,9 +28,18 @@ pub(crate) struct ColumnEditor {
     error: Option<String>,
 }
 
+#[cfg(test)]
+thread_local! {
+    /// The dialog last opened, for tests to drive.
+    static OPENED: std::cell::RefCell<Option<gpui_kit::WeakEntity<ColumnEditor>>> =
+        std::cell::RefCell::default();
+}
+
 /// Opens the dialog for `view`.
 pub(crate) fn open(view: Entity<EditorView>, window: &mut Window, cx: &mut App) {
     let editor = cx.new(|cx| ColumnEditor::new(view, window, cx));
+    #[cfg(test)]
+    OPENED.with(|opened| *opened.borrow_mut() = Some(editor.downgrade()));
     let focus = editor.read(cx).text.clone();
     window.open_dialog(cx, move |dialog, _, _| {
         let confirm = editor.clone();
@@ -150,6 +159,19 @@ impl ColumnEditor {
     }
 }
 
+/// The choices of a radio group, each findable in tests as `<group>-<index>`.
+fn radios(group: &'static str, labels: &[&'static str]) -> Vec<Radio> {
+    labels
+        .iter()
+        .enumerate()
+        .map(|(index, label)| {
+            Radio::new(index)
+                .label(*label)
+                .debug_selector(move || format!("{group}-{index}"))
+        })
+        .collect()
+}
+
 fn base_name(base: Base) -> &'static str {
     match base {
         Base::Dec => "decimal",
@@ -188,7 +210,10 @@ impl Render for ColumnEditor {
             .gap_3()
             .child(
                 RadioGroup::horizontal("column-mode")
-                    .children(["Text to Insert", "Number to Insert"])
+                    .children(radios(
+                        "column-mode",
+                        &["Text to Insert", "Number to Insert"],
+                    ))
                     .selected_index(Some(usize::from(self.numbers)))
                     .on_click(move |index, _, cx| {
                         mode(|editor, index| editor.numbers = index == 1, *index, cx);
@@ -223,7 +248,7 @@ impl Render for ColumnEditor {
             .child(
                 row().child(label("Leading:")).child(
                     RadioGroup::horizontal("column-leading")
-                        .children(["None", "Zeros", "Spaces"])
+                        .children(radios("column-leading", &["None", "Zeros", "Spaces"]))
                         .disabled(!self.numbers)
                         .selected_index(Some(self.leading as usize))
                         .on_click(move |index, _, cx| {
@@ -244,7 +269,7 @@ impl Render for ColumnEditor {
             .child(
                 row().child(label("Format:")).child(
                     RadioGroup::horizontal("column-format")
-                        .children(["Dec", "Hex", "Oct", "Bin"])
+                        .children(radios("column-format", &["Dec", "Hex", "Oct", "Bin"]))
                         .disabled(!self.numbers)
                         .selected_index(Some(self.format as usize))
                         .on_click(move |index, _, cx| {
@@ -265,6 +290,7 @@ impl Render for ColumnEditor {
             )
             .child(
                 Checkbox::new("column-uppercase")
+                    .debug_selector(|| "column-uppercase".into())
                     .label(t!("editor.column-editor.hexadecimal-in-upper-case-a-f"))
                     .checked(self.uppercase)
                     .disabled(!self.numbers || self.format != FormatName::Hex)
@@ -278,6 +304,7 @@ impl Render for ColumnEditor {
             )
             .children(self.error.clone().map(|error| {
                 div()
+                    .debug_selector(|| "column-error".into())
                     .text_color(crate::theme::paint(crate::theme::ui().error))
                     .child(error)
             }))
@@ -307,3 +334,6 @@ impl ColumnEditor {
         }
     }
 }
+
+#[cfg(test)]
+mod tests;

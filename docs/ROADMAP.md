@@ -359,7 +359,7 @@ stay under 65%. The gaps are mostly the negative scenarios and limits CONTRIBUTI
 scenario, the negative ones and the boundary values, and raises the crates' floors in
 `.github/coverage-floors.toml` with its tests.
 
-- [ ] 6.21 Dialogs and menus driven in a test window, every control: Preferences (62.8% of lines
+- [x] 6.21 Dialogs and menus driven in a test window, every control: Preferences (62.8% of lines
       run), the Shortcut Mapper (76.9%), the column editor (64.1%), the path dialog, the Tools
       menu (62.4%), the banners, the menus and the window modes; the command catalog of
       `birchpad-commands` (63.2%)

@@ -8,19 +8,20 @@
 # Measured on Windows on 2026-10-12: plugin 96.5, tools 98.6.
 # Measured on Windows on 2026-10-13: i18n 97.2, editor 91.2, ui 95.5 (with the keymap, which moved
 # in with the editor), app 88.1.
+# After the dialogs' tests (Phase 6.21): app 90.5, commands 99.2, editor 92.8, plugin 97.2.
 
 [lines]
-app = 87
+app = 89
 cli = 90
-commands = 96
+commands = 98
 config = 96
 core = 97
-editor = 89
+editor = 91
 fuzz = 96
-i18n = 94
+i18n = 96
 io = 95
 menu-bar = 95
-plugin = 94
+plugin = 96
 release-tool = 93
 syntax = 95
 theme = 97

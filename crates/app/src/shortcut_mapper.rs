@@ -244,9 +244,18 @@ pub(crate) struct ShortcutMapper {
     error: Option<String>,
 }
 
+#[cfg(test)]
+thread_local! {
+    /// The mapper last opened, for tests to drive.
+    static OPENED: std::cell::RefCell<Option<WeakEntity<ShortcutMapper>>> =
+        std::cell::RefCell::default();
+}
+
 /// Opens the dialog.
 pub(crate) fn open(workspace: WeakEntity<Workspace>, window: &mut Window, cx: &mut App) {
     let mapper = cx.new(|cx| ShortcutMapper::new(workspace, window, cx));
+    #[cfg(test)]
+    OPENED.with(|opened| *opened.borrow_mut() = Some(mapper.downgrade()));
     let focus = mapper.read(cx).filter.clone();
     window.open_dialog(cx, move |dialog, _, _| {
         dialog
@@ -478,6 +487,7 @@ impl Render for ShortcutMapper {
                     let this = this.clone();
                     div()
                         .id(("shortcut-row", index))
+                        .debug_selector(move || format!("shortcut-row-{position}"))
                         .flex()
                         .flex_row()
                         .px_2()
@@ -519,6 +529,7 @@ impl Render for ShortcutMapper {
                     .child(div().w(px(160.)).child(label))
                     .child(
                         Button::new(("shortcut-remove", index))
+                            .debug_selector(move || format!("shortcut-remove-{index}"))
                             .label(t!("common.remove"))
                             .on_click(cx.listener(move |this, _, _, cx| this.remove(&keys, cx))),
                     )
@@ -547,6 +558,7 @@ impl Render for ShortcutMapper {
                     )
                     .child(
                         Button::new("shortcut-assign")
+                            .debug_selector(|| "shortcut-assign".into())
                             .primary()
                             .label(t!("shortcut-mapper.assign"))
                             .disabled(pressed.is_none())
@@ -555,6 +567,7 @@ impl Render for ShortcutMapper {
                     .into_any_element()
             } else {
                 Button::new("shortcut-add")
+                    .debug_selector(|| "shortcut-add".into())
                     .label(t!("shortcut-mapper.add-shortcut"))
                     .on_click(cx.listener(|this, _, _, cx| this.start_capture(cx)))
                     .into_any_element()
@@ -575,12 +588,14 @@ impl Render for ShortcutMapper {
                         .child(capture)
                         .child(
                             Button::new("shortcut-reset")
+                                .debug_selector(|| "shortcut-reset".into())
                                 .label(t!("shortcut-mapper.reset"))
                                 .on_click(cx.listener(|this, _, _, cx| this.reset(cx))),
                         )
                         .when(deletable, |row| {
                             row.child(
                                 Button::new("shortcut-delete")
+                                    .debug_selector(|| "shortcut-delete".into())
                                     .label(t!("shortcut-mapper.delete"))
                                     .on_click(
                                         cx.listener(|this, _, _, cx| this.delete_selected(cx)),
@@ -590,6 +605,7 @@ impl Render for ShortcutMapper {
                 )
                 .child(
                     gpui_kit::component::checkbox::Checkbox::new("shortcut-only-here")
+                        .debug_selector(|| "shortcut-only-here".into())
                         .label(t!(
                             "shortcut-mapper.only-on",
                             platform = Platform::current().name()
@@ -606,6 +622,7 @@ impl Render for ShortcutMapper {
                             crate::menus::command_title(spec.id)
                         });
                     div()
+                        .debug_selector(|| "shortcut-conflict".into())
                         .text_color(paint(colors.error))
                         .child(t!("shortcut-mapper.conflict", title = title))
                 }))
@@ -622,9 +639,21 @@ impl Render for ShortcutMapper {
             .on_click(cx.listener(|this, index: &usize, _, cx| {
                 this.select_tab(MapperTab::ALL[*index], cx);
             }))
-            .child(gpui_kit::component::tab::Tab::new().label(t!("shortcut-mapper.commands")))
-            .child(gpui_kit::component::tab::Tab::new().label(t!("shortcut-mapper.macros")))
-            .child(gpui_kit::component::tab::Tab::new().label(t!("shortcut-mapper.run-commands")));
+            .child(
+                gpui_kit::component::tab::Tab::new()
+                    .debug_selector(|| "shortcut-tab-0".into())
+                    .label(t!("shortcut-mapper.commands")),
+            )
+            .child(
+                gpui_kit::component::tab::Tab::new()
+                    .debug_selector(|| "shortcut-tab-1".into())
+                    .label(t!("shortcut-mapper.macros")),
+            )
+            .child(
+                gpui_kit::component::tab::Tab::new()
+                    .debug_selector(|| "shortcut-tab-2".into())
+                    .label(t!("shortcut-mapper.run-commands")),
+            );
         div()
             .flex()
             .flex_col()
@@ -649,3 +678,6 @@ impl Render for ShortcutMapper {
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod dialog_tests;

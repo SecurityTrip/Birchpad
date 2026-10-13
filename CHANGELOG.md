@@ -106,6 +106,14 @@ version's release notes from its section here.
 - Preferences > Multi-Instance (`instances.mode`): every launch, or a launch opening a session,
   can start a Birchpad of its own instead of handing its files to the running one.
 
+### Fixed
+
+- Preferences: the sections at the bottom of the list could not be reached, and the rows of a
+  long section were cut off; both lists scroll now. The Language section's fields no longer run
+  past the dialog's edge, where clicking Set closed the dialog.
+- A settings file holding only comments keeps them on top when Preferences adds a setting,
+  instead of moving them to its end.
+
 ### Changed
 
 - Ctrl+Tab goes to the most recently used document instead of the next tab, as in Notepad++;

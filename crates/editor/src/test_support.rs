@@ -247,3 +247,42 @@ pub(crate) fn column_editor() -> &'static str {
         "alt-c"
     }
 }
+
+/// Clicks the middle of what `selector` marks, once it no longer moves (dialogs slide in).
+pub(crate) fn click(selector: &'static str, cx: &mut VisualTestContext) {
+    cx.update(|window, _| window.refresh());
+    cx.run_until_parked();
+    let Some(mut bounds) = cx.debug_bounds(selector) else {
+        panic!("{selector} is not drawn");
+    };
+    for _ in 0..100 {
+        std::thread::sleep(std::time::Duration::from_millis(10));
+        cx.update(|window, _| window.refresh());
+        cx.run_until_parked();
+        let Some(now) = cx.debug_bounds(selector) else {
+            panic!("{selector} is no longer drawn");
+        };
+        if now == bounds {
+            break;
+        }
+        bounds = now;
+    }
+    let center = bounds.center();
+    cx.simulate_mouse_down(
+        center,
+        gpui_kit::MouseButton::Left,
+        gpui_kit::Modifiers::none(),
+    );
+    cx.simulate_mouse_up(
+        center,
+        gpui_kit::MouseButton::Left,
+        gpui_kit::Modifiers::none(),
+    );
+    cx.run_until_parked();
+}
+
+/// Whether a dialog is open.
+pub(crate) fn has_dialog(cx: &mut VisualTestContext) -> bool {
+    use gpui_kit::component::WindowExt as _;
+    cx.update(|window, cx| window.has_active_dialog(cx))
+}

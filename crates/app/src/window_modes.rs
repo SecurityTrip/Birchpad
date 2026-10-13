@@ -194,7 +194,7 @@ fn set_always_on_top(window: &Window, on: bool) -> Result<()> {
     }
 }
 
-#[cfg(all(not(test), windows))]
+#[cfg(windows)]
 mod native {
     use raw_window_handle::RawWindowHandle;
     use windows_sys::Win32::UI::WindowsAndMessaging::{
@@ -227,7 +227,7 @@ mod native {
     }
 }
 
-#[cfg(all(not(test), target_os = "macos"))]
+#[cfg(target_os = "macos")]
 mod native {
     use objc2_app_kit::{NSFloatingWindowLevel, NSNormalWindowLevel, NSView};
     use raw_window_handle::RawWindowHandle;
@@ -252,7 +252,7 @@ mod native {
     }
 }
 
-#[cfg(all(not(test), unix, not(target_os = "macos")))]
+#[cfg(all(unix, not(target_os = "macos")))]
 mod native {
     use raw_window_handle::RawWindowHandle;
     use x11rb::connection::Connection as _;

@@ -618,6 +618,8 @@ pub(crate) struct Preferences {
 /// Opens the dialog.
 pub(crate) fn open(workspace: WeakEntity<Workspace>, window: &mut Window, cx: &mut App) {
     let preferences = cx.new(|cx| Preferences::new(workspace, window, cx));
+    #[cfg(test)]
+    OPENED.with(|opened| *opened.borrow_mut() = Some(preferences.downgrade()));
     window.open_dialog(cx, move |dialog, _, _| {
         dialog
             .title(t!("preferences.preferences"))
@@ -625,6 +627,13 @@ pub(crate) fn open(workspace: WeakEntity<Workspace>, window: &mut Window, cx: &m
             .child(preferences.clone())
             .footer(DialogFooter::new().child(crate::workspace::dialog_close("common.close")))
     });
+}
+
+#[cfg(test)]
+thread_local! {
+    /// The dialog last opened, for tests to drive.
+    static OPENED: std::cell::RefCell<Option<WeakEntity<Preferences>>> =
+        std::cell::RefCell::default();
 }
 
 impl Preferences {
@@ -750,6 +759,7 @@ impl Preferences {
                     .child(div().w(px(260.)).child(describe))
                     .child(
                         Button::new(("language-remove", index))
+                            .debug_selector(move || format!("language-remove-{index}"))
                             .small()
                             .label(t!("common.remove"))
                             .disabled(locked)
@@ -765,16 +775,29 @@ impl Preferences {
             .gap_2()
             .child(label("Tab settings"))
             .children(rows)
+            // Wrapped: on one line the fields are wider than the dialog.
             .child(
                 div()
                     .flex()
                     .flex_row()
+                    .flex_wrap()
                     .items_center()
                     .gap_2()
-                    .child(div().w(px(160.)).child(Input::new(&self.language_input)))
-                    .child(div().w(px(60.)).child(Input::new(&self.language_width)))
+                    .child(
+                        div()
+                            .w(px(160.))
+                            .debug_selector(|| "language-id".into())
+                            .child(Input::new(&self.language_input)),
+                    )
+                    .child(
+                        div()
+                            .w(px(60.))
+                            .debug_selector(|| "language-width".into())
+                            .child(Input::new(&self.language_width)),
+                    )
                     .child(
                         Checkbox::new("language-spaces")
+                            .debug_selector(|| "language-spaces".into())
                             .label(label("Replace tabs by spaces"))
                             .checked(spaces)
                             .on_click(cx.listener(|this, checked: &bool, _, cx| {
@@ -784,6 +807,7 @@ impl Preferences {
                     )
                     .child(
                         Button::new("language-set")
+                            .debug_selector(|| "language-set".into())
                             .small()
                             .label(t!("preferences.set"))
                             .disabled(locked)
@@ -836,6 +860,7 @@ impl Render for Preferences {
         let list = sections.iter().enumerate().map(|(index, name)| {
             div()
                 .id(("preferences-section", index))
+                .debug_selector(move || format!("preferences-section-{index}"))
                 .px_2()
                 .py_1()
                 .when(index == self.section, |row| row.bg(paint(colors.selected)))
@@ -855,6 +880,7 @@ impl Render for Preferences {
                     Kind::Bool => {
                         let checked = value.as_ref().and_then(Value::as_bool).unwrap_or(false);
                         Checkbox::new(("preferences-check", index))
+                            .debug_selector(move || format!("preferences-{key}"))
                             .label(label(entry.label))
                             .checked(checked)
                             .disabled(locked)
@@ -873,14 +899,21 @@ impl Render for Preferences {
                             .gap_3()
                             .child(div().w(px(200.)).child(label(entry.label)))
                             .child(
-                                RadioGroup::horizontal(("preferences-choice", index))
-                                    .children(choices.iter().map(|(_, text)| label(text)))
-                                    .selected_index(selected)
-                                    .disabled(locked)
-                                    .on_click(cx.listener(move |this, index: &usize, _, cx| {
-                                        let value = Value::String(choices[*index].0.to_owned());
-                                        this.apply(key, Ok(Some(value)), cx);
-                                    })),
+                                div()
+                                    .debug_selector(move || format!("preferences-{key}"))
+                                    .child(
+                                        RadioGroup::horizontal(("preferences-choice", index))
+                                            .children(choices.iter().map(|(_, text)| label(text)))
+                                            .selected_index(selected)
+                                            .disabled(locked)
+                                            .on_click(cx.listener(
+                                                move |this, index: &usize, _, cx| {
+                                                    let value =
+                                                        Value::String(choices[*index].0.to_owned());
+                                                    this.apply(key, Ok(Some(value)), cx);
+                                                },
+                                            )),
+                                    ),
                             )
                             .into_any_element()
                     }
@@ -896,6 +929,7 @@ impl Render for Preferences {
                         .child(
                             div()
                                 .w(px(200.))
+                                .debug_selector(move || format!("preferences-{key}"))
                                 .child(Input::new(&self.inputs[key]).disabled(locked)),
                         )
                         .into_any_element(),
@@ -925,15 +959,28 @@ impl Render for Preferences {
             .flex_row()
             .gap_4()
             .h(px(380.))
+            // Both scroll: there are more sections, and some sections have more rows, than
+            // the dialog's height shows.
             .child(
                 div()
+                    .id("preferences-sections")
                     .flex_none()
                     .w(px(150.))
+                    .overflow_y_scroll()
                     .border_1()
                     .border_color(paint(colors.border))
                     .children(list),
             )
-            .child(div().flex().flex_col().flex_1().gap_3().children(rows))
+            .child(
+                div()
+                    .id("preferences-rows")
+                    .flex()
+                    .flex_col()
+                    .flex_1()
+                    .gap_3()
+                    .overflow_y_scroll()
+                    .children(rows),
+            )
     }
 }
 
@@ -942,3 +989,6 @@ mod tests;
 
 #[cfg(test)]
 mod more_tests;
+
+#[cfg(test)]
+mod dialog_tests;

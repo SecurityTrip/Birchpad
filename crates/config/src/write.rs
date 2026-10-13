@@ -64,6 +64,16 @@ pub fn edit_settings(text: &str, key: &str, value: Option<&Value>) -> Result<Str
         text.parse().map_err(|error: toml_edit::TomlError| {
             SettingError::Malformed(error.message().to_owned())
         })?;
+    if document.as_table().is_empty() && !text.trim().is_empty() {
+        // Only comments: they stay on top, where they were written, rather than after what is
+        // added.
+        let added = edit_settings("", key, value)?;
+        if added.is_empty() {
+            return Ok(text.to_owned());
+        }
+        let separator = if text.ends_with('\n') { "" } else { "\n" };
+        return Ok(format!("{text}{separator}{added}"));
+    }
     let parts: Vec<&str> = key.split('.').collect();
     let (last, tables) = parts.split_last().expect("split yields at least one part");
     let mut table: &mut dyn toml_edit::TableLike = document.as_table_mut();
@@ -163,6 +173,22 @@ mod tests {
         )
         .unwrap();
         assert_eq!(edited, "editor = { tab-width = 3 }\n");
+    }
+
+    #[test]
+    fn comments_alone_stay_on_top() {
+        let edited = edit_settings("# mine\n", "toolbar.show", Some(&Value::Boolean(false)));
+        assert_eq!(edited.unwrap(), "# mine\n[toolbar]\nshow = false\n");
+        // Without a line end after them, and with blank lines.
+        let edited = edit_settings("# a\n\n# b", "editor.tab-width", Some(&int(2))).unwrap();
+        assert!(edited.starts_with("# a\n\n# b\n["), "{edited}");
+        // Removing what is not there changes nothing.
+        assert_eq!(
+            edit_settings("# mine", "editor.tab-width", None).unwrap(),
+            "# mine"
+        );
+        // A setting that does not exist is refused all the same.
+        assert!(edit_settings("# mine\n", "no.such", Some(&int(1))).is_err());
     }
 
     #[test]
