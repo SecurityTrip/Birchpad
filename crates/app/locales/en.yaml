@@ -940,6 +940,7 @@ run-menu:
   name-to-save-it-as: "Name to save it as"
   run: "Run..."
   the-window-is-closed: "the window is closed"
+  there-is-no-command-named: "there is no command named {name}"
   there-is-no-command-to-run: "there is no command to run"
   there-is-no-command-to-save: "there is no command to save"
   there-is-no-saved-command-named: "there is no saved command named {name}"
@@ -977,10 +978,15 @@ session:
 shortcut-mapper:
   add-shortcut: "Add Shortcut..."
   assign: "Assign"
+  commands: "Commands"
   conflict: "These keys run {title} now; assigning them replaces it."
+  delete: "Delete"
   filter: "Filter"
+  macros: "Macros"
+  only-on: "Only on {platform}"
   press-the-keys-esc-cancel: "Press the keys (Esc: cancel)"
   reset: "Reset"
+  run-commands: "Run Commands"
   shortcut-mapper: "Shortcut Mapper"
   there-is-no-settings-folder-for-keymap-toml: "there is no settings folder for keymap.toml"
 spell-check:

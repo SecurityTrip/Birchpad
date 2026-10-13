@@ -216,3 +216,90 @@ fn the_filter_and_the_command(cx: &mut TestAppContext) {
     cx.run_until_parked();
     assert!(cx.update(|window, cx| window.has_active_dialog(cx)));
 }
+
+#[gpui_kit::test]
+fn key_sequences_and_shortcuts_for_this_platform(cx: &mut TestAppContext) {
+    let (mapper, cx, dir) = mapper(cx);
+    let copy = Invocation::new("file.save-all");
+    select(&mapper, &copy, cx);
+    mapper.update(cx, |this, cx| {
+        this.start_capture(cx);
+        this.pressed_keys("ctrl-k", cx);
+        this.pressed_keys("ctrl-alt-c", cx);
+        assert_eq!(this.pressed.as_ref().map(Vec::len), Some(2));
+        this.only_here = true;
+        this.assign(cx);
+        assert!(this.error.is_none(), "{:?}", this.error);
+    });
+    assert!(keys_now(&copy, cx).contains(&"ctrl-k ctrl-alt-c".to_owned()));
+    let file = std::fs::read_to_string(dir.path().join("keymap.toml")).unwrap();
+    assert!(file.contains(Platform::current().name()), "{file}");
+    let labels = cx.update(|_, cx| shortcut_labels(&cx.global::<ActiveKeymap>().0, &copy));
+    assert!(
+        labels.contains(&format!(
+            "ctrl-k ctrl-alt-c ({})",
+            Platform::current().name()
+        )),
+        "{labels:?}"
+    );
+
+    // A sequence longer than four keys starts over.
+    mapper.update(cx, |this, cx| {
+        this.start_capture(cx);
+        for key in ["a", "b", "c", "d", "e"] {
+            this.pressed_keys(key, cx);
+        }
+        assert_eq!(this.pressed.as_ref().map(Vec::len), Some(1));
+        this.pressed_keys("escape", cx);
+        assert!(this.pressed.is_none());
+    });
+}
+
+#[gpui_kit::test]
+fn the_macros_and_run_tabs(cx: &mut TestAppContext) {
+    let (mapper, cx, dir) = mapper(cx);
+    cx.update(|_, cx| {
+        crate::macros::save("Twice", vec![Invocation::new("edit.duplicate-line")], cx).unwrap();
+        crate::run_menu::save("Shell", "cmd", cx).unwrap();
+    });
+    mapper.update(cx, |this, cx| this.select_tab(MapperTab::Macros, cx));
+    let twice = Invocation::with_args("macro.run", serde_json::json!({ "name": "Twice" }));
+    select(&mapper, &twice, cx);
+    mapper.update(cx, |this, cx| {
+        this.start_capture(cx);
+        this.pressed_keys("ctrl-alt-shift-t", cx);
+        this.assign(cx);
+    });
+    assert_eq!(keys_now(&twice, cx), ["ctrl-alt-shift-t"]);
+    // Delete: the macro and its shortcut go.
+    mapper.update(cx, |this, cx| this.delete_selected(cx));
+    assert!(keys_now(&twice, cx).is_empty());
+    let saved = cx.update(|_, cx| cx.global::<crate::macros::Macros>().saved.len());
+    assert_eq!(saved, 0);
+    assert!(mapper.read_with(cx, |this, _| this.rows.is_empty()));
+    let macros = std::fs::read_to_string(dir.path().join("macros.toml")).unwrap();
+    assert!(!macros.contains("Twice"), "{macros}");
+
+    // Run: its saved command lines.
+    mapper.update(cx, |this, cx| this.select_tab(MapperTab::Run, cx));
+    let names: Vec<String> = mapper.read_with(cx, |this, _| {
+        this.rows.iter().map(|row| row.name.clone()).collect()
+    });
+    assert!(names.contains(&"Shell".to_owned()), "{names:?}");
+    let shell = Invocation::with_args("run.run", serde_json::json!({ "name": "Shell" }));
+    select(&mapper, &shell, cx);
+    mapper.update(cx, |this, cx| this.delete_selected(cx));
+    let left = cx.update(|_, cx| {
+        cx.global::<crate::run_menu::RunMenu>()
+            .saved
+            .iter()
+            .any(|entry| entry.name == "Shell")
+    });
+    assert!(!left);
+    // The commands tab cannot delete; nothing selected does nothing.
+    mapper.update(cx, |this, cx| {
+        this.select_tab(MapperTab::Commands, cx);
+        this.delete_selected(cx);
+        assert!(this.rows.len() > 100);
+    });
+}

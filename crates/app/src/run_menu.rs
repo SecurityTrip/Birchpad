@@ -188,6 +188,29 @@ pub(crate) fn save(name: &str, line: &str, cx: &mut App) -> Result<()> {
     Ok(())
 }
 
+/// Deletes the saved command `name` from `run.toml` (Shortcut Mapper > Run > Delete).
+pub(crate) fn delete(name: &str, cx: &mut App) -> Result<()> {
+    let path = run_path(cx).ok_or_else(|| {
+        anyhow!(
+            "{}",
+            t!("run-menu.there-is-no-settings-folder-for-run-toml")
+        )
+    })?;
+    let mut saved = run_menu(cx).saved.clone();
+    let before = saved.len();
+    saved.retain(|known| known.name != name);
+    if saved.len() == before {
+        bail!("{}", t!("run-menu.there-is-no-command-named", name = name));
+    }
+    if let Some(dir) = path.parent() {
+        std::fs::create_dir_all(dir).with_context(|| format!("cannot create {}", dir.display()))?;
+    }
+    std::fs::write(&path, birchpad_commands::write_run_commands(&saved))
+        .with_context(|| format!("cannot write {}", path.display()))?;
+    run_menu(cx).saved = saved;
+    Ok(())
+}
+
 #[derive(Deserialize)]
 struct RunArgs {
     /// The command line; unset asks for it.

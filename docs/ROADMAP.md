@@ -315,7 +315,7 @@ step 6.11 brings in the sections no feature brings.
       whole text, Notepad++'s Default Style: the editor keeps a grid of cells, so a style's own
       family or size is not used
 - [x] 6.13 Notepad++'s separate Dark Mode for the interface, independent of the editor theme
-- [ ] 6.14 Shortcut Mapper: key sequences (`ctrl-k ctrl-c`) recorded in the dialog; bindings
+- [x] 6.14 Shortcut Mapper: key sequences (`ctrl-k ctrl-c`) recorded in the dialog; bindings
       limited to platforms shown and editable; command titles translated; the Macros and Run
       tabs (Modify Shortcut / Delete Macro or Command)
 - [ ] 6.15 Macros: Notepad++'s built-in "Trim Trailing Space and Save"; recording what dialogs

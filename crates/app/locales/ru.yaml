@@ -954,6 +954,7 @@ run-menu:
   name-to-save-it-as: "Имя для сохранения"
   run: "Запустить..."
   the-window-is-closed: "окно закрыто"
+  there-is-no-command-named: "нет команды с именем {name}"
   there-is-no-command-to-run: "нет команды для запуска"
   there-is-no-command-to-save: "нет команды для сохранения"
   there-is-no-saved-command-named: "нет сохранённой команды с именем {name}"
@@ -991,10 +992,15 @@ session:
 shortcut-mapper:
   add-shortcut: "Добавить сочетание..."
   assign: "Назначить"
+  commands: "Команды"
   conflict: "Эти клавиши сейчас выполняют «{title}»; назначение заменит эту команду."
+  delete: "Удалить"
   filter: "Фильтр"
+  macros: "Макросы"
+  only-on: "Только на {platform}"
   press-the-keys-esc-cancel: "Нажмите клавиши (Esc — отмена)"
   reset: "Сбросить"
+  run-commands: "Команды запуска"
   shortcut-mapper: "Горячие клавиши"
   there-is-no-settings-folder-for-keymap-toml: "нет папки настроек для keymap.toml"
 spell-check:

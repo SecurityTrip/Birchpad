@@ -78,6 +78,9 @@ version's release notes from its section here.
   are underlined and open with a double click or Ctrl+click (Preferences > Cloud & Link).
 - Ctrl+double click selects the text between the delimiters around the click (Preferences >
   Delimiter: the characters, and whether they may be on other lines).
+- Shortcut Mapper: shortcuts of several keys pressed one after the other (Ctrl+K Ctrl+C), for
+  every platform or this one only (shown next to them); Macros and Run Commands tabs to give
+  saved macros and command lines shortcuts, or delete them.
 - Preferences > Appearance > Interface, Notepad++'s Dark Mode: menus, tabs, panels and dialogs
   light or dark whatever the editor's theme, or as the system is.
 - Themes have a font (`[font] family`, `size`), set in Style Configurator and read from a

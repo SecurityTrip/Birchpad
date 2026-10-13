@@ -127,6 +127,26 @@ pub(crate) fn save(name: &str, steps: Vec<Invocation>, cx: &mut App) -> Result<(
     Ok(())
 }
 
+/// Deletes the saved macro `name` (Shortcut Mapper > Macros > Delete).
+pub(crate) fn delete(name: &str, cx: &mut App) -> Result<()> {
+    let path = macros_path(cx).ok_or_else(|| {
+        anyhow!(
+            "{}",
+            t!("macros.there-is-no-settings-folder-for-macros-toml")
+        )
+    })?;
+    let mut saved = macros(cx).saved.clone();
+    let before = saved.len();
+    saved.retain(|known| known.name != name);
+    if saved.len() == before {
+        bail!("{}", t!("macros.there-is-no-macro-named", name = name));
+    }
+    std::fs::write(&path, birchpad_commands::write_macros(&saved))
+        .with_context(|| format!("cannot write {}", path.display()))?;
+    macros(cx).saved = saved;
+    Ok(())
+}
+
 /// Where the caret and the text stand, to tell whether a run of a macro got anywhere.
 fn progress(workspace: &Workspace, cx: &App) -> Option<(usize, usize)> {
     let view = workspace.active_view(cx)?;

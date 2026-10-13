@@ -87,6 +87,18 @@ pub fn bind(
     context: Option<&str>,
     invocation: &Invocation,
 ) -> Result<String, KeymapError> {
+    bind_on(text, platform, keys, context, invocation, false)
+}
+
+/// [`bind`], on `platform` only with `only_here` (`platforms = ["windows"]`).
+pub fn bind_on(
+    text: &str,
+    platform: Platform,
+    keys: &str,
+    context: Option<&str>,
+    invocation: &Invocation,
+    only_here: bool,
+) -> Result<String, KeymapError> {
     let keys = parse_keys(keys, platform)?;
     if crate::catalog::find(&invocation.command).is_none() {
         return Err(KeymapError(format!(
@@ -98,6 +110,11 @@ pub fn bind(
     let list = bindings(&mut document)?;
     list.retain(|table| !is_for(table, platform, &keys, context));
     let mut table = new_table(&keys, context);
+    if only_here {
+        let mut platforms = toml_edit::Array::new();
+        platforms.push(platform.name());
+        table.insert("platforms", value(platforms));
+    }
     table.insert("command", value(invocation.command.as_str()));
     if !invocation.args.is_null() {
         let args: toml::Value = serde_json::from_value(invocation.args.clone())
@@ -291,5 +308,32 @@ mod tests {
             assert!(unbind(text, P, "ctrl-alt-x", None).is_err(), "{text}");
             assert!(reset(text, P, &new).is_err(), "{text}");
         }
+    }
+
+    #[test]
+    fn a_binding_for_one_platform() {
+        let save = Invocation::new("file.save");
+        let text = bind_on("", Platform::Windows, "ctrl-alt-q", None, &save, true).unwrap();
+        assert!(text.contains("platforms = [\"windows\"]"), "{text}");
+        let mut windows = Keymap::with_defaults(Platform::Windows);
+        windows.add_layer(Layer::User, &text);
+        let binding = windows
+            .bindings_for(&save)
+            .find(|binding| binding.keys_string() == "ctrl-alt-q")
+            .expect("bound on Windows");
+        assert_eq!(
+            binding.platforms.as_deref(),
+            Some(&["windows".to_owned()][..])
+        );
+        let mut linux = Keymap::with_defaults(Platform::Linux);
+        linux.add_layer(Layer::User, &text);
+        assert!(
+            linux
+                .bindings_for(&save)
+                .all(|binding| binding.keys_string() != "ctrl-alt-q")
+        );
+        // Bound everywhere: no platforms.
+        let text = bind_on("", Platform::Linux, "ctrl-k ctrl-s", None, &save, false).unwrap();
+        assert!(!text.contains("platforms"), "{text}");
     }
 }

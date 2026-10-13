@@ -40,6 +40,8 @@ pub struct Binding {
     pub context: Option<String>,
     pub invocation: Invocation,
     pub layer: Layer,
+    /// The platforms the binding is limited to (`windows`, `linux`, `macos`); `None` for all.
+    pub platforms: Option<Vec<String>>,
 }
 
 impl Binding {
@@ -255,6 +257,7 @@ impl Keymap {
         };
         let binding = Binding {
             keys,
+            platforms: raw.platforms.clone(),
             context: raw.context,
             invocation: Invocation {
                 command: command.to_owned(),
