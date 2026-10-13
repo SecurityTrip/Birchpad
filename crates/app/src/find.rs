@@ -1,7 +1,7 @@
 //! Find, Replace, Find in Files, Mark and Go To.
 //!
 //! The find panel sits at the bottom of the window, above the status bar, with Notepad++'s Find,
-//! Replace, Find in Files and Mark tabs, search modes and options. It is a panel rather than a dialog, and like
+//! Replace, Find in Files, Find in Projects and Mark tabs, search modes and options. It is a panel rather than a dialog, and like
 //! Notepad++'s modeless dialog it leaves the document editable while it is open. F3 and
 //! Shift+F3 repeat the last search even when the panel is closed. Searching goes through
 //! `birchpad_core::search`.
@@ -47,6 +47,10 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
         this.open_find(FindTab::FindInFiles, window, cx);
         Ok(())
     });
+    registry.workspace("search.find-in-projects", |this, (), window, cx| {
+        this.open_find(FindTab::FindInProjects, window, cx);
+        Ok(())
+    });
     registry.workspace("search.mark", |this, (), window, cx| {
         this.open_find(FindTab::Mark, window, cx);
         Ok(())
@@ -65,6 +69,14 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
     });
     registry.workspace("search.select-and-find-previous", |this, (), window, cx| {
         this.select_and_find(Direction::Backward, window, cx);
+        Ok(())
+    });
+    registry.workspace("search.find-volatile-next", |this, (), _, cx| {
+        this.find_volatile(Direction::Forward, cx);
+        Ok(())
+    });
+    registry.workspace("search.find-volatile-previous", |this, (), _, cx| {
+        this.find_volatile(Direction::Backward, cx);
         Ok(())
     });
     registry.workspace("search.next-result", |this, (), window, cx| {
@@ -98,11 +110,19 @@ pub(crate) enum FindTab {
     Find,
     Replace,
     FindInFiles,
+    /// The files of the project panels.
+    FindInProjects,
     Mark,
 }
 
 impl FindTab {
-    const ALL: [Self; 4] = [Self::Find, Self::Replace, Self::FindInFiles, Self::Mark];
+    const ALL: [Self; 5] = [
+        Self::Find,
+        Self::Replace,
+        Self::FindInFiles,
+        Self::FindInProjects,
+        Self::Mark,
+    ];
 }
 
 /// The folder options of the Find in Files tab.
@@ -160,6 +180,8 @@ impl Default for FindOptions {
 
 pub(crate) enum FindBarEvent {
     Find(Direction),
+    /// Find in Projects: Find All in the files of the chosen project panels.
+    FindInProjects,
     Count,
     /// Find All in Current Document, or in All Opened Documents.
     FindAll {
@@ -186,12 +208,14 @@ pub(crate) enum FindBarEvent {
 pub(crate) struct FindBar {
     pub(crate) visible: bool,
     pub(crate) tab: FindTab,
-    find_input: Entity<InputState>,
+    pub(crate) find_input: Entity<InputState>,
     replace_input: Entity<InputState>,
     filters_input: Entity<InputState>,
     directory_input: Entity<InputState>,
     pub(crate) options: FindOptions,
     pub(crate) folder: FolderSearch,
+    /// Find in Projects: the project panels whose files are searched.
+    pub(crate) project_panels: [bool; 3],
     /// Set while Find in Files or Replace in Files runs; setting the flag stops it.
     pub(crate) files_running: Option<Arc<AtomicBool>>,
     /// A message from the last search, and whether it is a failure.
@@ -285,6 +309,7 @@ impl FindBar {
                 hidden: remembered.hidden,
                 follow_current_document: remembered.follow_current_document,
             },
+            project_panels: [true; 3],
             files_running: None,
             status: None,
             focus_handle: cx.focus_handle(),
@@ -414,6 +439,26 @@ impl FindBar {
             })
     }
 
+    /// Find in Projects: whether Project Panel `panel + 1`'s files are searched.
+    fn project_box(&self, panel: usize, cx: &Context<Self>) -> Checkbox {
+        const IDS: [&str; 3] = ["project-panel-1", "project-panel-2", "project-panel-3"];
+        let this = cx.entity().downgrade();
+        let id = IDS[panel];
+        Checkbox::new(id)
+            .label(t!("find.project-panel", number = panel + 1))
+            .checked(self.project_panels[panel])
+            .small()
+            .debug_selector(move || id.to_owned())
+            .on_click(move |checked, _, cx| {
+                let checked = *checked;
+                this.update(cx, |this, cx| {
+                    this.project_panels[panel] = checked;
+                    cx.notify();
+                })
+                .ok();
+            })
+    }
+
     fn folder_box(
         &self,
         id: &'static str,
@@ -482,6 +527,11 @@ impl Render for FindBar {
             )
             .child(
                 Tab::new()
+                    .label(t!("find.find-in-projects"))
+                    .debug_selector(|| "tab-find-in-projects".into()),
+            )
+            .child(
+                Tab::new()
                     .label(t!("find.mark"))
                     .debug_selector(|| "tab-mark".into()),
             )
@@ -518,7 +568,7 @@ impl Render for FindBar {
             FindTab::Replace => vec![button("find-next", "Find Next", || {
                 FindBarEvent::Find(Direction::Forward)
             })],
-            FindTab::FindInFiles if self.files_running.is_some() => {
+            FindTab::FindInFiles | FindTab::FindInProjects if self.files_running.is_some() => {
                 vec![button("stop-files", "Stop", || FindBarEvent::StopFiles)]
             }
             FindTab::FindInFiles => vec![
@@ -527,6 +577,9 @@ impl Render for FindBar {
                     FindBarEvent::ReplaceInFiles
                 }),
             ],
+            FindTab::FindInProjects => vec![button("find-in-projects", "Find All", || {
+                FindBarEvent::FindInProjects
+            })],
             FindTab::Mark => vec![
                 button("mark-all", "Mark All", || FindBarEvent::MarkAll),
                 button("clear-marks", "Clear All Marks", || {
@@ -624,6 +677,11 @@ impl Render for FindBar {
                 cx,
             ),
         ];
+        if tab == FindTab::FindInProjects {
+            for panel in 0..3 {
+                boxes.push(self.project_box(panel, cx));
+            }
+        }
         if tab == FindTab::FindInFiles {
             boxes.push(self.folder_box(
                 "subfolders",
@@ -656,7 +714,7 @@ impl Render for FindBar {
                 cx,
             ));
         }
-        if tab != FindTab::FindInFiles {
+        if !matches!(tab, FindTab::FindInFiles | FindTab::FindInProjects) {
             boxes.push(self.option_box(
                 "in-selection",
                 "In selection",
@@ -841,6 +899,7 @@ impl Workspace {
             FindBarEvent::ClearMarks => self.clear_marks(cx),
             FindBarEvent::CopyMarked => self.copy_marked(cx),
             FindBarEvent::FindInFiles => self.find_in_files(window, cx),
+            FindBarEvent::FindInProjects => self.find_in_projects(cx),
             FindBarEvent::ReplaceInFiles => self.replace_in_files(window, cx),
             FindBarEvent::StopFiles => self.find_bar.update(cx, |bar, cx| bar.stop_files(cx)),
             FindBarEvent::BrowseFolder => self.browse_folder(window, cx),
@@ -904,7 +963,61 @@ impl Workspace {
         let Some((searcher, query)) = self.searcher(cx) else {
             return;
         };
+        let wrap_around = self.find_bar.read(cx).options.wrap_around;
+        self.find_with(&view, &searcher, &query, wrap_around, direction, cx);
+    }
+
+    /// Find (Volatile) Next / Previous (Ctrl+Alt+F3 / Ctrl+Alt+Shift+F3): as Select and Find,
+    /// but the find panel keeps its own search text.
+    fn find_volatile(&mut self, direction: Direction, cx: &mut Context<Self>) {
+        let Some(view) = self.active_view(cx) else {
+            return;
+        };
+        let (token, selected, word) = {
+            let view = view.read(cx);
+            let range = view.selection.primary();
+            let text = view.text(cx);
+            let Some(token) = token_at(text, range.from()..range.to()) else {
+                return;
+            };
+            (
+                text.slice(token.clone()).to_string(),
+                token,
+                range.is_empty(),
+            )
+        };
+        if token.contains(['\n', '\r']) {
+            return;
+        }
         let options = self.find_bar.read(cx).options;
+        let query = Query {
+            pattern: token,
+            match_case: options.match_case,
+            whole_word: word || options.whole_word,
+            mode: SearchMode::Normal,
+            dot_matches_newline: false,
+        };
+        let Ok(searcher) = Searcher::new(&query) else {
+            return;
+        };
+        view.update(cx, |view, cx| view.select_range(selected, cx));
+        self.find_with(&view, &searcher, &query, options.wrap_around, direction, cx);
+    }
+
+    /// Selects the next (or previous) match of `searcher` from the selection of `view`.
+    fn find_with(
+        &mut self,
+        view: &Entity<EditorView>,
+        searcher: &Searcher,
+        query: &Query,
+        wrap_around: bool,
+        direction: Direction,
+        cx: &mut Context<Self>,
+    ) {
+        let options = FindOptions {
+            wrap_around,
+            ..FindOptions::default()
+        };
         let (text, selection) = {
             let view = view.read(cx);
             let range = view.selection.primary();
@@ -965,7 +1078,7 @@ impl Workspace {
                 view.update(cx, |view, cx| view.select_range(found, cx));
             }
             None => {
-                if !self.report_failure(&searcher, cx) {
+                if !self.report_failure(searcher, cx) {
                     self.report(Some(t!("find.not-found", text = query.pattern)), true, cx);
                 }
             }

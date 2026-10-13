@@ -43,6 +43,38 @@ pub struct LineDiff {
 ///
 /// The lines both texts start and end with are compared directly; only the lines between them
 /// are diffed, so a small edit of a large text costs little more than reading it.
+/// Search > Change History > Go to Next (or Previous) Change: the first line of the next
+/// block of changed lines after `line`'s block, starting over at the other end. `changed` is
+/// sorted.
+pub fn next_change(changed: &[usize], line: usize, forward: bool) -> Option<usize> {
+    let starts: Vec<usize> = changed
+        .iter()
+        .enumerate()
+        .filter(|(index, line)| *index == 0 || changed[index - 1] + 1 != **line)
+        .map(|(_, line)| *line)
+        .collect();
+    // The start of the block `line` is in, if it is in one.
+    let current = changed
+        .binary_search(&line)
+        .ok()
+        .and_then(|_| starts.iter().rev().find(|start| **start <= line).copied());
+    if forward {
+        starts
+            .iter()
+            .find(|start| **start > line)
+            .or_else(|| starts.first().filter(|first| Some(**first) != current))
+            .copied()
+    } else {
+        let before = current.unwrap_or(line);
+        starts
+            .iter()
+            .rev()
+            .find(|start| **start < before)
+            .or_else(|| starts.last().filter(|last| Some(**last) != current))
+            .copied()
+    }
+}
+
 pub fn diff_lines(old: &Rope, new: &Rope) -> LineDiff {
     let (old_count, new_count) = (line_count(old), line_count(new));
     let common = old_count.min(new_count);
@@ -312,6 +344,7 @@ fn subtract(ranges: Vec<Range<usize>>, holes: &[Range<usize>]) -> Vec<Range<usiz
 
 #[cfg(test)]
 mod tests {
+
     #![allow(
         clippy::single_range_in_vec_init,
         reason = "one range of lines is the expected result"
@@ -504,5 +537,33 @@ mod tests {
                 .collect();
             prop_assert_eq!(merge(modified), diff_lines(&rope(&saved), &current).changed);
         }
+    }
+}
+
+#[cfg(test)]
+mod next_change_tests {
+    #[test]
+    fn going_from_change_to_change() {
+        use super::next_change;
+        let changed = [2, 3, 4, 8, 12, 13];
+        assert_eq!(next_change(&changed, 0, true), Some(2));
+        assert_eq!(
+            next_change(&changed, 3, true),
+            Some(8),
+            "past its own block"
+        );
+        assert_eq!(next_change(&changed, 12, true), Some(2), "around");
+        assert_eq!(next_change(&changed, 20, true), Some(2));
+        assert_eq!(next_change(&changed, 13, false), Some(8));
+        assert_eq!(next_change(&changed, 10, false), Some(8));
+        assert_eq!(next_change(&changed, 3, false), Some(12), "around");
+        assert_eq!(next_change(&changed, 0, false), Some(12));
+        // One block: from inside, nowhere else to go; from outside, to it.
+        assert_eq!(next_change(&[5, 6], 6, true), None);
+        assert_eq!(next_change(&[5, 6], 5, false), None);
+        assert_eq!(next_change(&[5, 6], 0, true), Some(5));
+        assert_eq!(next_change(&[5, 6], 9, false), Some(5));
+        assert_eq!(next_change(&[], 0, true), None);
+        assert_eq!(next_change(&[], 0, false), None);
     }
 }

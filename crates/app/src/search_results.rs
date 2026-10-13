@@ -21,10 +21,14 @@ use gpui_kit::component::menu::{ContextMenuExt as _, PopupMenu, PopupMenuItem};
 use gpui_kit::component::{IconName, Sizable};
 use gpui_kit::{
     App, ClickEvent, ClipboardItem, Context, EventEmitter, FocusHandle, Focusable, FontWeight,
-    HighlightStyle, KeyDownEvent, MouseButton, ScrollStrategy, SharedString, StyledText,
-    UniformListScrollHandle, WeakEntity, Window, div, prelude::*, px, uniform_list,
+    HighlightStyle, KeyDownEvent, ListAlignment, ListState, MouseButton, ScrollStrategy,
+    SharedString, StyledText, UniformListScrollHandle, WeakEntity, Window, div, list, prelude::*,
+    px, uniform_list,
 };
 
+use birchpad_config::SearchResultsState;
+
+use crate::app_state::AppState;
 use crate::buffer::Buffer;
 
 /// The most of a line a result shows; longer lines are cut there.
@@ -168,11 +172,17 @@ pub(crate) enum SearchResultsEvent {
 
 pub(crate) struct SearchResults {
     pub(crate) visible: bool,
+    /// Long lines wrap (as rows of their own height) instead of being cut.
+    pub(crate) wrap: bool,
+    /// Each new search clears the earlier ones.
+    pub(crate) purge: bool,
     runs: Vec<SearchRun>,
     /// The rows shown: searches, documents and lines, without those inside folded rows.
     rows: Vec<Row>,
     selected: Option<usize>,
     scroll: UniformListScrollHandle,
+    /// The rows' heights when long lines wrap.
+    list_state: ListState,
     focus_handle: FocusHandle,
 }
 
@@ -186,12 +196,19 @@ impl Focusable for SearchResults {
 
 impl SearchResults {
     pub(crate) fn new(cx: &mut Context<Self>) -> Self {
+        let remembered = cx
+            .try_global::<AppState>()
+            .map(|state| state.state.search_results.clone())
+            .unwrap_or_default();
         Self {
             visible: false,
+            wrap: remembered.wrap_long_lines,
+            purge: remembered.purge,
             runs: Vec::new(),
             rows: Vec::new(),
             selected: None,
             scroll: UniformListScrollHandle::new(),
+            list_state: ListState::new(0, ListAlignment::Top, px(200.)),
             focus_handle: cx.focus_handle(),
         }
     }
@@ -199,18 +216,69 @@ impl SearchResults {
     /// Shows a new search above the earlier ones, with its first line selected.
     pub(crate) fn add(&mut self, run: SearchRun, cx: &mut Context<Self>) {
         self.visible = true;
+        if self.purge {
+            self.runs.clear();
+        }
         self.runs.insert(0, run);
         self.rebuild_rows();
         self.selected = None;
-        self.scroll.scroll_to_item(0, ScrollStrategy::Top);
+        self.scroll_to(0);
         cx.notify();
     }
 
     pub(crate) fn clear(&mut self, cx: &mut Context<Self>) {
         self.runs.clear();
-        self.rows.clear();
+        self.rebuild_rows();
         self.selected = None;
         cx.notify();
+    }
+
+    /// Brings row `index` into view, as the list is drawn now.
+    fn scroll_to(&mut self, index: usize) {
+        if self.wrap {
+            self.list_state.scroll_to_reveal_item(index);
+        } else {
+            self.scroll.scroll_to_item(index, ScrollStrategy::Center);
+        }
+    }
+
+    /// Wrap Long Lines and Purge for Every Search, remembered for the next start.
+    pub(crate) fn set_switches(&mut self, wrap: bool, purge: bool, cx: &mut Context<Self>) {
+        self.wrap = wrap;
+        self.purge = purge;
+        AppState::update_state(cx, |state, _| {
+            state.search_results = SearchResultsState {
+                wrap_long_lines: wrap,
+                purge,
+            };
+        });
+        self.rebuild_rows();
+        cx.notify();
+    }
+
+    /// Open Selected Pathname: the document of row `index` at its first line found; Open All
+    /// (`all`): every document of its search.
+    pub(crate) fn open_documents(&mut self, index: usize, all: bool, cx: &mut Context<Self>) {
+        let (r, only) = match self.rows.get(index).copied() {
+            Some(Row::Run(r)) => (r, None),
+            Some(Row::File(r, f) | Row::Line(r, f, _)) => (r, Some(f)),
+            None => return,
+        };
+        let files: Vec<usize> = match (all, only) {
+            (false, Some(f)) => vec![f],
+            (false, None) => return,
+            (true, _) => (0..self.runs[r].files.len()).collect(),
+        };
+        for f in files {
+            let file = &self.runs[r].files[f];
+            if let Some(hit) = file.lines.first() {
+                cx.emit(SearchResultsEvent::Open {
+                    location: file.location.clone(),
+                    line: hit.line,
+                    target: hit.target.clone(),
+                });
+            }
+        }
     }
 
     /// Removes the search, document or line in row `index` from the list. A document without
@@ -284,6 +352,7 @@ impl SearchResults {
         let this = cx.entity().downgrade();
         let line = self.line_text(index);
         let path = self.path_text(index);
+        let (wrap, purge) = (self.wrap, self.purge);
         move |menu, _, _| {
             let act = |run: fn(&mut SearchResults, usize, &mut Context<SearchResults>)| {
                 let this = this.clone();
@@ -299,37 +368,72 @@ impl SearchResults {
                 }
             };
             menu.item(
-                PopupMenuItem::new("Remove").on_click(act(|this, index, cx| {
+                PopupMenuItem::new(t!("search-results.remove")).on_click(act(|this, index, cx| {
                     this.remove(index, cx);
                 })),
             )
             .separator()
             .item(
-                PopupMenuItem::new("Copy Selected Line")
+                PopupMenuItem::new(t!("search-results.copy-selected-line"))
                     .disabled(line.is_none())
                     .on_click(copy(line.as_ref().map(ToString::to_string))),
             )
             .item(
-                PopupMenuItem::new("Copy Selected Pathname")
+                PopupMenuItem::new(t!("search-results.copy-selected-pathname"))
                     .disabled(path.is_none())
                     .on_click(copy(path.clone())),
             )
             .separator()
-            .item(PopupMenuItem::new("Fold All").on_click(act(|this, _, cx| {
-                this.fold_all(true, cx);
-            })))
             .item(
-                PopupMenuItem::new("Unfold All").on_click(act(|this, _, cx| {
+                PopupMenuItem::new(t!("search-results.open-selected-pathname"))
+                    .disabled(path.is_none())
+                    .on_click(act(|this, index, cx| this.open_documents(index, false, cx))),
+            )
+            .item(
+                PopupMenuItem::new(t!("search-results.open-all"))
+                    .on_click(act(|this, index, cx| this.open_documents(index, true, cx))),
+            )
+            .separator()
+            .item(
+                PopupMenuItem::new(t!("search-results.fold-all")).on_click(act(|this, _, cx| {
+                    this.fold_all(true, cx);
+                })),
+            )
+            .item(
+                PopupMenuItem::new(t!("search-results.unfold-all")).on_click(act(|this, _, cx| {
                     this.fold_all(false, cx);
                 })),
             )
             .separator()
-            .item(PopupMenuItem::new("Clear All").on_click(act(|this, _, cx| this.clear(cx))))
+            .item(
+                PopupMenuItem::new(t!("search-results.wrap-long-lines"))
+                    .checked(wrap)
+                    .on_click(act(|this, _, cx| {
+                        this.set_switches(!this.wrap, this.purge, cx)
+                    })),
+            )
+            .item(
+                PopupMenuItem::new(t!("search-results.purge-for-every-search"))
+                    .checked(purge)
+                    .on_click(act(|this, _, cx| {
+                        this.set_switches(this.wrap, !this.purge, cx)
+                    })),
+            )
+            .separator()
+            .item(
+                PopupMenuItem::new(t!("search-results.clear-all"))
+                    .on_click(act(|this, _, cx| this.clear(cx))),
+            )
         }
     }
 
     fn rebuild_rows(&mut self) {
         self.rows.clear();
+        self.push_rows();
+    }
+
+    /// The rows of the searches and documents that are not folded.
+    fn push_rows(&mut self) {
         for (r, run) in self.runs.iter().enumerate() {
             self.rows.push(Row::Run(r));
             if run.collapsed {
@@ -344,6 +448,7 @@ impl SearchResults {
                     .extend((0..file.lines.len()).map(|l| Row::Line(r, f, l)));
             }
         }
+        self.list_state.reset(self.rows.len());
     }
 
     /// Folds or unfolds a search or a document.
@@ -361,7 +466,7 @@ impl SearchResults {
     /// Opens the line in `row`, if it is one.
     fn open(&mut self, index: usize, cx: &mut Context<Self>) {
         self.selected = Some(index);
-        self.scroll.scroll_to_item(index, ScrollStrategy::Center);
+        self.scroll_to(index);
         if let Some(Row::Line(r, f, l)) = self.rows.get(index).copied() {
             let file = &self.runs[r].files[f];
             let hit = &file.lines[l];
@@ -453,7 +558,7 @@ impl SearchResults {
             _ => return,
         }
         if let Some(index) = self.selected {
-            self.scroll.scroll_to_item(index, ScrollStrategy::Center);
+            self.scroll_to(index);
         }
         cx.stop_propagation();
         cx.notify();
@@ -462,16 +567,18 @@ impl SearchResults {
     fn render_row(&self, index: usize, cx: &mut Context<Self>) -> impl IntoElement + use<> {
         let row = self.rows[index];
         let selected = self.selected == Some(index);
+        let wrap = self.wrap;
         let base = div()
             .id(("search-result", index))
             .debug_selector(move || format!("search-result-{index}"))
             .w_full()
-            .h(px(ROW_HEIGHT))
+            .when(!wrap, |row| {
+                row.h(px(ROW_HEIGHT)).whitespace_nowrap().overflow_hidden()
+            })
+            .when(wrap, |row| row.min_h(px(ROW_HEIGHT)))
             .flex()
             .flex_row()
             .items_center()
-            .whitespace_nowrap()
-            .overflow_hidden()
             .when(selected, |row| {
                 row.bg(crate::theme::paint(crate::theme::ui().selected))
             })
@@ -583,18 +690,31 @@ impl Render for SearchResults {
                     .icon(IconName::Close)
                     .on_click(cx.listener(|_, _, _, cx| cx.emit(SearchResultsEvent::Close))),
             );
-        let list = uniform_list(
-            "search-results-list",
-            self.rows.len(),
-            cx.processor(|this, range: Range<usize>, _, cx| {
-                range
-                    .map(|index| this.render_row(index, cx))
-                    .collect::<Vec<_>>()
-            }),
-        )
-        .track_scroll(&self.scroll)
-        .flex_1()
-        .text_size(px(13.));
+        let list = if self.wrap {
+            list(
+                self.list_state.clone(),
+                cx.processor(|this, index: usize, _, cx| {
+                    this.render_row(index, cx).into_any_element()
+                }),
+            )
+            .flex_1()
+            .text_size(px(13.))
+            .into_any_element()
+        } else {
+            uniform_list(
+                "search-results-list",
+                self.rows.len(),
+                cx.processor(|this, range: Range<usize>, _, cx| {
+                    range
+                        .map(|index| this.render_row(index, cx))
+                        .collect::<Vec<_>>()
+                }),
+            )
+            .track_scroll(&self.scroll)
+            .flex_1()
+            .text_size(px(13.))
+            .into_any_element()
+        };
         div()
             .id("search-results")
             .key_context("SearchResults")
@@ -765,8 +885,9 @@ mod tests {
             cx.update(|_, cx| cx.read_from_clipboard().and_then(|item| item.text()))
         };
 
-        // Remove, Copy Selected Line, Copy Selected Pathname, Fold All, Unfold All, Clear All;
-        // the arrow keys skip the items that are disabled for the row.
+        // Remove, Copy Selected Line, Copy Selected Pathname, Open Selected Pathname, Open All,
+        // Fold All, Unfold All, Wrap Long Lines, Purge for Every Search, Clear All; the arrow
+        // keys skip the items that are disabled for the row.
         right_click(5, cx);
         assert_eq!(selected(&results, cx), Some(5), "the right click selects");
         cx.simulate_keystrokes("down down enter");
@@ -778,16 +899,16 @@ mod tests {
         cx.simulate_keystrokes("down enter");
         assert_eq!(rows(&results, cx)[2], "    Line 3: foo", "removed");
 
-        // A search heading has neither a line nor a path to copy.
+        // A search heading has neither a line nor a path to copy or open.
         right_click(0, cx);
-        cx.simulate_keystrokes("down down enter");
+        cx.simulate_keystrokes("down down down enter");
         assert_eq!(
             rows(&results, cx),
             ["Search \"foo\" (2 hits in 2 files of 5 searched)"],
             "folded"
         );
         right_click(0, cx);
-        cx.simulate_keystrokes("down down down enter");
+        cx.simulate_keystrokes("down down down down enter");
         assert_eq!(rows(&results, cx).len(), 5, "unfolded");
         // A document has no line to copy.
         right_click(1, cx);
@@ -798,7 +919,7 @@ mod tests {
         cx.simulate_keystrokes("down escape");
         assert_eq!(rows(&results, cx).len(), 5);
         right_click(1, cx);
-        cx.simulate_keystrokes("down down down down down enter");
+        cx.simulate_keystrokes("down down down down down down down down down enter");
         assert!(rows(&results, cx).is_empty(), "cleared");
     }
 

@@ -525,6 +525,14 @@ impl Buffer {
         (&self.changes.modified, &self.changes.saved)
     }
 
+    /// Search > Change History > Clear All Changes: the text as it is now is where changes
+    /// count from.
+    pub(crate) fn clear_change_history(&mut self, cx: &mut Context<Self>) {
+        self.changes = ChangeTracking::new(self.doc.text().clone());
+        cx.emit(BufferEvent::MarksChanged);
+        cx.notify();
+    }
+
     /// Compares the text with the change history in the background. A comparison already
     /// running compares again when it ends.
     fn compare_changes(&mut self, cx: &mut Context<Self>) {

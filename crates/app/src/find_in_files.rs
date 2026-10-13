@@ -19,7 +19,7 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 
 use birchpad_config::FindInFilesState;
-use birchpad_core::search::Searcher;
+use birchpad_core::search::{Query, Searcher};
 use birchpad_core::{ChangeSet, Edit, Encoding, Rope};
 use birchpad_io::{Filters, FolderOptions, LoadOptions, LoadedFile};
 use gpui_kit::{App, AppContext as _, AsyncApp, Context, Entity, PromptLevel, WeakEntity, Window};
@@ -42,6 +42,14 @@ struct Request {
     root: PathBuf,
     filters: Filters,
     options: FolderOptions,
+}
+
+/// The files a search goes through.
+enum FileSource {
+    /// Those a folder holds, listed first.
+    Listing(Request),
+    /// These.
+    Files(Vec<PathBuf>),
 }
 
 /// Why a file was not searched or not changed.
@@ -370,6 +378,57 @@ impl Workspace {
         let Some(request) = self.files_request(WHAT, window, cx) else {
             return;
         };
+        self.search_files(WHAT, searcher, query, FileSource::Listing(request), cx);
+    }
+
+    /// Search > Find in Projects: Find All in the files of the project panels chosen in the
+    /// panel, read from their workspace files.
+    pub(crate) fn find_in_projects(&mut self, cx: &mut Context<Self>) {
+        const WHAT: &str = "Find in Projects";
+        if self.files_running(cx) {
+            return;
+        }
+        let Some((searcher, query)) = self.searcher(cx) else {
+            return;
+        };
+        let panels = self.find_bar.read(cx).project_panels;
+        let workspaces = AppState::global(cx).state.panels.projects.clone();
+        let mut files: Vec<PathBuf> = Vec::new();
+        for (index, chosen) in panels.iter().enumerate() {
+            let Some(file) = workspaces.get(&(index + 1).to_string()).filter(|_| *chosen) else {
+                continue;
+            };
+            match birchpad_config::ProjectWorkspace::load(file) {
+                Ok(workspace) => {
+                    for path in workspace.files() {
+                        if !files.contains(&path) {
+                            files.push(path);
+                        }
+                    }
+                }
+                Err(error) => {
+                    self.report(Some(format!("{WHAT}: {error}")), true, cx);
+                    return;
+                }
+            }
+        }
+        if files.is_empty() {
+            self.report(Some(t!("find-in-files.no-project-files")), true, cx);
+            return;
+        }
+        self.search_files(WHAT, searcher, query, FileSource::Files(files), cx);
+    }
+
+    /// Searches the files of `source` (open documents as they are in their tabs) and shows
+    /// what it finds in the search results.
+    fn search_files(
+        &mut self,
+        what: &'static str,
+        searcher: Searcher,
+        query: Query,
+        source: FileSource,
+        cx: &mut Context<Self>,
+    ) {
         let open = self.open_files(cx);
         let texts: Arc<HashMap<PathBuf, Rope>> = Arc::new(
             open.iter()
@@ -382,10 +441,16 @@ impl Workspace {
             .collect();
         let ansi = AppState::global(cx).ansi;
         let cancel = self.start_files(cx);
-        self.report(Some(format!("{WHAT}: listing files...")), false, cx);
+        self.report(Some(format!("{what}: listing files...")), false, cx);
         cx.spawn(async move |this, cx| {
-            let Some(files) = list(&this, &request, &cancel, WHAT, cx).await else {
-                return;
+            let files = match source {
+                FileSource::Listing(request) => {
+                    let Some(files) = list(&this, &request, &cancel, what, cx).await else {
+                        return;
+                    };
+                    files
+                }
+                FileSource::Files(files) => files,
             };
             let total = files.len();
             let (mut found, mut skipped, mut searched) = (Vec::new(), SkipCounts::default(), 0);
@@ -417,7 +482,7 @@ impl Workspace {
                         Err(why) => skipped.add(why),
                     }
                 }
-                let progress = format!("{WHAT}: {searched} of {total} files searched...");
+                let progress = format!("{what}: {searched} of {total} files searched...");
                 this.update(cx, |this, cx| this.report(Some(progress), false, cx))
                     .ok();
             }

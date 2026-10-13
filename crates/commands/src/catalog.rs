@@ -227,6 +227,19 @@ pub const COMMANDS: &[CommandSpec] = &[
         "search.select-and-find-previous",
         "Select and Find Previous",
     ),
+    // As Select and Find, leaving the find panel's text as it is
+    workspace("search.find-volatile-next", "Find (Volatile) Next"),
+    workspace("search.find-volatile-previous", "Find (Volatile) Previous"),
+    workspace("search.find-in-projects", "Find in Projects..."),
+    workspace(
+        "search.find-characters-in-range",
+        "Find Characters in Range...",
+    ),
+    // { "from": 128, "to": 1114111, "backward": false, "wrap": true }: character codes
+    editor("search.find-in-range", "Find Character in Range"),
+    editor("search.next-change", "Go to Next Change"),
+    editor("search.previous-change", "Go to Previous Change"),
+    editor("search.clear-changes", "Clear All Changes"),
     workspace("search.find-in-files", "Find in Files..."),
     workspace("search.incremental", "Incremental Search"),
     workspace("search.close-incremental", "Close Incremental Search"),

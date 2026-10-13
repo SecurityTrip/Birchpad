@@ -59,6 +59,15 @@ version's release notes from its section here.
   opening the selected file, searching the Internet, comments. Its items are
   `context-menu.toml` next to the settings, opened by Settings > Edit Popup ContextMenu, as
   Notepad++'s `contextMenu.xml`: any command with its arguments, own labels, submenus.
+- Search > Find (Volatile) Next and Previous (Ctrl+Alt+F3, Ctrl+Alt+Shift+F3): as Select and
+  Find, leaving the find panel's text as it is.
+- Search > Find in Projects: a tab of the find panel that searches the files of the chosen
+  project panels.
+- Search > Find Characters in Range: the next non-ASCII or ASCII character, or one with a code
+  in one's own range, up or down.
+- Search > Change History: Go to Next and Previous Change, Clear All Changes.
+- The search results' context menu: Open Selected Pathname, Open All, Wrap Long Lines and
+  Purge for Every Search (both remembered); its texts are translated.
 - Preferences > Multi-Instance (`instances.mode`): every launch, or a launch opening a session,
   can start a Birchpad of its own instead of handing its files to the running one.
 

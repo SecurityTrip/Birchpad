@@ -22,3 +22,7 @@ folders = ['C:\src\birchpad']
 
 [panels.projects]
 1 = 'C:\src\birchpad.workspace'
+
+[search-results]
+wrap-long-lines = true
+purge = true

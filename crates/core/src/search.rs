@@ -561,6 +561,47 @@ pub fn token_at(text: &Rope, selection: Range<usize>) -> Option<Range<usize>> {
     is_word_run.then_some(word)
 }
 
+/// Search > Find Characters in Range: the next character (previous `Backward`) from byte
+/// `from` whose code point is in `codes`, starting over at the other end with `wrap`.
+pub fn find_char_in_range(
+    text: &Rope,
+    from: usize,
+    codes: std::ops::RangeInclusive<u32>,
+    direction: Direction,
+    wrap: bool,
+) -> Option<Range<usize>> {
+    let from = text.floor_char_boundary(from.min(text.len()));
+    let hit = |at: usize, c: char| codes.contains(&u32::from(c)).then(|| at..at + c.len_utf8());
+    let forward = |start: usize, end: usize| {
+        let mut at = start;
+        text.slice(start..end).chars().find_map(|c| {
+            let found = hit(at, c);
+            at += c.len_utf8();
+            found
+        })
+    };
+    let backward = |start: usize, end: usize| {
+        let mut chars = text.chars_at(end);
+        let mut at = end;
+        while at > start {
+            let c = chars.prev()?;
+            at -= c.len_utf8();
+            if let Some(found) = hit(at, c) {
+                return Some(found);
+            }
+        }
+        None
+    };
+    match direction {
+        Direction::Forward => {
+            forward(from, text.len()).or_else(|| wrap.then(|| forward(0, from)).flatten())
+        }
+        Direction::Backward => {
+            backward(0, from).or_else(|| wrap.then(|| backward(from, text.len())).flatten())
+        }
+    }
+}
+
 /// Simple case folding: the first character of the lowercase mapping. Good for the scripts
 /// people search in; full folding (ß → ss) comes with regular expressions.
 fn fold(ch: char) -> char {
@@ -810,6 +851,7 @@ fn expand_with(captures: &fancy_regex::Captures<'_, str>, template: &str) -> Str
 
 #[cfg(test)]
 mod tests {
+
     #![allow(
         clippy::single_range_in_vec_init,
         reason = "lists of one expected match"
@@ -1245,6 +1287,70 @@ mod tests {
             token_at(&text, 8..8),
             None,
             "between punctuation and a space"
+        );
+    }
+}
+
+#[cfg(test)]
+mod range_tests {
+    use ropey::Rope;
+
+    #[test]
+    fn characters_in_a_range() {
+        use super::{Direction::*, find_char_in_range};
+        let text = Rope::from("aé	b€");
+        let non_ascii = 128..=0x10_FFFF;
+        assert_eq!(
+            find_char_in_range(&text, 0, non_ascii.clone(), Forward, false),
+            Some(1..3)
+        );
+        assert_eq!(
+            find_char_in_range(&text, 3, non_ascii.clone(), Forward, false),
+            Some(5..8)
+        );
+        assert_eq!(
+            find_char_in_range(&text, 8, non_ascii.clone(), Forward, false),
+            None
+        );
+        assert_eq!(
+            find_char_in_range(&text, 8, non_ascii.clone(), Forward, true),
+            Some(1..3)
+        );
+        assert_eq!(
+            find_char_in_range(&text, 5, non_ascii.clone(), Backward, false),
+            Some(1..3)
+        );
+        assert_eq!(
+            find_char_in_range(&text, 1, non_ascii.clone(), Backward, false),
+            None
+        );
+        assert_eq!(
+            find_char_in_range(&text, 1, non_ascii, Backward, true),
+            Some(5..8)
+        );
+        // Control characters; one code; an empty range; inside a character; empty text.
+        assert_eq!(
+            find_char_in_range(&text, 0, 0..=31, Forward, false),
+            Some(3..4)
+        );
+        assert_eq!(
+            find_char_in_range(&text, 0, 98..=98, Forward, false),
+            Some(4..5)
+        );
+        #[allow(clippy::reversed_empty_ranges)]
+        let empty = 5..=4;
+        assert_eq!(find_char_in_range(&text, 0, empty, Forward, true), None);
+        assert_eq!(
+            find_char_in_range(&text, 2, 0..=127, Forward, false),
+            Some(3..4)
+        );
+        assert_eq!(
+            find_char_in_range(&Rope::new(), 0, 0..=0x10_FFFF, Backward, true),
+            None
+        );
+        assert_eq!(
+            find_char_in_range(&text, 99, 97..=97, Backward, false),
+            Some(0..1)
         );
     }
 }

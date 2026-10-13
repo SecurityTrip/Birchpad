@@ -47,6 +47,7 @@ mod path_dialog;
 mod preferences;
 mod print;
 mod run_menu;
+mod search_extras;
 mod search_results;
 mod session;
 #[cfg(test)]
