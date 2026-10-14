@@ -195,16 +195,7 @@ mod imp {
     pub(super) const ROOT: &str = "";
 
     pub(super) fn register(_: &str, _: &Path) -> io::Result<()> {
-        let status = Command::new("xdg-mime")
-            .arg("default")
-            .arg(DESKTOP_FILE)
-            .args(MIME_TYPES)
-            .status()?;
-        if status.success() {
-            Ok(())
-        } else {
-            Err(io::Error::other(format!("xdg-mime: {status}")))
-        }
+        run("xdg-mime", &register_args())
     }
 
     pub(super) fn unregister(_: &str) -> io::Result<()> {
@@ -212,10 +203,63 @@ mod imp {
     }
 
     pub(super) fn is_default(_: &str) -> bool {
-        Command::new("xdg-mime")
-            .args(["query", "default", "text/plain"])
+        answers_birchpad("xdg-mime", &["query", "default", "text/plain"])
+    }
+
+    /// `xdg-mime default`'s arguments: the desktop file, then the MIME types.
+    fn register_args() -> Vec<&'static str> {
+        let mut args = vec!["default", DESKTOP_FILE];
+        args.extend(MIME_TYPES);
+        args
+    }
+
+    /// Runs `program`; an error if it cannot start or does not succeed.
+    fn run(program: &str, args: &[&str]) -> io::Result<()> {
+        let status = Command::new(program).args(args).status()?;
+        if status.success() {
+            Ok(())
+        } else {
+            Err(io::Error::other(format!("{program}: {status}")))
+        }
+    }
+
+    /// Whether `program` answers Birchpad's desktop file; not if it cannot start.
+    fn answers_birchpad(program: &str, args: &[&str]) -> bool {
+        Command::new(program)
+            .args(args)
             .output()
             .is_ok_and(|output| is_birchpad_desktop(&String::from_utf8_lossy(&output.stdout)))
+    }
+
+    /// With programs of every system instead of `xdg-mime`, which would change the user's
+    /// defaults.
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+
+        #[test]
+        fn the_desktop_file_for_every_type() {
+            let args = register_args();
+            assert_eq!(&args[..2], ["default", DESKTOP_FILE]);
+            assert_eq!(&args[2..], MIME_TYPES);
+        }
+
+        #[test]
+        fn what_the_programs_say() {
+            run("true", &[]).unwrap();
+            assert!(run("false", &[]).is_err(), "did not succeed");
+            assert!(
+                run("birchpad-no-such-program", &[]).is_err(),
+                "cannot start"
+            );
+            assert!(answers_birchpad("echo", &[DESKTOP_FILE]));
+            assert!(!answers_birchpad("echo", &["org.gnome.TextEditor.desktop"]));
+            assert!(!answers_birchpad("echo", &[]), "nothing");
+            assert!(!answers_birchpad("birchpad-no-such-program", &[]));
+            // What only reads: nothing of Birchpad's to take away, and asking changes nothing.
+            super::super::unregister().unwrap();
+            let _ = super::super::is_default("txt");
+        }
     }
 }
 
