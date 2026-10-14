@@ -262,6 +262,7 @@ pub(crate) mod rich_clipboard {
 
     /// The HTML of Windows' "HTML Format": the document after its description, which says
     /// where it starts (`StartHTML:`); all of it if that is missing.
+    #[cfg(any(test, windows))]
     pub(crate) fn html_of_windows_format(data: &str) -> String {
         let start = data.lines().find_map(|line| {
             line.strip_prefix("StartHTML:")
