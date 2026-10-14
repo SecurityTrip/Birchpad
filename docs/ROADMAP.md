@@ -294,7 +294,7 @@ done and closed with the release.
       set up or declined, and in Settings: Windows registers it for the user and opens Default
       apps for the choice, which no program may make; Linux makes it the default with
       `xdg-mime`; on macOS the app declares its document types for Finder's Change All
-- [ ] 0.2.9 Release 0.2.0: the workspace version (0.2.0, so that nightly builds are its
+- [x] 0.2.9 Release 0.2.0: the workspace version (0.2.0, so that nightly builds are its
       pre-releases), `CHANGELOG.md` and this roadmap updated; the
       [release checklist](release-checklist.md) gone through; the answered issues closed
 

@@ -6,6 +6,8 @@ version's release notes from its section here.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-14
+
 ### Added
 
 - Pinned tabs (View > Tab > Pin Tab, or the pin on a tab): they stay at the start of the tab
@@ -407,7 +409,8 @@ The first release: a Notepad++-like editor for Windows, Linux and macOS.
   entirely (`updates.mode = "off"`).
 - Nightly builds of `main` on the nightly channel.
 
-[Unreleased]: https://github.com/SecurityTrip/Birchpad/compare/v0.1.5...HEAD
+[Unreleased]: https://github.com/SecurityTrip/Birchpad/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/SecurityTrip/Birchpad/compare/v0.1.5...v0.2.0
 [0.1.5]: https://github.com/SecurityTrip/Birchpad/compare/v0.1.4...v0.1.5
 [0.1.4]: https://github.com/SecurityTrip/Birchpad/compare/v0.1.3...v0.1.4
 [0.1.3]: https://github.com/SecurityTrip/Birchpad/compare/v0.1.2...v0.1.3
