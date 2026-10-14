@@ -1,8 +1,9 @@
 # Birchpad roadmap
 
 Birchpad first reaches feature parity with Notepad++ (Phases 1 to 6), then goes beyond it
-(Phase 7). Phases are ordered by dependency, not by calendar. Architecture decisions live in
-[`adr/`](adr).
+(Phase 7); closing Phase 7 releases Birchpad 1.0.0. On the way, each release from 0.2.0 on
+closes a group of steps, named in this roadmap's headings (Release 0.3.0, ...). Phases are
+ordered by dependency, not by calendar. Architecture decisions live in [`adr/`](adr).
 
 ## Phase 0: foundation
 
@@ -260,9 +261,10 @@ What Phase 1 left for later is marked *(from Phase 1)* in the phases below.
 
 What Phases 1 to 4 built differently from Notepad++, or left out, is brought in line here; what
 Phase 5 leaves for later is added once it is done. Birchpad goes beyond Notepad++ only after
-this phase. Closing it releases Birchpad 1.0.0; what is done by 2026-10-14 (6.1 to 6.21) ships
-before that as 0.2.0, with the issues users opened on GitHub
-([Release 0.2.0](#release-020)).
+this phase. It ships in releases: what is done by 2026-10-14 (6.1 to 6.21) as 0.2.0, with the
+issues users opened on GitHub ([Release 0.2.0](#release-020)), then 0.3.0 (tests), 0.4.0
+(languages and text), 0.5.0 (printing, tools and help) and 0.6.0 (plugins, documentation in
+Russian, the last comparison with Notepad++), which closes the phase.
 
 Every step follows the clean-room rules of [CONTRIBUTING.md](../CONTRIBUTING.md#clean-room).
 The steps are ordered by dependency; each one lands as its own commit with its tests, docs and
@@ -379,14 +381,14 @@ behavior does not change, and the tests move with the code.
       birchpad-editor`); find options, spelling and user languages reach it through what it
       exposes, not the application's globals. An ADR records the crates' layout
 
-### Tests
+### Release 0.3.0: tests
 
-Measured on Windows on 2026-10-13, the tests run 93.2% of the lines: 92 to 99.5% in the crates
-without a window, 89.4% in `birchpad`, where Preferences, the column editor and the Tools menu
-stay under 65%. The gaps are mostly the negative scenarios and limits CONTRIBUTING.md asks for
-(failed reads and writes, refused input, interrupted downloads). Each step covers the positive
-scenario, the negative ones and the boundary values, and raises the crates' floors in
-`.github/coverage-floors.toml` with its tests.
+Step 6.21 shipped with 0.2.0. Measured on Windows on 2026-10-13, the tests run 93.2% of the lines:
+92 to 99.5% in the crates without a window, 89.4% in `birchpad`, where Preferences, the column
+editor and the Tools menu stay under 65%. The gaps are mostly the negative scenarios and limits
+CONTRIBUTING.md asks for (failed reads and writes, refused input, interrupted downloads). Each step
+covers the positive scenario, the negative ones and the boundary values, and raises the crates'
+floors in `.github/coverage-floors.toml` with its tests.
 
 - [x] 6.21 Dialogs and menus driven in a test window, every control: Preferences (62.8% of lines
       run), the Shortcut Mapper (76.9%), the column editor (64.1%), the path dialog, the Tools
@@ -423,8 +425,11 @@ scenario, the negative ones and the boundary values, and raises the crates' floo
 - [ ] 6.29 Mutation testing: `cargo-mutants` nightly over the crates without a window; the
       mutants that survive get tests, and the share caught gets a floor that only rises, as
       coverage does
+- [ ] Release 0.3.0: the workspace version (0.3.0, set when its branch opens, so that nightly
+      builds are its pre-releases), `CHANGELOG.md` and this roadmap updated; the
+      [release checklist](release-checklist.md) gone through
 
-### Languages and text
+### Release 0.4.0: languages and text
 
 - [ ] 6.30 Code pages: EBCDIC 875 (Greek), whose standard table maps two bytes to one
       character; NEL as a line break in EBCDIC documents
@@ -442,8 +447,11 @@ scenario, the negative ones and the boundary values, and raises the crates' floo
       remembered per document in sessions; very long rows reordered too
 - [ ] 6.34 Localization: more interface languages, translated for Birchpad; Notepad++'s
       `nativeLang` XML files read from the user's own copy, not bundled
+- [ ] Release 0.4.0: the workspace version (0.4.0, set when its branch opens, so that nightly
+      builds are its pre-releases), `CHANGELOG.md` and this roadmap updated; the
+      [release checklist](release-checklist.md) gone through
 
-### Printing, tools and help
+### Release 0.5.0: printing, tools and help
 
 - [ ] 6.35 Printing: a print preview and page setup of Birchpad's own (margins, header and
       footer with Notepad++'s variables, colors or black on white, line numbers), printing the
@@ -456,8 +464,13 @@ scenario, the negative ones and the boundary values, and raises the crates' floo
       -alwaysOnTop, -loadingTime, -r (recursive wildcards), -quickPrint, -monitor,
       -openFoldersAsWorkspace, -x and -y (window position), -qn, -qt, -qf, -qSpeed (ghost
       typing), -settingsDir, -titleAdd, -udl, -pluginMessage
+- [ ] Release 0.5.0: the workspace version (0.5.0, set when its branch opens, so that nightly
+      builds are its pre-releases), `CHANGELOG.md` and this roadmap updated; the
+      [release checklist](release-checklist.md) gone through
 
-### Plugins
+### Release 0.6.0: plugins, documentation, parity
+
+Closing Phase 6.
 
 - [ ] 6.39 A wider plugin API: settings of their own, files opened with the user's permission,
       a panel of their own controls, items in the text's context menu, events while typing and
@@ -475,29 +488,67 @@ scenario, the negative ones and the boundary values, and raises the crates' floo
 - [ ] 6.44 Online features under the `OnlineFeatures` policy: Plugins Admin's online list of
       plugins (available, updates, installed) with checksums; DSpellCheck's dictionary download
 
-### Release 1.0.0
-
 - [ ] 6.45 Documentation in Russian: the user's and the contributor's documents (README,
       CONTRIBUTING, SECURITY, PRIVACY, the code of conduct, writing plugins and scripts, the
       release checklist and this roadmap) as `*.ru.md` next to the English ones, linked from
       each other; from then on a change to one updates the other. ADRs and the changelog stay
       in English
-- [ ] 6.46 Verified on real systems: input methods (Windows TSF, macOS, IBus/Fcitx), screen
-      readers *(from Phase 1)*; a last comparison with Notepad++ 8's menus, Preferences and
-      command line, with what is still missing moved to Phase 7 or written down
-- [ ] 6.47 Release 1.0.0: the workspace version, `CHANGELOG.md` and this roadmap updated; the
-      [release checklist](release-checklist.md) gone through with the draft's artifacts
+- [ ] 6.46 A last comparison with Notepad++ 8's menus, Preferences and command line, with what
+      is still missing moved to Phase 7 or written down
+- [ ] Release 0.6.0: the workspace version (0.6.0, set when its branch opens, so that nightly
+      builds are its pre-releases), `CHANGELOG.md` and this roadmap updated; the
+      [release checklist](release-checklist.md) gone through
 
 ## Phase 7: beyond Notepad++
 
-- LSP client; command palette and fuzzy file finder
-- Minimize to the system tray (Notepad++'s Preferences > MISC), once GPUI has a tray icon
-- Git: gutter changes, blame, diff
-- Integrated terminal
-- Syntax-aware selection, sticky scroll
-- Multi-gigabyte files via memory mapping
-- Remote editing over SSH/SFTP; CSV and JSON viewers
-- AI assistance (disabled by the `OnlineFeatures` policy); vim mode; collaborative editing
+What Notepad++ does not have, in releases 0.7.0 to 0.9.0; closing the phase releases 1.0.0.
+The steps follow the rules of Phase 6: clean-room where an editor is followed, one commit
+each with its tests, docs and a `CHANGELOG.md` entry, its options in Preferences.
+
+### Release 0.7.0: finding your way
+
+- [ ] 7.1 Command palette: every command of the catalog by its name, with its shortcut, the
+      recently used first
+- [ ] 7.2 Fuzzy file finder: the files of the workspace's folders and of the recent files, by
+      parts of their path
+- [ ] 7.3 Syntax-aware selection (expand and shrink by the syntax tree) and sticky scroll (the
+      enclosing scopes' first lines kept at the top)
+- [ ] 7.4 Minimize to the system tray (Notepad++'s Preferences > MISC), once GPUI has a tray
+      icon; until then, written down why not
+- [ ] Release 0.7.0: the workspace version (0.7.0, set when its branch opens, so that nightly
+      builds are its pre-releases), `CHANGELOG.md` and this roadmap updated; the
+      [release checklist](release-checklist.md) gone through
+
+### Release 0.8.0: development tools
+
+- [ ] 7.5 LSP client: diagnostics, completion, hover, go to definition and references,
+      rename, formatting; servers configured per language, none bundled
+- [ ] 7.6 Git: changes in the gutter, blame of the line, the diff of a file against its last
+      commit
+- [ ] 7.7 Integrated terminal in a panel
+- [ ] Release 0.8.0: the workspace version (0.8.0, set when its branch opens, so that nightly
+      builds are its pre-releases), `CHANGELOG.md` and this roadmap updated; the
+      [release checklist](release-checklist.md) gone through
+
+### Release 0.9.0: large and remote files, other ways to edit
+
+- [ ] 7.8 Multi-gigabyte files through memory mapping, read and searched without loading them
+      whole
+- [ ] 7.9 CSV and JSON viewers: a table and a tree beside the text, which follow its edits
+- [ ] 7.10 Remote editing over SSH and SFTP: files and folders opened and saved on a server
+- [ ] 7.11 Vim mode
+- [ ] Release 0.9.0: the workspace version (0.9.0, set when its branch opens, so that nightly
+      builds are its pre-releases), `CHANGELOG.md` and this roadmap updated; the
+      [release checklist](release-checklist.md) gone through
+
+### Release 1.0.0
+
+- [ ] 7.12 AI assistance, off under the `OnlineFeatures` policy and until the user turns it on
+- [ ] 7.13 Collaborative editing of a document by several users
+- [ ] 7.14 Verified on real systems: input methods (Windows TSF, macOS, IBus/Fcitx), screen
+      readers *(from Phase 1)*
+- [ ] Release 1.0.0: the workspace version, `CHANGELOG.md` and this roadmap updated; the
+      [release checklist](release-checklist.md) gone through with the draft's artifacts
 
 ## Distribution (runs alongside the phases)
 
