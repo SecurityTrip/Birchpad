@@ -36,10 +36,12 @@ impl Install {
         let data = dir.path().join(birchpad_config::PORTABLE_DATA_DIR);
         fs::create_dir_all(&data).unwrap();
         // No update checks from tests, and no offer to open text files, whose question would
-        // take the focus from the scripts' typing.
+        // take the focus from the scripts' typing; messages in English, whatever the system's
+        // language.
         fs::write(
             data.join("settings.toml"),
-            "[updates]\nmode = \"off\"\n\n[files]\noffer-default-app = false\n",
+            "[updates]\nmode = \"off\"\n\n[files]\noffer-default-app = false\n\n\
+             [appearance]\nlanguage = \"en\"\n",
         )
         .unwrap();
         Self { dir, exe }
