@@ -543,17 +543,22 @@ each with its tests, docs and a `CHANGELOG.md` entry, its options in Preferences
 
 ### Release 1.0.0
 
-- [ ] 7.12 AI assistance, strictly opt-in and never pushed: off by default, and until the user
+- [ ] 7.12 Collaborative editing of a document by several users
+- [ ] 7.13 Verified on real systems: input methods (Windows TSF, macOS, IBus/Fcitx), screen
+      readers *(from Phase 1)*
+- [ ] Release 1.0.0: the workspace version, `CHANGELOG.md` and this roadmap updated; the
+      [release checklist](release-checklist.md) gone through with the draft's artifacts
+
+## After 1.0.0
+
+Not planned into a release yet.
+
+- [ ] AI assistance, strictly opt-in and never pushed: off by default, and until the user
       turns it on in Preferences nothing of it shows (no button, menu item, prompt, tip or
       reminder) and nothing is sent anywhere; Birchpad never offers it unasked. Turned on, it
       runs only when the user asks (a command with no default shortcut), with the provider the
       user chooses, a local model too, and shows what is sent before it goes. The
       `OnlineFeatures` policy removes it entirely; an ADR records these rules first
-- [ ] 7.13 Collaborative editing of a document by several users
-- [ ] 7.14 Verified on real systems: input methods (Windows TSF, macOS, IBus/Fcitx), screen
-      readers *(from Phase 1)*
-- [ ] Release 1.0.0: the workspace version, `CHANGELOG.md` and this roadmap updated; the
-      [release checklist](release-checklist.md) gone through with the draft's artifacts
 
 ## Distribution (runs alongside the phases)
 
