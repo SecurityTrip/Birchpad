@@ -55,7 +55,7 @@ impl fmt::Display for Color {
 
 /// Why a color did not read.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
-#[error("`{0}` is not a color; colors are written #rrggbb or #rrggbbaa")]
+#[error("{}", birchpad_i18n::t!("theme.not-a-color", text = .0))]
 pub struct ColorError(String);
 
 impl FromStr for Color {

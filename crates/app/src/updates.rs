@@ -27,7 +27,7 @@ use gpui_kit::{AnyWindowHandle, App, AppContext as _, Context, Global, WeakEntit
 use semver::Version;
 
 use crate::app_state::AppState;
-use crate::commands::CommandRegistry;
+use crate::commands::{CommandRegistry, Register as _};
 use crate::help::{BUILD_CHANNEL, VERSION, show_message};
 use crate::workspace::{Workspace, report_error};
 
@@ -192,7 +192,7 @@ impl Workspace {
         }
         let updates = cx
             .try_global::<Updates>()
-            .context("checking for updates is not available")?;
+            .with_context(|| t!("updates.not-available"))?;
         if updates.checking {
             return Ok(());
         }
@@ -250,7 +250,7 @@ impl Workspace {
                 if trigger == Trigger::Request {
                     show_message(
                         t!("updates.cannot-check"),
-                        vec![crate::i18n::tr_text(&error.to_string())],
+                        vec![error.to_string()],
                         None,
                         window,
                         cx,
@@ -306,7 +306,7 @@ impl Workspace {
         let release = updates
             .available
             .clone()
-            .context("no newer version was found")?;
+            .with_context(|| t!("updates.no-newer-version"))?;
         self.download_update(release, AfterDownload::Restart, window, cx);
         Ok(())
     }
@@ -358,7 +358,7 @@ impl Workspace {
                         let message = t!(
                             "updates.cannot-download",
                             version = release.version,
-                            error = crate::i18n::tr_text(&error.to_string())
+                            error = error.to_string()
                         );
                         if after == AfterDownload::Restart {
                             report_error(&anyhow::anyhow!(message), window, cx);

@@ -26,13 +26,21 @@ struct MacroFile {
     macros: Vec<Macro>,
 }
 
-/// Commands a macro does not record: the macro commands themselves, and those that only open
-/// dialogs about the application or leave it.
+/// Commands a macro does not record: the macro commands themselves, those that only open
+/// dialogs about the application or leave it, and the searches, which are recorded with their
+/// text and options instead (`search.find-text`, `search.replace-text`).
 pub fn is_recordable(command: &str) -> bool {
     !(command.starts_with("macro.")
         || command.starts_with("settings.")
         || command.starts_with("help.")
-        || command == "file.exit")
+        || matches!(
+            command,
+            "file.exit"
+                | "search.find-next"
+                | "search.find-previous"
+                | "search.find-text"
+                | "search.replace-text"
+        ))
 }
 
 /// Adds `step` to a recording. Typed text joins the text typed just before, so that a word is
@@ -95,6 +103,22 @@ pub fn write_macros(macros: &[Macro]) -> String {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn searches_are_recorded_their_own_way() {
+        for command in [
+            "search.find-next",
+            "search.find-previous",
+            "search.find-text",
+            "search.replace-text",
+            "macro.trim-and-save",
+            "file.exit",
+        ] {
+            assert!(!super::is_recordable(command), "{command}");
+        }
+        assert!(super::is_recordable("search.select-and-find-next"));
+        assert!(super::is_recordable("edit.trim"));
+    }
+
     use super::*;
     use serde_json::json;
 
@@ -122,7 +146,7 @@ mod tests {
 
     #[test]
     fn what_is_recorded() {
-        for command in ["edit.type", "file.save", "search.find-next", "edit.undo"] {
+        for command in ["edit.type", "file.save", "search.mark", "edit.undo"] {
             assert!(is_recordable(command), "{command}");
         }
         for command in [

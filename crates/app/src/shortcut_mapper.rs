@@ -1,6 +1,8 @@
 //! Settings > Shortcut Mapper..., as in Notepad++: every command with its shortcuts, which can be
-//! added (by pressing the keys), removed and reset to the defaults. Changes go to the user's
-//! `keymap.toml`, keeping the rest of it, and take effect at once.
+//! added (by pressing the keys, a sequence such as Ctrl+K Ctrl+C too), for every platform or
+//! this one only, removed and reset to the defaults; the Macros and Run tabs do the same for the
+//! saved macros and command lines, and delete them. Changes go to the user's `keymap.toml`,
+//! keeping the rest of it, and take effect at once.
 
 use anyhow::{Context as _, Result, anyhow};
 use birchpad_commands::{Invocation, Keymap, Keystroke, MenuItem, Platform, Scope};
@@ -14,7 +16,7 @@ use gpui_kit::{
 };
 
 use crate::app_state::AppState;
-use crate::commands::{ActiveKeymap, CommandRegistry};
+use crate::commands::{ActiveKeymap, CommandRegistry, Register as _};
 use crate::theme::{paint, ui};
 use crate::workspace::Workspace;
 
@@ -81,6 +83,69 @@ pub(crate) fn rows(keymap: &Keymap) -> Vec<Row> {
     }
     rows
 }
+
+/// The tabs of the mapper.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum MapperTab {
+    Commands,
+    Macros,
+    Run,
+}
+
+impl MapperTab {
+    pub(crate) const ALL: [Self; 3] = [Self::Commands, Self::Macros, Self::Run];
+}
+
+/// The rows of a tab: every command, or the saved macros (`macro.run`) or command lines
+/// (`run.run`).
+pub(crate) fn rows_of(tab: MapperTab, keymap: &Keymap, cx: &App) -> Vec<Row> {
+    let named = |command: &str, names: Vec<String>| {
+        names
+            .into_iter()
+            .map(|name| Row {
+                invocation: Invocation::with_args(command, serde_json::json!({ "name": name })),
+                category: command.split('.').next().unwrap_or_default().to_owned(),
+                name,
+            })
+            .collect()
+    };
+    match tab {
+        MapperTab::Commands => rows(keymap),
+        MapperTab::Macros => named(
+            "macro.run",
+            cx.try_global::<crate::macros::Macros>()
+                .map(|macros| {
+                    macros
+                        .saved
+                        .iter()
+                        .map(|found| found.name.clone())
+                        .collect()
+                })
+                .unwrap_or_default(),
+        ),
+        MapperTab::Run => named(
+            "run.run",
+            cx.try_global::<crate::run_menu::RunMenu>()
+                .map(|menu| menu.saved.iter().map(|entry| entry.name.clone()).collect())
+                .unwrap_or_default(),
+        ),
+    }
+}
+
+/// The shortcuts of `invocation` as the list shows them: those limited to some platforms say
+/// which.
+pub(crate) fn shortcut_labels(keymap: &Keymap, invocation: &Invocation) -> Vec<String> {
+    keymap
+        .bindings_for(invocation)
+        .map(|binding| match &binding.platforms {
+            Some(platforms) => format!("{} ({})", binding.keys_string(), platforms.join(", ")),
+            None => binding.keys_string(),
+        })
+        .collect()
+}
+
+/// The longest key sequence the mapper records.
+pub(crate) const MAX_SEQUENCE: usize = 4;
 
 /// The shortcuts of `invocation`, as keymap files write them.
 pub(crate) fn shortcuts(keymap: &Keymap, invocation: &Invocation) -> Vec<String> {
@@ -164,6 +229,9 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
 
 pub(crate) struct ShortcutMapper {
     workspace: WeakEntity<Workspace>,
+    pub(crate) tab: MapperTab,
+    /// New shortcuts only on this platform.
+    pub(crate) only_here: bool,
     rows: Vec<Row>,
     filter: Entity<InputState>,
     /// Indexes into `rows` of those the filter shows.
@@ -176,9 +244,18 @@ pub(crate) struct ShortcutMapper {
     error: Option<String>,
 }
 
+#[cfg(test)]
+thread_local! {
+    /// The mapper last opened, for tests to drive.
+    static OPENED: std::cell::RefCell<Option<WeakEntity<ShortcutMapper>>> =
+        std::cell::RefCell::default();
+}
+
 /// Opens the dialog.
 pub(crate) fn open(workspace: WeakEntity<Workspace>, window: &mut Window, cx: &mut App) {
     let mapper = cx.new(|cx| ShortcutMapper::new(workspace, window, cx));
+    #[cfg(test)]
+    OPENED.with(|opened| *opened.borrow_mut() = Some(mapper.downgrade()));
     let focus = mapper.read(cx).filter.clone();
     window.open_dialog(cx, move |dialog, _, _| {
         dialog
@@ -203,6 +280,8 @@ impl ShortcutMapper {
         let rows = rows(&cx.global::<ActiveKeymap>().0);
         let mut this = Self {
             workspace,
+            tab: MapperTab::Commands,
+            only_here: false,
             shown: (0..rows.len()).collect(),
             rows,
             filter,
@@ -230,6 +309,47 @@ impl ShortcutMapper {
             .map(|(index, _)| index)
             .collect();
         cx.notify();
+    }
+
+    /// Shows another tab.
+    pub(crate) fn select_tab(&mut self, tab: MapperTab, cx: &mut Context<Self>) {
+        self.tab = tab;
+        self.rows = rows_of(tab, &cx.global::<ActiveKeymap>().0, cx);
+        self.selected = None;
+        self.stop_capture();
+        self.error = None;
+        self.refilter(cx);
+    }
+
+    /// Macros and Run > Delete: the selected macro or command line, and its shortcuts.
+    pub(crate) fn delete_selected(&mut self, cx: &mut Context<Self>) {
+        let Some(row) = self.selected_row().cloned() else {
+            return;
+        };
+        let name = row
+            .invocation
+            .args
+            .get("name")
+            .and_then(|name| name.as_str())
+            .unwrap_or_default()
+            .to_owned();
+        let keys = shortcuts(self.keymap(cx), &row.invocation);
+        let mut result = match self.tab {
+            MapperTab::Macros => crate::macros::delete(&name, cx),
+            MapperTab::Run => crate::run_menu::delete(&name, cx),
+            MapperTab::Commands => return,
+        };
+        for keys in keys {
+            if result.is_ok() {
+                let context = context_of(&row.invocation);
+                result = change(cx, |file| {
+                    birchpad_commands::unbind(file, Platform::current(), &keys, context)
+                });
+            }
+        }
+        let tab = self.tab;
+        self.done(result, cx);
+        self.select_tab(tab, cx);
     }
 
     fn select(&mut self, index: usize, cx: &mut Context<Self>) {
@@ -272,7 +392,12 @@ impl ShortcutMapper {
         } else {
             match Keystroke::parse(keystroke, Platform::current()) {
                 Ok(keys) => {
-                    self.pressed = Some(vec![keys]);
+                    // Keys pressed one after the other make a sequence (Ctrl+K Ctrl+C).
+                    let pressed = self.pressed.get_or_insert_with(Vec::new);
+                    if pressed.len() >= MAX_SEQUENCE {
+                        pressed.clear();
+                    }
+                    pressed.push(keys);
                     self.error = None;
                 }
                 Err(error) => self.error = Some(error.to_string()),
@@ -302,13 +427,15 @@ impl ShortcutMapper {
         self.stop_capture();
         let text: Vec<String> = keys.iter().map(Keystroke::to_string).collect();
         let context = context_of(&row.invocation);
+        let only_here = self.only_here;
         let result = change(cx, |file| {
-            birchpad_commands::bind(
+            birchpad_commands::bind_on(
                 file,
                 Platform::current(),
                 &text.join(" "),
                 context,
                 &row.invocation,
+                only_here,
             )
         });
         self.done(result, cx);
@@ -356,10 +483,11 @@ impl Render for ShortcutMapper {
                 .map(|position| {
                     let index = shown[position];
                     let row = &rows[index];
-                    let keys = shortcuts(&keymap, &row.invocation).join(", ");
+                    let keys = shortcut_labels(&keymap, &row.invocation).join(", ");
                     let this = this.clone();
                     div()
                         .id(("shortcut-row", index))
+                        .debug_selector(move || format!("shortcut-row-{position}"))
                         .flex()
                         .flex_row()
                         .px_2()
@@ -401,6 +529,7 @@ impl Render for ShortcutMapper {
                     .child(div().w(px(160.)).child(label))
                     .child(
                         Button::new(("shortcut-remove", index))
+                            .debug_selector(move || format!("shortcut-remove-{index}"))
                             .label(t!("common.remove"))
                             .on_click(cx.listener(move |this, _, _, cx| this.remove(&keys, cx))),
                     )
@@ -429,6 +558,7 @@ impl Render for ShortcutMapper {
                     )
                     .child(
                         Button::new("shortcut-assign")
+                            .debug_selector(|| "shortcut-assign".into())
                             .primary()
                             .label(t!("shortcut-mapper.assign"))
                             .disabled(pressed.is_none())
@@ -437,10 +567,13 @@ impl Render for ShortcutMapper {
                     .into_any_element()
             } else {
                 Button::new("shortcut-add")
+                    .debug_selector(|| "shortcut-add".into())
                     .label(t!("shortcut-mapper.add-shortcut"))
                     .on_click(cx.listener(|this, _, _, cx| this.start_capture(cx)))
                     .into_any_element()
             };
+            let deletable = self.tab != MapperTab::Commands;
+            let only_here = self.only_here;
             div()
                 .flex()
                 .flex_col()
@@ -448,11 +581,40 @@ impl Render for ShortcutMapper {
                 .child(div().child(format!("{} ({})", row.name, row.invocation.command)))
                 .children(removes)
                 .child(
-                    div().flex().flex_row().gap_2().child(capture).child(
-                        Button::new("shortcut-reset")
-                            .label(t!("shortcut-mapper.reset"))
-                            .on_click(cx.listener(|this, _, _, cx| this.reset(cx))),
-                    ),
+                    div()
+                        .flex()
+                        .flex_row()
+                        .gap_2()
+                        .child(capture)
+                        .child(
+                            Button::new("shortcut-reset")
+                                .debug_selector(|| "shortcut-reset".into())
+                                .label(t!("shortcut-mapper.reset"))
+                                .on_click(cx.listener(|this, _, _, cx| this.reset(cx))),
+                        )
+                        .when(deletable, |row| {
+                            row.child(
+                                Button::new("shortcut-delete")
+                                    .debug_selector(|| "shortcut-delete".into())
+                                    .label(t!("shortcut-mapper.delete"))
+                                    .on_click(
+                                        cx.listener(|this, _, _, cx| this.delete_selected(cx)),
+                                    ),
+                            )
+                        }),
+                )
+                .child(
+                    gpui_kit::component::checkbox::Checkbox::new("shortcut-only-here")
+                        .debug_selector(|| "shortcut-only-here".into())
+                        .label(t!(
+                            "shortcut-mapper.only-on",
+                            platform = Platform::current().name()
+                        ))
+                        .checked(only_here)
+                        .on_click(cx.listener(|this, checked: &bool, _, cx| {
+                            this.only_here = *checked;
+                            cx.notify();
+                        })),
                 )
                 .children(conflict.map(|other| {
                     let title = birchpad_commands::find(&other.command)
@@ -460,14 +622,43 @@ impl Render for ShortcutMapper {
                             crate::menus::command_title(spec.id)
                         });
                     div()
+                        .debug_selector(|| "shortcut-conflict".into())
                         .text_color(paint(colors.error))
                         .child(t!("shortcut-mapper.conflict", title = title))
                 }))
         });
+        let current_tab = self.tab;
+        let tabs = gpui_kit::component::tab::TabBar::new("shortcut-tabs")
+            .underline()
+            .selected_index(
+                MapperTab::ALL
+                    .iter()
+                    .position(|tab| *tab == current_tab)
+                    .unwrap_or(0),
+            )
+            .on_click(cx.listener(|this, index: &usize, _, cx| {
+                this.select_tab(MapperTab::ALL[*index], cx);
+            }))
+            .child(
+                gpui_kit::component::tab::Tab::new()
+                    .debug_selector(|| "shortcut-tab-0".into())
+                    .label(t!("shortcut-mapper.commands")),
+            )
+            .child(
+                gpui_kit::component::tab::Tab::new()
+                    .debug_selector(|| "shortcut-tab-1".into())
+                    .label(t!("shortcut-mapper.macros")),
+            )
+            .child(
+                gpui_kit::component::tab::Tab::new()
+                    .debug_selector(|| "shortcut-tab-2".into())
+                    .label(t!("shortcut-mapper.run-commands")),
+            );
         div()
             .flex()
             .flex_col()
             .gap_2()
+            .child(tabs)
             .child(Input::new(&self.filter).id("shortcut-filter"))
             .child(
                 div()
@@ -487,3 +678,6 @@ impl Render for ShortcutMapper {
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod dialog_tests;

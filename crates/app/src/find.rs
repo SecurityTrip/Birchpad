@@ -1,7 +1,7 @@
 //! Find, Replace, Find in Files, Mark and Go To.
 //!
 //! The find panel sits at the bottom of the window, above the status bar, with Notepad++'s Find,
-//! Replace, Find in Files and Mark tabs, search modes and options. It is a panel rather than a dialog, and like
+//! Replace, Find in Files, Find in Projects and Mark tabs, search modes and options. It is a panel rather than a dialog, and like
 //! Notepad++'s modeless dialog it leaves the document editable while it is open. F3 and
 //! Shift+F3 repeat the last search even when the panel is closed. Searching goes through
 //! `birchpad_core::search`.
@@ -11,9 +11,11 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use anyhow::{Context as _, Result, anyhow, bail};
-use birchpad_core::motion::{line_count, line_of, line_range, next_boundary, prev_boundary};
+use birchpad_commands::Invocation;
+use birchpad_core::motion::{line_count, line_of, next_boundary, prev_boundary};
+use birchpad_core::search::line_hits;
 use birchpad_core::search::{Direction, Query, SearchMode, Searcher, token_at};
-use birchpad_core::{Edit, Rope, Transaction, ops};
+use birchpad_core::{Edit, Transaction, ops};
 use gpui_kit::component::button::{Button, ButtonVariants as _};
 use gpui_kit::component::checkbox::Checkbox;
 use gpui_kit::component::dialog::DialogFooter;
@@ -27,10 +29,10 @@ use gpui_kit::{
 };
 
 use crate::app_state::AppState;
-use crate::commands::CommandRegistry;
+use crate::commands::{CommandRegistry, Register as _};
 use crate::editor::EditorView;
 use crate::search_results::{
-    FileResults, ResultLocation, SearchResults, SearchResultsEvent, SearchRun, line_hits,
+    FileResults, ResultLocation, SearchResults, SearchResultsEvent, SearchRun,
 };
 use crate::workspace::Workspace;
 
@@ -47,10 +49,36 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
         this.open_find(FindTab::FindInFiles, window, cx);
         Ok(())
     });
+    registry.workspace("search.find-in-projects", |this, (), window, cx| {
+        this.open_find(FindTab::FindInProjects, window, cx);
+        Ok(())
+    });
     registry.workspace("search.mark", |this, (), window, cx| {
         this.open_find(FindTab::Mark, window, cx);
         Ok(())
     });
+    registry.workspace("search.find-text", |this, args: SearchArgs, window, cx| {
+        this.take_search(&args, window, cx)?;
+        let direction = if args.backward {
+            Direction::Backward
+        } else {
+            Direction::Forward
+        };
+        this.find(direction, window, cx);
+        Ok(())
+    });
+    registry.workspace(
+        "search.replace-text",
+        |this, args: SearchArgs, window, cx| {
+            this.take_search(&args, window, cx)?;
+            if args.all {
+                this.replace_all(window, cx);
+            } else {
+                this.replace(window, cx);
+            }
+            Ok(())
+        },
+    );
     registry.workspace("search.find-next", |this, (), window, cx| {
         this.find(Direction::Forward, window, cx);
         Ok(())
@@ -65,6 +93,14 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
     });
     registry.workspace("search.select-and-find-previous", |this, (), window, cx| {
         this.select_and_find(Direction::Backward, window, cx);
+        Ok(())
+    });
+    registry.workspace("search.find-volatile-next", |this, (), _, cx| {
+        this.find_volatile(Direction::Forward, cx);
+        Ok(())
+    });
+    registry.workspace("search.find-volatile-previous", |this, (), _, cx| {
+        this.find_volatile(Direction::Backward, cx);
         Ok(())
     });
     registry.workspace("search.next-result", |this, (), window, cx| {
@@ -92,17 +128,69 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
     });
 }
 
+/// A search as macros record it: the text and the options of the find panel at the time.
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(default, rename_all = "kebab-case")]
+pub(crate) struct SearchArgs {
+    pub(crate) text: String,
+    pub(crate) match_case: bool,
+    pub(crate) whole_word: bool,
+    /// `normal`, `extended` or `regex`.
+    pub(crate) mode: String,
+    pub(crate) dot_all: bool,
+    pub(crate) backward: bool,
+    pub(crate) wrap: bool,
+    /// Replace: the replacement.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) with: Option<String>,
+    /// Replace: all of them.
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub(crate) all: bool,
+}
+
+impl Default for SearchArgs {
+    fn default() -> Self {
+        Self {
+            text: String::new(),
+            match_case: false,
+            whole_word: false,
+            mode: "normal".to_owned(),
+            dot_all: false,
+            backward: false,
+            wrap: true,
+            with: None,
+            all: false,
+        }
+    }
+}
+
+fn mode_name(mode: SearchMode) -> &'static str {
+    match mode {
+        SearchMode::Normal => "normal",
+        SearchMode::Extended => "extended",
+        SearchMode::Regex => "regex",
+    }
+}
+
 /// The tabs of the find panel.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum FindTab {
     Find,
     Replace,
     FindInFiles,
+    /// The files of the project panels.
+    FindInProjects,
     Mark,
 }
 
 impl FindTab {
-    const ALL: [Self; 4] = [Self::Find, Self::Replace, Self::FindInFiles, Self::Mark];
+    const ALL: [Self; 5] = [
+        Self::Find,
+        Self::Replace,
+        Self::FindInFiles,
+        Self::FindInProjects,
+        Self::Mark,
+    ];
 }
 
 /// The folder options of the Find in Files tab.
@@ -134,13 +222,6 @@ pub(crate) struct FindOptions {
     pub(crate) purge: bool,
 }
 
-/// The find panel's options, for smart highlighting with
-/// `highlighting.smart.use-find-options`.
-#[derive(Debug, Clone, Copy, Default)]
-pub(crate) struct ActiveFindOptions(pub(crate) FindOptions);
-
-impl gpui_kit::Global for ActiveFindOptions {}
-
 impl Default for FindOptions {
     fn default() -> Self {
         Self {
@@ -160,6 +241,8 @@ impl Default for FindOptions {
 
 pub(crate) enum FindBarEvent {
     Find(Direction),
+    /// Find in Projects: Find All in the files of the chosen project panels.
+    FindInProjects,
     Count,
     /// Find All in Current Document, or in All Opened Documents.
     FindAll {
@@ -186,12 +269,14 @@ pub(crate) enum FindBarEvent {
 pub(crate) struct FindBar {
     pub(crate) visible: bool,
     pub(crate) tab: FindTab,
-    find_input: Entity<InputState>,
+    pub(crate) find_input: Entity<InputState>,
     replace_input: Entity<InputState>,
     filters_input: Entity<InputState>,
     directory_input: Entity<InputState>,
     pub(crate) options: FindOptions,
     pub(crate) folder: FolderSearch,
+    /// Find in Projects: the project panels whose files are searched.
+    pub(crate) project_panels: [bool; 3],
     /// Set while Find in Files or Replace in Files runs; setting the flag stops it.
     pub(crate) files_running: Option<Arc<AtomicBool>>,
     /// A message from the last search, and whether it is a failure.
@@ -285,6 +370,7 @@ impl FindBar {
                 hidden: remembered.hidden,
                 follow_current_document: remembered.follow_current_document,
             },
+            project_panels: [true; 3],
             files_running: None,
             status: None,
             focus_handle: cx.focus_handle(),
@@ -387,9 +473,12 @@ impl FindBar {
 
     fn set_options(&mut self, change: impl FnOnce(&mut FindOptions), cx: &mut Context<Self>) {
         change(&mut self.options);
-        cx.set_global(ActiveFindOptions(self.options));
+        // Smart highlighting may follow the case and whole-word options.
+        cx.set_global(birchpad_editor::ActiveFindOptions {
+            match_case: self.options.match_case,
+            whole_word: self.options.whole_word,
+        });
         cx.notify();
-        // Smart highlighting may follow these options.
         cx.refresh_windows();
     }
 
@@ -411,6 +500,26 @@ impl FindBar {
                 let checked = *checked;
                 this.update(cx, |this, cx| this.set_options(|o| set(o, checked), cx))
                     .ok();
+            })
+    }
+
+    /// Find in Projects: whether Project Panel `panel + 1`'s files are searched.
+    fn project_box(&self, panel: usize, cx: &Context<Self>) -> Checkbox {
+        const IDS: [&str; 3] = ["project-panel-1", "project-panel-2", "project-panel-3"];
+        let this = cx.entity().downgrade();
+        let id = IDS[panel];
+        Checkbox::new(id)
+            .label(t!("find.project-panel", number = panel + 1))
+            .checked(self.project_panels[panel])
+            .small()
+            .debug_selector(move || id.to_owned())
+            .on_click(move |checked, _, cx| {
+                let checked = *checked;
+                this.update(cx, |this, cx| {
+                    this.project_panels[panel] = checked;
+                    cx.notify();
+                })
+                .ok();
             })
     }
 
@@ -482,6 +591,11 @@ impl Render for FindBar {
             )
             .child(
                 Tab::new()
+                    .label(t!("find.find-in-projects"))
+                    .debug_selector(|| "tab-find-in-projects".into()),
+            )
+            .child(
+                Tab::new()
                     .label(t!("find.mark"))
                     .debug_selector(|| "tab-mark".into()),
             )
@@ -518,7 +632,7 @@ impl Render for FindBar {
             FindTab::Replace => vec![button("find-next", "Find Next", || {
                 FindBarEvent::Find(Direction::Forward)
             })],
-            FindTab::FindInFiles if self.files_running.is_some() => {
+            FindTab::FindInFiles | FindTab::FindInProjects if self.files_running.is_some() => {
                 vec![button("stop-files", "Stop", || FindBarEvent::StopFiles)]
             }
             FindTab::FindInFiles => vec![
@@ -527,6 +641,9 @@ impl Render for FindBar {
                     FindBarEvent::ReplaceInFiles
                 }),
             ],
+            FindTab::FindInProjects => vec![button("find-in-projects", "Find All", || {
+                FindBarEvent::FindInProjects
+            })],
             FindTab::Mark => vec![
                 button("mark-all", "Mark All", || FindBarEvent::MarkAll),
                 button("clear-marks", "Clear All Marks", || {
@@ -624,6 +741,11 @@ impl Render for FindBar {
                 cx,
             ),
         ];
+        if tab == FindTab::FindInProjects {
+            for panel in 0..3 {
+                boxes.push(self.project_box(panel, cx));
+            }
+        }
         if tab == FindTab::FindInFiles {
             boxes.push(self.folder_box(
                 "subfolders",
@@ -656,7 +778,7 @@ impl Render for FindBar {
                 cx,
             ));
         }
-        if tab != FindTab::FindInFiles {
+        if !matches!(tab, FindTab::FindInFiles | FindTab::FindInProjects) {
             boxes.push(self.option_box(
                 "in-selection",
                 "In selection",
@@ -841,6 +963,7 @@ impl Workspace {
             FindBarEvent::ClearMarks => self.clear_marks(cx),
             FindBarEvent::CopyMarked => self.copy_marked(cx),
             FindBarEvent::FindInFiles => self.find_in_files(window, cx),
+            FindBarEvent::FindInProjects => self.find_in_projects(cx),
             FindBarEvent::ReplaceInFiles => self.replace_in_files(window, cx),
             FindBarEvent::StopFiles => self.find_bar.update(cx, |bar, cx| bar.stop_files(cx)),
             FindBarEvent::BrowseFolder => self.browse_folder(window, cx),
@@ -860,7 +983,7 @@ impl Workspace {
         match Searcher::new(&query) {
             Ok(searcher) => Some((searcher, query)),
             Err(error) => {
-                let error = crate::i18n::tr_text(&error.to_string());
+                let error = error.to_string();
                 self.report(Some(format!("{}: {error}", t!("find.find"))), true, cx);
                 None
             }
@@ -871,7 +994,7 @@ impl Workspace {
     pub(crate) fn report_failure(&mut self, searcher: &Searcher, cx: &mut Context<Self>) -> bool {
         match searcher.failure() {
             Some(error) => {
-                let error = crate::i18n::tr_text(&error.to_string());
+                let error = error.to_string();
                 self.report(Some(format!("{}: {error}", t!("find.find"))), true, cx);
                 true
             }
@@ -904,7 +1027,62 @@ impl Workspace {
         let Some((searcher, query)) = self.searcher(cx) else {
             return;
         };
+        self.record_search("search.find-text", direction, None, false, cx);
+        let wrap_around = self.find_bar.read(cx).options.wrap_around;
+        self.find_with(&view, &searcher, &query, wrap_around, direction, cx);
+    }
+
+    /// Find (Volatile) Next / Previous (Ctrl+Alt+F3 / Ctrl+Alt+Shift+F3): as Select and Find,
+    /// but the find panel keeps its own search text.
+    fn find_volatile(&mut self, direction: Direction, cx: &mut Context<Self>) {
+        let Some(view) = self.active_view(cx) else {
+            return;
+        };
+        let (token, selected, word) = {
+            let view = view.read(cx);
+            let range = view.selection.primary();
+            let text = view.text(cx);
+            let Some(token) = token_at(text, range.from()..range.to()) else {
+                return;
+            };
+            (
+                text.slice(token.clone()).to_string(),
+                token,
+                range.is_empty(),
+            )
+        };
+        if token.contains(['\n', '\r']) {
+            return;
+        }
         let options = self.find_bar.read(cx).options;
+        let query = Query {
+            pattern: token,
+            match_case: options.match_case,
+            whole_word: word || options.whole_word,
+            mode: SearchMode::Normal,
+            dot_matches_newline: false,
+        };
+        let Ok(searcher) = Searcher::new(&query) else {
+            return;
+        };
+        view.update(cx, |view, cx| view.select_range(selected, cx));
+        self.find_with(&view, &searcher, &query, options.wrap_around, direction, cx);
+    }
+
+    /// Selects the next (or previous) match of `searcher` from the selection of `view`.
+    fn find_with(
+        &mut self,
+        view: &Entity<EditorView>,
+        searcher: &Searcher,
+        query: &Query,
+        wrap_around: bool,
+        direction: Direction,
+        cx: &mut Context<Self>,
+    ) {
+        let options = FindOptions {
+            wrap_around,
+            ..FindOptions::default()
+        };
         let (text, selection) = {
             let view = view.read(cx);
             let range = view.selection.primary();
@@ -965,7 +1143,7 @@ impl Workspace {
                 view.update(cx, |view, cx| view.select_range(found, cx));
             }
             None => {
-                if !self.report_failure(&searcher, cx) {
+                if !self.report_failure(searcher, cx) {
                     self.report(Some(t!("find.not-found", text = query.pattern)), true, cx);
                 }
             }
@@ -1189,6 +1367,20 @@ impl Workspace {
             return;
         };
         let template = self.find_bar.read(cx).replacement(cx);
+        self.record_search(
+            "search.replace-text",
+            Direction::Forward,
+            Some(&template),
+            false,
+            cx,
+        );
+        // The Find Next that follows is part of it.
+        let recording = cx
+            .try_global::<crate::macros::Macros>()
+            .is_some_and(crate::macros::Macros::is_recording);
+        if recording {
+            crate::macros::pause(true, cx);
+        }
         let (text, selected) = {
             let view = view.read(cx);
             let range = view.selection.primary();
@@ -1210,11 +1402,81 @@ impl Workspace {
                 applied
             });
             if !applied {
+                if recording {
+                    crate::macros::pause(false, cx);
+                }
                 self.report(Some(t!("find.the-document-is-read-only")), true, cx);
                 return;
             }
         }
         self.find(Direction::Forward, window, cx);
+        if recording {
+            crate::macros::pause(false, cx);
+        }
+    }
+
+    /// Notes a search, with the find panel's text and options, if a macro is being recorded.
+    fn record_search(
+        &mut self,
+        command: &str,
+        direction: Direction,
+        replacement: Option<&str>,
+        all: bool,
+        cx: &mut Context<Self>,
+    ) {
+        let bar = self.find_bar.read(cx);
+        let options = bar.options;
+        let args = SearchArgs {
+            text: bar.find_input.read(cx).value().to_string(),
+            match_case: options.match_case,
+            whole_word: options.whole_word,
+            mode: mode_name(options.mode).to_owned(),
+            dot_all: options.dot_matches_newline,
+            backward: direction == Direction::Backward,
+            wrap: options.wrap_around,
+            with: replacement.map(str::to_owned),
+            all,
+        };
+        let args = serde_json::to_value(args).expect("search arguments serialize");
+        crate::macros::record_always(&Invocation::with_args(command, args), cx);
+    }
+
+    /// A recorded search: the find panel takes its text and options, as if they were typed.
+    fn take_search(
+        &mut self,
+        args: &SearchArgs,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Result<()> {
+        let mode = match args.mode.as_str() {
+            "normal" => SearchMode::Normal,
+            "extended" => SearchMode::Extended,
+            "regex" => SearchMode::Regex,
+            other => bail!("{}", t!("find.unknown-search-mode", mode = other)),
+        };
+        let text = args.text.clone();
+        let with = args.with.clone();
+        self.find_bar.update(cx, |bar, cx| {
+            bar.find_input
+                .update(cx, |input, cx| input.set_value(text, window, cx));
+            if let Some(with) = with {
+                bar.replace_input
+                    .update(cx, |input, cx| input.set_value(with, window, cx));
+            }
+            let (match_case, whole_word, dot_all, wrap) =
+                (args.match_case, args.whole_word, args.dot_all, args.wrap);
+            bar.set_options(
+                |options| {
+                    options.match_case = match_case;
+                    options.whole_word = whole_word;
+                    options.mode = mode;
+                    options.dot_matches_newline = dot_all;
+                    options.wrap_around = wrap;
+                },
+                cx,
+            );
+        });
+        Ok(())
     }
 
     /// The edits of Replace All in `view` (in its scope), and how many there are.
@@ -1240,7 +1502,7 @@ impl Workspace {
     }
 
     /// Replace All: every match in the document or the selection, as one undo step.
-    fn replace_all(&mut self, _: &mut Window, cx: &mut Context<Self>) {
+    pub(crate) fn replace_all(&mut self, _: &mut Window, cx: &mut Context<Self>) {
         let Some(view) = self.active_view(cx) else {
             return;
         };
@@ -1248,6 +1510,13 @@ impl Workspace {
             return;
         };
         let template = self.find_bar.read(cx).replacement(cx);
+        self.record_search(
+            "search.replace-text",
+            Direction::Forward,
+            Some(&template),
+            true,
+            cx,
+        );
         let scope = self.scope(&view, cx);
         let edits = self.replace_all_edits(&searcher, &template, &view, scope.range.clone(), cx);
         if self.report_failure(&searcher, cx) {
@@ -1456,33 +1725,6 @@ impl Workspace {
     }
 }
 
-/// Go To: a line number (1-based) or a byte offset (0-based, Notepad++'s "position").
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum GoToTarget {
-    Line(usize),
-    Offset(usize),
-}
-
-/// Where Go To puts the caret; out-of-range values go to the last line or the end.
-pub(crate) fn go_to_position(text: &Rope, target: GoToTarget) -> usize {
-    match target {
-        GoToTarget::Line(line) => {
-            let line = line.clamp(1, line_count(text)) - 1;
-            line_range(text, line).start
-        }
-        GoToTarget::Offset(offset) => {
-            let offset = text.floor_char_boundary(offset.min(text.len()));
-            // Not between the CR and LF of a line break.
-            if offset > 0 && text.byte(offset - 1) == b'\r' && text.get_byte(offset) == Some(b'\n')
-            {
-                offset - 1
-            } else {
-                offset
-            }
-        }
-    }
-}
-
 struct GoTo {
     view: Entity<EditorView>,
     by_offset: bool,
@@ -1507,15 +1749,15 @@ impl GoTo {
             .parse()
             .map_err(|_| anyhow!("{}", t!("find.type-a-number")))?;
         let target = if self.by_offset {
-            GoToTarget::Offset(number)
+            birchpad_core::motion::GoToTarget::Offset(number)
         } else {
             if number == 0 {
                 bail!("{}", t!("find.lines-are-numbered-from-1"));
             }
-            GoToTarget::Line(number)
+            birchpad_core::motion::GoToTarget::Line(number)
         };
         let text = self.view.read(cx).text(cx).clone();
-        let pos = go_to_position(&text, target);
+        let pos = birchpad_core::motion::go_to_position(&text, target);
         self.view.update(cx, |view, cx| view.go_to(pos, cx));
         Ok(())
     }
@@ -1918,24 +2160,5 @@ mod tests {
         );
         cx.simulate_keystrokes("shift-f4");
         assert_eq!(active(cx), ("new 1".to_owned(), 8, 11));
-    }
-
-    #[test]
-    fn go_to_clamps_like_notepad_plus_plus() {
-        let text = Rope::from_str("one\r\ntwo\nthree");
-        assert_eq!(go_to_position(&text, GoToTarget::Line(2)), 5);
-        assert_eq!(go_to_position(&text, GoToTarget::Line(99)), 9);
-        assert_eq!(
-            go_to_position(&text, GoToTarget::Offset(4)),
-            3,
-            "not inside CRLF"
-        );
-        assert_eq!(go_to_position(&text, GoToTarget::Offset(999)), text.len());
-        let cyrillic = Rope::from_str("жж");
-        assert_eq!(
-            go_to_position(&cyrillic, GoToTarget::Offset(1)),
-            0,
-            "char boundary"
-        );
     }
 }

@@ -10,6 +10,32 @@ use gpui_kit::component::dialog::DialogFooter;
 use gpui_kit::component::input::{Input, InputState};
 use gpui_kit::{AppContext as _, AsyncWindowContext, PathPromptOptions, Window, prelude::*};
 
+#[cfg(test)]
+thread_local! {
+    /// Tests: the system's dialogs are not available, as on Linux without a portal.
+    pub(crate) static NO_SYSTEM_DIALOG: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+/// Why the system's dialogs are not there, before asking them; on a desktop they always are,
+/// and only their answer says otherwise.
+fn unavailable() -> Option<anyhow::Error> {
+    #[cfg(test)]
+    if NO_SYSTEM_DIALOG.get() {
+        return Some(anyhow::anyhow!("no desktop portal"));
+    }
+    None
+}
+
+/// The system dialog's answer, unless it is not available.
+async fn answer<T>(
+    platform: oneshot::Receiver<anyhow::Result<T>>,
+) -> Result<anyhow::Result<T>, oneshot::Canceled> {
+    match unavailable() {
+        Some(error) => Ok(Err(error)),
+        None => platform.await,
+    }
+}
+
 /// Asks for files to open. `None` if the user cancelled.
 pub(crate) async fn ask_open(
     directory: PathBuf,
@@ -25,7 +51,7 @@ pub(crate) async fn ask_open(
             })
         })
         .ok()?;
-    match platform.await {
+    match answer(platform).await {
         Ok(Ok(paths)) => paths,
         Ok(Err(error)) => {
             eprintln!("the system's file dialog is not available: {error:#}");
@@ -48,7 +74,7 @@ pub(crate) async fn ask_folder(directory: PathBuf, cx: &mut AsyncWindowContext) 
             })
         })
         .ok()?;
-    match platform.await {
+    match answer(platform).await {
         Ok(Ok(paths)) => paths?.into_iter().next(),
         Ok(Err(error)) => {
             eprintln!("the system's folder dialog is not available: {error:#}");
@@ -67,7 +93,7 @@ pub(crate) async fn ask_save(
     let platform = cx
         .update(|_, cx| cx.prompt_for_new_path(&directory, Some(&suggested_name)))
         .ok()?;
-    match platform.await {
+    match answer(platform).await {
         Ok(Ok(path)) => path,
         Ok(Err(error)) => {
             eprintln!("the system's file dialog is not available: {error:#}");
@@ -261,5 +287,62 @@ mod tests {
             receiver.try_recv().unwrap(),
             Some(Some("D:/b.txt".to_owned()))
         );
+    }
+
+    /// Without the system's dialogs, the in-app one asks: for files to open, a place to save,
+    /// a folder.
+    #[gpui_kit::test]
+    fn without_the_system_dialogs_the_path_is_typed(cx: &mut TestAppContext) {
+        let (workspace, cx) = open_workspace(cx);
+        NO_SYSTEM_DIALOG.set(true);
+        let dir = tempfile::tempdir().unwrap();
+        let notes = dir.path().join("notes.txt");
+        std::fs::write(&notes, "kept").unwrap();
+        let run = |command: &str, cx: &mut VisualTestContext| {
+            let invocation = birchpad_commands::Invocation::new(command);
+            workspace
+                .update_in(cx, |workspace, window, cx| {
+                    workspace.dispatch(&invocation, window, cx)
+                })
+                .unwrap();
+            cx.run_until_parked();
+        };
+
+        run("file.open", cx);
+        assert!(cx.update(|window, cx| window.has_active_dialog(cx)));
+        cx.simulate_input(&notes.display().to_string());
+        cx.simulate_keystrokes("enter");
+        assert_eq!(crate::workspace::tests::active_text(&workspace, cx), "kept");
+
+        run("file.new", cx);
+        cx.simulate_input("new text");
+        let saved = dir.path().join("saved.txt");
+        run("file.save-as", cx);
+        cx.simulate_input(&saved.display().to_string());
+        cx.simulate_keystrokes("enter");
+        assert_eq!(std::fs::read_to_string(&saved).unwrap(), "new text");
+
+        // Cancelled: nothing is opened.
+        let tabs = crate::workspace::tests::tab_names(&workspace, cx).len();
+        run("file.open", cx);
+        cx.simulate_keystrokes("escape");
+        assert_eq!(
+            crate::workspace::tests::tab_names(&workspace, cx).len(),
+            tabs
+        );
+
+        // The folder of Find in Files.
+        workspace.update_in(cx, |workspace, window, cx| {
+            workspace.browse_folder(window, cx)
+        });
+        cx.run_until_parked();
+        assert!(cx.update(|window, cx| window.has_active_dialog(cx)));
+        cx.simulate_input(&dir.path().display().to_string());
+        cx.simulate_keystrokes("enter");
+        let typed = workspace.read_with(cx, |workspace, cx| {
+            workspace.find_bar.read(cx).directory(cx)
+        });
+        assert_eq!(typed, dir.path().display().to_string());
+        NO_SYSTEM_DIALOG.set(false);
     }
 }

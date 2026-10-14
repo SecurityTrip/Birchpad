@@ -14,24 +14,28 @@ birchpad-cli.workspace = true
 birchpad-commands.workspace = true
 birchpad-config.workspace = true
 birchpad-core.workspace = true
+birchpad-editor.workspace = true
+birchpad-i18n.workspace = true
 birchpad-io.workspace = true
 birchpad-menu-bar.workspace = true
 birchpad-plugin.workspace = true
 birchpad-syntax.workspace = true
 birchpad-theme.workspace = true
 birchpad-tools.workspace = true
+birchpad-ui.workspace = true
 birchpad-update = { workspace = true, features = ["installer"] }
 birchpad-view.workspace = true
+chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
 futures = "0.3"
 gpui-kit = "0.7"
+raw-window-handle = "0.6"
 semver = "1"
 serde.workspace = true
 serde_json.workspace = true
 sys-locale = "0.3"
-unicode-bidi = "0.3"
-yaml-rust2 = "0.13"
 notify = "8"
 toml.workspace = true
+trash = "5"
 
 [features]
 # Runs the script named by BIRCHPAD_E2E_SCRIPT once started, for the end-to-end tests
@@ -43,6 +47,10 @@ e2e = []
 embed-resource = "3"
 
 [dev-dependencies]
+birchpad-editor = { workspace = true, features = ["test-support"] }
+birchpad-ui = { workspace = true, features = ["test-support"] }
+# Tests switch the language each in its own thread.
+birchpad-i18n = { workspace = true, features = ["per-thread"] }
 gpui-kit = { version = "0.7", features = ["test-support"] }
 # The map type of GPUI's keyboard mapper trait, for a test mapper.
 rustc-hash = "2"
@@ -50,3 +58,20 @@ tempfile = "3"
 
 [lints]
 workspace = true
+
+# View > Always on Top, Edit > Paste Special > Paste HTML/RTF Content: the platforms' own calls.
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61", features = [
+    "Win32_Foundation",
+    "Win32_System_DataExchange",
+    "Win32_System_Memory",
+    "Win32_UI_WindowsAndMessaging",
+] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "0.6"
+objc2-app-kit = { version = "0.3", features = ["NSPasteboard", "NSResponder", "NSView", "NSWindow"] }
+objc2-foundation = { version = "0.3", features = ["NSString"] }
+
+[target.'cfg(all(unix, not(target_os = "macos")))'.dependencies]
+x11rb = "0.13"

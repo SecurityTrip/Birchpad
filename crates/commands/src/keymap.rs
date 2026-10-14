@@ -40,6 +40,8 @@ pub struct Binding {
     pub context: Option<String>,
     pub invocation: Invocation,
     pub layer: Layer,
+    /// The platforms the binding is limited to (`windows`, `linux`, `macos`); `None` for all.
+    pub platforms: Option<Vec<String>>,
 }
 
 impl Binding {
@@ -255,6 +257,7 @@ impl Keymap {
         };
         let binding = Binding {
             keys,
+            platforms: raw.platforms.clone(),
             context: raw.context,
             invocation: Invocation {
                 command: command.to_owned(),
@@ -384,7 +387,15 @@ mod tests {
         );
         assert_eq!(
             command_for(&windows, "ctrl-tab", &editor),
+            Some("view.switch-document")
+        );
+        assert_eq!(
+            command_for(&windows, "ctrl-pagedown", &editor),
             Some("view.next-tab")
+        );
+        assert_eq!(
+            command_for(&windows, "ctrl-shift-pagedown", &editor),
+            Some("view.move-tab-forward")
         );
         // Editing keys only apply inside an editor.
         assert_eq!(command_for(&windows, "ctrl-z", &["Workspace"]), None);

@@ -5,6 +5,7 @@
 //! are drawn as one-cell pictures. Rows, word wrap and horizontal positions are computed in
 //! cells here; the UI only converts cells to pixels and shapes the text of visible rows.
 
+mod bidi;
 mod block;
 mod cells;
 mod display_map;
@@ -12,6 +13,7 @@ mod folding;
 mod guides;
 mod wrap;
 
+pub use bidi::BidiRow;
 pub use block::{Block, BlockPoint};
 pub use cells::{
     DisplayText, cells_at, char_cells, column_after, control_picture, pos_at_column, tab_advance,

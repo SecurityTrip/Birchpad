@@ -11,25 +11,32 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 #[macro_use]
-mod i18n;
+extern crate birchpad_i18n;
+
 mod app_state;
-mod banner;
-mod buffer;
 mod commands;
 mod compare;
+mod context_menu;
+mod date_time;
+mod default_app;
 mod disk;
 #[cfg(test)]
 mod disk_tests;
 #[cfg(feature = "e2e")]
 mod e2e;
-mod editor;
+mod edit_extras;
+mod editor_hooks;
+#[cfg(test)]
+mod editor_tests;
 mod encoding_ui;
 mod extensions;
+mod file_commands;
 mod file_ops;
 mod find;
 mod find_in_files;
 mod help;
 mod hex_view;
+mod i18n;
 mod incremental;
 mod json_xml;
 #[cfg(test)]
@@ -43,6 +50,7 @@ mod path_dialog;
 mod preferences;
 mod print;
 mod run_menu;
+mod search_extras;
 mod search_results;
 mod session;
 #[cfg(test)]
@@ -54,12 +62,16 @@ mod split_tests;
 mod status_bar;
 mod style_configurator;
 mod themes;
+mod toolbar;
 mod tools;
 mod updates;
 mod user_languages;
+mod view_extras;
+mod window_menu;
+mod window_modes;
 mod workspace;
 
-pub(crate) use editor::theme;
+pub(crate) use birchpad_editor::{self as editor, buffer, theme};
 
 use std::fmt::Write as _;
 
@@ -75,25 +87,55 @@ use crate::workspace::Workspace;
 /// The application's id: the macOS bundle identifier, and the Linux desktop file's name.
 const APP_ID: &str = "io.github.securitytrip.birchpad";
 
-pub(crate) const MONOSPACE: &str = if cfg!(windows) {
-    "Consolas"
-} else if cfg!(target_os = "macos") {
-    "Menlo"
-} else {
-    "DejaVu Sans Mono"
-};
+pub(crate) use birchpad_editor::MONOSPACE;
+
+/// Installed for the user: "Edit with Birchpad" in the Explorer's menu of files.
+fn installed() {
+    if let Ok(exe) = std::env::current_exe()
+        && let Err(error) = birchpad_cli::explorer::add(&exe)
+    {
+        eprintln!("cannot add Edit with Birchpad to the Explorer: {error}");
+    }
+}
+
+/// Updated: "Edit with Birchpad" in the Explorer's menu too, unless the user took it away.
+fn updated() {
+    if let Ok(exe) = std::env::current_exe()
+        && let Err(error) = birchpad_cli::explorer::add_unless_removed(&exe)
+    {
+        eprintln!("cannot add Edit with Birchpad to the Explorer: {error}");
+    }
+}
+
+/// About to be uninstalled: the Explorer's menu loses it, and the text file types Birchpad
+/// registered for go.
+fn uninstalling() {
+    if let Err(error) = birchpad_cli::explorer::remove_for_uninstall() {
+        eprintln!("cannot take Edit with Birchpad from the Explorer: {error}");
+    }
+    if let Err(error) = birchpad_cli::associations::unregister() {
+        eprintln!("cannot take Birchpad's file types away: {error}");
+    }
+}
 
 fn main() {
-    birchpad_update::install::run_hooks();
+    birchpad_update::install::run_hooks(installed, updated, uninstalling);
     let cwd = std::env::current_dir().unwrap_or_default();
     let command_line = CommandLine::parse(std::env::args_os().skip(1), &cwd);
     for warning in &command_line.warnings {
         eprintln!("birchpad: {warning}");
     }
-    let paths = birchpad_config::ConfigPaths::current();
+    let paths = birchpad_config::ConfigPaths::current().following_cloud();
+    let settings = birchpad_config::resolve(birchpad_config::load(&paths));
 
-    // A second launch hands its files to the running instance and exits.
-    let server = match (&paths.user_data, command_line.multi_instance) {
+    // A second launch hands its files to the running instance and exits, unless it asks for
+    // an instance of its own or Preferences > Multi-Instance gives it one.
+    let own_instance = command_line.multi_instance
+        || settings
+            .settings
+            .instances
+            .new_instance(command_line.open_session);
+    let server = match (&paths.user_data, own_instance) {
         (Some(data), false) => {
             match birchpad_cli::start(&Address::for_installation(data), &command_line) {
                 Instance::Secondary => return,
@@ -111,7 +153,6 @@ fn main() {
         .with_assets(gpui_kit::assets::Assets)
         .run(move |cx: &mut App| {
             gpui_kit::init(cx);
-            let settings = birchpad_config::resolve(birchpad_config::load(&paths));
             for diagnostic in &settings.diagnostics {
                 eprintln!("settings ({}): {}", diagnostic.layer, diagnostic.message);
             }
@@ -179,6 +220,9 @@ fn main() {
             })
             .detach();
             updates::start_background_checks(window, workspace.downgrade(), cx);
+            window
+                .update(cx, |_, window, cx| default_app::offer(window, cx))
+                .ok();
             #[cfg(feature = "e2e")]
             e2e::run_script(window, workspace.clone(), cx);
             if let Some(server) = server {

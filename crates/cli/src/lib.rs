@@ -1,7 +1,10 @@
-//! Starting Birchpad: the command line, compatible with Notepad++'s options, and handing it to
-//! an already running instance. No UI dependencies.
+//! Starting Birchpad: the command line, compatible with Notepad++'s options, handing it to an
+//! already running instance, and the Windows Explorer's "Edit with Birchpad". No UI
+//! dependencies.
 
 mod args;
+pub mod associations;
+pub mod explorer;
 mod instance;
 
 pub use args::{CaretTarget, CommandLine};

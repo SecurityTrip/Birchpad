@@ -18,7 +18,7 @@ pub struct Invocation {
 
 /// The arguments of an invocation do not match what the command expects.
 #[derive(Debug, thiserror::Error)]
-#[error("invalid arguments for {command}: {source}")]
+#[error("{}", birchpad_i18n::t!("commands.invalid-arguments", command = .command, reason = .source))]
 pub struct ArgsError {
     pub command: String,
     #[source]

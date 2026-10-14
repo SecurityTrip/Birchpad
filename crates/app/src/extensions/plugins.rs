@@ -16,7 +16,7 @@ use serde::Deserialize;
 use super::PanelOwner;
 use crate::app_state::AppState;
 use crate::buffer::Buffer;
-use crate::commands::CommandRegistry;
+use crate::commands::{CommandRegistry, Register as _};
 use crate::editor::EditorView;
 use crate::workspace::Workspace;
 

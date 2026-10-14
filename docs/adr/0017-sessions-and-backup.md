@@ -84,7 +84,8 @@ macOS Dock bypassed the question and lost the changes (Phase 1).
     folds, language name and read-only flag;
   - unsaved text from Notepad++'s backup copies, in their own encoding.
 
-  Encodings are detected again; tab colors and the document map have no counterpart.
+  Encodings are detected again; the document map has no counterpart. Tab colors and pinned
+  tabs are read since [ADR 0040](0040-tab-bar.md).
 
 ## Consequences
 

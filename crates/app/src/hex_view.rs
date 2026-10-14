@@ -5,12 +5,11 @@
 use std::collections::HashMap;
 
 use anyhow::{Result, anyhow, bail};
-use birchpad_core::{Edit, Rope, Selection, Transaction};
 use birchpad_tools::hex;
 use gpui_kit::{App, Context, Entity, EntityId, Global, WeakEntity, Window};
 
 use crate::buffer::Buffer;
-use crate::commands::CommandRegistry;
+use crate::commands::{CommandRegistry, Register as _};
 use crate::workspace::Workspace;
 
 /// Hex documents and the documents whose bytes they show.
@@ -33,39 +32,6 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
     registry.workspace("hex.apply", |this, (), window, cx| {
         this.apply_hex(window, cx)
     });
-}
-
-/// The edit that turns `old` into `new`, touching only what differs between them.
-pub(crate) fn replace_differing(old: &Rope, new: &str) -> Result<Transaction> {
-    let old_text = old.to_string();
-    let prefix = old_text
-        .char_indices()
-        .zip(new.chars())
-        .find(|((_, a), b)| a != b)
-        .map_or(old_text.len().min(new.len()), |((at, _), _)| at);
-    let prefix = (0..=prefix)
-        .rev()
-        .find(|&at| old_text.is_char_boundary(at) && new.is_char_boundary(at))
-        .unwrap_or(0);
-    let old_rest = &old_text[prefix..];
-    let new_rest = &new[prefix..];
-    let mut suffix = old_rest
-        .bytes()
-        .rev()
-        .zip(new_rest.bytes().rev())
-        .take_while(|(a, b)| a == b)
-        .count();
-    while !old_rest.is_char_boundary(old_rest.len() - suffix)
-        || !new_rest.is_char_boundary(new_rest.len() - suffix)
-    {
-        suffix -= 1;
-    }
-    let range = prefix..old_text.len() - suffix;
-    let inserted = &new_rest[..new_rest.len() - suffix];
-    Ok(
-        Transaction::from_edits(old, [Edit::replace(range.clone(), inserted)])?
-            .with_selection(Selection::point(range.start + inserted.len())),
-    )
 }
 
 impl Workspace {
@@ -141,7 +107,7 @@ impl Workspace {
 
 fn apply_text(view: &Entity<crate::editor::EditorView>, text: &str, cx: &mut App) -> Result<()> {
     view.update(cx, |view, cx| {
-        let transaction = replace_differing(view.text(cx), text)?;
+        let transaction = hex::replace_differing(view.text(cx), text)?;
         if transaction.changes().is_identity() {
             return Ok(());
         }

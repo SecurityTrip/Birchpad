@@ -49,6 +49,8 @@ pub enum Placeholder {
     Scripts,
     /// A submenu for each plugin, with its commands, each invoking `plugin.run`.
     Plugins,
+    /// The documents of the active view, each invoking `view.go-to-tab` (the Window menu).
+    Documents,
 }
 
 impl MenuItem {
@@ -108,33 +110,101 @@ const UNICODE_ENCODINGS: [(&str, &str); 4] = [
     ("utf-16le-bom", "UTF-16 LE BOM"),
 ];
 
+/// View > Tab, as in Notepad++.
+fn tab_items() -> Vec<MenuItem> {
+    const ORDINALS: [&str; 9] = [
+        "1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th", "9th",
+    ];
+    let cmd = MenuItem::command;
+    let mut items: Vec<MenuItem> = ORDINALS
+        .iter()
+        .zip(1..)
+        .map(|(ordinal, index)| {
+            MenuItem::command_with(
+                "view.go-to-tab",
+                json!({ "index": index }),
+                &format!("{ordinal} Tab"),
+            )
+        })
+        .collect();
+    items.extend([
+        cmd("view.last-tab"),
+        cmd("view.next-tab"),
+        cmd("view.previous-tab"),
+        MenuItem::Separator,
+        cmd("view.move-tab-forward"),
+        cmd("view.move-tab-backward"),
+        cmd("view.move-tab-to-start"),
+        cmd("view.move-tab-to-end"),
+        MenuItem::Separator,
+        cmd("view.pin-tab"),
+        MenuItem::Separator,
+    ]);
+    items.extend((1..=5).map(|color| {
+        MenuItem::command_with(
+            "view.tab-color",
+            json!({ "color": color }),
+            &format!("Apply Color {color}"),
+        )
+    }));
+    items.push(cmd("view.remove-tab-color"));
+    items
+}
+
 /// File, Edit, Search, View, Encoding and Help, laid out like Notepad++'s menus.
 pub fn main_menu() -> Vec<Menu> {
     use MenuItem::{Placeholder as Dynamic, Separator, Submenu};
     let cmd = MenuItem::command;
 
+    let folder = |target: &str, label: &str| {
+        MenuItem::command_with("file.containing-folder", json!({ "in": target }), label)
+    };
     let file = Menu::new(
         "File",
         vec![
             cmd("file.new"),
             cmd("file.open"),
+            Submenu(Menu::new(
+                "Open Containing Folder",
+                vec![
+                    folder("file-manager", "File Manager"),
+                    folder("terminal", "Terminal"),
+                    folder("workspace", "Folder as Workspace"),
+                ],
+            )),
+            cmd("file.open-default-viewer"),
             cmd("file.open-folder-as-workspace"),
+            cmd("file.reload"),
             Submenu(Menu::new(
                 "Recent Files",
                 vec![
                     Dynamic(Placeholder::RecentFiles),
                     Separator,
+                    cmd("file.restore-recent-closed"),
+                    cmd("file.open-all-recent"),
                     cmd("file.clear-recent"),
                 ],
             )),
             Separator,
             cmd("file.save"),
             cmd("file.save-as"),
+            cmd("file.save-copy-as"),
             cmd("file.save-all"),
+            cmd("file.rename"),
             Separator,
             cmd("file.close"),
             cmd("file.close-all"),
-            cmd("file.close-others"),
+            Submenu(Menu::new(
+                "Close Multiple Documents",
+                vec![
+                    cmd("file.close-others"),
+                    cmd("file.close-all-but-pinned"),
+                    cmd("file.close-left"),
+                    cmd("file.close-right"),
+                    cmd("file.close-unchanged"),
+                ],
+            )),
+            cmd("file.move-to-recycle-bin"),
             Separator,
             cmd("file.load-session"),
             cmd("file.save-session"),
@@ -180,6 +250,9 @@ pub fn main_menu() -> Vec<Menu> {
         })
         .collect::<Vec<_>>()
     };
+    let date = |format: &str, label: &str| {
+        MenuItem::command_with("edit.insert-date-time", json!({ "format": format }), label)
+    };
     let edit = Menu::new(
         "Edit",
         vec![
@@ -191,6 +264,45 @@ pub fn main_menu() -> Vec<Menu> {
             cmd("edit.paste"),
             cmd("edit.delete"),
             cmd("edit.select-all"),
+            Submenu(Menu::new(
+                "Copy to Clipboard",
+                vec![
+                    cmd("edit.copy-full-path"),
+                    cmd("edit.copy-file-name"),
+                    cmd("edit.copy-folder-path"),
+                ],
+            )),
+            Submenu(Menu::new(
+                "Insert",
+                vec![
+                    date("short", "Date Time (short)"),
+                    date("long", "Date Time (long)"),
+                    date("custom", "Date Time (customized)"),
+                ],
+            )),
+            Submenu(Menu::new(
+                "Indent",
+                vec![cmd("edit.indent"), cmd("edit.outdent")],
+            )),
+            Submenu(Menu::new(
+                "Paste Special",
+                vec![
+                    cmd("edit.copy-binary"),
+                    cmd("edit.cut-binary"),
+                    cmd("edit.paste-binary"),
+                    Separator,
+                    cmd("edit.paste-html"),
+                    cmd("edit.paste-rtf"),
+                ],
+            )),
+            Submenu(Menu::new(
+                "On Selection",
+                vec![
+                    cmd("edit.open-selected-file"),
+                    cmd("edit.open-selected-folder"),
+                    cmd("edit.search-online"),
+                ],
+            )),
             cmd("edit.begin-end-select"),
             cmd("edit.begin-end-select-column"),
             Separator,
@@ -354,6 +466,9 @@ pub fn main_menu() -> Vec<Menu> {
             cmd("edit.column-editor"),
             cmd("panel.character-panel"),
             cmd("panel.clipboard-history"),
+            Separator,
+            cmd("edit.toggle-read-only"),
+            cmd("edit.clear-read-only-flag"),
         ],
     );
 
@@ -394,14 +509,26 @@ pub fn main_menu() -> Vec<Menu> {
         vec![
             cmd("search.find"),
             cmd("search.find-in-files"),
+            cmd("search.find-in-projects"),
             cmd("search.find-next"),
             cmd("search.find-previous"),
             cmd("search.select-and-find-next"),
             cmd("search.select-and-find-previous"),
+            cmd("search.find-volatile-next"),
+            cmd("search.find-volatile-previous"),
             cmd("search.replace"),
             cmd("search.incremental"),
             Separator,
             cmd("search.mark"),
+            Separator,
+            Submenu(Menu::new(
+                "Change History",
+                vec![
+                    cmd("search.next-change"),
+                    cmd("search.previous-change"),
+                    cmd("search.clear-changes"),
+                ],
+            )),
             Separator,
             cmd("search.results-window"),
             cmd("search.next-result"),
@@ -412,6 +539,7 @@ pub fn main_menu() -> Vec<Menu> {
             cmd("navigate.forward"),
             cmd("search.go-to-matching-brace"),
             cmd("search.select-to-matching-brace"),
+            cmd("search.find-characters-in-range"),
             Separator,
             Submenu(Menu::new(
                 "Style All Occurrences of Token",
@@ -452,9 +580,27 @@ pub fn main_menu() -> Vec<Menu> {
             .collect::<Vec<_>>()
     };
     // In Notepad++'s order.
+    let browser = |name: &str, label: &str| {
+        MenuItem::command_with("view.in-browser", json!({ "browser": name }), label)
+    };
     let view = Menu::new(
         "View",
         vec![
+            cmd("view.always-on-top"),
+            cmd("view.full-screen"),
+            cmd("view.post-it"),
+            cmd("view.distraction-free"),
+            Submenu(Menu::new(
+                "View Current File in",
+                vec![
+                    browser("default", "Default Browser"),
+                    browser("firefox", "Firefox"),
+                    browser("chrome", "Chrome"),
+                    browser("edge", "Edge"),
+                    browser("safari", "Safari"),
+                ],
+            )),
+            Separator,
             Submenu(Menu::new(
                 "Show Symbol",
                 vec![
@@ -479,13 +625,14 @@ pub fn main_menu() -> Vec<Menu> {
                 vec![
                     cmd("view.move-to-other-view"),
                     cmd("view.clone-to-other-view"),
+                    cmd("view.move-to-new-instance"),
+                    cmd("view.open-in-new-instance"),
                 ],
             )),
-            Submenu(Menu::new(
-                "Tab",
-                vec![cmd("view.next-tab"), cmd("view.previous-tab")],
-            )),
+            Submenu(Menu::new("Tab", tab_items())),
             cmd("view.word-wrap"),
+            cmd("view.hide-lines"),
+            cmd("view.show-hidden-lines"),
             cmd("view.focus-other-view"),
             cmd("view.rotate-split"),
             Separator,
@@ -517,6 +664,7 @@ pub fn main_menu() -> Vec<Menu> {
             cmd("panel.document-list"),
             cmd("panel.function-list"),
             Separator,
+            cmd("view.summary"),
             cmd("view.monitoring"),
         ],
     );
@@ -622,14 +770,20 @@ pub fn main_menu() -> Vec<Menu> {
             cmd("macro.save"),
             cmd("macro.run-multiple"),
             Separator,
+            cmd("macro.trim-and-save"),
             Dynamic(Placeholder::Macros),
         ],
     );
 
-    let run = Menu::new(
-        "Run",
-        vec![cmd("run.run"), Separator, Dynamic(Placeholder::RunCommands)],
-    );
+    let run = Menu::new("Run", {
+        let mut items = vec![cmd("run.run"), Separator];
+        items.extend(crate::run::builtin_run_commands().into_iter().map(|entry| {
+            MenuItem::command_with("run.builtin", json!({ "name": entry.name }), &entry.name)
+        }));
+        items.push(Separator);
+        items.push(Dynamic(Placeholder::RunCommands));
+        items
+    });
 
     let settings = Menu::new(
         "Settings",
@@ -637,6 +791,8 @@ pub fn main_menu() -> Vec<Menu> {
             cmd("settings.preferences"),
             cmd("settings.style-configurator"),
             cmd("settings.shortcut-mapper"),
+            cmd("settings.edit-context-menu"),
+            cmd("settings.default-app"),
             Submenu(Menu::new("Theme", vec![Dynamic(Placeholder::Themes)])),
             Submenu(Menu::new("Import", vec![cmd("settings.import-theme")])),
         ],
@@ -717,13 +873,45 @@ pub fn main_menu() -> Vec<Menu> {
         ],
     );
 
+    let sort = |by: &str, descending: bool, label: &str| {
+        MenuItem::command_with(
+            "window.sort",
+            json!({ "by": by, "descending": descending }),
+            label,
+        )
+    };
+    let window = Menu::new(
+        "Window",
+        vec![
+            Submenu(Menu::new(
+                "Sort By",
+                vec![
+                    sort("name", false, "Name A to Z"),
+                    sort("name", true, "Name Z to A"),
+                    sort("path", false, "Path A to Z"),
+                    sort("path", true, "Path Z to A"),
+                    sort("type", false, "Type A to Z"),
+                    sort("type", true, "Type Z to A"),
+                    sort("size", false, "Content Length Ascending"),
+                    sort("size", true, "Content Length Descending"),
+                    sort("modified", false, "Modified Time Ascending"),
+                    sort("modified", true, "Modified Time Descending"),
+                ],
+            )),
+            cmd("window.windows"),
+            Separator,
+            Dynamic(Placeholder::Documents),
+        ],
+    );
+
     let help = Menu::new(
         "Help",
         vec![cmd("help.check-updates"), Separator, cmd("help.about")],
     );
 
     vec![
-        file, edit, search, view, encoding, language, settings, tools, macros, run, plugins, help,
+        file, edit, search, view, encoding, language, settings, tools, macros, run, plugins,
+        window, help,
     ]
 }
 
@@ -738,7 +926,7 @@ mod tests {
             titles,
             [
                 "File", "Edit", "Search", "View", "Encoding", "Language", "Settings", "Tools",
-                "Macro", "Run", "Plugins", "Help"
+                "Macro", "Run", "Plugins", "Window", "Help"
             ]
         );
     }

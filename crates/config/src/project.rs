@@ -44,23 +44,44 @@ pub struct ProjectWorkspace {
 
 #[derive(Debug, thiserror::Error)]
 pub enum ProjectError {
-    #[error("cannot read {}: {source}", path.display())]
+    #[error("{}", birchpad_i18n::t!("config.cannot-read", path = .path.display(), reason = .source))]
     Read {
         path: PathBuf,
         #[source]
         source: io::Error,
     },
-    #[error("cannot write {}: {source}", path.display())]
+    #[error("{}", birchpad_i18n::t!("config.cannot-write", path = .path.display(), reason = .source))]
     Write {
         path: PathBuf,
         #[source]
         source: io::Error,
     },
-    #[error("{} is not a Notepad++ workspace: {reason}", path.display())]
+    #[error("{}", birchpad_i18n::t!("config.not-a-workspace", path = .path.display(), reason = .reason))]
     Format { path: PathBuf, reason: String },
 }
 
 impl ProjectWorkspace {
+    /// Every file of every project, in order, each once (Search > Find in Projects).
+    pub fn files(&self) -> Vec<PathBuf> {
+        fn walk(items: &[ProjectItem], out: &mut Vec<PathBuf>) {
+            for item in items {
+                match item {
+                    ProjectItem::File(path) => {
+                        if !out.contains(path) {
+                            out.push(path.clone());
+                        }
+                    }
+                    ProjectItem::Folder(folder) => walk(&folder.items, out),
+                }
+            }
+        }
+        let mut out = Vec::new();
+        for project in &self.projects {
+            walk(&project.items, &mut out);
+        }
+        out
+    }
+
     /// Reads a workspace written by Notepad++ or Birchpad. Relative file paths are taken
     /// relative to `base`, the workspace file's folder.
     pub fn parse(xml: &str, base: &Path) -> Result<Self, String> {
@@ -397,5 +418,46 @@ mod tests {
                 .contains(r#"name="sub\f.txt""#)
         );
         assert_eq!(ProjectWorkspace::load(&path).unwrap(), workspace);
+    }
+}
+
+#[cfg(test)]
+mod files_tests {
+    use super::*;
+
+    #[test]
+    fn every_file_once_in_order() {
+        let file = |name: &str| ProjectItem::File(PathBuf::from(name));
+        let workspace = ProjectWorkspace {
+            projects: vec![
+                ProjectFolder {
+                    name: "one".into(),
+                    items: vec![
+                        file("/a"),
+                        ProjectItem::Folder(ProjectFolder {
+                            name: "inner".into(),
+                            items: vec![file("/b"), file("/a")],
+                        }),
+                    ],
+                },
+                ProjectFolder {
+                    name: "empty".into(),
+                    items: Vec::new(),
+                },
+                ProjectFolder {
+                    name: "two".into(),
+                    items: vec![file("/c")],
+                },
+            ],
+        };
+        assert_eq!(
+            workspace.files(),
+            [
+                PathBuf::from("/a"),
+                PathBuf::from("/b"),
+                PathBuf::from("/c")
+            ]
+        );
+        assert!(ProjectWorkspace::default().files().is_empty());
     }
 }

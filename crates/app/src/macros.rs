@@ -15,7 +15,7 @@ use gpui_kit::{
 use serde::Deserialize;
 
 use crate::app_state::AppState;
-use crate::commands::CommandRegistry;
+use crate::commands::{CommandRegistry, Register as _};
 use crate::theme::{paint, ui};
 use crate::workspace::{Workspace, report_error};
 
@@ -31,6 +31,8 @@ pub(crate) struct Macros {
     current: Vec<Invocation>,
     /// While a macro plays, what it runs is not recorded.
     playing: bool,
+    /// While a recorded step does more than one thing, the rest is not recorded.
+    paused: bool,
     pub(crate) saved: Vec<Macro>,
 }
 
@@ -76,11 +78,33 @@ pub(crate) fn record(invocation: &Invocation, cx: &mut App) {
         return;
     }
     let macros = cx.global_mut::<Macros>();
-    if macros.playing {
+    if macros.playing || macros.paused {
         return;
     }
     if let Some(steps) = &mut macros.recording {
         birchpad_commands::record(steps, invocation.clone());
+    }
+}
+
+/// Notes `invocation` even if its command is not recorded when it runs (searches, recorded with
+/// their text and options).
+pub(crate) fn record_always(invocation: &Invocation, cx: &mut App) {
+    if !cx.has_global::<Macros>() {
+        return;
+    }
+    let macros = cx.global_mut::<Macros>();
+    if macros.playing || macros.paused {
+        return;
+    }
+    if let Some(steps) = &mut macros.recording {
+        birchpad_commands::record(steps, invocation.clone());
+    }
+}
+
+/// Stops (or starts again) noting what runs, while a recorded step does several things.
+pub(crate) fn pause(paused: bool, cx: &mut App) {
+    if cx.has_global::<Macros>() {
+        cx.global_mut::<Macros>().paused = paused;
     }
 }
 
@@ -120,6 +144,26 @@ pub(crate) fn save(name: &str, steps: Vec<Invocation>, cx: &mut App) -> Result<(
     }
     if let Some(dir) = path.parent() {
         std::fs::create_dir_all(dir).with_context(|| format!("cannot create {}", dir.display()))?;
+    }
+    std::fs::write(&path, birchpad_commands::write_macros(&saved))
+        .with_context(|| format!("cannot write {}", path.display()))?;
+    macros(cx).saved = saved;
+    Ok(())
+}
+
+/// Deletes the saved macro `name` (Shortcut Mapper > Macros > Delete).
+pub(crate) fn delete(name: &str, cx: &mut App) -> Result<()> {
+    let path = macros_path(cx).ok_or_else(|| {
+        anyhow!(
+            "{}",
+            t!("macros.there-is-no-settings-folder-for-macros-toml")
+        )
+    })?;
+    let mut saved = macros(cx).saved.clone();
+    let before = saved.len();
+    saved.retain(|known| known.name != name);
+    if saved.len() == before {
+        bail!("{}", t!("macros.there-is-no-macro-named", name = name));
     }
     std::fs::write(&path, birchpad_commands::write_macros(&saved))
         .with_context(|| format!("cannot write {}", path.display()))?;
@@ -205,6 +249,12 @@ fn steps_of(name: Option<&str>, cx: &mut App) -> Result<Vec<Invocation>> {
 }
 
 pub(crate) fn register_commands(registry: &mut CommandRegistry) {
+    // Notepad++'s built-in macro: Trim Trailing Space, then Save.
+    registry.workspace("macro.trim-and-save", |this, (), window, cx| {
+        let trim = Invocation::with_args("edit.trim", serde_json::json!({ "which": "trailing" }));
+        this.dispatch(&trim, window, cx)?;
+        this.dispatch(&Invocation::new("file.save"), window, cx)
+    });
     // Ctrl+Shift+R starts recording and, pressed again, stops it, as in Notepad++.
     registry.workspace("macro.start-recording", |this, (), _, cx| {
         let macros = macros(cx);

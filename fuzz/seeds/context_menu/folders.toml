@@ -1,0 +1,12 @@
+[[item]]
+command = "edit.copy"
+label = "Copy"
+folder = "Clipboard"
+
+[[item]]
+separator = true
+folder = "Clipboard"
+
+[[item]]
+command = "edit.paste"
+folder = "Clipboard"

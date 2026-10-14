@@ -97,15 +97,29 @@ struct RunFile {
 
 /// The commands a new `run.toml` starts with, as Notepad++'s Run menu has.
 pub fn default_run_commands() -> Vec<RunEntry> {
+    Vec::new()
+}
+
+/// Notepad++'s own Run menu entries: always there, before the saved ones (`run.builtin`).
+pub fn builtin_run_commands() -> Vec<RunEntry> {
+    let entry = |name: &str, line: &str| RunEntry {
+        name: name.to_owned(),
+        line: line.to_owned(),
+    };
     vec![
-        RunEntry {
-            name: "Wikipedia Search".into(),
-            line: "https://en.wikipedia.org/wiki/Special:Search?search=$(CURRENT_WORD)".into(),
-        },
-        RunEntry {
-            name: "Open File in Another Instance".into(),
-            line: "\"$(NPP_FULL_FILE_PATH)\" \"$(FULL_CURRENT_PATH)\" -multiInst -nosession".into(),
-        },
+        entry("Get PHP Help", "https://www.php.net/$(CURRENT_WORD)"),
+        entry(
+            "Google Search",
+            "https://www.google.com/search?q=$(CURRENT_WORD)",
+        ),
+        entry(
+            "Wikipedia Search",
+            "https://en.wikipedia.org/wiki/Special:Search?search=$(CURRENT_WORD)",
+        ),
+        entry(
+            "Open File in Another Instance",
+            "\"$(NPP_FULL_FILE_PATH)\" \"$(FULL_CURRENT_PATH)\" -multiInst -nosession",
+        ),
     ]
 }
 
@@ -136,6 +150,30 @@ pub fn write_run_commands(commands: &[RunEntry]) -> String {
         commands: commands.to_vec(),
     })
     .expect("run commands serialize")
+}
+
+/// How a command line runs: through `cmd /C` on Windows, `sh -c` elsewhere.
+pub fn shell_command(line: &str) -> std::process::Command {
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt as _;
+        let mut command = std::process::Command::new("cmd");
+        // As typed: cmd reads its own quotes, which the usual escaping of arguments breaks.
+        command.arg("/C").raw_arg(line);
+        command
+    }
+    #[cfg(not(windows))]
+    {
+        let mut command = std::process::Command::new("sh");
+        command.args(["-c", line]);
+        command
+    }
+}
+
+/// Whether a command line is a web address, opened in the browser.
+pub fn is_url(line: &str) -> bool {
+    let lower = line.trim_start().to_ascii_lowercase();
+    lower.starts_with("http://") || lower.starts_with("https://")
 }
 
 #[cfg(test)]
@@ -219,7 +257,12 @@ mod tests {
 
     #[test]
     fn run_commands_round_trip() {
-        let commands = default_run_commands();
+        assert!(
+            default_run_commands().is_empty(),
+            "the built-in ones are not saved"
+        );
+        let commands = builtin_run_commands();
+        assert_eq!(commands.len(), 4);
         assert_eq!(
             parse_run_commands(&write_run_commands(&commands)).unwrap(),
             commands
@@ -234,5 +277,50 @@ mod tests {
         ] {
             assert!(parse_run_commands(bad).is_err(), "{bad}");
         }
+    }
+
+    #[test]
+    fn urls_and_shell_lines() {
+        for line in ["https://example.com", "  HTTP://x", "https://", "http://"] {
+            assert!(is_url(line), "{line}");
+        }
+        for line in [
+            "",
+            "   ",
+            "notepad.exe",
+            "ftp://x",
+            "start https://x",
+            "http:/x",
+            "https:",
+        ] {
+            assert!(!is_url(line), "{line}");
+        }
+        let command = shell_command("echo hi");
+        let args: Vec<_> = command
+            .get_args()
+            .map(|arg| arg.to_string_lossy().into_owned())
+            .collect();
+        if cfg!(windows) {
+            assert_eq!(command.get_program(), "cmd");
+            assert_eq!(args, ["/C", "echo hi"]);
+        } else {
+            assert_eq!(command.get_program(), "sh");
+            assert_eq!(args, ["-c", "echo hi"]);
+        }
+    }
+
+    #[test]
+    fn a_line_runs_as_typed() {
+        // Quotes and the shell's own characters reach the shell untouched.
+        let line = r#"echo "a b" & echo 'c' | more"#;
+        let command = shell_command(line);
+        let last = command
+            .get_args()
+            .last()
+            .unwrap()
+            .to_string_lossy()
+            .into_owned();
+        assert_eq!(last, line);
+        assert_eq!(shell_command("").get_args().count(), 2, "an empty line too");
     }
 }

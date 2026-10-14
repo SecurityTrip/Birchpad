@@ -119,7 +119,12 @@ pub fn resolve(sources: Sources) -> ResolvedSettings {
         }
     }
 
-    let settings = merged.try_into().expect("every merged key was validated");
+    let mut settings: Settings = merged.try_into().expect("every merged key was validated");
+    // A language with nothing of its own (only unknown keys under it) is no language entry: it
+    // would not survive being written out and read again.
+    settings
+        .languages
+        .retain(|_, own| own.tab_width.is_some() || own.insert_spaces.is_some());
     ResolvedSettings {
         settings,
         diagnostics,
@@ -174,6 +179,27 @@ mod tests {
 
     fn table(toml: &str) -> Option<Table> {
         Some(toml::from_str(toml).unwrap())
+    }
+
+    #[test]
+    fn a_language_with_nothing_of_its_own_is_dropped() {
+        let resolved = resolve(Sources {
+            user: table(
+                "[languages.python]\ntab-widt = -1\n[languages.rust]\ntab-width = 2\n\
+                 [languages.go]\ninsert-spaces = false\n",
+            ),
+            ..Sources::default()
+        });
+        let ids: Vec<&String> = resolved.settings.languages.keys().collect();
+        assert_eq!(ids, ["go", "rust"], "python has only an unknown key");
+        // Written out and read again, the same.
+        let written = Table::try_from(&resolved.settings).unwrap();
+        let again = resolve(Sources {
+            user: Some(written),
+            ..Sources::default()
+        });
+        assert_eq!(again.settings, resolved.settings);
+        assert!(resolve(Sources::default()).settings.languages.is_empty());
     }
 
     #[test]
@@ -292,6 +318,109 @@ mod tests {
         assert!(!session.backup_unsaved);
         assert_eq!(session.backup_interval_seconds, 30);
         assert!(resolved.is_locked("session.backup-unsaved"));
+    }
+
+    #[test]
+    fn languages_new_documents_and_files() {
+        use crate::settings::{BackupOnSave, DefaultDirectory};
+        let resolved = resolve(Sources {
+            user: table(
+                "languages.python.tab-width = 4\nlanguages.makefile.insert-spaces = false\n\
+                 new-document.encoding = 'utf-8-bom'\nfiles.backup-on-save = 'verbose'\n\
+                 files.default-directory = 'remember'\nlanguages.rust.tab-width = 'x'",
+            ),
+            ..Sources::default()
+        });
+        let settings = &resolved.settings;
+        assert_eq!(settings.languages["python"].tab_width, Some(4));
+        assert_eq!(settings.languages["makefile"].insert_spaces, Some(false));
+        assert_eq!(settings.new_document.encoding, "utf-8-bom");
+        assert_eq!(settings.new_document.line_ending, "system", "default");
+        assert_eq!(settings.files.backup_on_save, BackupOnSave::Verbose);
+        assert_eq!(settings.files.default_directory, DefaultDirectory::Remember);
+        assert!(!settings.session.remember_inaccessible);
+        assert!(!settings.tabs.exit_on_last_close);
+        assert_eq!(resolved.diagnostics.len(), 1, "{:?}", resolved.diagnostics);
+        assert!(crate::check_setting("languages.go.tab-width", &toml::Value::Integer(8)).is_ok());
+        assert!(crate::check_setting("languages.go.width", &toml::Value::Integer(8)).is_err());
+        assert!(crate::check_setting("languages..tab-width", &toml::Value::Integer(8)).is_err());
+    }
+
+    #[test]
+    fn tab_settings() {
+        let defaults = resolve(Sources::default()).settings.tabs;
+        assert!(defaults.close_button && defaults.peeker, "as in Notepad++");
+        assert!(
+            defaults.switcher && defaults.switcher_mru,
+            "as in Notepad++"
+        );
+        assert!(!defaults.vertical && !defaults.multi_line && !defaults.reduce);
+        assert!(!defaults.lock && !defaults.double_click_close);
+
+        let resolved = resolve(Sources {
+            user: table(
+                "tabs.vertical = true\ntabs.double-click-close = true\ntabs.lock = 'yes'\n\
+                 tabs.switcher-mru = false",
+            ),
+            policy: table("tabs.close-button = false"),
+            ..Sources::default()
+        });
+        let tabs = &resolved.settings.tabs;
+        assert!(tabs.vertical && tabs.double_click_close && !tabs.switcher_mru);
+        assert!(!tabs.lock, "a value of the wrong type keeps the default");
+        assert!(!tabs.close_button);
+        assert!(resolved.is_locked("tabs.close-button"));
+        assert_eq!(resolved.diagnostics.len(), 1);
+        assert_eq!(resolved.diagnostics[0].key.as_deref(), Some("tabs.lock"));
+    }
+
+    #[test]
+    fn toolbar_settings() {
+        use crate::settings::{DEFAULT_TOOLBAR, ToolbarSize};
+        let default = resolve(Sources::default()).settings.toolbar;
+        assert!(default.show);
+        assert_eq!(default.size, ToolbarSize::Small);
+        assert_eq!(default.buttons, DEFAULT_TOOLBAR);
+        let resolved = resolve(Sources {
+            user: table(
+                "toolbar.size = 'large'
+toolbar.buttons = ['file.new', '|', 'no.such']
+                 toolbar.show = 1",
+            ),
+            ..Sources::default()
+        });
+        let toolbar = &resolved.settings.toolbar;
+        assert_eq!(toolbar.size, ToolbarSize::Large);
+        assert_eq!(toolbar.buttons, ["file.new", "|", "no.such"]);
+        assert!(toolbar.show, "a value of the wrong type keeps the default");
+        assert_eq!(resolved.diagnostics.len(), 1);
+        // No buttons at all is a toolbar without buttons.
+        let empty = resolve(Sources {
+            user: table("toolbar.buttons = []"),
+            ..Sources::default()
+        });
+        assert!(empty.settings.toolbar.buttons.is_empty());
+    }
+
+    #[test]
+    fn instance_settings() {
+        use crate::settings::InstanceMode;
+        let instances = |toml: &str| {
+            resolve(Sources {
+                user: table(toml),
+                ..Sources::default()
+            })
+        };
+        let default = instances("").settings.instances;
+        assert_eq!(default.mode, InstanceMode::Single);
+        assert!(!default.new_instance(false) && !default.new_instance(true));
+        let session = instances("instances.mode = 'session'").settings.instances;
+        assert!(!session.new_instance(false) && session.new_instance(true));
+        let multi = instances("instances.mode = 'multi'").settings.instances;
+        assert!(multi.new_instance(false) && multi.new_instance(true));
+        let wrong = instances("instances.mode = 'sometimes'");
+        assert_eq!(wrong.settings.instances.mode, InstanceMode::Single);
+        assert_eq!(wrong.diagnostics.len(), 1);
     }
 
     #[test]

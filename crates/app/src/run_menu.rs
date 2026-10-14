@@ -4,7 +4,7 @@
 //! browser; any other runs through the system's shell, without waiting for it.
 
 use anyhow::{Context as _, Result, anyhow, bail};
-use birchpad_commands::{RunEntry, RunVariables};
+use birchpad_commands::{RunEntry, RunVariables, is_url, shell_command};
 use birchpad_core::motion::{line_of, line_range, word_at};
 use gpui_kit::component::WindowExt as _;
 use gpui_kit::component::button::Button;
@@ -16,7 +16,7 @@ use gpui_kit::{
 use serde::Deserialize;
 
 use crate::app_state::AppState;
-use crate::commands::CommandRegistry;
+use crate::commands::{CommandRegistry, Register as _};
 use crate::theme::{paint, ui};
 use crate::workspace::Workspace;
 
@@ -108,30 +108,6 @@ pub(crate) fn variables(workspace: &Workspace, cx: &App) -> RunVariables {
     vars
 }
 
-/// How a command line runs: through `cmd /C` on Windows, `sh -c` elsewhere.
-pub(crate) fn shell_command(line: &str) -> std::process::Command {
-    #[cfg(windows)]
-    {
-        use std::os::windows::process::CommandExt as _;
-        let mut command = std::process::Command::new("cmd");
-        // As typed: cmd reads its own quotes, which the usual escaping of arguments breaks.
-        command.arg("/C").raw_arg(line);
-        command
-    }
-    #[cfg(not(windows))]
-    {
-        let mut command = std::process::Command::new("sh");
-        command.args(["-c", line]);
-        command
-    }
-}
-
-/// Whether a command line is a web address, opened in the browser.
-pub(crate) fn is_url(line: &str) -> bool {
-    let lower = line.trim_start().to_ascii_lowercase();
-    lower.starts_with("http://") || lower.starts_with("https://")
-}
-
 /// Expands `line` with `vars` and runs it.
 pub(crate) fn launch(line: &str, vars: RunVariables, cx: &mut App) -> Result<()> {
     if line.trim().is_empty() {
@@ -188,6 +164,29 @@ pub(crate) fn save(name: &str, line: &str, cx: &mut App) -> Result<()> {
     Ok(())
 }
 
+/// Deletes the saved command `name` from `run.toml` (Shortcut Mapper > Run > Delete).
+pub(crate) fn delete(name: &str, cx: &mut App) -> Result<()> {
+    let path = run_path(cx).ok_or_else(|| {
+        anyhow!(
+            "{}",
+            t!("run-menu.there-is-no-settings-folder-for-run-toml")
+        )
+    })?;
+    let mut saved = run_menu(cx).saved.clone();
+    let before = saved.len();
+    saved.retain(|known| known.name != name);
+    if saved.len() == before {
+        bail!("{}", t!("run-menu.there-is-no-command-named", name = name));
+    }
+    if let Some(dir) = path.parent() {
+        std::fs::create_dir_all(dir).with_context(|| format!("cannot create {}", dir.display()))?;
+    }
+    std::fs::write(&path, birchpad_commands::write_run_commands(&saved))
+        .with_context(|| format!("cannot write {}", path.display()))?;
+    run_menu(cx).saved = saved;
+    Ok(())
+}
+
 #[derive(Deserialize)]
 struct RunArgs {
     /// The command line; unset asks for it.
@@ -221,6 +220,28 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
         let vars = variables(this, cx);
         launch(&line, vars, cx)
     });
+    registry.workspace("run.builtin", |this, args: BuiltinArgs, _, cx| {
+        let line = birchpad_commands::builtin_run_commands()
+            .into_iter()
+            .find(|entry| entry.name == args.name)
+            .map(|entry| entry.line)
+            .ok_or_else(|| {
+                anyhow!(
+                    "{}",
+                    t!(
+                        "run-menu.there-is-no-built-in-command-named",
+                        name = args.name
+                    )
+                )
+            })?;
+        let vars = variables(this, cx);
+        launch(&line, vars, cx)
+    });
+}
+
+#[derive(Deserialize)]
+struct BuiltinArgs {
+    name: String,
 }
 
 /// The Run... dialog.

@@ -5,6 +5,8 @@
 //! `1.0` stays `1.0` and `"\u00e9"` stays escaped. Nesting is followed with a stack of its
 //! own, so a deeply nested text cannot overflow the call stack.
 
+use birchpad_i18n::t;
+
 use crate::{Layout, SyntaxError};
 
 /// The deepest nesting accepted; deeper texts are refused rather than formatted.
@@ -153,8 +155,11 @@ fn lex(text: &str) -> Result<Vec<Token>, SyntaxError> {
 
 fn unexpected(text: &str, at: usize) -> SyntaxError {
     match text[at..].chars().next() {
-        Some(found) => SyntaxError::new(at, format!("unexpected {found:?}")),
-        None => SyntaxError::new(at, "unexpected end of the text"),
+        Some(found) => SyntaxError::new(
+            at,
+            t!("tools.json.unexpected", found = format!("{found:?}")),
+        ),
+        None => SyntaxError::new(at, t!("tools.json.unexpected-end")),
     }
 }
 
@@ -164,24 +169,21 @@ fn string_end(text: &str, start: usize) -> Result<usize, SyntaxError> {
     let mut at = start + 1;
     loop {
         match bytes.get(at) {
-            None => return Err(SyntaxError::new(start, "a string is not closed")),
+            None => return Err(SyntaxError::new(start, t!("tools.json.string-not-closed"))),
             Some(b'"') => return Ok(at + 1),
             Some(b'\\') => match bytes.get(at + 1) {
                 Some(b'"' | b'\\' | b'/' | b'b' | b'f' | b'n' | b'r' | b't') => at += 2,
                 Some(b'u') => {
                     let digits = bytes.get(at + 2..at + 6);
                     if !digits.is_some_and(|digits| digits.iter().all(u8::is_ascii_hexdigit)) {
-                        return Err(SyntaxError::new(at, "\\u takes four hexadecimal digits"));
+                        return Err(SyntaxError::new(at, t!("tools.json.u-takes-four-digits")));
                     }
                     at += 6;
                 }
-                _ => return Err(SyntaxError::new(at, "an unknown escape")),
+                _ => return Err(SyntaxError::new(at, t!("tools.json.unknown-escape"))),
             },
             Some(byte) if *byte < 0x20 => {
-                return Err(SyntaxError::new(
-                    at,
-                    "a control character in a string must be escaped",
-                ));
+                return Err(SyntaxError::new(at, t!("tools.json.control-character")));
             }
             Some(_) => at += 1,
         }
@@ -201,9 +203,9 @@ fn number_end(bytes: &[u8], start: usize) -> Result<usize, SyntaxError> {
         at += 1;
     }
     match digits(at) {
-        0 => return Err(SyntaxError::new(at, "a number needs digits")),
+        0 => return Err(SyntaxError::new(at, t!("tools.json.number-needs-digits"))),
         count if bytes[at] == b'0' && count > 1 => {
-            return Err(SyntaxError::new(at, "a number cannot start with 0"));
+            return Err(SyntaxError::new(at, t!("tools.json.number-starts-with-0")));
         }
         count => at += count,
     }
@@ -213,7 +215,7 @@ fn number_end(bytes: &[u8], start: usize) -> Result<usize, SyntaxError> {
             0 => {
                 return Err(SyntaxError::new(
                     at,
-                    "a decimal point needs digits after it",
+                    t!("tools.json.decimal-point-needs-digits"),
                 ));
             }
             count => at += count,
@@ -225,7 +227,7 @@ fn number_end(bytes: &[u8], start: usize) -> Result<usize, SyntaxError> {
             at += 1;
         }
         match digits(at) {
-            0 => return Err(SyntaxError::new(at, "an exponent needs digits")),
+            0 => return Err(SyntaxError::new(at, t!("tools.json.exponent-needs-digits"))),
             count => at += count,
         }
     }
@@ -268,7 +270,7 @@ fn check(text: &str, tokens: &[Token]) -> Result<(), SyntaxError> {
                 if stack.len() == MAX_DEPTH {
                     return Err(SyntaxError::new(
                         token.start,
-                        format!("nested deeper than {MAX_DEPTH} levels"),
+                        t!("tools.json.nested-too-deep", levels = MAX_DEPTH),
                     ));
                 }
                 let object = token.kind == Kind::OpenObject;
@@ -304,18 +306,15 @@ fn check(text: &str, tokens: &[Token]) -> Result<(), SyntaxError> {
                 after_value(&stack)
             }
             (Expect::Key, _) | (Expect::KeyOrClose, _) => {
-                return Err(SyntaxError::new(token.start, "expected a key in quotes"));
+                return Err(SyntaxError::new(token.start, t!("tools.json.expected-key")));
             }
             _ => return Err(wrong()),
         };
     }
     match expect {
         Expect::End => Ok(()),
-        _ if tokens.is_empty() => Err(SyntaxError::new(0, "the text is empty")),
-        _ => Err(SyntaxError::new(
-            text.len(),
-            "unexpected end of the text: something is not closed",
-        )),
+        _ if tokens.is_empty() => Err(SyntaxError::new(0, t!("tools.json.empty"))),
+        _ => Err(SyntaxError::new(text.len(), t!("tools.json.not-closed"))),
     }
 }
 

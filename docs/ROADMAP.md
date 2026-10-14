@@ -1,8 +1,9 @@
 # Birchpad roadmap
 
 Birchpad first reaches feature parity with Notepad++ (Phases 1 to 6), then goes beyond it
-(Phase 7). Phases are ordered by dependency, not by calendar. Architecture decisions live in
-[`adr/`](adr).
+(Phase 7); closing Phase 7 releases Birchpad 1.0.0. On the way, each release from 0.2.0 on
+closes a group of steps, named in this roadmap's headings (Release 0.3.0, ...). Phases are
+ordered by dependency, not by calendar. Architecture decisions live in [`adr/`](adr).
 
 ## Phase 0: foundation
 
@@ -260,106 +261,309 @@ What Phase 1 left for later is marked *(from Phase 1)* in the phases below.
 
 What Phases 1 to 4 built differently from Notepad++, or left out, is brought in line here; what
 Phase 5 leaves for later is added once it is done. Birchpad goes beyond Notepad++ only after
-this phase.
+this phase. It ships in releases: what is done by 2026-10-14 (6.1 to 6.21) as 0.2.0, with the
+issues users opened on GitHub ([Release 0.2.0](#release-020)), then 0.3.0 (tests), 0.4.0
+(languages and text), 0.5.0 (printing, tools and help) and 0.6.0 (plugins, documentation in
+Russian, the last comparison with Notepad++), which closes the phase.
 
-- Themes and Style Configurator: fonts (family, size, bold/italic per style) in themes, the
-  Style Configurator and Notepad++ theme import; saving changes to a Notepad++ theme back to its
-  XML; a closer match from Scintilla's style names to highlights, with a per-language table
-  where names differ; Notepad++'s separate Dark Mode for the interface, independent of the
-  editor theme
-- Preferences: the remaining sections and options of Notepad++'s dialog (tab bar,
-  multi-instance, delimiters, search engine, MISC and the rest), with OK/Close semantics where
-  Notepad++ has them
-- Shortcut Mapper: key sequences (`ctrl-k ctrl-c`) recorded in the dialog; bindings limited to
-  platforms shown and editable; command titles translated
-- Macros: Notepad++'s built-in "Trim Trailing Space and Save"; recording what dialogs a command
-  opens (Find, Replace) with their fields, as Notepad++ records search parameters
-- Run: Notepad++'s own Run menu entries as built-in items, not only saved command lines
-- Tools: hashes of files in a dialog with Copy, as Notepad++ shows them, besides the listing in a
-  new document
-- Code pages: EBCDIC 875 (Greek), whose standard table maps two bytes to one character; NEL as a
-  line break in EBCDIC documents
-- Auto-completion: closing HTML and XML tags; API files for languages embedded in a document
-  (scripts in HTML); cycling through a function's overloads in the call tip; Notepad++'s
-  auto-completion options (ignore numbers, ignore case, completion from a number of characters
-  per source); bundled API files for common languages
-- User Defined Languages: the UDL editor dialog; folding (code and comment folders); number
-  prefixes, suffixes, extras and ranges; comments that must start a line; nested delimiters;
-  colors from the theme where the UDL leaves them unset
-- Localization: more interface languages, including Notepad++'s `nativeLang` XML files
-- Printing: a print preview and page setup of Birchpad's own (margins, header and footer with
-  Notepad++'s variables, colors or black on white, line numbers), printing the selection;
-  native printing where the platform offers it
-- Right-to-left text: selections drawn piece by piece over mixed text; margins on the right in
-  right-to-left mode; keys for Text Direction RTL and LTR; the direction remembered per document
-  in sessions; very long rows reordered too
-- Everything Notepad++ has that Birchpad still lacks: the Window menu and its dialog, tab colors,
-  pinned and multi-line or vertical tabs, the text's context menu (editable, as Notepad++'s
-  Edit Popup ContextMenu), Insert date and time, Copy full path / file name / folder, Rename and
-  Delete file, Edit > Set Read-Only, and other menu commands not listed in the phases above.
-  Compared with Notepad++ 8 after Phase 5, these are missing:
-  - File: Open Containing Folder (in the file manager, a terminal, Folder as Workspace), Open in
-    Default Viewer, Reload from Disk, Save a Copy As, Move to Recycle Bin, Close Multiple
-    Documents (to the left, to the right, unchanged, all but pinned), Restore Recent Closed File,
-    Open All Recent Files, Print Now
-  - Edit: Paste Special (binary content, HTML, RTF), On Selection (open the file named,
-    its folder, search the Internet with a chosen engine), Begin/End Select in Column Mode,
-    Remove Consecutive Duplicate Lines, Clear Read-Only Flag, Increase/Decrease Line Indent as
-    menu commands
-  - Search: Find (Volatile) Next/Previous, Select and Find Previous, Find characters in range,
-    Change History (next and previous change, clear all changes), Find in Projects, the search
-    results' context menu as Notepad++'s (copy lines or paths, open all, wrap long lines, purge
-    for every search)
-  - View: Always on Top, Full Screen, Post-It, Distraction Free mode, View Current File in a
-    browser, Move/Clone to a new instance and Open in a new instance, go to the 1st-9th tab and
-    move the tab forward or backward, Hide Lines, Summary (counts of characters, words, lines),
-    Collapse/Expand by level from the menu
-  - The toolbar (small, large and fluent icons; customizable) and the tab bar's context menu and
-    options (double-click to close, lock, reduce, vertical, multi-line); the document peeker on a
-    tab; the Ctrl+Tab document switcher
-  - Clickable links: addresses underlined and opened with Ctrl+click or a double click
-    (Preferences > Cloud & Link); Ctrl+double click selection between delimiters
-  - Preferences > Language: tab size and spaces per language; new document defaults (encoding,
-    line ending, language); backup copies on save (simple or verbose); default folder; settings
-    in a folder of one's choice (cloud); minimize to the system tray; "remember inaccessible
-    files" in sessions
-  - Macro and Run: Modify Shortcut / Delete Macro or Command (the Macros and Run tabs of the
-    Shortcut Mapper)
-  - Language: Open User Defined Language Folder, the UDL collection link; Settings > Import
-    plugin(s)
-  - Help: Command Line Arguments, home page, online manual and forum, Debug Info (copyable),
-    Set Updater Proxy
-  - The command line options Birchpad accepts but ignores: -notabbar, -systemtray,
-    -alwaysOnTop, -loadingTime, -r (recursive wildcards), -quickPrint, -monitor,
-    -openFoldersAsWorkspace, -x and -y (window position), -qn, -qt, -qf, -qSpeed (ghost
-    typing), -settingsDir, -titleAdd, -udl, -pluginMessage
-- Verified on real systems: input methods (Windows TSF, macOS, IBus/Fcitx), screen readers
-  *(from Phase 1)*
-- After Phase 5, what the plugins phase leaves out of Notepad++'s plugins:
-  - Compare as ComparePlus: lines padded to stay aligned side by side, differences within a
-    line, comparing with the last save, the clipboard or Git; a navigation bar of the
-    differences
-  - JSON Viewer's tree panel (find a path, copy a value), sorting keys; XML Tools' XPath, XSD
-    and DTD validation, escaping and unescaping, closing tags as typed
-  - Hex Editor in place: the bytes edited in a hex view of the document itself (overwrite,
-    insert, the caret shared with the text), columns and grouping, Find in hex
-  - DSpellCheck's options (several languages at once, ignore rules, words in code by style) and
-    its dictionary download, a dictionary bundled for English
-  - Plugins Admin's online list of plugins (available, updates, installed), with checksums and
-    the `OnlineFeatures` policy
-  - A wider plugin API: settings of their own, files opened with the user's permission, a
-    panel of their own controls, items in the text's context menu, events while typing and
-    when the selection changes, work in the background; scripts' own commands and keys
+Every step follows the clean-room rules of [CONTRIBUTING.md](../CONTRIBUTING.md#clean-room).
+The steps are ordered by dependency; each one lands as its own commit with its tests, docs and
+a `CHANGELOG.md` entry. A step that adds a feature with options adds them to Preferences too;
+step 6.11 brings in the sections no feature brings.
+
+### Release 0.2.0
+
+Steps 6.1 to 6.21, and every open issue, one step each: those steps 6.1 to 6.21 answer are
+done and closed with the release.
+
+- [x] 0.2.1 [#25](https://github.com/SecurityTrip/Birchpad/issues/25) More ways to close tabs at once: Close All to the Left and to the
+      Right (6.1)
+- [x] 0.2.2 [#26](https://github.com/SecurityTrip/Birchpad/issues/26) Pinned tabs, at the start of the tab bar (6.1)
+- [x] 0.2.3 [#27](https://github.com/SecurityTrip/Birchpad/issues/27) The tab's context menu, with closing groups of tabs and pinning
+      (6.1)
+- [x] 0.2.4 [#28](https://github.com/SecurityTrip/Birchpad/issues/28) A new document on a double click on the tab bar's empty part (6.1)
+- [x] 0.2.5 [#30](https://github.com/SecurityTrip/Birchpad/issues/30) The text's context menu with the main commands (6.7)
+- [x] 0.2.6 [#29](https://github.com/SecurityTrip/Birchpad/issues/29) Reloading a tab from disk: File > Reload from Disk (6.3) on Ctrl+R by
+      default (Cmd+R on macOS)
+- [x] 0.2.7 [#24](https://github.com/SecurityTrip/Birchpad/issues/24) "Edit with Birchpad" in the Windows Explorer's context menu of files,
+      as Notepad++'s: added by the installers (the per-user one for the user, at install and at
+      every update unless the user took it away; the MSI for the machine) and removed with them; for the portable build, a switch in Preferences that adds
+      it for the user or takes it away
+- [x] 0.2.8 [#32](https://github.com/SecurityTrip/Birchpad/issues/32) Birchpad as the default
+      editor of text files (.txt, .json, .xml, .md, .log and others), offered at startup until
+      set up or declined, and in Settings: Windows registers it for the user and opens Default
+      apps for the choice, which no program may make; Linux makes it the default with
+      `xdg-mime`; on macOS the app declares its document types for Finder's Change All
+- [x] 0.2.9 Release 0.2.0: the workspace version (0.2.0, so that nightly builds are its
+      pre-releases), `CHANGELOG.md` and this roadmap updated; the
+      [release checklist](release-checklist.md) gone through; the answered issues closed
+
+### Window, tabs and files
+
+- [x] 6.1 Tabs: tab colors, pinned tabs, multi-line and vertical tabs; the tab bar's context
+      menu and options (double-click to close, lock, reduce); the document peeker on a tab;
+      the Ctrl+Tab document switcher; go to the 1st-9th tab, move the tab forward or backward;
+      Close Multiple Documents (to the left, to the right, unchanged, all but pinned)
+      ([ADR 0040](adr/0040-tab-bar.md))
+- [x] 6.2 The Window menu and its Windows dialog (sort, activate, save, close)
+- [x] 6.3 File menu: Open Containing Folder (in the file manager, a terminal, Folder as
+      Workspace), Open in Default Viewer, Reload from Disk, Save a Copy As, Rename, Move to
+      Recycle Bin (Notepad++'s way of deleting a file), Restore Recent Closed File, Open All
+      Recent Files; Copy full path / file name / folder
+- [x] 6.4 Instances and the window: Move/Clone to a new instance, Open in a new instance;
+      multi-instance in Preferences; Always on Top, Full Screen, Post-It, Distraction Free mode
+- [x] 6.5 The toolbar: small and large icons (Lucide's line icons stand for Notepad++'s
+      Fluent ones, which are Microsoft's); customizable in `toolbar.buttons`
+
+### Editing, search and view
+
+- [x] 6.6 Edit menu: Insert date and time, Set Read-Only and Clear Read-Only Flag, Paste Special
+      (binary content, HTML, RTF), On Selection (open the file named, its folder, search the
+      Internet with a chosen engine), Begin/End Select in Column Mode, Remove Consecutive
+      Duplicate Lines, Increase/Decrease Line Indent as menu commands
+- [x] 6.7 The text's context menu, editable as Notepad++'s Edit Popup ContextMenu
+- [x] 6.8 Search menu: Find (Volatile) Next/Previous, Select and Find Previous, Find characters
+      in range, Change History (next and previous change, clear all changes), Find in Projects;
+      the search results' context menu as Notepad++'s (copy lines or paths, open all, wrap long
+      lines, purge for every search)
+- [x] 6.9 View menu: View Current File in a browser, Hide Lines, Summary (counts of
+      characters, words, lines), Collapse/Expand by level from the menu
+- [x] 6.10 Clickable links: addresses underlined and opened with Ctrl+click or a double click
+      (Preferences > Cloud & Link); Ctrl+double click selection between delimiters
+
+### Customization
+
+- [x] 6.11 Preferences: the remaining sections and options of Notepad++'s dialog (tab bar,
+      delimiters, search engine, MISC and the rest; changes apply at once, as most of
+      Notepad++'s do); Language: tab size and spaces per language; new document defaults
+      (encoding, line ending, language); backup copies on save (simple or verbose); default
+      folder; settings in a folder of one's choice (cloud); "remember inaccessible files" in
+      sessions. Minimizing to the system tray waits for a tray in GPUI (Phase 7)
+- [x] 6.12 Themes and Style Configurator: fonts (family, size, bold/italic per style) in
+      themes, the Style Configurator and Notepad++ theme import; saving changes to a Notepad++
+      theme back to its XML; a closer match from Scintilla's style names to highlights, with a
+      per-language table where names differ. The theme's font is one family and size for the
+      whole text, Notepad++'s Default Style: the editor keeps a grid of cells, so a style's own
+      family or size is not used
+- [x] 6.13 Notepad++'s separate Dark Mode for the interface, independent of the editor theme
+- [x] 6.14 Shortcut Mapper: key sequences (`ctrl-k ctrl-c`) recorded in the dialog; bindings
+      limited to platforms shown and editable; command titles translated; the Macros and Run
+      tabs (Modify Shortcut / Delete Macro or Command)
+- [x] 6.15 Macros: Notepad++'s built-in "Trim Trailing Space and Save"; recording what dialogs
+      a command opens (Find, Replace) with their fields, as Notepad++ records search parameters
+- [x] 6.16 Run: Notepad++'s own Run menu entries as built-in items, not only saved command lines
+
+### Splitting the application crate
+
+`birchpad` holds more than half of the workspace's code (about 48,000 of 83,000 lines): its
+window and dialogs, but also logic that needs no window, and the editor view, which every change
+to a panel or a dialog rebuilds. These steps move both out before the remaining features land;
+behavior does not change, and the tests move with the code.
+
+- [x] 6.17 `birchpad-i18n`: the localization without a window (the YAML locales and their
+      parsing, named arguments, plural forms, the current language, `tr_error`) as a crate of
+      its own, so that the crates without a window translate their messages where they make
+      them, not the application from their English
+- [x] 6.18 The logic without a window left in `birchpad` moved to the crates that hold its kind:
+      Find in Files' reading of one file (binary files skipped), its search and replace and the
+      result lines (`line_hits`), Go To's positions to `birchpad-core` and `birchpad-io`; the
+      bidirectional row (`BidiRow`) to `birchpad-view`; the date and time formats, Export to
+      HTML (in the theme's colors, not GPUI's) and the hex view's replacement to
+      `birchpad-tools`; the session's names of line endings, languages and backup copies to
+      `birchpad-config`; Run's command line and address check to `birchpad-commands`
+- [x] 6.19 The command registry without the workspace: handlers registered for a kind of target
+      rather than for `Workspace` and `EditorView` by name; the dialogs' buttons and error
+      reporting (`dialog_close`, `dialog_action`, `report_error`) and the settings the editor
+      reads from `AppState` in a small shared crate, so that the editor no longer reaches into
+      the application
+- [x] 6.20 `birchpad-editor`: the editor view (`editor/`), the buffer and the active theme as a
+      GPUI crate that `birchpad` builds on, with its own tests (`cargo test -p
+      birchpad-editor`); find options, spelling and user languages reach it through what it
+      exposes, not the application's globals. An ADR records the crates' layout
+
+### Release 0.3.0: tests
+
+Step 6.21 shipped with 0.2.0. Measured on Windows on 2026-10-13, the tests run 93.2% of the lines:
+92 to 99.5% in the crates without a window, 89.4% in `birchpad`, where Preferences, the column
+editor and the Tools menu stay under 65%. The gaps are mostly the negative scenarios and limits
+CONTRIBUTING.md asks for (failed reads and writes, refused input, interrupted downloads). Each step
+covers the positive scenario, the negative ones and the boundary values, and raises the crates'
+floors in `.github/coverage-floors.toml` with its tests.
+
+- [ ] 0.3.1 Faster tests, first, since the steps after it add many: `cargo-nextest` (each test
+      in a process of its own, run side by side) locally and in CI; the slowest tests of the
+      window found and made faster (waits for redraws, sleeps while bounds settle, dialogs'
+      animations); what a full run takes locally and per CI job measured before and after.
+      Nothing is run less: every job still runs on every push
+- [x] 6.21 Dialogs and menus driven in a test window, every control: Preferences (62.8% of lines
+      run), the Shortcut Mapper (76.9%), the column editor (64.1%), the path dialog, the Tools
+      menu (62.4%), the banners, the menus and the window modes; the command catalog of
+      `birchpad-commands` (63.2%)
+- [ ] 6.22 The editor view (`editor/mod.rs`, 83.8%): smart highlighting (78.7%), the Edit menu's
+      extras (81.2%), what clicks, drags and the keyboard do at the edges of the text, in
+      wrapped and folded rows and with several carets
+- [ ] 6.23 Files, folders and sessions when the file system refuses: a file changed or deleted
+      outside (`disk.rs`, 71.6%), saving, renaming and moving that fail (`file_ops.rs`,
+      `file_commands.rs`, about 84%), sessions with missing files and broken backups (84.0%),
+      Folder as Workspace (78.1%), Find in Files over unreadable files; the configuration
+      folders (`config/load.rs`, 86.1%) and the hand-off to a running instance
+      (`cli/instance.rs`, 87.8%)
+- [ ] 6.24 Updates and Plugins Admin against a local server: checks, downloads cut short, a
+      wrong signature or checksum, an older version offered, installing and rolling back
+      (`updates.rs` 76.2%, `update/install.rs` 87.6%, `extensions/admin.rs` 80.7%)
+- [ ] 6.25 Property tests where there are none yet: the bidirectional row (logical and visual
+      positions map one to one), comparing texts (the differences applied give the other
+      text), search and replace against a plain reference implementation, keystrokes and key
+      sequences that read back as written, syntax trees reparsed after an edit equal to a
+      fresh parse, the column editor's numbering
+- [ ] 6.26 Fuzzing what reads outside input and is not fuzzed yet: Hunspell dictionaries
+      (`.aff`, `.dic`), search queries (regular expressions, the extended mode's escapes, Find
+      in Files' filters), plugins' calls into the host with any arguments, Rhai scripts under
+      their time and memory limits
+- [ ] 6.27 End-to-end scenarios beyond the four of `tests/e2e.rs`: Find in Files and Replace in
+      Files, recording and playing a macro, a second instance handing over its files,
+      restoring unsaved text after the process is killed, a plugin installed and run, Export
+      to HTML; the run counted in the coverage report, so that `main.rs` (0%) is measured
+- [ ] 6.28 Performance in CI: the timing checks (`view/tests/performance.rs`, now ignored) and
+      new ones for opening, searching and editing a 100 MB file and for a frame of the editor
+      view run nightly in release, failing when a time grows past its limit
+- [ ] 6.29 Mutation testing: `cargo-mutants` nightly over the crates without a window; the
+      mutants that survive get tests, and the share caught gets a floor that only rises, as
+      coverage does
+- [ ] Release 0.3.0: the workspace version (0.3.0, set when its branch opens, so that nightly
+      builds are its pre-releases), `CHANGELOG.md` and this roadmap updated; the
+      [release checklist](release-checklist.md) gone through
+
+### Release 0.4.0: languages and text
+
+- [ ] 6.30 Code pages: EBCDIC 875 (Greek), whose standard table maps two bytes to one
+      character; NEL as a line break in EBCDIC documents
+- [ ] 6.31 Auto-completion: closing HTML and XML tags; API files for languages embedded in a
+      document (scripts in HTML); cycling through a function's overloads in the call tip;
+      Notepad++'s auto-completion options (ignore numbers, ignore case, completion from a number
+      of characters per source); bundled API files for common languages, written for Birchpad
+      (Notepad++'s are GPL)
+- [ ] 6.32 User Defined Languages: the UDL editor dialog; folding (code and comment folders);
+      number prefixes, suffixes, extras and ranges; comments that must start a line; nested
+      delimiters; colors from the theme where the UDL leaves them unset; Open User Defined
+      Language Folder, the UDL collection link
+- [ ] 6.33 Right-to-left text: selections drawn piece by piece over mixed text; margins on the
+      right in right-to-left mode; keys for Text Direction RTL and LTR; the direction
+      remembered per document in sessions; very long rows reordered too
+- [ ] 6.34 Localization: more interface languages, translated for Birchpad; Notepad++'s
+      `nativeLang` XML files read from the user's own copy, not bundled
+- [ ] Release 0.4.0: the workspace version (0.4.0, set when its branch opens, so that nightly
+      builds are its pre-releases), `CHANGELOG.md` and this roadmap updated; the
+      [release checklist](release-checklist.md) gone through
+
+### Release 0.5.0: printing, tools and help
+
+- [ ] 6.35 Printing: a print preview and page setup of Birchpad's own (margins, header and
+      footer with Notepad++'s variables, colors or black on white, line numbers), printing the
+      selection, Print Now; native printing where the platform offers it
+- [ ] 6.36 Tools: hashes of files in a dialog with Copy, as Notepad++ shows them, besides the
+      listing in a new document
+- [ ] 6.37 Help menu: Command Line Arguments, home page, online manual and forum, Debug Info
+      (copyable), Set Updater Proxy
+- [ ] 6.38 The command line options Birchpad accepts but ignores: -notabbar, -systemtray,
+      -alwaysOnTop, -loadingTime, -r (recursive wildcards), -quickPrint, -monitor,
+      -openFoldersAsWorkspace, -x and -y (window position), -qn, -qt, -qf, -qSpeed (ghost
+      typing), -settingsDir, -titleAdd, -udl, -pluginMessage
+- [ ] Release 0.5.0: the workspace version (0.5.0, set when its branch opens, so that nightly
+      builds are its pre-releases), `CHANGELOG.md` and this roadmap updated; the
+      [release checklist](release-checklist.md) gone through
+
+### Release 0.6.0: plugins, documentation, parity
+
+Closing Phase 6.
+
+- [ ] 6.39 A wider plugin API: settings of their own, files opened with the user's permission,
+      a panel of their own controls, items in the text's context menu, events while typing and
+      when the selection changes, work in the background; scripts' own commands and keys;
+      Settings > Import plugin(s)
+- [ ] 6.40 Compare as ComparePlus: lines padded to stay aligned side by side, differences
+      within a line, comparing with the last save, the clipboard or Git; a navigation bar of the
+      differences
+- [ ] 6.41 JSON Viewer's tree panel (find a path, copy a value), sorting keys; XML Tools'
+      XPath, XSD and DTD validation, escaping and unescaping, closing tags as typed
+- [ ] 6.42 Hex Editor in place: the bytes edited in a hex view of the document itself
+      (overwrite, insert, the caret shared with the text), columns and grouping, Find in hex
+- [ ] 6.43 DSpellCheck's options (several languages at once, ignore rules, words in code by
+      style); a dictionary bundled for English under a license compatible with Birchpad's
+- [ ] 6.44 Online features under the `OnlineFeatures` policy: Plugins Admin's online list of
+      plugins (available, updates, installed) with checksums; DSpellCheck's dictionary download
+
+- [ ] 6.45 Documentation in Russian: the user's and the contributor's documents (README,
+      CONTRIBUTING, SECURITY, PRIVACY, the code of conduct, writing plugins and scripts, the
+      release checklist and this roadmap) as `*.ru.md` next to the English ones, linked from
+      each other; from then on a change to one updates the other. ADRs and the changelog stay
+      in English
+- [ ] 6.46 A last comparison with Notepad++ 8's menus, Preferences and command line, with what
+      is still missing moved to Phase 7 or written down
+- [ ] Release 0.6.0: the workspace version (0.6.0, set when its branch opens, so that nightly
+      builds are its pre-releases), `CHANGELOG.md` and this roadmap updated; the
+      [release checklist](release-checklist.md) gone through
 
 ## Phase 7: beyond Notepad++
 
-- LSP client; command palette and fuzzy file finder
-- Git: gutter changes, blame, diff
-- Integrated terminal
-- Syntax-aware selection, sticky scroll
-- Multi-gigabyte files via memory mapping
-- Remote editing over SSH/SFTP; CSV and JSON viewers
-- AI assistance (disabled by the `OnlineFeatures` policy); vim mode; collaborative editing
+What Notepad++ does not have, in releases 0.7.0 to 0.9.0; closing the phase releases 1.0.0.
+The steps follow the rules of Phase 6: clean-room where an editor is followed, one commit
+each with its tests, docs and a `CHANGELOG.md` entry, its options in Preferences.
+
+### Release 0.7.0: finding your way
+
+- [ ] 7.1 Command palette: every command of the catalog by its name, with its shortcut, the
+      recently used first
+- [ ] 7.2 Fuzzy file finder: the files of the workspace's folders and of the recent files, by
+      parts of their path
+- [ ] 7.3 Syntax-aware selection (expand and shrink by the syntax tree) and sticky scroll (the
+      enclosing scopes' first lines kept at the top)
+- [ ] 7.4 Minimize to the system tray (Notepad++'s Preferences > MISC), once GPUI has a tray
+      icon; until then, written down why not
+- [ ] Release 0.7.0: the workspace version (0.7.0, set when its branch opens, so that nightly
+      builds are its pre-releases), `CHANGELOG.md` and this roadmap updated; the
+      [release checklist](release-checklist.md) gone through
+
+### Release 0.8.0: development tools
+
+- [ ] 7.5 LSP client: diagnostics, completion, hover, go to definition and references,
+      rename, formatting; servers configured per language, none bundled
+- [ ] 7.6 Git: changes in the gutter, blame of the line, the diff of a file against its last
+      commit
+- [ ] 7.7 Integrated terminal in a panel
+- [ ] Release 0.8.0: the workspace version (0.8.0, set when its branch opens, so that nightly
+      builds are its pre-releases), `CHANGELOG.md` and this roadmap updated; the
+      [release checklist](release-checklist.md) gone through
+
+### Release 0.9.0: large and remote files, other ways to edit
+
+- [ ] 7.8 Multi-gigabyte files through memory mapping, read and searched without loading them
+      whole
+- [ ] 7.9 CSV and JSON viewers: a table and a tree beside the text, which follow its edits
+- [ ] 7.10 Remote editing over SSH and SFTP: files and folders opened and saved on a server
+- [ ] 7.11 Vim mode
+- [ ] Release 0.9.0: the workspace version (0.9.0, set when its branch opens, so that nightly
+      builds are its pre-releases), `CHANGELOG.md` and this roadmap updated; the
+      [release checklist](release-checklist.md) gone through
+
+### Release 1.0.0
+
+- [ ] 7.12 Collaborative editing of a document by several users
+- [ ] 7.13 Verified on real systems: input methods (Windows TSF, macOS, IBus/Fcitx), screen
+      readers *(from Phase 1)*
+- [ ] Release 1.0.0: the workspace version, `CHANGELOG.md` and this roadmap updated; the
+      [release checklist](release-checklist.md) gone through with the draft's artifacts
+
+## After 1.0.0
+
+Not planned into a release yet.
+
+- [ ] AI assistance, strictly opt-in and never pushed: off by default, and until the user
+      turns it on in Preferences nothing of it shows (no button, menu item, prompt, tip or
+      reminder) and nothing is sent anywhere; Birchpad never offers it unasked. Turned on, it
+      runs only when the user asks (a command with no default shortcut), with the provider the
+      user chooses, a local model too, and shows what is sent before it goes. The
+      `OnlineFeatures` policy removes it entirely; an ADR records these rules first
 
 ## Distribution (runs alongside the phases)
 

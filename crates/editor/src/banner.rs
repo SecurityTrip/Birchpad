@@ -1,0 +1,143 @@
+//! Messages shown above or over the text: read-only reasons and loading progress.
+
+use birchpad_commands::Invocation;
+use birchpad_io::{CHARACTER_SETS, DecodeProblem};
+use gpui_kit::component::Sizable;
+use gpui_kit::component::button::Button;
+use gpui_kit::component::menu::{DropdownMenu, PopupMenu};
+use gpui_kit::{AnyElement, Context, FocusHandle, Window, div, prelude::*, px, rgb};
+use serde_json::json;
+
+use birchpad_ui::RunCommand;
+
+fn bar(color: u32, border: u32) -> gpui_kit::Div {
+    div()
+        .flex()
+        .flex_row()
+        .flex_none()
+        .items_center()
+        .gap_3()
+        .px_3()
+        .py_1()
+        .bg(rgb(color))
+        .border_b_1()
+        .border_color(rgb(border))
+        .text_size(px(13.))
+}
+
+/// The text does not represent the file: read-only, with a way to pick another encoding or to
+/// edit it anyway. `changes` is how many places saving would change; `editor` is the view's.
+pub fn decoding_problem(
+    encoding: &str,
+    problem: DecodeProblem,
+    changes: usize,
+    editor: FocusHandle,
+) -> AnyElement {
+    let places = if changes == 1 {
+        "1 place".to_owned()
+    } else {
+        format!("{changes} places")
+    };
+    let message = match problem {
+        DecodeProblem::Malformed { offset } => format!(
+            "This file is not valid {encoding}: the byte at offset {offset} cannot be decoded, \
+             and saving would change {places}. It is open read-only so that saving cannot \
+             damage it."
+        ),
+        DecodeProblem::NotReversible { offset } => format!(
+            "In {encoding}, this file contains byte sequences that would change when saved: \
+             {places}, the first at offset {offset}. It is open read-only."
+        ),
+    };
+    bar(0xfff8c5, 0xd4a72c)
+        .debug_selector(|| "banner-decoding".into())
+        .child(div().flex_1().child(message))
+        .child(
+            Button::new("reopen-with-encoding")
+                .debug_selector(|| "banner-reopen".into())
+                .small()
+                .outline()
+                .label(t!("banner.reopen-with-encoding"))
+                .dropdown_menu(encoding_menu),
+        )
+        .child(
+            Button::new("edit-anyway")
+                .debug_selector(|| "banner-edit-anyway".into())
+                .small()
+                .outline()
+                .label(t!("banner.edit-anyway"))
+                .on_click(move |_, window, cx| {
+                    let action = RunCommand(Invocation::new("encoding.edit-anyway"));
+                    editor.dispatch_action(&action, window, cx);
+                }),
+        )
+        .into_any_element()
+}
+
+pub fn read_only_requested() -> AnyElement {
+    bar(0xf6f8fa, 0xd0d7de)
+        .child(t!("banner.opened-read-only-from-the-command-line-ro"))
+        .into_any_element()
+}
+
+pub fn monitoring() -> AnyElement {
+    bar(0xddf4ff, 0x54aeff)
+        .child(t!("banner.monitoring-tail-f-the-document-follows-the-file-and-cannot-be-edited-view-monitoring-stops-it"))
+        .into_any_element()
+}
+
+pub fn read_only_file() -> AnyElement {
+    bar(0xf6f8fa, 0xd0d7de)
+        .child(t!(
+            "banner.this-file-is-read-only-use-save-as-to-keep-your-changes-in-another-file"
+        ))
+        .into_any_element()
+}
+
+/// Centered progress over the text area while the file is read.
+pub fn loading(progress: f32) -> AnyElement {
+    div()
+        .absolute()
+        .top_0()
+        .left_0()
+        .size_full()
+        .flex()
+        .items_center()
+        .justify_center()
+        .child(
+            div()
+                .px_4()
+                .py_2()
+                .rounded_md()
+                .bg(crate::theme::paint(crate::theme::ui().surface))
+                .border_1()
+                .border_color(crate::theme::paint(crate::theme::ui().border))
+                .child(format!("{} {:.0}%", t!("banner.loading"), progress * 100.)),
+        )
+        .into_any_element()
+}
+
+fn reopen(encoding: &str) -> Box<dyn gpui_kit::Action> {
+    Box::new(RunCommand(Invocation::with_args(
+        "encoding.encode-in",
+        json!({ "encoding": encoding }),
+    )))
+}
+
+fn encoding_menu(menu: PopupMenu, window: &mut Window, cx: &mut Context<PopupMenu>) -> PopupMenu {
+    let mut menu = menu
+        .menu("UTF-8", reopen("utf-8"))
+        .menu("UTF-16 LE", reopen("utf-16le"))
+        .menu("UTF-16 BE", reopen("utf-16be"))
+        .menu("ANSI", reopen("ansi"))
+        .separator();
+    for (group, sets) in CHARACTER_SETS {
+        menu = menu.submenu(*group, window, cx, move |mut submenu, _, _| {
+            for (name, label) in *sets {
+                submenu = submenu.menu(*label, reopen(name));
+            }
+            submenu
+        });
+    }
+    menu
+}

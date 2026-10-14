@@ -37,6 +37,21 @@
                     Icon="birchpad.ico" WorkingDirectory="INSTALLFOLDER" />
         </File>
       </Component>
+
+      <!-- "Edit with Birchpad" in the Explorer's context menu of files, for every user, as
+           Notepad++'s installer adds it. A feature of its own, so that administrators can leave
+           it out: msiexec /i birchpad.msi ADDLOCAL=Main -->
+      <Feature Id="ExplorerMenu" Title="Edit with Birchpad in the Explorer" Level="1">
+        <Component Directory="INSTALLFOLDER" Id="ExplorerMenu">
+          <RegistryKey Root="HKLM" Key="Software\Classes\*\shell\Birchpad">
+            <RegistryValue Type="string" Value="Edit with Birchpad" KeyPath="yes" />
+            <RegistryValue Name="Icon" Type="string" Value="&quot;[INSTALLFOLDER]birchpad.exe&quot;,0" />
+            <RegistryKey Key="command">
+              <RegistryValue Type="string" Value="&quot;[INSTALLFOLDER]birchpad.exe&quot; &quot;%1&quot;" />
+            </RegistryKey>
+          </RegistryKey>
+        </Component>
+      </Feature>
     </Feature>
   </Package>
 </Wix>

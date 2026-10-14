@@ -29,28 +29,6 @@ fn run(
     result
 }
 
-#[test]
-fn urls_and_shell_lines() {
-    for line in ["https://example.com", "  HTTP://x", "https://"] {
-        assert!(is_url(line), "{line}");
-    }
-    for line in ["", "notepad.exe", "ftp://x", "start https://x"] {
-        assert!(!is_url(line), "{line}");
-    }
-    let command = shell_command("echo hi");
-    let args: Vec<_> = command
-        .get_args()
-        .map(|arg| arg.to_string_lossy().into_owned())
-        .collect();
-    if cfg!(windows) {
-        assert_eq!(command.get_program(), "cmd");
-        assert_eq!(args, ["/C", "echo hi"]);
-    } else {
-        assert_eq!(command.get_program(), "sh");
-        assert_eq!(args, ["-c", "echo hi"]);
-    }
-}
-
 #[gpui_kit::test]
 fn variables_come_from_the_active_document(cx: &mut TestAppContext) {
     let (workspace, cx, _dir) = setup(cx);
@@ -85,7 +63,10 @@ fn runs_and_saves_command_lines(cx: &mut TestAppContext) {
             .map(|e| e.name.clone())
             .collect()
     });
-    assert_eq!(names, ["Wikipedia Search", "Open File in Another Instance"]);
+    assert!(
+        names.is_empty(),
+        "the built-in commands are not saved ones: {names:?}"
+    );
     let marker = dir.path().join("ran.txt");
     let line = if cfg!(windows) {
         format!("echo line $(CURRENT_LINE) > \"{}\"", marker.display())
@@ -115,7 +96,7 @@ fn runs_and_saves_command_lines(cx: &mut TestAppContext) {
     let text = std::fs::read_to_string(dir.path().join("run.toml")).unwrap();
     let saved = birchpad_commands::parse_run_commands(&text).unwrap();
     assert_eq!(saved.last().unwrap().line, "echo again");
-    assert_eq!(saved.len(), 3);
+    assert_eq!(saved.len(), 1);
     // Unknown names and empty lines are refused.
     assert!(
         run(
@@ -168,4 +149,27 @@ fn the_dialog(cx: &mut TestAppContext) {
             .unwrap()
             .contains("Echo")
     );
+}
+
+#[gpui_kit::test]
+fn notepad_plus_plus_built_in_commands(cx: &mut TestAppContext) {
+    let (workspace, cx, _dir) = setup(cx);
+    let builtin =
+        |name: &str| Invocation::with_args("run.builtin", serde_json::json!({ "name": name }));
+    cx.simulate_input("rust");
+    run(&workspace, builtin("Wikipedia Search"), cx).unwrap();
+    let error = run(&workspace, builtin("Launch in Netscape"), cx).unwrap_err();
+    assert!(error.to_string().contains("Launch in Netscape"), "{error}");
+    assert!(run(&workspace, Invocation::new("run.builtin"), cx).is_err());
+    // They are in the Run menu, before the saved ones.
+    let menu = birchpad_commands::main_menu()
+        .into_iter()
+        .find(|menu| menu.title == "Run")
+        .unwrap();
+    let builtins = menu
+        .invocations()
+        .into_iter()
+        .filter(|invocation| invocation.command == "run.builtin")
+        .count();
+    assert_eq!(builtins, birchpad_commands::builtin_run_commands().len());
 }

@@ -1,273 +1,77 @@
-//! The command registry: maps command ids from `birchpad-commands` to handlers.
-//!
-//! GPUI sees a single action, [`RunCommand`], carrying an [`Invocation`]. Key bindings and menu
-//! items are built from the data in `birchpad-commands` and all dispatch that action; the focused
-//! editor view or the workspace looks the id up here and runs the handler. Nothing else invokes
-//! command code directly.
-
-use std::collections::{HashMap, HashSet};
-use std::rc::Rc;
+//! The application's commands: every handler registered in `birchpad_ui`'s command registry,
+//! for the workspace or the editor, and the keymap that binds keys to them.
 
 use anyhow::Result;
-use birchpad_commands::{Invocation, Keymap, Layer, Platform, Scope};
-use gpui_kit::{
-    Action, App, Context, Global, KeyBinding, KeyBindingContextPredicate, PlatformKeyboardMapper,
-    Window,
+#[cfg(test)]
+use birchpad_commands::{Invocation, Platform};
+use birchpad_commands::{Keymap, Scope};
+pub(crate) use birchpad_ui::{
+    ActiveKeymap, CommandRegistry, CommandTarget, RunCommand, reload_keymap,
 };
+#[cfg(test)]
+use birchpad_ui::{key_bindings, replace_command_bindings};
+#[cfg(test)]
+use gpui_kit::PlatformKeyboardMapper;
+use gpui_kit::{App, Context, Window};
 use serde::de::DeserializeOwned;
 
 use crate::editor::EditorView;
 use crate::workspace::Workspace;
 
-/// The one GPUI action of Birchpad: run a command from the catalog.
-#[derive(Clone, PartialEq, Debug, Action)]
-#[action(namespace = birchpad, no_json)]
-pub(crate) struct RunCommand(pub(crate) Invocation);
-
-impl RunCommand {
-    pub(crate) fn new(id: &str) -> Self {
-        Self(Invocation::new(id))
-    }
+impl CommandTarget for Workspace {
+    const SCOPE: Scope = Scope::Workspace;
 }
 
-type WorkspaceFn =
-    dyn Fn(&mut Workspace, &Invocation, &mut Window, &mut Context<Workspace>) -> Result<()>;
-type EditorFn =
-    dyn Fn(&mut EditorView, &Invocation, &mut Window, &mut Context<EditorView>) -> Result<()>;
-
-#[derive(Clone)]
-pub(crate) enum Handler {
-    Workspace(Rc<WorkspaceFn>),
-    Editor(Rc<EditorFn>),
-}
-
-#[derive(Default)]
-pub(crate) struct CommandRegistry {
-    handlers: HashMap<&'static str, Handler>,
-    /// Commands in the catalog that are not implemented yet: shown disabled in menus.
-    pending: HashSet<&'static str>,
-    /// Commands that are available only in some states (e.g. turned off by a setting).
-    enabled: HashMap<&'static str, fn(&App) -> bool>,
-}
-
-impl Global for CommandRegistry {}
-
-impl CommandRegistry {
-    /// A registry with every handler of the application.
-    pub(crate) fn new() -> Self {
-        let mut registry = Self::default();
-        crate::workspace::register_commands(&mut registry);
-        crate::editor::register_commands(&mut registry);
-        registry
-    }
-
+/// Registering the handlers of the workspace and of the editor.
+pub(crate) trait Register {
     /// Registers a workspace command whose arguments decode to `A` (`()` for none).
-    pub(crate) fn workspace<A: DeserializeOwned + 'static>(
+    fn workspace<A: DeserializeOwned + 'static>(
+        &mut self,
+        id: &'static str,
+        run: impl Fn(&mut Workspace, A, &mut Window, &mut Context<Workspace>) -> Result<()> + 'static,
+    );
+
+    /// Registers an editor command whose arguments decode to `A` (`()` for none).
+    fn editor<A: DeserializeOwned + 'static>(
+        &mut self,
+        id: &'static str,
+        run: impl Fn(&mut EditorView, A, &mut Window, &mut Context<EditorView>) -> Result<()> + 'static,
+    );
+}
+
+impl Register for CommandRegistry {
+    fn workspace<A: DeserializeOwned + 'static>(
         &mut self,
         id: &'static str,
         run: impl Fn(&mut Workspace, A, &mut Window, &mut Context<Workspace>) -> Result<()> + 'static,
     ) {
-        let handler = move |this: &mut Workspace,
-                            invocation: &Invocation,
-                            window: &mut Window,
-                            cx: &mut Context<Workspace>| {
-            run(this, invocation.args()?, window, cx)
-        };
-        self.insert(id, Scope::Workspace, Handler::Workspace(Rc::new(handler)));
+        self.register(id, run);
     }
 
-    /// Registers an editor command whose arguments decode to `A` (`()` for none).
-    pub(crate) fn editor<A: DeserializeOwned + 'static>(
+    fn editor<A: DeserializeOwned + 'static>(
         &mut self,
         id: &'static str,
         run: impl Fn(&mut EditorView, A, &mut Window, &mut Context<EditorView>) -> Result<()> + 'static,
     ) {
-        let handler = move |this: &mut EditorView,
-                            invocation: &Invocation,
-                            window: &mut Window,
-                            cx: &mut Context<EditorView>| {
-            run(this, invocation.args()?, window, cx)
-        };
-        self.insert(id, Scope::Editor, Handler::Editor(Rc::new(handler)));
+        self.register(id, run);
     }
+}
 
-    /// Marks a catalog command as not implemented yet.
-    #[expect(
-        dead_code,
-        reason = "every catalog command is implemented at the moment"
-    )]
-    pub(crate) fn pending(&mut self, id: &'static str) {
-        assert!(
-            birchpad_commands::find(id).is_some(),
-            "command {id} is not in the catalog"
-        );
-        assert!(
-            !self.handlers.contains_key(id),
-            "command {id} is implemented"
-        );
-        self.pending.insert(id);
-    }
-
-    pub(crate) fn is_pending(&self, id: &str) -> bool {
-        self.pending.contains(id)
-    }
-
-    /// Makes a registered command available only while `enabled` says so; menus show it
-    /// disabled otherwise.
-    pub(crate) fn enabled_when(&mut self, id: &'static str, enabled: fn(&App) -> bool) {
-        assert!(
-            self.handlers.contains_key(id),
-            "command {id} is not registered"
-        );
-        self.enabled.insert(id, enabled);
-    }
-
-    /// Whether the command can run now.
-    pub(crate) fn is_enabled(&self, id: &str, cx: &App) -> bool {
-        !self.is_pending(id) && self.enabled.get(id).is_none_or(|enabled| enabled(cx))
-    }
-
-    fn insert(&mut self, id: &'static str, scope: Scope, handler: Handler) {
-        let spec = birchpad_commands::find(id)
-            .unwrap_or_else(|| panic!("command {id} is not in the catalog"));
-        assert_eq!(
-            spec.scope, scope,
-            "command {id} is registered in the wrong scope"
-        );
-        let previous = self.handlers.insert(id, handler);
-        assert!(previous.is_none(), "command {id} is registered twice");
-    }
-
-    pub(crate) fn get(&self, id: &str) -> Option<Handler> {
-        self.handlers.get(id).cloned()
-    }
-
-    #[cfg(test)]
-    fn contains(&self, id: &str) -> bool {
-        self.handlers.contains_key(id)
-    }
+/// A registry with every handler of the application.
+pub(crate) fn registry() -> CommandRegistry {
+    let mut registry = CommandRegistry::default();
+    crate::workspace::register_commands(&mut registry);
+    crate::editor::register_commands(&mut registry);
+    registry
 }
 
 /// Installs the registry and the keymap (defaults plus the user's `keymap.toml`, if any).
 pub(crate) fn init(user_keymap: Option<&str>, cx: &mut App) -> Keymap {
-    cx.set_global(CommandRegistry::new());
-    let keymap = build_keymap(user_keymap);
-    let mapper = cx.keyboard_mapper().clone();
-    cx.bind_keys(key_bindings(&keymap, mapper.as_ref(), shifted_symbols()));
-    cx.set_global(ActiveKeymap(keymap.clone()));
-    // Shift with a digit types a different character on each layout (Shift+2 is `@` on a US
-    // layout and `"` on a Russian one), so the bindings are rebuilt for the new layout.
-    cx.on_keyboard_layout_change(rebind).detach();
+    cx.set_global(registry());
+    crate::editor_hooks::install(cx);
+    let keymap = birchpad_ui::bind_keymap(user_keymap, cx);
     birchpad_menu_bar::init(cx);
     keymap
-}
-
-/// The keymap in effect: the defaults with the user's `keymap.toml` over them.
-pub(crate) struct ActiveKeymap(pub(crate) Keymap);
-
-impl gpui_kit::Global for ActiveKeymap {}
-
-fn shifted_symbols() -> bool {
-    Platform::current() == Platform::Linux
-}
-
-fn build_keymap(user_keymap: Option<&str>) -> Keymap {
-    let mut keymap = Keymap::with_defaults(Platform::current());
-    if let Some(source) = user_keymap {
-        keymap.add_layer(Layer::User, source);
-    }
-    for diagnostic in keymap.diagnostics() {
-        eprintln!("keymap: {diagnostic}");
-    }
-    keymap
-}
-
-/// Binds the keys of the active keymap again.
-fn rebind(cx: &mut App) {
-    let mapper = cx.keyboard_mapper().clone();
-    let bindings = key_bindings(
-        &cx.global::<ActiveKeymap>().0,
-        mapper.as_ref(),
-        shifted_symbols(),
-    );
-    replace_command_bindings(bindings, cx);
-}
-
-/// Takes the user's keymap anew, after the Shortcut Mapper changed it.
-pub(crate) fn reload_keymap(user_keymap: Option<&str>, cx: &mut App) {
-    cx.set_global(ActiveKeymap(build_keymap(user_keymap)));
-    rebind(cx);
-}
-
-/// Replaces the bindings of [`RunCommand`] with `bindings`. Every other binding (text inputs
-/// and dialogs of the component library) stays, in the same order.
-fn replace_command_bindings(bindings: Vec<KeyBinding>, cx: &mut App) {
-    let current: Vec<KeyBinding> = cx.key_bindings().borrow().bindings().cloned().collect();
-    let mut bindings = Some(bindings);
-    let mut all = Vec::with_capacity(current.len());
-    for binding in current {
-        if binding.action().as_any().is::<RunCommand>() {
-            // Ours are bound together: the new ones go where the first one was.
-            all.extend(bindings.take().into_iter().flatten());
-        } else {
-            all.push(binding);
-        }
-    }
-    all.extend(bindings.into_iter().flatten());
-    cx.clear_key_bindings();
-    cx.bind_keys(all);
-}
-
-/// Turns the effective bindings of a keymap into GPUI key bindings.
-///
-/// Keys go through the platform's keyboard mapper: Windows reports Shift with a digit or
-/// punctuation key as the character it types on the current layout (Alt+Shift+0 arrives as
-/// `alt-)` on a US or Russian layout), so `alt-shift-0` in a keymap has to become that too.
-/// Linux reports such keys the same way but GPUI has no mapper there: with `shifted_symbols`,
-/// those bindings get a second binding spelled the way Linux reports them (on a US layout).
-/// It comes first, so menus keep showing the binding as written.
-pub(crate) fn key_bindings(
-    keymap: &Keymap,
-    mapper: &dyn PlatformKeyboardMapper,
-    shifted_symbols: bool,
-) -> Vec<KeyBinding> {
-    keymap
-        .bindings()
-        .iter()
-        .flat_map(|binding| {
-            let shifted = shifted_symbols
-                .then(|| binding.shifted_symbol_keys())
-                .flatten();
-            shifted
-                .into_iter()
-                .chain([binding.keys_string()])
-                .map(move |keys| (binding, keys))
-        })
-        .filter_map(|(binding, keys)| {
-            let context = match binding
-                .context
-                .as_deref()
-                .map(KeyBindingContextPredicate::parse)
-            {
-                None => None,
-                Some(Ok(predicate)) => Some(Rc::new(predicate)),
-                Some(Err(error)) => {
-                    eprintln!("keymap: bad context {:?}: {error}", binding.context);
-                    return None;
-                }
-            };
-            KeyBinding::load(
-                &keys,
-                Box::new(RunCommand(binding.invocation.clone())),
-                context,
-                false,
-                None,
-                mapper,
-            )
-            .inspect_err(|error| eprintln!("keymap: {keys}: {error}"))
-            .ok()
-        })
-        .collect()
 }
 
 /// Catalog commands that have neither a handler nor a "pending" mark.
@@ -306,7 +110,7 @@ mod tests {
 
     #[test]
     fn every_catalog_command_has_a_handler() {
-        let registry = CommandRegistry::new();
+        let registry = registry();
         assert_eq!(unregistered(&registry), Vec::<&str>::new());
     }
 

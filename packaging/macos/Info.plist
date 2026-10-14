@@ -29,5 +29,28 @@
     <string>10.15.7</string>
     <key>NSHighResolutionCapable</key>
     <true/>
+    <!-- Text files, so that Finder offers Birchpad in Open With and Change All (issue #32). -->
+    <key>CFBundleDocumentTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleTypeName</key>
+            <string>Text document</string>
+            <key>CFBundleTypeRole</key>
+            <string>Editor</string>
+            <key>LSHandlerRank</key>
+            <string>Alternate</string>
+            <key>LSItemContentTypes</key>
+            <array>
+                <string>public.plain-text</string>
+                <string>public.text</string>
+                <string>public.json</string>
+                <string>public.xml</string>
+                <string>net.daringfireball.markdown</string>
+                <string>public.comma-separated-values-text</string>
+                <string>public.yaml</string>
+                <string>public.log</string>
+            </array>
+        </dict>
+    </array>
 </dict>
 </plist>

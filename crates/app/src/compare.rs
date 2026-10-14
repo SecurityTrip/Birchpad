@@ -15,7 +15,7 @@ use birchpad_core::motion::line_range_with_break;
 use birchpad_tools::compare::{self, Change, Options};
 use gpui_kit::{App, Context, Entity, Global, Window};
 
-use crate::commands::CommandRegistry;
+use crate::commands::{CommandRegistry, Register as _};
 use crate::editor::EditorView;
 use crate::workspace::Workspace;
 

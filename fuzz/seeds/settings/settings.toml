@@ -10,6 +10,38 @@ font-size = 13
 large-file-limit-mb = 50
 change-detection = "all"
 
+[tabs]
+vertical = true
+switcher-mru = false
+
+[toolbar]
+size = "large"
+buttons = ["file.new", "|", "edit.undo"]
+
+[date]
+custom-format = "dd.MM.yyyy 'at' HH:mm"
+
+[search-engine]
+engine = "custom"
+custom-url = "https://example.com/?q=$(CURRENT_WORD)"
+
+[links]
+underline = false
+schemes = "svn:// irc://"
+
+[delimiters]
+open = "("
+close = ")"
+multi-line = true
+
+[languages.python]
+tab-width = 4
+insert-spaces = true
+
+[new-document]
+encoding = "utf-8-bom"
+line-ending = "lf"
+
 [session]
 backup-interval-seconds = 30
 

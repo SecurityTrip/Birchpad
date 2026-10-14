@@ -21,6 +21,9 @@ pub struct ConfigPaths {
     pub user_data: Option<PathBuf>,
     /// Portable mode: user settings and data live next to the executable.
     pub portable: bool,
+    /// With a cloud folder (`cloud.folder`), the local settings file that names it;
+    /// `user_settings` is then the folder's.
+    pub local_settings: Option<PathBuf>,
 }
 
 /// A file with this name next to the executable turns on portable mode.
@@ -29,6 +32,46 @@ pub const PORTABLE_MARKER: &str = "birchpad-portable.txt";
 pub const PORTABLE_DATA_DIR: &str = "data";
 
 impl ConfigPaths {
+    /// The paths with the user's settings in the cloud folder their local file names, if it
+    /// names one that exists; otherwise as they are.
+    pub fn following_cloud(self) -> Self {
+        let Some(local) = self.user_settings.clone() else {
+            return self;
+        };
+        let folder = fs::read_to_string(&local)
+            .ok()
+            .and_then(|text| toml::from_str::<Table>(&text).ok())
+            .and_then(|table| {
+                table
+                    .get("cloud")?
+                    .get("folder")?
+                    .as_str()
+                    .map(|folder| folder.trim().to_owned())
+            })
+            .filter(|folder| !folder.is_empty())
+            .map(PathBuf::from)
+            .filter(|folder| folder.is_dir());
+        match folder {
+            Some(folder) => Self {
+                user_settings: Some(folder.join("settings.toml")),
+                local_settings: Some(local),
+                ..self
+            },
+            None => self,
+        }
+    }
+
+    /// The file a setting is written to: `cloud.folder` stays in the local one.
+    pub fn settings_file_for(&self, key: &str) -> Option<&Path> {
+        if key.starts_with("cloud.") {
+            self.local_settings
+                .as_deref()
+                .or(self.user_settings.as_deref())
+        } else {
+            self.user_settings.as_deref()
+        }
+    }
+
     /// The directory of the user's settings file, where `keymap.toml` lives too.
     pub fn user_config_dir(&self) -> Option<&Path> {
         self.user_settings.as_deref().and_then(Path::parent)
@@ -85,6 +128,7 @@ impl ConfigPaths {
                 policy_file: None,
                 user_data: env_path("LOCALAPPDATA").map(|dir| dir.join("Birchpad")),
                 portable: false,
+                local_settings: None,
             }
         } else if cfg!(target_os = "macos") {
             let system = Path::new("/Library/Application Support/Birchpad");
@@ -96,6 +140,7 @@ impl ConfigPaths {
                 policy_file: Some(system.join("policies.toml")),
                 user_data: user,
                 portable: false,
+                local_settings: None,
             }
         } else {
             let config_home = env_path("XDG_CONFIG_HOME")
@@ -108,6 +153,7 @@ impl ConfigPaths {
                 policy_file: Some(PathBuf::from("/etc/birchpad/policies.toml")),
                 user_data: data_home.map(|dir| dir.join("birchpad")),
                 portable: false,
+                local_settings: None,
             }
         }
     }
@@ -121,7 +167,14 @@ pub fn load(paths: &ConfigPaths) -> Sources {
             .and_then(|path| read_table(layer, path, &mut diagnostics))
     };
     let machine = read(Layer::Machine, &paths.machine_defaults);
-    let user = read(Layer::User, &paths.user_settings);
+    let mut user = read(Layer::User, &paths.user_settings);
+    // With a cloud folder, `cloud` itself comes from the local file.
+    if let Some(local) = read(Layer::User, &paths.local_settings)
+        && let Some(cloud) = local.get("cloud").cloned()
+    {
+        user.get_or_insert_with(Table::new)
+            .insert("cloud".to_owned(), cloud);
+    }
     let policy = read(Layer::Policy, &paths.policy_file);
 
     #[cfg(windows)]
@@ -193,6 +246,7 @@ mod tests {
             policy_file: None,
             user_data: None,
             portable: false,
+            local_settings: None,
         });
         fs::remove_dir_all(&dir).unwrap();
 
@@ -224,6 +278,7 @@ mod tests {
             policy_file: Some(policy),
             user_data: None,
             portable: false,
+            local_settings: None,
         });
         assert_eq!(
             sources.machine.and_then(|t| t.get("editor").cloned()),
@@ -246,6 +301,7 @@ mod tests {
             policy_file: None,
             user_data: None,
             portable: false,
+            local_settings: None,
         });
         assert!(sources.machine.is_none() && sources.user.is_none());
         assert_eq!(ConfigPaths::default().user_config_dir(), None);
@@ -268,5 +324,46 @@ mod tests {
         // Policies and machine defaults are not the portable copy's to choose.
         assert_eq!(portable.policy_file, installed.policy_file);
         assert_eq!(portable.machine_defaults, installed.machine_defaults);
+    }
+
+    #[test]
+    fn settings_in_a_cloud_folder() {
+        let dir = tempfile::tempdir().unwrap();
+        let local = dir.path().join("settings.toml");
+        let cloud = dir.path().join("cloud");
+        fs::create_dir(&cloud).unwrap();
+        fs::write(cloud.join("settings.toml"), "editor.tab-width = 3").unwrap();
+        let paths = ConfigPaths {
+            user_settings: Some(local.clone()),
+            ..ConfigPaths::default()
+        };
+        // No local file, or no folder in it, or a folder that is not there: as they are.
+        assert_eq!(paths.clone().following_cloud(), paths);
+        fs::write(&local, "cloud.folder = \"\"").unwrap();
+        assert_eq!(paths.clone().following_cloud(), paths);
+        fs::write(&local, "cloud.folder = \"/no/such/folder\"").unwrap();
+        assert_eq!(paths.clone().following_cloud(), paths);
+        fs::write(&local, "[cloud\n").unwrap();
+        assert_eq!(paths.clone().following_cloud(), paths);
+
+        let text = format!("cloud.folder = '{}'\neditor.tab-width = 9", cloud.display());
+        fs::write(&local, text).unwrap();
+        let following = paths.following_cloud();
+        assert_eq!(following.user_settings, Some(cloud.join("settings.toml")));
+        assert_eq!(following.local_settings, Some(local.clone()));
+        assert_eq!(
+            following.settings_file_for("cloud.folder"),
+            Some(local.as_path())
+        );
+        assert_eq!(
+            following.settings_file_for("editor.tab-width"),
+            Some(cloud.join("settings.toml").as_path())
+        );
+        let resolved = resolve(load(&following));
+        assert_eq!(
+            resolved.settings.editor.tab_width, 3,
+            "the cloud's settings"
+        );
+        assert_eq!(resolved.settings.cloud.folder, cloud.display().to_string());
     }
 }

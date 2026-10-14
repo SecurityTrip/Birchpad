@@ -11,7 +11,7 @@ use serde::Deserialize;
 
 use crate::app_state::AppState;
 use crate::buffer::{Buffer, ReadOnly};
-use crate::commands::CommandRegistry;
+use crate::commands::{CommandRegistry, Register as _};
 use crate::editor::EditorView;
 use crate::workspace::{Workspace, report_warning};
 
@@ -121,7 +121,7 @@ fn convert_to(
         report_warning(
             t!(
                 "encoding-ui.unencodable",
-                problem = crate::i18n::tr_text(&problem.to_string()),
+                problem = problem.to_string(),
                 first = first_position(&text, &problem)
             ),
             window,
@@ -462,5 +462,54 @@ mod tests {
             Encoding::Legacy("windows-1252"),
         );
         assert!(checked);
+    }
+
+    /// The banner over a file that does not decode: its buttons, and what it says.
+    #[gpui_kit::test]
+    fn the_banner_of_a_file_that_does_not_decode(cx: &mut TestAppContext) {
+        let dir = tempfile::tempdir().unwrap();
+        let malformed = dir.path().join("bad.txt");
+        std::fs::write(&malformed, b"ok \xC3(\n").unwrap();
+        let (workspace, cx) = open_workspace(cx);
+        let open_as = |path: &Path, encoding: &str, cx: &mut VisualTestContext| {
+            workspace.update_in(cx, |workspace, window, cx| {
+                workspace.open_path(path, window, cx)
+            });
+            cx.run_until_parked();
+            run(
+                &workspace,
+                Invocation::with_args("encoding.encode-in", json!({ "encoding": encoding })),
+                cx,
+            );
+        };
+        open_as(&malformed, "utf-8", cx);
+        let click = |selector: &'static str, cx: &mut VisualTestContext| {
+            cx.update(|window, _| window.refresh());
+            cx.run_until_parked();
+            crate::workspace::tests::click_on(selector, gpui_kit::MouseButton::Left, cx);
+        };
+        // Reopen With Encoding lists the encodings.
+        click("banner-reopen", cx);
+        assert!(cx.debug_bounds("banner-decoding").is_some());
+        cx.simulate_keystrokes("escape");
+        // Edit Anyway asks first; cancelled, the file stays read-only.
+        click("banner-edit-anyway", cx);
+        cx.simulate_prompt_answer("Cancel");
+        cx.run_until_parked();
+        assert!(cx.debug_bounds("banner-decoding").is_some());
+        click("banner-edit-anyway", cx);
+        cx.simulate_prompt_answer("Edit Anyway");
+        cx.run_until_parked();
+        cx.update(|window, _| window.refresh());
+        cx.run_until_parked();
+        assert!(cx.debug_bounds("banner-decoding").is_none(), "editable now");
+
+        // Bytes that decode, but would change when saved (Shift_JIS's IBM extensions).
+        let shift_jis = dir.path().join("sjis.txt");
+        std::fs::write(&shift_jis, b"ab\xFA\x5B").unwrap();
+        open_as(&shift_jis, "shift_jis", cx);
+        cx.update(|window, _| window.refresh());
+        cx.run_until_parked();
+        assert!(cx.debug_bounds("banner-decoding").is_some());
     }
 }

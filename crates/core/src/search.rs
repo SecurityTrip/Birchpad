@@ -20,7 +20,7 @@ use fancy_regex::{Regex, RegexBuilder, RegexInput};
 use memchr::memmem;
 use ropey::Rope;
 
-use crate::motion::{CharClass, char_class, next_boundary, word_at};
+use crate::motion::{CharClass, char_class, line_of, line_range, next_boundary, word_at};
 
 /// How the pattern is interpreted.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
@@ -50,13 +50,13 @@ pub struct Query {
 
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum SearchError {
-    #[error("the search text is empty")]
+    #[error("{}", birchpad_i18n::t!("core.search.empty"))]
     Empty,
-    #[error("invalid regular expression: {0}")]
+    #[error("{}", birchpad_i18n::t!("core.search.invalid-regex", reason = .0))]
     InvalidRegex(String),
     /// The regular expression could not be matched, typically because backtracking took too
     /// long (`(a*)*b` on a long run of `a`).
-    #[error("the regular expression is too complex to match: {0}")]
+    #[error("{}", birchpad_i18n::t!("core.search.too-complex", reason = .0))]
     RegexFailed(String),
 }
 
@@ -561,6 +561,47 @@ pub fn token_at(text: &Rope, selection: Range<usize>) -> Option<Range<usize>> {
     is_word_run.then_some(word)
 }
 
+/// Search > Find Characters in Range: the next character (previous `Backward`) from byte
+/// `from` whose code point is in `codes`, starting over at the other end with `wrap`.
+pub fn find_char_in_range(
+    text: &Rope,
+    from: usize,
+    codes: std::ops::RangeInclusive<u32>,
+    direction: Direction,
+    wrap: bool,
+) -> Option<Range<usize>> {
+    let from = text.floor_char_boundary(from.min(text.len()));
+    let hit = |at: usize, c: char| codes.contains(&u32::from(c)).then(|| at..at + c.len_utf8());
+    let forward = |start: usize, end: usize| {
+        let mut at = start;
+        text.slice(start..end).chars().find_map(|c| {
+            let found = hit(at, c);
+            at += c.len_utf8();
+            found
+        })
+    };
+    let backward = |start: usize, end: usize| {
+        let mut chars = text.chars_at(end);
+        let mut at = end;
+        while at > start {
+            let c = chars.prev()?;
+            at -= c.len_utf8();
+            if let Some(found) = hit(at, c) {
+                return Some(found);
+            }
+        }
+        None
+    };
+    match direction {
+        Direction::Forward => {
+            forward(from, text.len()).or_else(|| wrap.then(|| forward(0, from)).flatten())
+        }
+        Direction::Backward => {
+            backward(0, from).or_else(|| wrap.then(|| backward(from, text.len())).flatten())
+        }
+    }
+}
+
 /// Simple case folding: the first character of the lowercase mapping. Good for the scripts
 /// people search in; full folding (ß → ss) comes with regular expressions.
 fn fold(ch: char) -> char {
@@ -808,8 +849,55 @@ fn expand_with(captures: &fancy_regex::Captures<'_, str>, template: &str) -> Str
     )
 }
 
+/// The most of a line a result shows; longer lines are cut there.
+pub const MAX_LINE_SHOWN: usize = 1024;
+/// A line with matches.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LineHit {
+    /// 0-based.
+    pub line: usize,
+    /// The line, without its line break, cut at [`MAX_LINE_SHOWN`] bytes.
+    pub text: String,
+    /// The matches within `text`.
+    pub highlights: Vec<Range<usize>>,
+    /// The first match, in bytes from the start of the line (it may run past its end).
+    pub target: Range<usize>,
+    /// How many matches start on the line.
+    pub matches: usize,
+}
+
+/// The lines of `text` with `matches` (sorted), each with its matches.
+pub fn line_hits(text: &Rope, matches: &[Range<usize>]) -> Vec<LineHit> {
+    let mut hits: Vec<LineHit> = Vec::new();
+    for found in matches {
+        let line = line_of(text, found.start);
+        let bounds = line_range(text, line);
+        if hits.last().is_none_or(|last| last.line != line) {
+            let mut end = bounds.end.min(bounds.start + MAX_LINE_SHOWN);
+            end = text.floor_char_boundary(end);
+            hits.push(LineHit {
+                line,
+                text: text.slice(bounds.start..end).to_string(),
+                highlights: Vec::new(),
+                target: found.start - bounds.start..found.end - bounds.start,
+                matches: 0,
+            });
+        }
+        let hit = hits.last_mut().expect("just pushed");
+        hit.matches += 1;
+        let shown = hit.text.len();
+        let start = found.start - bounds.start;
+        let end = (found.end.min(bounds.end) - bounds.start).min(shown);
+        if start < end {
+            hit.highlights.push(start..end);
+        }
+    }
+    hits
+}
+
 #[cfg(test)]
 mod tests {
+
     #![allow(
         clippy::single_range_in_vec_init,
         reason = "lists of one expected match"
@@ -1246,5 +1334,144 @@ mod tests {
             None,
             "between punctuation and a space"
         );
+    }
+}
+
+#[cfg(test)]
+mod range_tests {
+    use ropey::Rope;
+
+    #[test]
+    fn characters_in_a_range() {
+        use super::{Direction::*, find_char_in_range};
+        let text = Rope::from("aé	b€");
+        let non_ascii = 128..=0x10_FFFF;
+        assert_eq!(
+            find_char_in_range(&text, 0, non_ascii.clone(), Forward, false),
+            Some(1..3)
+        );
+        assert_eq!(
+            find_char_in_range(&text, 3, non_ascii.clone(), Forward, false),
+            Some(5..8)
+        );
+        assert_eq!(
+            find_char_in_range(&text, 8, non_ascii.clone(), Forward, false),
+            None
+        );
+        assert_eq!(
+            find_char_in_range(&text, 8, non_ascii.clone(), Forward, true),
+            Some(1..3)
+        );
+        assert_eq!(
+            find_char_in_range(&text, 5, non_ascii.clone(), Backward, false),
+            Some(1..3)
+        );
+        assert_eq!(
+            find_char_in_range(&text, 1, non_ascii.clone(), Backward, false),
+            None
+        );
+        assert_eq!(
+            find_char_in_range(&text, 1, non_ascii, Backward, true),
+            Some(5..8)
+        );
+        // Control characters; one code; an empty range; inside a character; empty text.
+        assert_eq!(
+            find_char_in_range(&text, 0, 0..=31, Forward, false),
+            Some(3..4)
+        );
+        assert_eq!(
+            find_char_in_range(&text, 0, 98..=98, Forward, false),
+            Some(4..5)
+        );
+        #[allow(clippy::reversed_empty_ranges)]
+        let empty = 5..=4;
+        assert_eq!(find_char_in_range(&text, 0, empty, Forward, true), None);
+        assert_eq!(
+            find_char_in_range(&text, 2, 0..=127, Forward, false),
+            Some(3..4)
+        );
+        assert_eq!(
+            find_char_in_range(&Rope::new(), 0, 0..=0x10_FFFF, Backward, true),
+            None
+        );
+        assert_eq!(
+            find_char_in_range(&text, 99, 97..=97, Backward, false),
+            Some(0..1)
+        );
+    }
+}
+
+#[cfg(test)]
+mod line_hit_tests {
+    #![allow(
+        clippy::single_range_in_vec_init,
+        clippy::type_complexity,
+        reason = "lists of one expected match, a summary of each line"
+    )]
+
+    use super::*;
+
+    #[test]
+    fn lines_gather_their_matches() {
+        let text = Rope::from_str("foo bar foo\r\nbaz\nfoo-\nfoo\nbar");
+        let matches = [0..3, 8..11, 17..20, 22..29];
+        let hits = line_hits(&text, &matches);
+        let summary: Vec<(usize, &str, Vec<Range<usize>>, Range<usize>, usize)> = hits
+            .iter()
+            .map(|hit| {
+                (
+                    hit.line,
+                    hit.text.as_str(),
+                    hit.highlights.clone(),
+                    hit.target.clone(),
+                    hit.matches,
+                )
+            })
+            .collect();
+        assert_eq!(
+            summary,
+            [
+                (0, "foo bar foo", vec![0..3, 8..11], 0..3, 2),
+                (2, "foo-", vec![0..3], 0..3, 1),
+                // A match over a line break shows its first line's part.
+                (3, "foo", vec![0..3], 0..7, 1),
+            ]
+        );
+    }
+
+    #[test]
+    fn long_lines_are_cut() {
+        let long = format!("{}needle", "x".repeat(2000));
+        let text = Rope::from_str(&long);
+        let hits = line_hits(&text, &[2000..2006]);
+        assert_eq!(hits[0].text.len(), MAX_LINE_SHOWN);
+        assert!(hits[0].highlights.is_empty(), "the match is past the cut");
+        assert_eq!(hits[0].target, 2000..2006, "but going there still works");
+    }
+
+    #[test]
+    fn no_matches_no_lines() {
+        assert!(line_hits(&Rope::from_str("abc"), &[]).is_empty());
+        let empty = Rope::new();
+        let hits = line_hits(&empty, &[0..0]);
+        assert_eq!(hits.len(), 1, "an empty match on an empty text");
+        assert_eq!(
+            (hits[0].line, hits[0].text.as_str(), hits[0].matches),
+            (0, "", 1)
+        );
+        assert!(hits[0].highlights.is_empty(), "nothing to highlight");
+    }
+
+    #[test]
+    fn a_line_exactly_as_long_as_shown_is_whole() {
+        let line = "y".repeat(MAX_LINE_SHOWN);
+        let text = Rope::from_str(&line);
+        let hits = line_hits(&text, &[MAX_LINE_SHOWN - 1..MAX_LINE_SHOWN]);
+        assert_eq!(hits[0].text, line);
+        assert_eq!(hits[0].highlights, [MAX_LINE_SHOWN - 1..MAX_LINE_SHOWN]);
+        // A cut never splits a character.
+        let wide = format!("{}ж", "x".repeat(MAX_LINE_SHOWN - 1));
+        let hits = line_hits(&Rope::from_str(&wide), &[0..1]);
+        assert_eq!(hits[0].text.len(), MAX_LINE_SHOWN - 1);
     }
 }

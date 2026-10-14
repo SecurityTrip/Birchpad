@@ -3,19 +3,23 @@
 //! Settings an administrator's policy sets are shown but cannot be changed.
 
 use std::collections::HashMap;
+use std::path::Path;
 
 use anyhow::{Result, anyhow, bail};
 use birchpad_config::Settings;
+use gpui_kit::component::button::Button;
 use gpui_kit::component::checkbox::Checkbox;
 use gpui_kit::component::dialog::DialogFooter;
 use gpui_kit::component::input::{Input, InputEvent, InputState};
 use gpui_kit::component::radio::RadioGroup;
-use gpui_kit::component::{Disableable as _, WindowExt as _};
-use gpui_kit::{App, AppContext as _, Context, Entity, WeakEntity, Window, div, prelude::*, px};
+use gpui_kit::component::{Disableable as _, Sizable as _, WindowExt as _};
+use gpui_kit::{
+    AnyElement, App, AppContext as _, Context, Entity, WeakEntity, Window, div, prelude::*, px,
+};
 use toml::Value;
 
 use crate::app_state::AppState;
-use crate::commands::CommandRegistry;
+use crate::commands::{CommandRegistry, Register as _};
 use crate::theme::{paint, ui};
 use crate::workspace::Workspace;
 
@@ -37,6 +41,11 @@ pub(crate) enum Kind {
         min: i64,
         max: i64,
     },
+    /// Preferences > Language: tab size and spaces of each language (`languages`).
+    LanguageTabs,
+    /// "Edit with Birchpad" in the Windows Explorer's menu of files, for the user: the
+    /// registry's, not a setting.
+    ExplorerMenu,
 }
 
 /// A setting the dialog shows.
@@ -60,6 +69,9 @@ const fn entry(section: &'static str, key: &'static str, label: &'static str, ki
 
 const OFF_ON: &[(&str, &str)] = &[("off", "Off"), ("margin", "In the margin")];
 
+/// The key of Preferences > Files > Edit with Birchpad, which is no setting.
+const EXPLORER_MENU: &str = "explorer-menu";
+
 /// Every setting the dialog shows, by section. View > Word Wrap and Show Symbol stay in the
 /// View menu, which remembers them.
 pub(crate) const ENTRIES: &[Entry] = &[
@@ -72,6 +84,194 @@ pub(crate) const ENTRIES: &[Entry] = &[
             ("en", "English"),
             ("ru", "Русский"),
         ]),
+    ),
+    entry(
+        "Appearance",
+        "appearance.interface",
+        "Interface (Dark Mode)",
+        Kind::Choice(&[
+            ("theme", "As the theme"),
+            ("light", "Light"),
+            ("dark", "Dark"),
+            ("system", "As the system"),
+        ]),
+    ),
+    entry(
+        "Appearance",
+        "appearance.title-file-name-only",
+        "Show only the file name in the title bar",
+        Kind::Bool,
+    ),
+    entry("Toolbar", "toolbar.show", "Show the toolbar", Kind::Bool),
+    entry(
+        "Toolbar",
+        "toolbar.size",
+        "Icons",
+        Kind::Choice(&[("small", "Small"), ("large", "Large")]),
+    ),
+    entry("Tab Bar", "tabs.vertical", "Vertical", Kind::Bool),
+    entry("Tab Bar", "tabs.multi-line", "Multi-line", Kind::Bool),
+    entry("Tab Bar", "tabs.reduce", "Reduce", Kind::Bool),
+    entry(
+        "Tab Bar",
+        "tabs.lock",
+        "Lock (no drag and drop)",
+        Kind::Bool,
+    ),
+    entry(
+        "Tab Bar",
+        "tabs.close-button",
+        "Show close button on each tab",
+        Kind::Bool,
+    ),
+    entry(
+        "Tab Bar",
+        "tabs.double-click-close",
+        "Double click to close document",
+        Kind::Bool,
+    ),
+    entry(
+        "Tab Bar",
+        "tabs.peeker",
+        "Show the start of a document on hover",
+        Kind::Bool,
+    ),
+    entry(
+        "Tab Bar",
+        "tabs.switcher",
+        "Document switcher (Ctrl+Tab)",
+        Kind::Bool,
+    ),
+    entry(
+        "Tab Bar",
+        "tabs.switcher-mru",
+        "Most recently used first",
+        Kind::Bool,
+    ),
+    entry(
+        "Tab Bar",
+        "tabs.exit-on-last-close",
+        "Exit on close the last tab",
+        Kind::Bool,
+    ),
+    entry(
+        "New Document",
+        "new-document.encoding",
+        "Encoding",
+        Kind::Choice(&[
+            ("utf-8", "UTF-8"),
+            ("utf-8-bom", "UTF-8 with BOM"),
+            ("utf-16le-bom", "UTF-16 LE BOM"),
+            ("utf-16be-bom", "UTF-16 BE BOM"),
+            ("ansi", "ANSI"),
+        ]),
+    ),
+    entry(
+        "New Document",
+        "new-document.line-ending",
+        "Line ending",
+        Kind::Choice(&[
+            ("system", "The system's"),
+            ("crlf", "Windows (CR LF)"),
+            ("lf", "Unix (LF)"),
+            ("cr", "Macintosh (CR)"),
+        ]),
+    ),
+    entry(
+        "New Document",
+        "new-document.language",
+        "Language (its id: python, rust, text)",
+        Kind::Text,
+    ),
+    entry("Language", "languages", "Tab settings", Kind::LanguageTabs),
+    entry(
+        "Default Directory",
+        "files.default-directory",
+        "Open and Save As start in",
+        Kind::Choice(&[
+            ("follow", "The current document's folder"),
+            ("remember", "The folder last used"),
+            ("custom", "This folder"),
+        ]),
+    ),
+    entry(
+        "Default Directory",
+        "files.default-directory-path",
+        "Folder",
+        Kind::Text,
+    ),
+    entry(
+        "Multi-Instance & Date",
+        "instances.mode",
+        "Instances",
+        Kind::Choice(&[
+            ("single", "Default (mono-instance)"),
+            ("session", "Open session in a new instance"),
+            ("multi", "Always in multi-instance mode"),
+        ]),
+    ),
+    entry(
+        "Multi-Instance & Date",
+        "date.custom-format",
+        "Customized date and time",
+        Kind::Text,
+    ),
+    entry(
+        "Multi-Instance & Date",
+        "date.reverse",
+        "Date before time (short and long)",
+        Kind::Bool,
+    ),
+    entry(
+        "Cloud & Link",
+        "links.enabled",
+        "Enable clickable links",
+        Kind::Bool,
+    ),
+    entry(
+        "Cloud & Link",
+        "links.underline",
+        "Underline them",
+        Kind::Bool,
+    ),
+    entry(
+        "Cloud & Link",
+        "links.schemes",
+        "Schemes of one's own",
+        Kind::Text,
+    ),
+    entry(
+        "Cloud & Link",
+        "cloud.folder",
+        "Settings in this folder (from the next start)",
+        Kind::Text,
+    ),
+    entry("Delimiter", "delimiters.open", "Open", Kind::Text),
+    entry("Delimiter", "delimiters.close", "Close", Kind::Text),
+    entry(
+        "Delimiter",
+        "delimiters.multi-line",
+        "Allow on several lines",
+        Kind::Bool,
+    ),
+    entry(
+        "Search Engine",
+        "search-engine.engine",
+        "Search on Internet with",
+        Kind::Choice(&[
+            ("duckduckgo", "DuckDuckGo"),
+            ("google", "Google"),
+            ("bing", "Bing"),
+            ("yahoo", "Yahoo!"),
+            ("stack-overflow", "Stack Overflow"),
+            ("custom", "Custom"),
+        ]),
+    ),
+    entry(
+        "Search Engine",
+        "search-engine.custom-url",
+        "Custom address ($(CURRENT_WORD))",
+        Kind::Text,
     ),
     entry(
         "Editing",
@@ -235,6 +435,40 @@ pub(crate) const ENTRIES: &[Entry] = &[
         Kind::Bool,
     ),
     entry(
+        "Files",
+        "files.offer-default-app",
+        "Offer to open text files at startup",
+        Kind::Bool,
+    ),
+    entry(
+        "Files",
+        EXPLORER_MENU,
+        "Edit with Birchpad in the Explorer's menu of files",
+        Kind::ExplorerMenu,
+    ),
+    entry(
+        "Backup",
+        "files.backup-on-save",
+        "Backup on save",
+        Kind::Choice(&[
+            ("none", "None"),
+            ("simple", "Simple (.bak)"),
+            ("verbose", "Verbose (with the time)"),
+        ]),
+    ),
+    entry(
+        "Backup",
+        "files.backup-folder",
+        "Folder of verbose backups",
+        Kind::Text,
+    ),
+    entry(
+        "Backup",
+        "session.remember-inaccessible",
+        "Remember inaccessible files",
+        Kind::Bool,
+    ),
+    entry(
         "Backup",
         "session.remember",
         "Remember the session",
@@ -339,7 +573,7 @@ pub(crate) fn parse_field(kind: Kind, text: &str) -> Result<Option<Value>> {
             let text = text.trim();
             Ok((!text.is_empty()).then(|| Value::String(text.to_owned())))
         }
-        Kind::Bool | Kind::Choice(_) => {
+        Kind::Bool | Kind::Choice(_) | Kind::LanguageTabs | Kind::ExplorerMenu => {
             bail!("{}", t!("preferences.this-setting-has-no-text-field"))
         }
     }
@@ -355,12 +589,16 @@ pub(crate) fn set(key: &str, value: Option<Value>, cx: &mut App) -> Result<()> {
             t!("preferences.is-set-by-your-administrator", key = key)
         );
     }
-    let path = state.paths.user_settings.clone().ok_or_else(|| {
-        anyhow!(
-            "{}",
-            t!("preferences.there-is-no-settings-file-to-write-to")
-        )
-    })?;
+    let path = state
+        .paths
+        .settings_file_for(key)
+        .map(Path::to_owned)
+        .ok_or_else(|| {
+            anyhow!(
+                "{}",
+                t!("preferences.there-is-no-settings-file-to-write-to")
+            )
+        })?;
     birchpad_config::write_setting(&path, key, value.as_ref())?;
     let paths = AppState::global(cx).paths.clone();
     let resolved = birchpad_config::resolve(birchpad_config::load(&paths));
@@ -369,6 +607,8 @@ pub(crate) fn set(key: &str, value: Option<Value>, cx: &mut App) -> Result<()> {
     }
     cx.global_mut::<AppState>().set_settings(resolved);
     crate::i18n::apply(cx);
+    // Preferences > Appearance > Interface.
+    crate::themes::reapply(cx);
     cx.refresh_windows();
     Ok(())
 }
@@ -387,11 +627,17 @@ pub(crate) struct Preferences {
     inputs: HashMap<&'static str, Entity<InputState>>,
     /// What went wrong with a setting, by key.
     errors: HashMap<&'static str, String>,
+    /// Preferences > Language: the language and the tab size to set.
+    language_input: Entity<InputState>,
+    language_width: Entity<InputState>,
+    language_spaces: bool,
 }
 
 /// Opens the dialog.
 pub(crate) fn open(workspace: WeakEntity<Workspace>, window: &mut Window, cx: &mut App) {
     let preferences = cx.new(|cx| Preferences::new(workspace, window, cx));
+    #[cfg(test)]
+    OPENED.with(|opened| *opened.borrow_mut() = Some(preferences.downgrade()));
     window.open_dialog(cx, move |dialog, _, _| {
         dialog
             .title(t!("preferences.preferences"))
@@ -401,12 +647,22 @@ pub(crate) fn open(workspace: WeakEntity<Workspace>, window: &mut Window, cx: &m
     });
 }
 
+#[cfg(test)]
+thread_local! {
+    /// The dialog last opened, for tests to drive.
+    static OPENED: std::cell::RefCell<Option<WeakEntity<Preferences>>> =
+        std::cell::RefCell::default();
+}
+
 impl Preferences {
     fn new(workspace: WeakEntity<Workspace>, window: &mut Window, cx: &mut Context<Self>) -> Self {
         let settings = AppState::global(cx).settings.clone();
         let mut inputs = HashMap::new();
         for entry in ENTRIES {
-            if matches!(entry.kind, Kind::Bool | Kind::Choice(_)) {
+            if matches!(
+                entry.kind,
+                Kind::Bool | Kind::Choice(_) | Kind::LanguageTabs | Kind::ExplorerMenu
+            ) {
                 continue;
             }
             let value = display(current_value(&settings, entry.key).as_ref());
@@ -425,6 +681,10 @@ impl Preferences {
             section: 0,
             inputs,
             errors: HashMap::new(),
+            language_input: cx
+                .new(|cx| InputState::new(window, cx).placeholder(t!("preferences.language-id"))),
+            language_width: cx.new(|cx| InputState::new(window, cx).default_value("4")),
+            language_spaces: false,
         }
     }
 
@@ -451,10 +711,173 @@ impl Preferences {
         self.apply(entry.key, result, cx);
     }
 
+    /// Preferences > Files: "Edit with Birchpad" in the Explorer's menu, for this copy.
+    pub(crate) fn switch_explorer_menu(&mut self, on: bool, cx: &mut Context<Self>) {
+        let result = if on {
+            std::env::current_exe().and_then(|exe| birchpad_cli::explorer::add(&exe))
+        } else {
+            birchpad_cli::explorer::remove()
+        };
+        match result {
+            Ok(()) => {
+                self.errors.remove(EXPLORER_MENU);
+            }
+            Err(error) => {
+                self.errors.insert(
+                    EXPLORER_MENU,
+                    t!(
+                        "preferences.cannot-change-the-explorer-s-menu",
+                        error = error
+                    ),
+                );
+            }
+        }
+        cx.notify();
+    }
+
+    /// Preferences > Language > Set: the language's own tab size and spaces.
+    pub(crate) fn set_language_tabs(&mut self, cx: &mut Context<Self>) {
+        let typed = self.language_input.read(cx).value().to_string();
+        let width = self.language_width.read(cx).value().to_string();
+        let result = language_id(&typed).and_then(|id| {
+            let width = parse_field(Kind::Number { min: 1, max: 16 }, &width)?;
+            set(&format!("languages.{id}.tab-width"), width, cx)?;
+            set(
+                &format!("languages.{id}.insert-spaces"),
+                Some(Value::Boolean(self.language_spaces)),
+                cx,
+            )
+        });
+        self.after_language_change(result, cx);
+    }
+
+    /// Preferences > Language > Remove: the language takes the editor's tab settings again.
+    pub(crate) fn remove_language_tabs(&mut self, id: &str, cx: &mut Context<Self>) {
+        let result = set(&format!("languages.{id}.tab-width"), None, cx)
+            .and_then(|()| set(&format!("languages.{id}.insert-spaces"), None, cx));
+        self.after_language_change(result, cx);
+    }
+
+    fn after_language_change(&mut self, result: Result<()>, cx: &mut Context<Self>) {
+        match result {
+            Ok(()) => {
+                self.errors.remove("languages");
+                self.workspace
+                    .update(cx, |workspace, cx| workspace.refresh_views(cx))
+                    .ok();
+            }
+            Err(error) => {
+                self.errors.insert("languages", format!("{error:#}"));
+            }
+        }
+        cx.notify();
+    }
+
+    /// The language table: one row per language with its own settings, then the fields that
+    /// set one.
+    fn render_language_tabs(&self, locked: bool, cx: &mut Context<Self>) -> AnyElement {
+        let settings = AppState::global(cx).settings.languages.clone();
+        let rows = settings
+            .iter()
+            .filter(|(_, own)| own.tab_width.is_some() || own.insert_spaces.is_some())
+            .enumerate()
+            .map(|(index, (id, own))| {
+                let id = id.clone();
+                let describe = format!(
+                    "{id}: {}{}",
+                    own.tab_width
+                        .map_or_else(String::new, |width| width.to_string()),
+                    match own.insert_spaces {
+                        Some(true) => format!(", {}", t!("preferences.spaces")),
+                        Some(false) => format!(", {}", t!("preferences.tabs")),
+                        None => String::new(),
+                    }
+                );
+                div()
+                    .flex()
+                    .flex_row()
+                    .items_center()
+                    .gap_2()
+                    .child(div().w(px(260.)).child(describe))
+                    .child(
+                        Button::new(("language-remove", index))
+                            .debug_selector(move || format!("language-remove-{index}"))
+                            .small()
+                            .label(t!("common.remove"))
+                            .disabled(locked)
+                            .on_click(cx.listener(move |this, _, _, cx| {
+                                this.remove_language_tabs(&id, cx);
+                            })),
+                    )
+            });
+        let spaces = self.language_spaces;
+        div()
+            .flex()
+            .flex_col()
+            .gap_2()
+            .child(label("Tab settings"))
+            .children(rows)
+            // Wrapped: on one line the fields are wider than the dialog.
+            .child(
+                div()
+                    .flex()
+                    .flex_row()
+                    .flex_wrap()
+                    .items_center()
+                    .gap_2()
+                    .child(
+                        div()
+                            .w(px(160.))
+                            .debug_selector(|| "language-id".into())
+                            .child(Input::new(&self.language_input)),
+                    )
+                    .child(
+                        div()
+                            .w(px(60.))
+                            .debug_selector(|| "language-width".into())
+                            .child(Input::new(&self.language_width)),
+                    )
+                    .child(
+                        Checkbox::new("language-spaces")
+                            .debug_selector(|| "language-spaces".into())
+                            .label(label("Replace tabs by spaces"))
+                            .checked(spaces)
+                            .on_click(cx.listener(|this, checked: &bool, _, cx| {
+                                this.language_spaces = *checked;
+                                cx.notify();
+                            })),
+                    )
+                    .child(
+                        Button::new("language-set")
+                            .debug_selector(|| "language-set".into())
+                            .small()
+                            .label(t!("preferences.set"))
+                            .disabled(locked)
+                            .on_click(cx.listener(|this, _, _, cx| this.set_language_tabs(cx))),
+                    ),
+            )
+            .into_any_element()
+    }
+
     fn select_section(&mut self, index: usize, cx: &mut Context<Self>) {
         self.section = index;
         cx.notify();
     }
+}
+
+/// The id of a language as typed: its id or its name, without regard to case.
+pub(crate) fn language_id(typed: &str) -> Result<String> {
+    let typed = typed.trim();
+    if typed.eq_ignore_ascii_case("text") || typed.eq_ignore_ascii_case("normal text") {
+        return Ok("text".to_owned());
+    }
+    birchpad_syntax::LANGUAGES
+        .iter()
+        .find(|language| {
+            language.id.eq_ignore_ascii_case(typed) || language.name.eq_ignore_ascii_case(typed)
+        })
+        .map(|language| language.id.to_owned())
+        .ok_or_else(|| anyhow!("{}", t!("preferences.there-is-no-language", name = typed)))
 }
 
 /// A section's, a setting's or a choice's text: `preferences.<text>`.
@@ -468,10 +891,18 @@ impl Render for Preferences {
         let sections = sections();
         let state = AppState::global(cx);
         let settings = state.settings.clone();
+        let locked_keys: Vec<&str> = ENTRIES
+            .iter()
+            .map(|entry| entry.key)
+            .filter(|key| state.is_locked(key))
+            .collect();
         let section = sections[self.section.min(sections.len() - 1)];
+        let mut language_tabs = (section == "Language")
+            .then(|| self.render_language_tabs(locked_keys.contains(&"languages"), cx));
         let list = sections.iter().enumerate().map(|(index, name)| {
             div()
                 .id(("preferences-section", index))
+                .debug_selector(move || format!("preferences-section-{index}"))
                 .px_2()
                 .py_1()
                 .when(index == self.section, |row| row.bg(paint(colors.selected)))
@@ -485,12 +916,13 @@ impl Render for Preferences {
             .enumerate()
             .map(|(index, entry)| {
                 let key = entry.key;
-                let locked = state.is_locked(key);
+                let locked = locked_keys.contains(&key);
                 let value = current_value(&settings, key);
                 let control = match entry.kind {
                     Kind::Bool => {
                         let checked = value.as_ref().and_then(Value::as_bool).unwrap_or(false);
                         Checkbox::new(("preferences-check", index))
+                            .debug_selector(move || format!("preferences-{key}"))
                             .label(label(entry.label))
                             .checked(checked)
                             .disabled(locked)
@@ -509,17 +941,39 @@ impl Render for Preferences {
                             .gap_3()
                             .child(div().w(px(200.)).child(label(entry.label)))
                             .child(
-                                RadioGroup::horizontal(("preferences-choice", index))
-                                    .children(choices.iter().map(|(_, text)| label(text)))
-                                    .selected_index(selected)
-                                    .disabled(locked)
-                                    .on_click(cx.listener(move |this, index: &usize, _, cx| {
-                                        let value = Value::String(choices[*index].0.to_owned());
-                                        this.apply(key, Ok(Some(value)), cx);
-                                    })),
+                                div()
+                                    .debug_selector(move || format!("preferences-{key}"))
+                                    .child(
+                                        RadioGroup::horizontal(("preferences-choice", index))
+                                            .children(choices.iter().map(|(_, text)| label(text)))
+                                            .selected_index(selected)
+                                            .disabled(locked)
+                                            .on_click(cx.listener(
+                                                move |this, index: &usize, _, cx| {
+                                                    let value =
+                                                        Value::String(choices[*index].0.to_owned());
+                                                    this.apply(key, Ok(Some(value)), cx);
+                                                },
+                                            )),
+                                    ),
                             )
                             .into_any_element()
                     }
+                    Kind::ExplorerMenu => {
+                        let added = birchpad_cli::explorer::is_added();
+                        Checkbox::new(("preferences-check", index))
+                            .debug_selector(move || format!("preferences-{key}"))
+                            .label(label(entry.label))
+                            .checked(added)
+                            .disabled(!cfg!(windows))
+                            .on_click(cx.listener(move |this, _, _, cx| {
+                                this.switch_explorer_menu(!added, cx);
+                            }))
+                            .into_any_element()
+                    }
+                    Kind::LanguageTabs => language_tabs
+                        .take()
+                        .unwrap_or_else(|| div().into_any_element()),
                     Kind::Number { .. } | Kind::Numbers { .. } | Kind::Text => div()
                         .flex()
                         .flex_row()
@@ -529,6 +983,7 @@ impl Render for Preferences {
                         .child(
                             div()
                                 .w(px(200.))
+                                .debug_selector(move || format!("preferences-{key}"))
                                 .child(Input::new(&self.inputs[key]).disabled(locked)),
                         )
                         .into_any_element(),
@@ -558,17 +1013,36 @@ impl Render for Preferences {
             .flex_row()
             .gap_4()
             .h(px(380.))
+            // Both scroll: there are more sections, and some sections have more rows, than
+            // the dialog's height shows.
             .child(
                 div()
+                    .id("preferences-sections")
                     .flex_none()
                     .w(px(150.))
+                    .overflow_y_scroll()
                     .border_1()
                     .border_color(paint(colors.border))
                     .children(list),
             )
-            .child(div().flex().flex_col().flex_1().gap_3().children(rows))
+            .child(
+                div()
+                    .id("preferences-rows")
+                    .flex()
+                    .flex_col()
+                    .flex_1()
+                    .gap_3()
+                    .overflow_y_scroll()
+                    .children(rows),
+            )
     }
 }
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod more_tests;
+
+#[cfg(test)]
+mod dialog_tests;

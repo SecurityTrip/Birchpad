@@ -26,13 +26,13 @@ pub enum Conversion {
 /// Why the selected text could not be converted.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum EncodeError {
-    #[error("the selection is not valid Base64")]
+    #[error("{}", birchpad_i18n::t!("core.encode.not-base64"))]
     Base64,
-    #[error("the selection is not valid URL encoding: {0}")]
+    #[error("{}", birchpad_i18n::t!("core.encode.not-url-encoding", reason = .0))]
     Url(String),
-    #[error("the selection is not hexadecimal: {0}")]
+    #[error("{}", birchpad_i18n::t!("core.encode.not-hexadecimal", reason = .0))]
     Hex(String),
-    #[error("the decoded bytes are not UTF-8 text")]
+    #[error("{}", birchpad_i18n::t!("core.encode.not-utf8"))]
     NotText,
 }
 

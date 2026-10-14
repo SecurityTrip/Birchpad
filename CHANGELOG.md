@@ -6,6 +6,143 @@ version's release notes from its section here.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-14
+
+### Added
+
+- Pinned tabs (View > Tab > Pin Tab, or the pin on a tab): they stay at the start of the tab
+  bar, and File > Close Multiple Documents > Close All but Pinned leaves them
+  ([#26](https://github.com/SecurityTrip/Birchpad/issues/26)).
+- Tab colors: View > Tab > Apply Color 1 to 5 and Remove Color. Themes get `tab-color-1` to
+  `tab-color-5`; a Notepad++ theme's tab colors are imported with it.
+- View > Tab: 1st to 9th Tab, Last Tab, Move Tab Forward (Ctrl+Shift+PageDown) and Backward
+  (Ctrl+Shift+PageUp), Move Tab to Start and to End.
+- File > Close Multiple Documents: Close All but This, Close All but Pinned, Close All to the
+  Left, Close All to the Right, Close All Unchanged ([#25](https://github.com/SecurityTrip/Birchpad/issues/25)).
+- The tab's context menu: close it or groups of tabs, save, print, pin, color, move or clone it
+  to the other view ([#27](https://github.com/SecurityTrip/Birchpad/issues/27)).
+- The document switcher: Ctrl+Tab and Ctrl+Shift+Tab go through the view's documents, most
+  recently used first, in a list shown while Ctrl is held.
+- The document peeker: hovering over a tab shows the start of its document.
+- Preferences > Tab Bar (`[tabs]` in `settings.toml`): vertical tabs, tabs on several rows,
+  smaller tabs, locked tabs, the close button on each tab, closing a tab with a double click,
+  the document peeker, and the document switcher with or without most recently used first.
+- A double click on the empty part of the tab bar opens a new document ([#28](https://github.com/SecurityTrip/Birchpad/issues/28)).
+- Pinned tabs and tab colors are kept in sessions, and read from Notepad++'s `session.xml`.
+- The Window menu: the documents of the active view, Sort By (name, path, type, content
+  length or modified time, either way), and Windows..., a list of the view's documents with
+  their path, type and size, sorted by any column, where the selected ones are activated,
+  saved or closed and Sort Tabs gives the tabs the order shown.
+- File > Open Containing Folder (in the file manager, a terminal or Folder as Workspace), Open
+  in Default Viewer, Reload from Disk, Save a Copy As (in the document's encoding, leaving it
+  as it is), Rename (the file in its folder, or the name of an untitled document, kept in
+  sessions) and Move to Recycle Bin, also in the tab's context menu. Reload from Disk is on
+  Ctrl+R (Cmd+R on macOS) ([#29](https://github.com/SecurityTrip/Birchpad/issues/29)).
+- File > Recent Files > Restore Recent Closed File (Ctrl+Shift+T) and Open All Recent Files.
+- Edit > Copy to Clipboard: the document's full path, file name and folder, also in the tab's
+  context menu.
+- View > Always on Top, Toggle Full Screen Mode (F11), Post-It (F12: the text alone, without
+  menus, tabs, panels and status bar) and Distraction Free Mode (full screen, the text in a
+  column in the middle); a button in the corner leaves the last two.
+- View > Move/Clone Current Document > Move to New Instance and Open in New Instance: the file
+  opens at the caret in another Birchpad of its own.
+- The toolbar under the menus, with Notepad++'s buttons: they run their commands, show
+  switches that are on pressed, and have small or large icons (Preferences > Toolbar). Which
+  buttons it has, in what order, is `toolbar.buttons` in `settings.toml`; it can be hidden.
+- Edit > Indent > Increase and Decrease Line Indent; Tab on a selection of several lines
+  indents them and Shift+Tab takes one level off, by a tab or the tab width in spaces.
+- Edit > Insert > Date Time (short, long, customized), in Notepad++'s format letters; the
+  customized format and the order are in Preferences > Multi-Instance & Date.
+- Edit > Set Read-Only and Clear Read-Only Flag.
+- Edit > Paste Special: copy, cut and paste binary content (NUL characters kept), and paste
+  the clipboard's HTML or RTF as text.
+- Edit > On Selection: open the file the selection names, show its folder, or search for it
+  on the Internet with the engine of Preferences > Search Engine (DuckDuckGo, Google, Bing,
+  Yahoo!, Stack Overflow or an address of one's own).
+- The text's context menu, on a right click: cut, copy, paste, styles of tokens, case,
+  opening the selected file, searching the Internet, comments. Its items are
+  `context-menu.toml` next to the settings, opened by Settings > Edit Popup ContextMenu, as
+  Notepad++'s `contextMenu.xml`: any command with its arguments, own labels, submenus
+  ([#30](https://github.com/SecurityTrip/Birchpad/issues/30)).
+- Search > Find (Volatile) Next and Previous (Ctrl+Alt+F3, Ctrl+Alt+Shift+F3): as Select and
+  Find, leaving the find panel's text as it is.
+- Search > Find in Projects: a tab of the find panel that searches the files of the chosen
+  project panels.
+- Search > Find Characters in Range: the next non-ASCII or ASCII character, or one with a code
+  in one's own range, up or down.
+- Search > Change History: Go to Next and Previous Change, Clear All Changes.
+- The search results' context menu: Open Selected Pathname, Open All, Wrap Long Lines and
+  Purge for Every Search (both remembered); its texts are translated.
+- View > Hide Lines (Alt+H): the selected lines are hidden, the line above them marked; a click
+  in its margin, or View > Show Hidden Lines, shows them again, and so does a caret that lands
+  in them.
+- View > View Current File in the default browser, Firefox, Chrome, Edge or Safari.
+- View > Summary: the document's path, times, characters without line endings, words, lines
+  and length, and the selection's.
+- Clickable links: addresses (http, https, ftp, ftps, file, mailto and schemes of one's own)
+  are underlined and open with a double click or Ctrl+click (Preferences > Cloud & Link).
+- Ctrl+double click selects the text between the delimiters around the click (Preferences >
+  Delimiter: the characters, and whether they may be on other lines).
+- Run: Notepad++'s own entries (Get PHP Help, Google Search, Wikipedia Search, Open File in
+  Another Instance) are built in, before the saved command lines, which no longer start with
+  copies of them.
+- Macro > Trim Trailing Space and Save (Alt+Shift+S), Notepad++'s built-in macro.
+- Macros record searches with their text and options (Find, Find Next, Replace, Replace All),
+  so that they play back the same whatever the find panel holds then.
+- Shortcut Mapper: shortcuts of several keys pressed one after the other (Ctrl+K Ctrl+C), for
+  every platform or this one only (shown next to them); Macros and Run Commands tabs to give
+  saved macros and command lines shortcuts, or delete them.
+- Preferences > Appearance > Interface, Notepad++'s Dark Mode: menus, tabs, panels and dialogs
+  light or dark whatever the editor's theme, or as the system is.
+- Themes have a font (`[font] family`, `size`), set in Style Configurator and read from a
+  Notepad++ theme's Default Style; the text is drawn in it.
+- Style Configurator saves a Notepad++ theme back into its XML file, the rest of the file left
+  as it was; more of Scintilla's style names find their highlight.
+- Preferences > Language: each language's own tab size and spaces (`[languages.<id>]`).
+- Preferences > New Document: the encoding, line ending and language of new documents.
+- Preferences > Default Directory: Open and Save As start in the current document's folder,
+  the folder last used, or one of one's own.
+- Preferences > Backup: a copy of the file before each save, `.bak` next to it or one per save
+  with the time in a folder; Remember inaccessible files keeps files that cannot be read now in
+  the session.
+- Preferences > Cloud & Link: settings in a folder of one's choice (`cloud.folder`), from the
+  next start.
+- Preferences: only the file name in the title bar; exit on closing the last tab.
+- Preferences > Multi-Instance (`instances.mode`): every launch, or a launch opening a session,
+  can start a Birchpad of its own instead of handing its files to the running one.
+
+- "Edit with Birchpad" in the Windows Explorer's context menu of files: the per-user installer
+  adds it for the user, also when an earlier version updates (unless the user took it away in
+  Preferences), and the MSI for the machine (its `ExplorerMenu` feature, which administrators
+  can leave out), and both take it away when uninstalled; Preferences > Files adds it for any
+  copy, the portable one too, or takes it away
+  ([#24](https://github.com/SecurityTrip/Birchpad/issues/24)).
+
+- Birchpad as the default editor of text files (.txt, .json, .xml, .md, .log and others): at
+  startup it offers to set itself up (Set Up, Not Now, Don't Ask Again;
+  `files.offer-default-app`), and Settings > Make Birchpad the Default Editor does it at any
+  time. Windows lets no program make itself the default, so Birchpad registers for those types
+  and opens Default apps, where the user picks it; on Linux it becomes the default with
+  `xdg-mime`; on macOS Finder lists it under Open With
+  ([#32](https://github.com/SecurityTrip/Birchpad/issues/32)).
+
+### Fixed
+
+- Preferences: the sections at the bottom of the list could not be reached, and the rows of a
+  long section were cut off; both lists scroll now. The Language section's fields no longer run
+  past the dialog's edge, where clicking Set closed the dialog.
+- A settings file holding only comments keeps them on top when Preferences adds a setting,
+  instead of moving them to its end.
+
+### Changed
+
+- Ctrl+Tab goes to the most recently used document instead of the next tab, as in Notepad++;
+  Ctrl+PageDown and Ctrl+PageUp still go to the next and previous tab, and turning the
+  document switcher off in Preferences > Tab Bar gives Ctrl+Tab its old meaning.
+- The localization is a crate of its own, `birchpad-i18n`, and the crates without a window make
+  their messages in the interface's language, instead of the application translating their
+  English afterwards; the rest of JSON validation's messages are translated now too.
+
 ## [0.1.5] - 2026-10-12
 
 ### Added
@@ -272,7 +409,8 @@ The first release: a Notepad++-like editor for Windows, Linux and macOS.
   entirely (`updates.mode = "off"`).
 - Nightly builds of `main` on the nightly channel.
 
-[Unreleased]: https://github.com/SecurityTrip/Birchpad/compare/v0.1.5...HEAD
+[Unreleased]: https://github.com/SecurityTrip/Birchpad/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/SecurityTrip/Birchpad/compare/v0.1.5...v0.2.0
 [0.1.5]: https://github.com/SecurityTrip/Birchpad/compare/v0.1.4...v0.1.5
 [0.1.4]: https://github.com/SecurityTrip/Birchpad/compare/v0.1.3...v0.1.4
 [0.1.3]: https://github.com/SecurityTrip/Birchpad/compare/v0.1.2...v0.1.3

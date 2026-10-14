@@ -20,8 +20,18 @@ pub fn check(text: &str) -> Result<(), SyntaxError> {
         Err(error) => {
             let position = error.pos();
             let offset = offset_of(text, position.row as usize, position.col as usize);
-            Err(SyntaxError::new(offset, error.to_string()))
+            Err(SyntaxError::new(offset, message(&error)))
         }
+    }
+}
+
+/// Why the document does not read: the most common reasons in the interface's language,
+/// roxmltree's own words for the rest.
+fn message(error: &roxmltree::Error) -> String {
+    match error {
+        roxmltree::Error::NoRootNode => birchpad_i18n::t!("tools.xml.no-root"),
+        roxmltree::Error::UnclosedRootNode => birchpad_i18n::t!("tools.xml.root-not-closed"),
+        other => other.to_string(),
     }
 }
 

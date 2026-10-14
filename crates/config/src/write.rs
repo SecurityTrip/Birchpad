@@ -11,15 +11,15 @@ use crate::settings::Settings;
 /// Why a setting could not be changed.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum SettingError {
-    #[error("there is no setting {0}")]
+    #[error("{}", birchpad_i18n::t!("config.no-setting", key = .0))]
     UnknownKey(String),
     #[error("{key}: {message}")]
     InvalidValue { key: String, message: String },
-    #[error("the settings file is not valid TOML: {0}")]
+    #[error("{}", birchpad_i18n::t!("config.not-toml", reason = .0))]
     Malformed(String),
-    #[error("{key} is in the way: it is not a table in the settings file")]
+    #[error("{}", birchpad_i18n::t!("config.not-a-table", key = .key))]
     NotATable { key: String },
-    #[error("cannot write the settings: {0}")]
+    #[error("{}", birchpad_i18n::t!("config.cannot-write-settings", reason = .0))]
     Io(String),
 }
 
@@ -31,7 +31,12 @@ pub fn check_setting(key: &str, value: &Value) -> Result<(), SettingError> {
     let known = first.and_then(|first| parts.try_fold(first, |value, part| value.get(part)));
     // `files.ansi-encoding` and `updates.url` have no default, and are known all the same.
     let optional = ["files.ansi-encoding", "updates.url"];
-    if known.is_none() && !optional.contains(&key) {
+    // `languages.<id>.tab-width` and `.insert-spaces`, for any language.
+    let language = matches!(
+        key.split('.').collect::<Vec<_>>().as_slice(),
+        ["languages", id, "tab-width" | "insert-spaces"] if !id.is_empty()
+    );
+    if known.is_none() && !optional.contains(&key) && !language {
         return Err(SettingError::UnknownKey(key.to_owned()));
     }
     let mut table = Table::new();
@@ -59,6 +64,16 @@ pub fn edit_settings(text: &str, key: &str, value: Option<&Value>) -> Result<Str
         text.parse().map_err(|error: toml_edit::TomlError| {
             SettingError::Malformed(error.message().to_owned())
         })?;
+    if document.as_table().is_empty() && !text.trim().is_empty() {
+        // Only comments: they stay on top, where they were written, rather than after what is
+        // added.
+        let added = edit_settings("", key, value)?;
+        if added.is_empty() {
+            return Ok(text.to_owned());
+        }
+        let separator = if text.ends_with('\n') { "" } else { "\n" };
+        return Ok(format!("{text}{separator}{added}"));
+    }
     let parts: Vec<&str> = key.split('.').collect();
     let (last, tables) = parts.split_last().expect("split yields at least one part");
     let mut table: &mut dyn toml_edit::TableLike = document.as_table_mut();
@@ -158,6 +173,22 @@ mod tests {
         )
         .unwrap();
         assert_eq!(edited, "editor = { tab-width = 3 }\n");
+    }
+
+    #[test]
+    fn comments_alone_stay_on_top() {
+        let edited = edit_settings("# mine\n", "toolbar.show", Some(&Value::Boolean(false)));
+        assert_eq!(edited.unwrap(), "# mine\n[toolbar]\nshow = false\n");
+        // Without a line end after them, and with blank lines.
+        let edited = edit_settings("# a\n\n# b", "editor.tab-width", Some(&int(2))).unwrap();
+        assert!(edited.starts_with("# a\n\n# b\n["), "{edited}");
+        // Removing what is not there changes nothing.
+        assert_eq!(
+            edit_settings("# mine", "editor.tab-width", None).unwrap(),
+            "# mine"
+        );
+        // A setting that does not exist is refused all the same.
+        assert!(edit_settings("# mine\n", "no.such", Some(&int(1))).is_err());
     }
 
     #[test]

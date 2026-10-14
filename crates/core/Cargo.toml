@@ -9,6 +9,7 @@ repository.workspace = true
 authors.workspace = true
 
 [dependencies]
+birchpad-i18n.workspace = true
 base64 = "0.23"
 fancy-regex = "0.19"
 memchr = "2"

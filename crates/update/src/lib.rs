@@ -64,9 +64,9 @@ pub struct Checked {
 
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum CheckError {
-    #[error("checking for updates is turned off (updates.mode = \"off\")")]
+    #[error("{}", birchpad_i18n::t!("update.turned-off"))]
     Disabled,
-    #[error("cannot download {url}: {message}")]
+    #[error("{}", birchpad_i18n::t!("update.cannot-download", url = .url, reason = .message))]
     Transport { url: String, message: String },
     #[error("{error} ({url})")]
     Manifest { url: String, error: ManifestError },

@@ -13,6 +13,7 @@ mod format;
 pub mod hash;
 mod history;
 mod line_ending;
+pub mod links;
 pub mod motion;
 pub mod ops;
 pub mod search;
@@ -20,7 +21,7 @@ mod selection;
 mod transaction;
 
 pub use change::{Assoc, ChangeSet, Edit, InvalidEdit, Operation, PosMapper};
-pub use change_history::{ChangeHistory, LineChange, LineDiff, diff_lines};
+pub use change_history::{ChangeHistory, LineChange, LineDiff, diff_lines, next_change};
 pub use decoration::{LineMarkers, RangeSet, map_ranges, next_in_any, previous_in_any};
 pub use document::Document;
 pub use format::{Encoding, Format};

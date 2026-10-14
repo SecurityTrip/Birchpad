@@ -35,6 +35,9 @@ pub struct SessionDocument {
     /// The number of an untitled document: 1 for "new 1".
     #[serde(skip_serializing_if = "Option::is_none")]
     pub untitled: Option<usize>,
+    /// The name an untitled document was given instead of "new N".
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
     /// The text, as UTF-8, when it is not the file's: a file name in the backup folder, or an
     /// absolute path (sessions imported from Notepad++).
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -88,15 +91,21 @@ pub struct SessionTab {
     pub scroll_x: f32,
     /// First lines of the collapsed folds.
     pub folds: Vec<usize>,
+    /// The tab is pinned: it stays at the start of the tab bar.
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub pinned: bool,
+    /// The tab's color, 1 to 5 as Notepad++'s Apply Color 1-5; none if unset.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub color: Option<u8>,
 }
 
 #[derive(Debug, thiserror::Error)]
 pub enum SessionError {
-    #[error("cannot read {path}: {source}")]
+    #[error("{}", birchpad_i18n::t!("config.cannot-read", path = .path.display(), reason = .source))]
     Read { path: PathBuf, source: io::Error },
     #[error("{0}")]
     Format(String),
-    #[error("the session was saved by a newer version of Birchpad (format {0})")]
+    #[error("{}", birchpad_i18n::t!("config.session-too-new", format = .0))]
     TooNew(u32),
 }
 
@@ -260,6 +269,8 @@ mod tests {
             first_row: 4.5,
             scroll_x: 16.,
             folds: vec![1],
+            pinned: true,
+            color: Some(3),
         }];
         session.second_view = SessionView {
             active: 1,
@@ -275,6 +286,20 @@ mod tests {
             ],
         };
         session
+    }
+
+    /// Removes a file that a virus scanner or indexer may still hold for a moment after it was
+    /// written (Windows refuses with a sharing violation meanwhile).
+    fn remove(path: &Path) {
+        for _ in 0..100 {
+            match fs::remove_file(path) {
+                Err(error) if error.raw_os_error() == Some(32) => {
+                    std::thread::sleep(std::time::Duration::from_millis(10));
+                }
+                result => return result.unwrap(),
+            }
+        }
+        panic!("{} stays in use", path.display());
     }
 
     fn temp_dir(name: &str) -> PathBuf {
@@ -339,7 +364,7 @@ mod tests {
         assert_eq!(Session::load(&path), Some(first.clone()));
 
         // Missing, as after a crash between the two renames of a save.
-        fs::remove_file(&path).unwrap();
+        remove(&path);
         assert_eq!(Session::load(&path), Some(first));
         // A temporary file left by an interrupted write is never read.
         fs::write(
@@ -347,9 +372,10 @@ mod tests {
             "version = 1\nactive-view = 1",
         )
         .unwrap();
-        fs::remove_file(previous(&path)).unwrap();
+        remove(&previous(&path));
         assert_eq!(Session::load(&path), None);
-        fs::remove_dir_all(&dir).unwrap();
+        // Cleaning up may meet a scanner too; the temporary folder can stay.
+        let _ = fs::remove_dir_all(&dir);
     }
 
     #[test]

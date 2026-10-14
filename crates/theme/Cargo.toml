@@ -9,6 +9,7 @@ repository.workspace = true
 authors.workspace = true
 
 [dependencies]
+birchpad-i18n.workspace = true
 roxmltree = "0.21"
 serde.workspace = true
 thiserror.workspace = true

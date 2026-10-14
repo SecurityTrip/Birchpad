@@ -17,6 +17,7 @@ mod encode;
 mod encoding;
 mod file;
 mod folder;
+pub mod search_files;
 
 pub use changes::{ByteChange, ByteChanges, LISTED, byte_changes};
 pub use decode::{DecodeProblem, Decoded, bom_bytes, decode, sniff_bom};

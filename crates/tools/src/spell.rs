@@ -13,12 +13,12 @@ use std::path::{Path, PathBuf};
 /// A dictionary that does not read.
 #[derive(Debug, thiserror::Error)]
 pub enum SpellError {
-    #[error("cannot read {path}: {error}")]
+    #[error("{}", birchpad_i18n::t!("tools.spell.cannot-read", path = .path.display(), error = .error))]
     Read {
         path: PathBuf,
         error: std::io::Error,
     },
-    #[error("the dictionary does not read: {0}")]
+    #[error("{}", birchpad_i18n::t!("tools.spell.does-not-read", reason = .0))]
     Parse(String),
 }
 

@@ -262,3 +262,48 @@ fn the_command_opens_the_dialog(cx: &mut TestAppContext) {
     cx.run_until_parked();
     assert!(cx.update(|window, cx| window.has_active_dialog(cx)));
 }
+
+#[test]
+fn font_sizes_as_typed() {
+    crate::i18n::set_language("en");
+    assert_eq!(parse_font_size("").unwrap(), None);
+    assert_eq!(parse_font_size(" 16 ").unwrap(), Some(16.));
+    assert_eq!(parse_font_size("4").unwrap(), Some(4.));
+    assert_eq!(parse_font_size("72").unwrap(), Some(72.));
+    for bad in ["3.9", "73", "big", "-1", "NaN"] {
+        assert!(parse_font_size(bad).is_err(), "{bad}");
+    }
+}
+
+#[test]
+fn a_notepad_theme_is_saved_back_into_its_file() {
+    let dir = tempfile::tempdir().unwrap();
+    let xml = r#"<NotepadPlus><GlobalStyles><WidgetStyle name="Default Style" fgColor="000000" bgColor="FFFFFF" fontName="Courier New" fontSize="10" /><WidgetStyle name="Caret colour" fgColor="000000" /></GlobalStyles></NotepadPlus>"#;
+    std::fs::write(dir.path().join("Mine.xml"), format!("\u{feff}{xml}")).unwrap();
+    let mut theme = Theme::from_notepad_xml("Mine", xml).unwrap();
+    theme.editor.caret = Color::rgb(0xff0000);
+    theme.font.family = Some("Consolas".into());
+    save(&theme, dir.path()).unwrap();
+    assert!(!dir.path().join("Mine.toml").exists(), "no Birchpad copy");
+    let written = std::fs::read_to_string(dir.path().join("Mine.xml")).unwrap();
+    let again = Theme::from_notepad_xml("Mine", &written).unwrap();
+    assert_eq!(again.editor.caret, Color::rgb(0xff0000));
+    assert_eq!(again.font.family(), Some("Consolas"));
+
+    // A theme of Birchpad's own, or one with a .toml beside: TOML.
+    std::fs::write(dir.path().join("Mine.toml"), "").unwrap();
+    save(&theme, dir.path()).unwrap();
+    assert!(
+        std::fs::read_to_string(dir.path().join("Mine.toml"))
+            .unwrap()
+            .contains("[font]")
+    );
+    // A broken Notepad++ file is not overwritten.
+    std::fs::remove_file(dir.path().join("Mine.toml")).unwrap();
+    std::fs::write(dir.path().join("Mine.xml"), "<Other/>").unwrap();
+    assert!(save(&theme, dir.path()).is_err());
+    assert_eq!(
+        std::fs::read_to_string(dir.path().join("Mine.xml")).unwrap(),
+        "<Other/>"
+    );
+}

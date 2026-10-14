@@ -28,6 +28,11 @@ command = "file.save"
 keys = "secondary-alt-s"
 command = "file.save-as"
 
+# Not Notepad++'s (it has no shortcut for it); asked for in issue #29.
+[[binding]]
+keys = "secondary-r"
+command = "file.reload"
+
 [[binding]]
 keys = "secondary-shift-s"
 command = "file.save-all"
@@ -44,6 +49,10 @@ command = "file.close"
 [[binding]]
 keys = "secondary-shift-w"
 command = "file.close-all"
+
+[[binding]]
+keys = "secondary-shift-t"
+command = "file.restore-recent-closed"
 
 [[binding]]
 keys = "cmd-q"
@@ -83,6 +92,14 @@ command = "search.select-and-find-next"
 [[binding]]
 keys = "secondary-shift-f3"
 command = "search.select-and-find-previous"
+
+[[binding]]
+keys = "secondary-alt-f3"
+command = "search.find-volatile-next"
+
+[[binding]]
+keys = "secondary-alt-shift-f3"
+command = "search.find-volatile-previous"
 
 [[binding]]
 keys = "f7"
@@ -378,9 +395,11 @@ command = "view.zoom-reset"
 keys = "ctrl-pagedown"
 command = "view.next-tab"
 
+# Ctrl+Tab and Ctrl+Shift+Tab: the document switcher, or the next and previous tab when it is
+# turned off (Preferences > Tab Bar).
 [[binding]]
 keys = "ctrl-tab"
-command = "view.next-tab"
+command = "view.switch-document"
 
 [[binding]]
 keys = "ctrl-pageup"
@@ -391,8 +410,30 @@ keys = "f8"
 command = "view.focus-other-view"
 
 [[binding]]
+keys = "alt-h"
+command = "view.hide-lines"
+context = "Editor"
+
+[[binding]]
+keys = "f11"
+command = "view.full-screen"
+
+[[binding]]
+keys = "f12"
+command = "view.post-it"
+
+[[binding]]
 keys = "ctrl-shift-tab"
-command = "view.previous-tab"
+command = "view.switch-document"
+args = { backward = true }
+
+[[binding]]
+keys = "ctrl-shift-pagedown"
+command = "view.move-tab-forward"
+
+[[binding]]
+keys = "ctrl-shift-pageup"
+command = "view.move-tab-backward"
 
 # Folding, as in Notepad++.
 
@@ -624,6 +665,11 @@ context = "Editor"
 [[binding]]
 keys = "tab"
 command = "edit.tab"
+context = "Editor"
+
+[[binding]]
+keys = "shift-tab"
+command = "edit.outdent"
 context = "Editor"
 
 [[binding]]
@@ -1169,3 +1215,8 @@ context = "CallTip"
 [[binding]]
 keys = "secondary-p"
 command = "file.print"
+
+# Notepad++'s built-in macro.
+[[binding]]
+keys = "alt-shift-s"
+command = "macro.trim-and-save"

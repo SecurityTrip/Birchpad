@@ -23,6 +23,12 @@ macOS, plus [`cargo-deny`](https://github.com/EmbarkStudios/cargo-deny) for lice
 ### Ground rules for the code
 
 - `birchpad-core` must never depend on UI crates. Everything in it is testable without a window.
+- Logic that needs no window goes to the crate of its kind (`core`, `io`, `config`, `tools`,
+  ...), not to the application. What parts of the window share (the command registry, the
+  application's settings, dialog buttons, messages to the user) is in `birchpad-ui`; a command
+  handler is registered for the view that runs it (`CommandTarget`), not in the registry. The
+  editor (`birchpad-editor`) asks the application for anything else through `EditorHooks`; see
+  ADR 0041 for the layers.
 - Positions in the text model are **byte offsets** into the rope. Convert to chars, UTF-16 or
   visual columns only at the edges (rendering, LSP, status bar).
 - Test fixtures under `tests/fixtures` are committed byte-for-byte (see `.gitattributes`);
@@ -48,14 +54,14 @@ its floor in `.github/coverage-floors.toml`, and floors only rise: raise one in 
 tests lift the crate well over it.
 
 Everything that reads input from outside (files and their encodings, settings, the state file,
-sessions and Notepad++'s `session.xml`, `.workspace` files, the keymap, the command line and the
-message that hands it to a running instance, the update manifest, plugins' `plugin.toml`, and
-the JSON, XML and hex dumps the built-in tools read) is fuzzed. The checks live in
-`crates/fuzz`: each takes any bytes and checks more than "no panic" (what reads cleanly writes
-back the same). `cargo test -p birchpad-fuzz` runs them over the seeds in `fuzz/seeds`, every
-cut of each seed and a few hundred mutants of it (`BIRCHPAD_FUZZ_MUTANTS=20000` for more); CI
-also runs them under libFuzzer for a minute each. To fuzz longer, with a nightly toolchain and
-`cargo install cargo-fuzz`:
+sessions and Notepad++'s `session.xml`, `.workspace` files, the keymap, the text's context menu
+(`context-menu.toml`), the command line and the message that hands it to a running instance, the
+update manifest, plugins' `plugin.toml`, and the JSON, XML and hex dumps the built-in tools
+read) is fuzzed. The checks live in `crates/fuzz`: each takes any bytes and checks more than "no
+panic" (what reads cleanly writes back the same). `cargo test -p birchpad-fuzz` runs them over
+the seeds in `fuzz/seeds`, every cut of each seed and a few hundred mutants of it
+(`BIRCHPAD_FUZZ_MUTANTS=20000` for more); CI also runs them under libFuzzer for a minute each.
+To fuzz longer, with a nightly toolchain and `cargo install cargo-fuzz`:
 
 ```bash
 cargo +nightly fuzz run session fuzz/corpus/session fuzz/seeds/session
@@ -89,5 +95,35 @@ Birchpad is dual-licensed under MIT OR Apache-2.0. By contributing you agree tha
 contribution is licensed the same way.
 
 Do **not** copy code from GPL-licensed projects (including Notepad++ and Zed's editor crates) or
-from MPL-licensed projects (such as Helix). Reading them for ideas is fine; copying is not.
+from MPL-licensed projects (such as Helix).
 Compatibility with Notepad++ *file formats* (themes, user-defined languages, API files) is welcome.
+
+### Clean room
+
+Birchpad reimplements what Notepad++ does without its code. So that nothing of it slips in,
+even rewritten:
+
+- **Do not read the source** of Notepad++, Scintilla, Lexilla or of a Notepad++ plugin
+  (ComparePlus, JSON Viewer, XML Tools, Hex Editor, DSpellCheck...) while working on Birchpad,
+  nor of another GPL or MPL editor for the feature at hand. Someone who has studied a part of it
+  leaves that part to someone else.
+- **Work from the outside:** the user manual (npp-user-manual.org), the program's menus, dialogs
+  and behavior as a user sees them, and the files it reads and writes. Describe what to build in
+  your own words first (the roadmap, an ADR), then write the code from that description.
+- **File formats are fine to follow:** element and attribute names (`tabColourId`,
+  `WidgetStyle`), keys and values of `session.xml`, `stylers.xml`, `langs.xml`, UDL and API
+  files, `nativeLang` files and the command line's options, so that Birchpad reads what users
+  already have.
+- **Data is not ours to bundle:** Notepad++'s themes, API files, UDL collection, translations
+  and keyword lists are covered by its license. Birchpad reads them from the user's own files
+  and ships only data it wrote itself or that has a license compatible with MIT and Apache-2.0
+  (noted in `deny.toml` or next to the file).
+- **Names of menu items and settings** may match Notepad++'s, so that its users find their way;
+  longer texts (descriptions, help, messages) are written anew. Icons and images are drawn for
+  Birchpad or come under a compatible license, with that license kept.
+- **Code and data from elsewhere** under a permissive license keeps its license and copyright
+  notice, and the change says where it comes from. Code written with an AI assistant is held to
+  the same rules: ask for it from the description, never by pointing at the GPL source.
+
+A pull request that touches a Notepad++ feature says what it was built from (manual, behavior,
+file samples).

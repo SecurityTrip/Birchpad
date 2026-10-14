@@ -15,7 +15,7 @@ use birchpad_core::{Assoc, Transaction};
 use gpui_kit::{App, Context, Entity, WeakEntity, Window};
 
 use crate::buffer::{Buffer, ReadOnly};
-use crate::commands::CommandRegistry;
+use crate::commands::{CommandRegistry, Register as _};
 use crate::editor::EditorView;
 use crate::workspace::Workspace;
 

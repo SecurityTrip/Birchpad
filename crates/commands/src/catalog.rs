@@ -42,23 +42,55 @@ pub const COMMANDS: &[CommandSpec] = &[
     // File
     workspace("file.new", "New"),
     workspace("file.open", "Open..."),
+    // { "in": "file-manager" | "terminal" | "workspace" }: the active file's folder
+    workspace("file.containing-folder", "Open Containing Folder"),
+    workspace("file.open-default-viewer", "Open in Default Viewer"),
+    workspace("file.reload", "Reload from Disk"),
     workspace(
         "file.open-folder-as-workspace",
         "Open Folder as Workspace...",
     ),
     // { "path": "C:\\notes.txt" }
     workspace("file.open-recent", "Open Recent File"),
+    workspace("file.restore-recent-closed", "Restore Recent Closed File"),
+    workspace("file.open-all-recent", "Open All Recent Files"),
     workspace("file.clear-recent", "Empty Recent Files List"),
     workspace("file.save", "Save"),
     workspace("file.save-as", "Save As..."),
+    workspace("file.save-copy-as", "Save a Copy As..."),
     workspace("file.save-all", "Save All"),
+    workspace("file.rename", "Rename..."),
     workspace("file.close", "Close"),
     workspace("file.close-all", "Close All"),
     workspace("file.close-others", "Close All but This"),
+    workspace("file.close-all-but-pinned", "Close All but Pinned"),
+    // The tabs left or right of the active one, in its view
+    workspace("file.close-left", "Close All to the Left"),
+    workspace("file.close-right", "Close All to the Right"),
+    workspace("file.close-unchanged", "Close All Unchanged"),
+    workspace("file.move-to-recycle-bin", "Move to Recycle Bin"),
     workspace("file.load-session", "Load Session..."),
     workspace("file.save-session", "Save Session..."),
     workspace("file.exit", "Exit"),
     // Edit
+    // The active document's full path (its name if untitled), file name, folder
+    workspace("edit.copy-full-path", "Copy Current Full File Path"),
+    workspace("edit.copy-file-name", "Copy Current Filename"),
+    workspace("edit.copy-folder-path", "Copy Current Dir. Path"),
+    // { "format": "short" | "long" | "custom" }: the local time at every caret
+    editor("edit.insert-date-time", "Insert Date Time"),
+    workspace("edit.toggle-read-only", "Set Read-Only"),
+    workspace("edit.clear-read-only-flag", "Clear Read-Only Flag"),
+    // Paste Special: text with NUL characters, the clipboard's HTML or RTF
+    editor("edit.copy-binary", "Copy Binary Content"),
+    editor("edit.cut-binary", "Cut Binary Content"),
+    editor("edit.paste-binary", "Paste Binary Content"),
+    editor("edit.paste-html", "Paste HTML Content"),
+    editor("edit.paste-rtf", "Paste RTF Content"),
+    // On Selection: the primary selection names a file or is searched for
+    workspace("edit.open-selected-file", "Open File"),
+    workspace("edit.open-selected-folder", "Open Containing Folder"),
+    workspace("edit.search-online", "Search on Internet"),
     editor("edit.undo", "Undo"),
     editor("edit.redo", "Redo"),
     editor("edit.cut", "Cut"),
@@ -71,6 +103,8 @@ pub const COMMANDS: &[CommandSpec] = &[
     editor("edit.delete-word-right", "Delete to End of Word"),
     editor("edit.newline", "New Line"),
     editor("edit.tab", "Insert Tab"),
+    editor("edit.indent", "Increase Line Indent"),
+    editor("edit.outdent", "Decrease Line Indent"),
     // { "text": "..." }
     editor("edit.insert-text", "Insert Text"),
     // Auto-completion
@@ -187,12 +221,30 @@ pub const COMMANDS: &[CommandSpec] = &[
     workspace("search.find", "Find..."),
     workspace("search.replace", "Replace..."),
     workspace("search.find-next", "Find Next"),
+    // What macros record of a search: { "text", "match-case", "whole-word", "mode": "normal" |
+    // "extended" | "regex", "dot-all", "backward", "wrap" }; replace-text also takes "with" and
+    // "all"
+    workspace("search.find-text", "Find Text"),
+    workspace("search.replace-text", "Replace Text"),
     workspace("search.find-previous", "Find Previous"),
     workspace("search.select-and-find-next", "Select and Find Next"),
     workspace(
         "search.select-and-find-previous",
         "Select and Find Previous",
     ),
+    // As Select and Find, leaving the find panel's text as it is
+    workspace("search.find-volatile-next", "Find (Volatile) Next"),
+    workspace("search.find-volatile-previous", "Find (Volatile) Previous"),
+    workspace("search.find-in-projects", "Find in Projects..."),
+    workspace(
+        "search.find-characters-in-range",
+        "Find Characters in Range...",
+    ),
+    // { "from": 128, "to": 1114111, "backward": false, "wrap": true }: character codes
+    editor("search.find-in-range", "Find Character in Range"),
+    editor("search.next-change", "Go to Next Change"),
+    editor("search.previous-change", "Go to Previous Change"),
+    editor("search.clear-changes", "Clear All Changes"),
     workspace("search.find-in-files", "Find in Files..."),
     workspace("search.incremental", "Incremental Search"),
     workspace("search.close-incremental", "Close Incremental Search"),
@@ -272,8 +324,33 @@ pub const COMMANDS: &[CommandSpec] = &[
     workspace("view.zoom-in", "Zoom In"),
     workspace("view.zoom-out", "Zoom Out"),
     workspace("view.zoom-reset", "Restore Default Zoom"),
+    // { "browser": "default" | "firefox" | "chrome" | "edge" | "safari" }: the active file
+    workspace("view.in-browser", "View Current File in"),
+    editor("view.hide-lines", "Hide Lines"),
+    editor("view.show-hidden-lines", "Show Hidden Lines"),
+    workspace("view.summary", "Summary..."),
+    workspace("view.always-on-top", "Always on Top"),
+    workspace("view.full-screen", "Toggle Full Screen Mode"),
+    workspace("view.post-it", "Post-It"),
+    workspace("view.distraction-free", "Distraction Free Mode"),
+    // The active file in another Birchpad, at the caret; Move closes it here
+    workspace("view.move-to-new-instance", "Move to New Instance"),
+    workspace("view.open-in-new-instance", "Open in New Instance"),
     workspace("view.next-tab", "Next Tab"),
     workspace("view.previous-tab", "Previous Tab"),
+    // { "index": 1..9 }, counted from the first tab of the active view
+    workspace("view.go-to-tab", "Go to Tab"),
+    workspace("view.last-tab", "Last Tab"),
+    workspace("view.move-tab-forward", "Move Tab Forward"),
+    workspace("view.move-tab-backward", "Move Tab Backward"),
+    workspace("view.move-tab-to-start", "Move Tab to Start"),
+    workspace("view.move-tab-to-end", "Move Tab to End"),
+    workspace("view.pin-tab", "Pin Tab"),
+    // { "color": 1..5 }
+    workspace("view.tab-color", "Apply Color"),
+    workspace("view.remove-tab-color", "Remove Color"),
+    // { "backward": false }: the next document of the switcher's list (Ctrl+Tab)
+    workspace("view.switch-document", "Document Switcher"),
     // Encoding; { "encoding": "utf-8" | "utf-8-bom" | "utf-16le-bom" | "ansi" | "windows-1251" | ... }
     workspace("encoding.encode-in", "Encode in"),
     workspace("encoding.convert-to", "Convert to"),
@@ -293,6 +370,8 @@ pub const COMMANDS: &[CommandSpec] = &[
     editor("edit.convert", "Convert"),
     // Run; { "line": <a command line> } or { "name": <a saved one> }; neither asks for it
     workspace("run.run", "Run..."),
+    // { "name": "Google Search" }: one of Notepad++'s own Run menu entries
+    workspace("run.builtin", "Run Built-in Command"),
     // Macro; macro.run takes { "name": <a saved macro>, "times": 1 } or { "until-end": true }
     workspace("macro.start-recording", "Start Recording"),
     workspace("macro.stop-recording", "Stop Recording"),
@@ -300,10 +379,19 @@ pub const COMMANDS: &[CommandSpec] = &[
     workspace("macro.save", "Save Current Recorded Macro..."),
     workspace("macro.run-multiple", "Run a Macro Multiple Times..."),
     workspace("macro.run", "Run Macro"),
+    workspace("macro.trim-and-save", "Trim Trailing Space and Save"),
+    // Window; window.sort takes { "by": "name" | "path" | "type" | "size" | "modified", "descending": false }
+    workspace("window.sort", "Sort By"),
+    workspace("window.windows", "Windows..."),
     // Settings; settings.theme takes { "name": "Default" | "Dark" | <a theme file's name> }
     workspace("settings.preferences", "Preferences..."),
     workspace("settings.style-configurator", "Style Configurator..."),
     workspace("settings.shortcut-mapper", "Shortcut Mapper..."),
+    workspace("settings.edit-context-menu", "Edit Popup ContextMenu"),
+    workspace(
+        "settings.default-app",
+        "Make Birchpad the Default Editor...",
+    ),
     workspace("settings.theme", "Theme"),
     workspace("settings.import-theme", "Import Style Themes..."),
     // Plugins: the built-in JSON Viewer and XML Tools work on the selection, or the whole text
@@ -380,6 +468,29 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[test]
+    fn entries_carry_their_scope() {
+        // Made at run time too, not only in the constant above.
+        let entries = [workspace("file.new", "New"), editor("edit.undo", "Undo")];
+        assert_eq!(
+            entries.map(|spec| (spec.id, spec.title, spec.scope)),
+            [
+                ("file.new", "New", Scope::Workspace),
+                ("edit.undo", "Undo", Scope::Editor)
+            ]
+        );
+        assert_eq!(find("file.new"), Some(&entries[0]));
+        assert_eq!(
+            find("edit.undo").map(|spec| spec.scope),
+            Some(Scope::Editor)
+        );
+        // Neither a group alone, nor an empty id, nor another case finds anything.
+        for unknown in ["", "file", "file.", "FILE.NEW", "file.new "] {
+            assert_eq!(find(unknown), None, "{unknown:?}");
+        }
+        assert_eq!(editor("", "").id, "", "an empty entry is still an entry");
     }
 
     #[test]

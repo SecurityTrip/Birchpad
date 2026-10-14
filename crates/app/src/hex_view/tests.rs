@@ -107,28 +107,3 @@ fn refuses_what_is_not_a_hex_view(cx: &mut TestAppContext) {
     let error = run(&workspace, Invocation::new("hex.apply"), cx).unwrap_err();
     assert!(error.to_string().contains("closed"), "{error}");
 }
-
-#[test]
-fn replaces_only_what_differs() {
-    // The caret ends after what was put in, so the edit touches only that.
-    for (old, new, caret) in [
-        ("abc", "abc", 3),
-        ("abc", "aXc", 2),
-        ("", "new", 3),
-        ("old", "", 0),
-        ("мир", "миф", 6),
-        ("aa", "aaa", 3),
-        ("ab", "b", 0),
-    ] {
-        let rope = Rope::from(old);
-        let transaction = replace_differing(&rope, new).unwrap();
-        let mut applied = rope.clone();
-        transaction.changes().apply(&mut applied);
-        assert_eq!(applied.to_string(), new, "{old} -> {new}");
-        assert_eq!(
-            transaction.selection().unwrap().primary().head,
-            caret,
-            "{old} -> {new}"
-        );
-    }
-}

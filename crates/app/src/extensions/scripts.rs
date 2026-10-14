@@ -9,7 +9,7 @@ use serde::Deserialize;
 
 use super::PanelOwner;
 use crate::app_state::AppState;
-use crate::commands::CommandRegistry;
+use crate::commands::{CommandRegistry, Register as _};
 
 /// The extension of scripts.
 const EXTENSION: &str = "rhai";

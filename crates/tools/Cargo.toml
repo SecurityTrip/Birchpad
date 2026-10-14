@@ -9,12 +9,18 @@ repository.workspace = true
 authors.workspace = true
 
 [dependencies]
+birchpad-core.workspace = true
+birchpad-i18n.workspace = true
+birchpad-theme.workspace = true
+chrono = { version = "0.4", default-features = false, features = ["std"] }
 roxmltree = "0.21"
 similar = { version = "3.2", default-features = false, features = ["std"] }
 spellbook = "0.4"
 thiserror.workspace = true
 
 [dev-dependencies]
+# Tests switch the language each in its own thread.
+birchpad-i18n = { workspace = true, features = ["per-thread"] }
 proptest.workspace = true
 
 [lints]

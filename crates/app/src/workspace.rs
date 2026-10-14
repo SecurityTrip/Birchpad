@@ -7,22 +7,20 @@ use std::path::Path;
 use anyhow::Result;
 use birchpad_cli::CommandLine;
 use birchpad_commands::Invocation;
-use birchpad_config::{SplitOrientation, UserState};
+use birchpad_config::SplitOrientation;
 use birchpad_core::Document;
 use birchpad_menu_bar::MenuBar;
-use gpui_kit::component::WindowExt as _;
-use gpui_kit::component::button::Button;
-use gpui_kit::component::dialog::{DialogAction, DialogClose};
-use gpui_kit::component::notification::Notification;
+use gpui_kit::component::button::{Button, ButtonVariants as _};
+use gpui_kit::component::{IconName, Sizable as _};
 use gpui_kit::component::{h_resizable, resizable_panel, v_resizable};
 use gpui_kit::{
     AnyElement, App, AppContext as _, Context, Entity, EntityId, ExternalPaths, FocusHandle,
-    Focusable, Subscription, Window, div, prelude::*, px,
+    Focusable, ModifiersChangedEvent, Subscription, Window, div, prelude::*, px, relative,
 };
 
 use crate::app_state::AppState;
 use crate::buffer::{Buffer, BufferEvent};
-use crate::commands::{CommandRegistry, Handler, RunCommand};
+use crate::commands::{CommandRegistry, Register as _, RunCommand};
 use crate::disk::DiskState;
 use crate::editor::{EditorEvent, EditorView, ViewSettings};
 use crate::find::FindBar;
@@ -50,7 +48,7 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
             .update(cx, |pane, cx| pane.cycle(-1, window, cx));
         Ok(())
     });
-    for &(id, read, write) in VIEW_SWITCHES {
+    for &(id, read, write) in crate::editor::VIEW_SWITCHES {
         registry.workspace(id, move |this, (), _, cx| {
             let on = !read(&ViewSettings::read(cx));
             AppState::update_state(cx, |state, _| write(state, on));
@@ -90,7 +88,7 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
     });
     // Checked when both are shown; turns both on, or both off if they are.
     registry.workspace("view.show-all-characters", |this, (), _, cx| {
-        let on = !all_characters(&ViewSettings::read(cx));
+        let on = !crate::editor::all_characters(&ViewSettings::read(cx));
         AppState::update_state(cx, |state, _| {
             state.show_whitespace = Some(on);
             state.show_eol = Some(on);
@@ -141,6 +139,8 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
             let buffer = view.read(cx).buffer.clone();
             buffer.update(cx, |buffer, cx| buffer.set_language(language, cx));
         }
+        // Its tab settings may differ.
+        this.refresh_views(cx);
         Ok(())
     });
     crate::encoding_ui::register_commands(registry);
@@ -167,45 +167,16 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
     crate::run_menu::register_commands(registry);
     crate::user_languages::register_commands(registry);
     crate::print::register_commands(registry);
-}
-
-/// View menu switches kept in `state.toml`: command, current value, how to remember a new one.
-type ViewSwitch = (
-    &'static str,
-    fn(&ViewSettings) -> bool,
-    fn(&mut UserState, bool),
-);
-
-const VIEW_SWITCHES: &[ViewSwitch] = &[
-    (
-        "view.word-wrap",
-        |view| view.word_wrap,
-        |state, on| state.word_wrap = Some(on),
-    ),
-    (
-        "view.show-whitespace",
-        |view| view.show_whitespace,
-        |state, on| state.show_whitespace = Some(on),
-    ),
-    (
-        "view.show-eol",
-        |view| view.show_eol,
-        |state, on| state.show_eol = Some(on),
-    ),
-    (
-        "view.indent-guides",
-        |view| view.indent_guides,
-        |state, on| state.indent_guides = Some(on),
-    ),
-    (
-        "view.wrap-symbol",
-        |view| view.wrap_symbol,
-        |state, on| state.wrap_symbol = Some(on),
-    ),
-];
-
-fn all_characters(view: &ViewSettings) -> bool {
-    view.show_whitespace && view.show_eol
+    crate::pane::register_commands(registry);
+    crate::window_menu::register_commands(registry);
+    crate::file_commands::register_commands(registry);
+    crate::window_modes::register_commands(registry);
+    crate::date_time::register_commands(registry);
+    crate::edit_extras::register_commands(registry);
+    crate::context_menu::register_commands(registry);
+    crate::search_extras::register_commands(registry);
+    crate::view_extras::register_commands(registry);
+    crate::default_app::register_commands(registry);
 }
 
 #[derive(serde::Deserialize)]
@@ -213,52 +184,34 @@ struct LanguageArgs {
     language: String,
 }
 
-/// Shows an error to the user without interrupting them.
-pub(crate) fn report_error(error: &anyhow::Error, window: &mut Window, cx: &mut App) {
-    window.push_notification(Notification::error(crate::i18n::tr_error(error)), cx);
+/// The format and language of a new document: Preferences > New Document. Names it does not
+/// know give UTF-8, the platform's line ending and plain text.
+pub(crate) fn new_document(
+    cx: &App,
+) -> (
+    birchpad_core::Format,
+    Option<&'static birchpad_syntax::Language>,
+) {
+    let app = AppState::global(cx);
+    let settings = &app.settings.new_document;
+    let mut format = birchpad_core::Format::new();
+    if let Some((encoding, bom)) = birchpad_io::parse_encoding(&settings.encoding, app.ansi) {
+        format.encoding = encoding;
+        format.bom = bom && encoding.is_unicode();
+    }
+    format.line_ending = match settings.line_ending.trim().to_ascii_lowercase().as_str() {
+        "crlf" | "windows" => birchpad_core::LineEnding::CrLf,
+        "lf" | "unix" => birchpad_core::LineEnding::Lf,
+        "cr" | "mac" => birchpad_core::LineEnding::Cr,
+        _ => format.line_ending,
+    };
+    let language = birchpad_syntax::by_id(settings.language.trim());
+    (format, language)
 }
 
-/// The confirming button of a dialog footer, at its natural width (`DialogAction` alone fills
-/// the footer).
-pub(crate) fn dialog_action(button: Button) -> impl IntoElement {
-    div()
-        .debug_selector(|| "dialog-action".into())
-        .child(DialogAction::new().child(button))
-}
-
-/// A button that closes a dialog without its action: `label` is the key of its text
-/// (`common.cancel`).
-pub(crate) fn dialog_close(label: &'static str) -> DialogClose {
-    DialogClose::new().trigger(move |button| {
-        button
-            .label(t!(label))
-            .debug_selector(|| "dialog-close".into())
-    })
-}
-
-/// Tells the user that something went well, without interrupting them.
-pub(crate) fn report_success(message: impl Into<String>, window: &mut Window, cx: &mut App) {
-    window.push_notification(
-        Notification::success(crate::i18n::tr_text(&message.into())),
-        cx,
-    );
-}
-
-/// Tells the user something, without interrupting them.
-pub(crate) fn report_info(message: impl Into<String>, window: &mut Window, cx: &mut App) {
-    let message = message.into();
-    #[cfg(test)]
-    tests::INFO.with(|info| info.borrow_mut().push(message.clone()));
-    window.push_notification(Notification::info(crate::i18n::tr_text(&message)), cx);
-}
-
-/// Shows a warning to the user without interrupting them.
-pub(crate) fn report_warning(message: impl Into<String>, window: &mut Window, cx: &mut App) {
-    window.push_notification(
-        Notification::warning(crate::i18n::tr_text(&message.into())),
-        cx,
-    );
-}
+pub(crate) use birchpad_ui::{
+    dialog_action, dialog_close, report_error, report_info, report_success, report_warning,
+};
 
 pub(crate) struct Workspace {
     focus_handle: FocusHandle,
@@ -282,6 +235,10 @@ pub(crate) struct Workspace {
     pub(crate) navigation: History<Place>,
     /// The side panels.
     pub(crate) docks: Docks,
+    /// Always on Top, Full Screen, Post-It, Distraction Free.
+    pub(crate) modes: crate::window_modes::WindowModes,
+    /// The toolbar's commands whose switch is on, shown pressed.
+    pub(crate) toolbar_checked: Vec<String>,
     _subscriptions: Vec<Subscription>,
 }
 
@@ -319,6 +276,8 @@ impl Workspace {
             disk_state: DiskState::default(),
             navigation: History::default(),
             docks: Docks::default(),
+            modes: Default::default(),
+            toolbar_checked: Vec::new(),
             _subscriptions: subscriptions,
         };
         // Back in front: files may have changed meanwhile.
@@ -328,6 +287,15 @@ impl Workspace {
             }
         });
         this._subscriptions.push(activation);
+        // Preferences > Appearance > Interface: as the system follows it.
+        let appearance = cx.observe_window_appearance(window, |_, _, cx| {
+            if AppState::global(cx).settings.appearance.interface
+                == birchpad_config::InterfaceMode::System
+            {
+                crate::themes::reapply(cx);
+            }
+        });
+        this._subscriptions.push(appearance);
         this.refresh_menus(cx);
         // The window's close button: ask about unsaved changes first, unless they are backed
         // up, and save the session.
@@ -397,6 +365,9 @@ impl Workspace {
                 AppState::update_state(cx, |state, _| state.split = *orientation);
                 self.send_to_pane(view, target, None, *clone, window, cx);
             }
+            PaneEvent::Command { view, invocation } => {
+                self.run_tab_command(view.as_ref(), invocation, window, cx);
+            }
         }
     }
 
@@ -405,10 +376,20 @@ impl Workspace {
         &mut self,
         view: &Entity<EditorView>,
         event: &EditorEvent,
-        _: &mut Window,
+        window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        let EditorEvent::Scrolled { rows, x } = *event;
+        let (rows, x) = match event {
+            EditorEvent::Scrolled { rows, x } => (*rows, *x),
+            EditorEvent::Command(invocation) => {
+                let (view, invocation) = (view.clone(), invocation.clone());
+                // After the menu that chose it has closed.
+                cx.defer_in(window, move |this, window, cx| {
+                    this.run_context_command(&view, &invocation, window, cx);
+                });
+                return;
+            }
+        };
         if !(self.sync_vertical || self.sync_horizontal) || !self.is_split(cx) {
             return;
         }
@@ -568,7 +549,15 @@ impl Workspace {
 
     pub(crate) fn new_file(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let number = self.next_untitled_number(cx);
-        let buffer = cx.new(|_| Buffer::untitled(number));
+        let (format, language) = new_document(cx);
+        let buffer = cx.new(|cx| {
+            let doc = Document::with_format(birchpad_core::Rope::new(), format);
+            let mut buffer = Buffer::untitled_with(number, doc);
+            if language.is_some() {
+                buffer.set_language(language, cx);
+            }
+            buffer
+        });
         self.add_buffer(buffer, window, cx);
     }
 
@@ -808,7 +797,12 @@ impl Workspace {
         self.buffer_subscriptions.retain(|id, _| live.contains(id));
         self.view_subscriptions.remove(&view.entity_id());
         self.sync_watches(cx);
-        if self.all_views(cx).is_empty() {
+        if self.all_views(cx).is_empty() && AppState::global(cx).settings.tabs.exit_on_last_close {
+            // Preferences > Tab Bar > Exit on close the last tab.
+            cx.defer_in(window, |this, window, cx| this.exit(window, cx));
+            self.active_pane = 0;
+            self.new_file(window, cx);
+        } else if self.all_views(cx).is_empty() {
             // Like Notepad++, closing the last document leaves an empty "new 1".
             self.active_pane = 0;
             self.new_file(window, cx);
@@ -837,24 +831,24 @@ impl Workspace {
         cx: &mut Context<Self>,
     ) -> Result<()> {
         let registry = cx.global::<CommandRegistry>();
-        if registry.get(&invocation.command).is_some()
-            && !registry.is_enabled(&invocation.command, cx)
-        {
+        if registry.contains(&invocation.command) && !registry.is_enabled(&invocation.command, cx) {
             anyhow::bail!(
                 "{}",
                 t!("workspace.is-turned-off", invocation = invocation.command)
             );
         }
-        let handler = registry.get(&invocation.command);
-        let result = match handler {
-            Some(Handler::Workspace(run)) => run(self, invocation, window, cx),
-            Some(Handler::Editor(run)) => match self.active_view(cx) {
+        let for_workspace = registry.handler::<Self>(&invocation.command);
+        let for_editor = registry.handler::<EditorView>(&invocation.command);
+        let result = match (for_workspace, for_editor) {
+            (Some(run), _) => run(self, invocation, window, cx),
+            (None, Some(run)) => match self.active_view(cx) {
                 Some(view) => view.update(cx, |view, cx| run(view, invocation, window, cx)),
                 None => Ok(()),
             },
-            None if cx
-                .global::<CommandRegistry>()
-                .is_pending(&invocation.command) =>
+            (None, None)
+                if cx
+                    .global::<CommandRegistry>()
+                    .is_pending(&invocation.command) =>
             {
                 anyhow::bail!(
                     "{}",
@@ -864,7 +858,7 @@ impl Workspace {
                     )
                 )
             }
-            None => anyhow::bail!(
+            (None, None) => anyhow::bail!(
                 "{}",
                 t!("workspace.unknown-command", invocation = invocation.command)
             ),
@@ -879,6 +873,10 @@ impl Workspace {
     pub(crate) fn refresh_views(&mut self, cx: &mut Context<Self>) {
         for view in self.all_views(cx) {
             view.update(cx, |view, cx| view.settings_changed(cx));
+        }
+        // The tab bar's settings.
+        for pane in &self.panes {
+            pane.update(cx, |_, cx| cx.notify());
         }
         self.refresh_menus(cx);
         cx.notify();
@@ -908,15 +906,28 @@ impl Workspace {
         let compare_options = crate::compare::options(cx);
         let spell_enabled = crate::spell_check::is_enabled(cx);
         let spell_language = crate::spell_check::language(cx);
+        let tab_marks = self.active_view(cx).map(|view| view.read(cx).tab);
+        let requested_read_only = self
+            .active_view(cx)
+            .is_some_and(|view| view.read(cx).buffer.read(cx).requested_read_only());
         let checked = |invocation: &Invocation| {
-            if let Some((_, read, _)) = VIEW_SWITCHES
+            if let Some(on) = crate::pane::is_checked(invocation, tab_marks) {
+                return on;
+            }
+            if let Some(on) = crate::window_modes::is_checked(&invocation.command, self.modes) {
+                return on;
+            }
+            if invocation.command == "edit.toggle-read-only" {
+                return requested_read_only;
+            }
+            if let Some((_, read, _)) = crate::editor::VIEW_SWITCHES
                 .iter()
                 .find(|(id, _, _)| *id == invocation.command)
             {
                 return read(&view);
             }
             if invocation.command == "view.show-all-characters" {
-                return all_characters(&view);
+                return crate::editor::all_characters(&view);
             }
             if invocation.command == "view.monitoring" {
                 return monitoring;
@@ -954,6 +965,16 @@ impl Workspace {
             };
             crate::encoding_ui::is_current(invocation, format, ansi)
         };
+        let toolbar_checked: Vec<String> =
+            crate::toolbar::items(&AppState::global(cx).settings.toolbar)
+                .into_iter()
+                .filter_map(|item| match item {
+                    crate::toolbar::Item::Button(id) => {
+                        checked(&Invocation::new(&id)).then_some(id)
+                    }
+                    crate::toolbar::Item::Separator => None,
+                })
+                .collect();
         let recent_files = AppState::global(cx).state.recent_files.clone();
         let themes = crate::themes::names(crate::themes::themes_dir(cx).as_deref());
         let macros: Vec<String> = cx
@@ -974,7 +995,10 @@ impl Workspace {
         let spell_languages = crate::spell_check::languages(cx);
         let scripts = crate::extensions::scripts::names(cx);
         let plugin_menus = crate::extensions::plugins::menus(cx);
+        let (documents, active_document) = crate::window_menu::menu_documents(self, cx);
         let state = MenuState {
+            documents: &documents,
+            active_document,
             user_languages: &user_languages,
             spell_languages: &spell_languages,
             scripts: &scripts,
@@ -986,29 +1010,41 @@ impl Workspace {
             checked: &checked,
         };
         menus::install(&state, cx);
+        self.toolbar_checked = toolbar_checked;
         if let Some(menu_bar) = &self.menu_bar {
             menu_bar.update(cx, |menu_bar, cx| menu_bar.reload(cx));
         }
     }
 
     fn update_title(&mut self, window: &mut Window, cx: &App) {
-        let title = match self.active_view(cx) {
+        let title = self.window_title(cx);
+        if title != self.title {
+            window.set_window_title(&title);
+            // macOS shows a dot in the close button of a window with unsaved changes.
+            window.set_window_edited(title.starts_with('*'));
+            self.title = title;
+        }
+    }
+
+    /// The window's title: `*` for unsaved changes, the active file's path (or only its name,
+    /// Preferences > Appearance), and Birchpad.
+    pub(crate) fn window_title(&self, cx: &App) -> String {
+        match self.active_view(cx) {
             Some(view) => {
                 let buffer = view.read(cx).buffer.read(cx);
+                let name_only = AppState::global(cx)
+                    .settings
+                    .appearance
+                    .title_file_name_only;
                 let name = buffer
                     .path()
+                    .filter(|_| !name_only)
                     .map(|path| path.display().to_string())
                     .unwrap_or_else(|| buffer.display_name());
                 let modified = if buffer.is_modified() { "*" } else { "" };
                 format!("{modified}{name} - Birchpad")
             }
             None => "Birchpad".to_owned(),
-        };
-        if title != self.title {
-            window.set_window_title(&title);
-            // macOS shows a dot in the close button of a window with unsaved changes.
-            window.set_window_edited(title.starts_with('*'));
-            self.title = title;
         }
     }
 }
@@ -1025,6 +1061,14 @@ impl Render for Workspace {
             .key_context("Workspace")
             .track_focus(&self.focus_handle)
             .on_action(cx.listener(Self::run_command))
+            // Ctrl released: the document switcher keeps the document it shows.
+            .on_modifiers_changed(cx.listener(|this, event: &ModifiersChangedEvent, _, cx| {
+                if !event.modifiers.control {
+                    for pane in this.panes.clone() {
+                        pane.update(cx, |pane, cx| pane.end_switch(cx));
+                    }
+                }
+            }))
             .on_drop(cx.listener(|this, paths: &ExternalPaths, window, cx| {
                 // A folder goes to Folder as Workspace, as in Notepad++.
                 for path in paths.paths() {
@@ -1041,23 +1085,46 @@ impl Render for Workspace {
             .bg(crate::theme::paint(crate::theme::ui().background))
             .text_color(crate::theme::paint(crate::theme::ui().text))
             .when_some(self.menu_bar.clone(), birchpad_menu_bar::route_input)
-            .when_some(self.menu_bar.clone(), |this, menu_bar| {
-                this.child(
-                    div()
-                        .flex_none()
-                        .h(px(30.))
-                        .px_1()
-                        .border_b_1()
-                        .border_color(crate::theme::paint(crate::theme::ui().border))
-                        .child(menu_bar),
-                )
+            .when_some(
+                self.menu_bar.clone().filter(|_| !self.modes.text_only()),
+                |this, menu_bar| {
+                    this.child(
+                        div()
+                            .flex_none()
+                            .h(px(30.))
+                            .px_1()
+                            .border_b_1()
+                            .border_color(crate::theme::paint(crate::theme::ui().border))
+                            .child(menu_bar),
+                    )
+                },
+            )
+            .when(!self.modes.text_only(), |this| {
+                this.children(self.render_toolbar(cx))
             })
             .child({
                 let center = self.render_main_area(cx);
+                let main = if self.modes.distraction_free {
+                    // The text in a column in the middle.
+                    div()
+                        .size_full()
+                        .flex()
+                        .justify_center()
+                        .child(div().h_full().w(relative(0.6)).child(center))
+                        .into_any_element()
+                } else if self.modes.post_it {
+                    center
+                } else {
+                    self.render_with_docks(center, cx)
+                };
                 div()
+                    .relative()
                     .flex_1()
                     .min_h(px(0.))
-                    .child(self.render_with_docks(center, cx))
+                    .child(main)
+                    .when(self.modes.text_only(), |this| {
+                        this.child(self.render_leave_button(cx))
+                    })
             })
             .when(self.find_bar.read(cx).visible, |this| {
                 this.child(self.find_bar.clone())
@@ -1065,11 +1132,33 @@ impl Render for Workspace {
             .when(self.incremental.read(cx).visible, |this| {
                 this.child(self.incremental.clone())
             })
-            .child(crate::status_bar::render(status, ansi, cx))
+            .when(!self.modes.text_only(), |this| {
+                this.child(crate::status_bar::render(status, ansi, cx))
+            })
     }
 }
 
 impl Workspace {
+    /// The way out of Post-It and Distraction Free, whose menus are hidden: a faint button in
+    /// the top right corner.
+    fn render_leave_button(&self, cx: &mut Context<Self>) -> impl IntoElement {
+        div()
+            .absolute()
+            .top_1()
+            .right_4()
+            .opacity(0.4)
+            .hover(|style| style.opacity(1.))
+            .child(
+                Button::new("leave-text-only")
+                    .ghost()
+                    .xsmall()
+                    .icon(IconName::Close)
+                    .debug_selector(|| "leave-text-only".into())
+                    .tooltip(t!("window-modes.leave"))
+                    .on_click(cx.listener(|this, _, window, cx| this.leave_text_only(window, cx))),
+            )
+    }
+
     /// The documents, and the search results under them when they are shown.
     fn render_main_area(&self, cx: &App) -> AnyElement {
         if !self.search_results.read(cx).visible {
@@ -1162,35 +1251,6 @@ pub(crate) mod tests {
             "cmd-f2"
         } else {
             "ctrl-f2"
-        }
-    }
-
-    /// The keystroke that extends a rectangular selection towards `key`: Alt+Shift+<key> on
-    /// Windows and Linux, Cmd+Alt+Shift+<key> on macOS.
-    pub(crate) fn block(key: &str) -> String {
-        if cfg!(target_os = "macos") {
-            format!("cmd-alt-shift-{key}")
-        } else {
-            format!("alt-shift-{key}")
-        }
-    }
-
-    /// Column-mode Begin/End Select: Alt+Shift+B on Windows and Linux, Cmd+Alt+Shift+B on
-    /// macOS.
-    pub(crate) fn begin_end_column() -> &'static str {
-        if cfg!(target_os = "macos") {
-            "cmd-alt-shift-b"
-        } else {
-            "alt-shift-b"
-        }
-    }
-
-    /// The Column Editor: Alt+C on Windows and Linux, Cmd+Alt+C on macOS.
-    pub(crate) fn column_editor() -> &'static str {
-        if cfg!(target_os = "macos") {
-            "cmd-alt-c"
-        } else {
-            "alt-c"
         }
     }
 
@@ -1295,15 +1355,7 @@ pub(crate) mod tests {
         cx.run_until_parked();
     }
 
-    thread_local! {
-        /// The messages shown with `report_info`, for tests to read.
-        pub(crate) static INFO: std::cell::RefCell<Vec<String>> = std::cell::RefCell::default();
-    }
-
-    /// The messages shown since the last call.
-    pub(crate) fn take_info() -> Vec<String> {
-        INFO.with(|info| std::mem::take(&mut *info.borrow_mut()))
-    }
+    pub(crate) use birchpad_ui::take_info;
 
     pub(crate) fn active_text(workspace: &Entity<Workspace>, cx: &mut VisualTestContext) -> String {
         workspace.read_with(cx, |workspace, cx| {
@@ -1325,8 +1377,8 @@ pub(crate) mod tests {
         cx.simulate_keystrokes(&secondary("z"));
         assert_eq!(active_text(&workspace, cx), "abc");
 
-        // Ctrl+Tab wraps around to the first tab; closing it frees the number 1 again.
-        cx.simulate_keystrokes("ctrl-tab");
+        // Ctrl+PageDown wraps around to the first tab; closing it frees the number 1 again.
+        cx.simulate_keystrokes("ctrl-pagedown");
         assert_eq!(active_text(&workspace, cx), "");
         cx.simulate_keystrokes(&secondary("w"));
         assert_eq!(tab_names(&workspace, cx), ["new 2", "new 3"]);

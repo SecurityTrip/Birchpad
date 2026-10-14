@@ -3,7 +3,7 @@ use gpui_kit::{Entity, TestAppContext, VisualTestContext};
 use serde_json::json;
 
 use super::*;
-use crate::workspace::tests::{active_text, open_workspace};
+use crate::workspace::tests::{active_text, open_workspace, tab_names};
 
 fn run(
     workspace: &Entity<Workspace>,
@@ -143,4 +143,63 @@ fn text_opens_in_a_new_document(cx: &mut TestAppContext) {
         })
         .unwrap();
     assert_eq!(active_text(&workspace, cx), "x  y\n");
+}
+
+#[gpui_kit::test]
+fn every_hash_of_the_selection(cx: &mut TestAppContext) {
+    let (workspace, cx) = open_workspace(cx);
+    type_and_select_all(&workspace, "abc", cx);
+    for (name, length) in [("md5", 32), ("sha1", 40), ("sha256", 64), ("sha512", 128)] {
+        run(
+            &workspace,
+            Invocation::with_args("tools.hash-selection", json!({ "hash": name })),
+            cx,
+        )
+        .unwrap();
+        let copied = cx.update(|_, cx| cx.read_from_clipboard().and_then(|item| item.text()));
+        assert_eq!(copied.map(|hash| hash.len()), Some(length), "{name}");
+    }
+}
+
+#[gpui_kit::test]
+fn hashes_of_chosen_files_open_in_a_new_document(cx: &mut TestAppContext) {
+    let (workspace, cx) = open_workspace(cx);
+    let dir = tempfile::tempdir().unwrap();
+    let file = dir.path().join("a.txt");
+    std::fs::write(&file, "abc").unwrap();
+    let gone = dir.path().join("gone.txt");
+    let tabs = tab_names(&workspace, cx).len();
+    run(
+        &workspace,
+        Invocation::with_args("tools.hash-files", json!({ "hash": "sha256" })),
+        cx,
+    )
+    .unwrap();
+    let chosen = vec![file.clone(), gone.clone()];
+    cx.simulate_path_prompt_response(move |_| Some(chosen));
+    cx.run_until_parked();
+    assert_eq!(tab_names(&workspace, cx).len(), tabs + 1);
+    let listing = active_text(&workspace, cx);
+    assert!(
+        listing.starts_with(&format!(
+            "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad  {}",
+            file.display()
+        )),
+        "{listing}"
+    );
+    assert!(
+        listing.contains(&format!("# {}: ", gone.display())),
+        "{listing}"
+    );
+
+    // Cancelled: no new document.
+    run(
+        &workspace,
+        Invocation::with_args("tools.hash-files", json!({ "hash": "md5" })),
+        cx,
+    )
+    .unwrap();
+    cx.simulate_path_prompt_response(|_| None);
+    cx.run_until_parked();
+    assert_eq!(tab_names(&workspace, cx).len(), tabs + 1);
 }

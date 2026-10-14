@@ -1,5 +1,5 @@
 use super::*;
-use crate::{DARK, Theme};
+use crate::{DARK, DEFAULT, Theme, UiColors};
 
 /// A small theme in Notepad++'s format, dark, with lexers that agree and one that does not.
 const SAMPLE: &str = r#"<?xml version="1.0" encoding="UTF-8" ?>
@@ -62,6 +62,10 @@ const SAMPLE: &str = r#"<?xml version="1.0" encoding="UTF-8" ?>
         <WidgetStyle name="EOL custom color" styleID="0" fgColor="DADADA" />
         <WidgetStyle name="Change History modified" styleID="0" fgColor="FF8000" bgColor="FF8001" />
         <WidgetStyle name="Change History saved" styleID="0" fgColor="00A000" bgColor="00A001" />
+        <WidgetStyle name="Tab color 1" styleID="0" bgColor="FFFF80" />
+        <WidgetStyle name="Tab color dark mode 1" styleID="0" bgColor="404000" />
+        <WidgetStyle name="Tab color 2" styleID="0" bgColor="80FF80" />
+        <WidgetStyle name="Tab color dark mode 3" styleID="0" bgColor="NOTHEX" />
     </GlobalStyles>
 </NotepadPlus>
 "#;
@@ -101,7 +105,30 @@ fn global_styles_become_editor_colors() {
     let dark = Theme::builtin(DARK).unwrap();
     assert_eq!(editor.bookmark, dark.editor.bookmark);
     assert_eq!(editor.gutter_border, dark.editor.gutter_border);
-    assert_eq!(theme.ui, dark.ui);
+    // A dark theme takes Notepad++'s dark mode tab colors, or the light ones without.
+    assert_eq!(theme.ui.tab_color_1, Color::rgb(0x404000));
+    assert_eq!(theme.ui.tab_color_2, Color::rgb(0x80ff80));
+    assert_eq!(theme.ui.tab_color_3, dark.ui.tab_color_3, "not a color");
+    let ui = UiColors {
+        tab_color_1: dark.ui.tab_color_1,
+        tab_color_2: dark.ui.tab_color_2,
+        ..theme.ui
+    };
+    assert_eq!(ui, dark.ui);
+}
+
+#[test]
+fn a_light_theme_takes_the_light_tab_colors() {
+    let xml = r#"<NotepadPlus><GlobalStyles>
+        <WidgetStyle name="Default Style" fgColor="000000" bgColor="FFFFFF" />
+        <WidgetStyle name="Tab color 1" bgColor="FFFF80" />
+        <WidgetStyle name="Tab color dark mode 1" bgColor="404000" />
+    </GlobalStyles></NotepadPlus>"#;
+    let theme = Theme::from_notepad_xml("Light", xml).unwrap();
+    assert!(!theme.dark);
+    assert_eq!(theme.ui.tab_color_1, Color::rgb(0xffff80));
+    let default = Theme::builtin(DEFAULT).unwrap();
+    assert_eq!(theme.ui.tab_color_5, default.ui.tab_color_5);
 }
 
 #[test]
@@ -301,4 +328,69 @@ fn style_names_become_highlights() {
     ] {
         assert_eq!(highlight_of(lexer, name), expected, "{lexer} {name}");
     }
+}
+
+#[test]
+fn the_default_styles_font() {
+    let theme = sample();
+    assert_eq!(theme.font.family(), Some("Consolas"));
+    assert_eq!(theme.font.size(), Some(13.), "10 points");
+    // None given: the built-in theme's, which has none.
+    let plain = Theme::from_notepad_xml(
+        "Plain",
+        r#"<NotepadPlus><GlobalStyles><WidgetStyle name="Default Style" fgColor="000000" bgColor="FFFFFF" fontName=" " fontSize="0" /></GlobalStyles></NotepadPlus>"#,
+    )
+    .unwrap();
+    assert_eq!(plain.font, crate::ThemeFont::default());
+}
+
+#[test]
+fn changes_go_back_into_the_notepad_file() {
+    let mut theme = sample();
+    theme.editor.caret = Color::rgb(0x123456);
+    theme.editor.text = Color::rgb(0xabcdef);
+    theme.font.family = Some("Fira \"Code\" & Co".into());
+    theme.font.size = Some(16.);
+    let mut keyword = theme.syntax["keyword"];
+    keyword.color = Some(Color::rgb(0x010203));
+    keyword.italic = true;
+    theme.syntax.insert("keyword".into(), keyword);
+    let written = theme.to_notepad_xml(SAMPLE).unwrap();
+    let again = Theme::from_notepad_xml("Zenburnish", &written).unwrap();
+    assert_eq!(again.editor.caret, Color::rgb(0x123456));
+    assert_eq!(again.editor.text, Color::rgb(0xabcdef));
+    assert_eq!(again.font.family(), Some("Fira \"Code\" & Co"));
+    assert_eq!(again.font.size(), Some(16.));
+    let keyword = again.syntax["keyword"];
+    assert_eq!(keyword.color, Some(Color::rgb(0x010203)));
+    assert!(keyword.italic);
+    // What Birchpad has no counterpart for stays as it was.
+    assert!(written.contains(r#"name="Global override" styleID="0" fgColor="FFFF80""#));
+    assert!(written.contains("<LexerType name=\"cpp\" desc=\"C++\""));
+    // An unchanged theme writes the same colors back.
+    let same = sample().to_notepad_xml(SAMPLE).unwrap();
+    assert_eq!(
+        Theme::from_notepad_xml("Zenburnish", &same).unwrap(),
+        sample()
+    );
+    // Not a Notepad++ theme.
+    assert!(theme.to_notepad_xml("<Other/>").is_err());
+    assert!(theme.to_notepad_xml("not xml").is_err());
+}
+
+#[test]
+fn more_of_the_lexers_names() {
+    assert_eq!(
+        highlight_of("ruby", "SYMBOL"),
+        Some("string.special.symbol")
+    );
+    assert_eq!(highlight_of("perl", "SCALAR"), Some("variable"));
+    assert_eq!(
+        highlight_of("powershell", "CMDLET"),
+        Some("function.builtin")
+    );
+    assert_eq!(highlight_of("makefile", "TARGET"), Some("function"));
+    assert_eq!(highlight_of("php", "VARIABLE"), Some("variable"));
+    assert_eq!(highlight_of("cpp", "GLOBAL CLASS"), Some("type"));
+    assert_eq!(highlight_of("cpp", "DEFAULT"), None);
 }

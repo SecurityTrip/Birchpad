@@ -1,0 +1,91 @@
+# The text's context menu (Settings > Edit Popup ContextMenu). Each [[item]] is a command
+# from the catalog with optional `args`, a `label` instead of its title, and a `folder`:
+# items with the same folder, one after the other, form a submenu. `separator = true` draws
+# a line. Changes apply the next time the menu opens.
+
+[[item]]
+command = "edit.cut"
+
+[[item]]
+command = "edit.copy"
+
+[[item]]
+command = "edit.paste"
+
+[[item]]
+command = "edit.delete"
+
+[[item]]
+command = "edit.select-all"
+
+[[item]]
+command = "edit.begin-end-select"
+
+[[item]]
+separator = true
+
+[[item]]
+command = "mark.style-all"
+args = { style = 1 }
+label = "Using 1st Style"
+folder = "Style All Occurrences of Token"
+
+[[item]]
+command = "mark.style-all"
+args = { style = 2 }
+label = "Using 2nd Style"
+folder = "Style All Occurrences of Token"
+
+[[item]]
+command = "mark.style-all"
+args = { style = 3 }
+label = "Using 3rd Style"
+folder = "Style All Occurrences of Token"
+
+[[item]]
+command = "mark.style-all"
+args = { style = 4 }
+label = "Using 4th Style"
+folder = "Style All Occurrences of Token"
+
+[[item]]
+command = "mark.style-all"
+args = { style = 5 }
+label = "Using 5th Style"
+folder = "Style All Occurrences of Token"
+
+[[item]]
+command = "mark.clear-all"
+
+[[item]]
+separator = true
+
+[[item]]
+command = "edit.convert-case"
+args = { to = "upper" }
+label = "UPPERCASE"
+folder = "Convert Case to"
+
+[[item]]
+command = "edit.convert-case"
+args = { to = "lower" }
+label = "lowercase"
+folder = "Convert Case to"
+
+[[item]]
+separator = true
+
+[[item]]
+command = "edit.open-selected-file"
+
+[[item]]
+command = "edit.search-online"
+
+[[item]]
+separator = true
+
+[[item]]
+command = "edit.toggle-comment"
+
+[[item]]
+command = "edit.block-comment"

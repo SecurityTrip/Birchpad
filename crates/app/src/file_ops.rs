@@ -1,4 +1,6 @@
-//! File commands: open, save, save as, save all, close with confirmation, exit, recent files.
+//! File commands: open, save, save as, save all, close with confirmation (one document, all,
+//! all but this or the pinned ones, those left or right of it, the unchanged ones), exit,
+//! recent files.
 
 use std::path::{Path, PathBuf};
 
@@ -12,7 +14,7 @@ use serde::Deserialize;
 
 use crate::app_state::AppState;
 use crate::buffer::{Buffer, ReadOnly};
-use crate::commands::CommandRegistry;
+use crate::commands::{CommandRegistry, Register as _};
 use crate::editor::EditorView;
 use crate::encoding_ui::first_position;
 use crate::workspace::{Workspace, report_error};
@@ -82,10 +84,79 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
         this.close_with_confirmation(views, window, cx).detach();
         Ok(())
     });
+    registry.workspace("file.close-all-but-pinned", |this, (), window, cx| {
+        let views = this
+            .all_views(cx)
+            .into_iter()
+            .filter(|view| !view.read(cx).tab.pinned)
+            .collect();
+        this.close_with_confirmation(views, window, cx).detach();
+        Ok(())
+    });
+    for (id, left) in [("file.close-left", true), ("file.close-right", false)] {
+        registry.workspace(id, move |this, (), window, cx| {
+            let pane = this.active_pane().read(cx);
+            let Some(active) = pane.active_item() else {
+                return Ok(());
+            };
+            let at = pane.index_of(active).unwrap_or_default();
+            let views = if left {
+                pane.items()[..at].to_vec()
+            } else {
+                pane.items()[at + 1..].to_vec()
+            };
+            this.close_with_confirmation(views, window, cx).detach();
+            Ok(())
+        });
+    }
+    registry.workspace("file.close-unchanged", |this, (), window, cx| {
+        let views = this
+            .all_views(cx)
+            .into_iter()
+            .filter(|view| !view.read(cx).buffer.read(cx).is_modified())
+            .collect();
+        this.close_with_confirmation(views, window, cx).detach();
+        Ok(())
+    });
     registry.workspace("file.exit", |this, (), window, cx| {
         this.exit(window, cx);
         Ok(())
     });
+}
+
+/// The folder of a file chosen in a dialog, for Default Directory > Remember.
+pub(crate) fn remember_directory(path: &Path, cx: &mut App) {
+    if let Some(folder) = path
+        .parent()
+        .filter(|folder| !folder.as_os_str().is_empty())
+    {
+        let folder = folder.to_owned();
+        AppState::update_state(cx, |state, _| state.last_directory = Some(folder));
+    }
+}
+
+/// Where the copy of the file goes before a save overwrites it (Preferences > Backup > Backup
+/// on save): next to it (`simple`), or in `folder` (a `nppBackup` folder next to the file if
+/// empty) with the time in its name (`verbose`).
+pub(crate) fn backup_path(
+    target: &Path,
+    mode: birchpad_config::BackupOnSave,
+    folder: &str,
+    now: chrono::NaiveDateTime,
+) -> Option<PathBuf> {
+    let name = target.file_name()?.to_string_lossy().into_owned();
+    match mode {
+        birchpad_config::BackupOnSave::None => None,
+        birchpad_config::BackupOnSave::Simple => Some(target.with_file_name(format!("{name}.bak"))),
+        birchpad_config::BackupOnSave::Verbose => {
+            let folder = match folder.trim() {
+                "" => target.parent()?.join("nppBackup"),
+                folder => PathBuf::from(folder),
+            };
+            let stamp = now.format("%Y-%m-%d_%H%M%S");
+            Some(folder.join(format!("{name}.{stamp}.bak")))
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -100,6 +171,8 @@ pub(crate) enum SaveMode {
 enum WriteFailure {
     Unencodable(Unencodable),
     Save(SaveError),
+    /// The copy of Backup on save could not be made; the file is left as it was.
+    Backup(PathBuf, std::io::Error),
 }
 
 impl Workspace {
@@ -109,6 +182,9 @@ impl Workspace {
             let Some(paths) = crate::path_dialog::ask_open(directory, cx).await else {
                 return;
             };
+            if let Some(first) = paths.first() {
+                cx.update(|_, cx| remember_directory(first, cx)).ok();
+            }
             this.update_in(cx, |this, window, cx| {
                 for path in paths {
                     this.open_path(&path, window, cx);
@@ -119,8 +195,21 @@ impl Workspace {
         .detach();
     }
 
-    /// The folder dialogs start in: the active file's, else the home folder.
+    /// The folder dialogs start in (Preferences > Default Directory): the active file's, the one
+    /// last used, or one of one's own; else the home folder.
     pub(crate) fn default_directory(&self, cx: &App) -> PathBuf {
+        let app = AppState::global(cx);
+        let files = &app.settings.files;
+        let chosen = match files.default_directory {
+            birchpad_config::DefaultDirectory::Follow => None,
+            birchpad_config::DefaultDirectory::Remember => app.state.last_directory.clone(),
+            birchpad_config::DefaultDirectory::Custom => {
+                Some(PathBuf::from(files.default_directory_path.trim()))
+            }
+        };
+        if let Some(folder) = chosen.filter(|folder| folder.is_dir()) {
+            return folder;
+        }
         self.active_view(cx)
             .and_then(|view| {
                 let buffer = view.read(cx).buffer.read(cx);
@@ -171,7 +260,10 @@ impl Workspace {
             let path = match (mode, existing) {
                 (SaveMode::Save, Some(path)) => path,
                 _ => match crate::path_dialog::ask_save(directory, suggested, cx).await {
-                    Some(path) => path,
+                    Some(path) => {
+                        cx.update(|_, cx| remember_directory(&path, cx)).ok();
+                        path
+                    }
                     None => return false,
                 },
             };
@@ -351,6 +443,15 @@ async fn write_buffer(
         (doc.text().clone(), doc.format(), doc.revision())
     });
     let recovery = cx.update(|_, cx| AppState::global(cx).recovery_dir())?;
+    let backup = cx.update(|_, cx| {
+        let files = &AppState::global(cx).settings.files;
+        backup_path(
+            &path,
+            files.backup_on_save,
+            &files.backup_folder,
+            chrono::Local::now().naive_local(),
+        )
+    })?;
     let target = path.clone();
     let encoded_text = text.clone();
     buffer.update(cx, |buffer, _| buffer.begin_save());
@@ -358,6 +459,14 @@ async fn write_buffer(
         .background_spawn(async move {
             let bytes = birchpad_io::encode(&encoded_text, format.encoding, format.bom)
                 .map_err(WriteFailure::Unencodable)?;
+            // The file as it was, before it is overwritten.
+            if let Some(backup) = backup.filter(|_| target.is_file()) {
+                if let Some(folder) = backup.parent() {
+                    let _ = std::fs::create_dir_all(folder);
+                }
+                std::fs::copy(&target, &backup)
+                    .map_err(|error| WriteFailure::Backup(backup.clone(), error))?;
+            }
             let written = birchpad_io::save(&target, &bytes, recovery.as_deref())
                 .map_err(WriteFailure::Save)?;
             // What the file looks like now, so that this write is not taken for a change
@@ -393,6 +502,14 @@ async fn write_buffer(
             )
         )),
         Err(WriteFailure::Save(error)) => Err(anyhow!(error)),
+        Err(WriteFailure::Backup(backup, error)) => Err(anyhow!(
+            "{}",
+            t!(
+                "file-ops.cannot-make-the-backup-copy",
+                path = backup.display(),
+                error = error
+            )
+        )),
     }
 }
 

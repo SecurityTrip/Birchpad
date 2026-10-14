@@ -6,6 +6,7 @@
 
 use birchpad_commands::Invocation;
 use birchpad_core::{ChangeSet, Edit, Range, Rope, Selection, Transaction};
+use birchpad_i18n::t;
 
 /// The most effects one call may ask for; more are dropped, so a runaway plugin cannot flood
 /// the window with messages.
@@ -84,7 +85,7 @@ impl Session {
     fn working(&mut self) -> Result<&mut Working, Refusal> {
         self.document
             .as_mut()
-            .ok_or_else(|| "there is no document".to_owned())
+            .ok_or_else(|| t!("plugin.no-document"))
     }
 
     pub fn text(&self) -> String {
@@ -104,7 +105,7 @@ impl Session {
 
     fn check_range(text: &Rope, start: usize, end: usize) -> Result<(), Refusal> {
         if start > end {
-            return Err(format!("the range {start}..{end} is reversed"));
+            return Err(t!("plugin.range-reversed", start = start, end = end));
         }
         if end > text.len() {
             return Err(format!(
@@ -114,7 +115,7 @@ impl Session {
         }
         for pos in [start, end] {
             if !text.is_char_boundary(pos) {
-                return Err(format!("{pos} is inside a character"));
+                return Err(t!("plugin.inside-a-character", position = pos));
             }
         }
         Ok(())
@@ -123,7 +124,7 @@ impl Session {
     /// The text from `start` to `end`.
     pub fn text_range(&self, start: usize, end: usize) -> Result<String, Refusal> {
         let Some(doc) = &self.document else {
-            return Err("there is no document".to_owned());
+            return Err(t!("plugin.no-document"));
         };
         Self::check_range(&doc.text, start, end)?;
         Ok(doc.text.slice(start..end).to_string())
@@ -193,7 +194,7 @@ impl Session {
     pub fn set_selections(&mut self, ranges: &[(usize, usize)]) -> Result<(), Refusal> {
         let doc = self.working()?;
         if ranges.is_empty() {
-            return Err("a selection needs at least one range".to_owned());
+            return Err(t!("plugin.selection-needs-a-range"));
         }
         for &(anchor, head) in ranges {
             Self::check_range(&doc.text, anchor.min(head), anchor.max(head))?;
@@ -229,7 +230,7 @@ impl Session {
     /// refused at once.
     pub fn run_command(&mut self, id: &str, args: serde_json::Value) -> Result<(), Refusal> {
         if birchpad_commands::find(id).is_none() {
-            return Err(format!("there is no command {id}"));
+            return Err(t!("plugin.no-command", id = id));
         }
         self.push(Effect::RunCommand(Invocation {
             command: id.to_owned(),
@@ -244,7 +245,7 @@ impl Session {
             serde_json::Value::Null
         } else {
             serde_json::from_str(args)
-                .map_err(|error| format!("the arguments of {id} are not JSON: {error}"))?
+                .map_err(|error| t!("plugin.arguments-not-json", id = id, reason = error))?
         };
         self.run_command(id, args)
     }

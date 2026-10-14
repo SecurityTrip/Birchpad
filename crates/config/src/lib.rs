@@ -11,6 +11,7 @@ mod notepad_session;
 mod policy;
 mod project;
 mod session;
+mod session_names;
 mod settings;
 mod state;
 mod write;
@@ -24,14 +25,21 @@ pub use session::{
     SESSION_VERSION, Session, SessionDocument, SessionError, SessionTab, SessionView,
     create_private_dir, write_private,
 };
+pub use session_names::{
+    LanguageName, USER_LANGUAGE_PREFIX, backup_name, free_untitled_number, line_ending_name,
+    parse_line_ending,
+};
 pub use settings::{
-    AppearanceSettings, AutoIndent, ChangeDetection, ChangeHistory, CompletionSettings,
-    CurrentLine, DiagnosticsSettings, Edge, EditorSettings, FileSettings, HighlightingSettings,
-    NetworkSettings, PluginInstall, PluginSettings, SessionSettings, Settings, SmartHighlighting,
-    TokenMatching, UpdateChannel, UpdateMode, UpdateSettings,
+    AppearanceSettings, AutoIndent, BackupOnSave, ChangeDetection, ChangeHistory, CloudSettings,
+    CompletionSettings, CurrentLine, DEFAULT_TOOLBAR, DateSettings, DefaultDirectory,
+    DiagnosticsSettings, Edge, EditorSettings, FileSettings, HighlightingSettings, InstanceMode,
+    InstanceSettings, InterfaceMode, LanguageSettings, LinkSettings, NetworkSettings,
+    NewDocumentSettings, PluginInstall, PluginSettings, SearchEngine, SearchEngineSettings,
+    SessionSettings, Settings, SmartHighlighting, TabSettings, TokenMatching, ToolbarSettings,
+    ToolbarSize, UpdateChannel, UpdateMode, UpdateSettings,
 };
 pub use state::{
-    FindInFilesState, MAX_RECENT_FILES, PanelsState, SpellCheckState, SplitOrientation,
-    UpdateState, UserState,
+    FindInFilesState, MAX_RECENT_FILES, PanelsState, SearchResultsState, SpellCheckState,
+    SplitOrientation, UpdateState, UserState,
 };
 pub use write::{SettingError, check_setting, edit_settings, write_setting};

@@ -38,9 +38,17 @@ pub fn detect() -> Option<Arc<dyn Installer>> {
 
 /// The installer's work at startup, before anything else: finishing an install or uninstall, or
 /// installing an update downloaded during the last run (Birchpad then starts again).
-pub fn run_hooks() {
+/// `installed` runs once Birchpad is installed for the user, `updated` once an update is
+/// installed, `uninstalling` before it is uninstalled (the Explorer's "Edit with Birchpad").
+pub fn run_hooks(installed: fn(), updated: fn(), uninstalling: fn()) {
     #[cfg(all(windows, feature = "installer"))]
-    velopack::VelopackApp::build().run();
+    velopack::VelopackApp::build()
+        .on_after_install_fast_callback(move |_| installed())
+        .on_after_update_fast_callback(move |_| updated())
+        .on_before_uninstall_fast_callback(move |_| uninstalling())
+        .run();
+    #[cfg(not(all(windows, feature = "installer")))]
+    let _ = (installed, updated, uninstalling);
 }
 
 #[cfg(all(windows, feature = "installer"))]

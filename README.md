@@ -52,6 +52,13 @@ needs Birchpad.app opened once with Control-click > Open until the app is notari
 lists SHA-256 checksums and carries GitHub build provenance (`gh attestation verify <file>
 --repo SecurityTrip/Birchpad`).
 
+On Windows, the installer and the MSI add "Edit with Birchpad" to the Explorer's context menu
+of files (the MSI's `ExplorerMenu` feature can be left out: `ADDLOCAL=Main`); Preferences > Files
+adds it for a portable copy, or takes it away. At its first start Birchpad offers to open text
+files (Settings > Make Birchpad the Default Editor does it later): on Windows you then choose it
+in Default apps, which programs may not do themselves; on macOS, use Finder's Get Info > Open
+with > Change All.
+
 To uninstall, use Installed apps in Windows Settings for the installer and the MSI, or delete the
 folder of a portable copy.
 
@@ -93,7 +100,8 @@ birchpad [-n<line>] [-c<column>] [-p<position>] [-l<language>] [-ro] [-multiInst
 ```
 
 A second launch opens its files as tabs in the running window and exits; `-multiInst` starts a
-separate instance instead. `-l` takes Notepad++'s language names (`-lcpp`, `-lpython`,
+separate instance instead, as do every launch, or a launch with `-openSession`, when
+Preferences > Multi-Instance says so (`instances.mode = "multi"` or `"session"`). `-l` takes Notepad++'s language names (`-lcpp`, `-lpython`,
 `-lnormal`), `-openSession` opens the files as sessions. Other Notepad++ options (`-x`, `-y`,
 `-notabbar`, ...) are accepted and ignored.
 
@@ -115,25 +123,38 @@ downloading them. See [ADR 0020](docs/adr/0020-signed-updates-and-nightly-builds
 
 | Path | Contents |
 |---|---|
-| `crates/core` | Text model: rope buffer, selections, change sets, transactions, undo history. No UI. |
-| `crates/config` | Layered settings: defaults, machine defaults, user settings, administrator policies. |
-| `crates/commands` | Command catalog, keymaps and the menu model, as data. No UI. |
-| `crates/io` | Encoding detection and conversion, reading and safely saving files. No UI. |
-| `crates/view` | Layout of a document view in cells: tab stops, word wrap, visual rows. No UI. |
+| `crates/core` | Text model: rope buffer, selections, change sets, transactions, undo history, search. No UI. |
+| `crates/config` | Layered settings: defaults, machine defaults, user settings, administrator policies; sessions. |
+| `crates/i18n` | The interface languages: YAML locales, texts by key, plural forms, the language in use. No UI. |
+| `crates/commands` | Command catalog, keymaps, the menu model, macros and Run commands, as data. No UI. |
+| `crates/io` | Encoding detection and conversion, reading and safely saving files, searching them (Find in Files). No UI. |
+| `crates/view` | Layout of a document view in cells: tab stops, word wrap, visual rows, right-to-left text. No UI. |
 | `crates/syntax` | Languages and syntax trees: detection, tree-sitter parsing, highlighting, folding. No UI. |
 | `crates/cli` | Notepad++-compatible command line and the single-instance hand-off. No UI. |
-| `crates/tools` | Built-in tools: JSON and XML formatting, hex dumps, comparing texts, spell checking. No UI. |
+| `crates/tools` | Built-in tools: JSON and XML formatting, hex dumps, comparing texts, spell checking, date formats, HTML export. No UI. |
 | `crates/plugin` | Plugins as WebAssembly components (`wit/birchpad.wit`), Rhai scripts, the plugin manager. No UI. |
 | `crates/update` | Updates: the signed update manifest, channels, versions, installing (Velopack on Windows). No UI. |
 | `crates/release-tool` | `birchpad-release`: signing keys and the update manifest, for the release workflows. |
+| `crates/ui` | What the window's parts share: the command registry, the settings and state of the application, dialog buttons, messages to the user. |
+| `crates/editor` | The editor: the buffer, the editor view drawn and edited in GPUI, the active theme. |
 | `crates/menu-bar` | The menu bar drawn in the window on Windows and Linux, with Windows' keyboard access. |
-| `crates/app` | The desktop application. |
+| `crates/app` | The desktop application: the workspace, panes, panels, dialogs and menus. See ADR 0041 for the layout. |
 | `packaging/` | Release packaging: per-machine MSI, macOS app bundle, portable-mode marker, update signing setup. |
 | `docs/` | Roadmap, architecture decision records, and [writing plugins and scripts](docs/plugins.md). |
 
 ## Contributing
 
 Contributions are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md) first.
+
+## Relationship to Notepad++
+
+Birchpad is an independent project, not affiliated with or endorsed by Notepad++ or its
+authors. It is a clean-room reimplementation: it contains no code from Notepad++, Scintilla or
+Notepad++'s plugins, and is written from Notepad++'s user manual, its behavior as a user sees it
+and its file formats, never from its source ([the rules](CONTRIBUTING.md#clean-room)). Birchpad
+reads Notepad++'s themes, sessions, user-defined languages and other files from the user's own
+copy so that they carry over, but does not ship them. "Notepad++" is named only to describe
+that compatibility.
 
 ## License
 
