@@ -49,6 +49,9 @@ pub struct UserState {
     /// The folder last chosen in an Open or Save As dialog (Default Directory > Remember).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub last_directory: Option<PathBuf>,
+    /// The offer to open text files with Birchpad was answered "Don't Ask Again".
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub default_app_declined: bool,
 }
 
 /// The search results' context menu switches.

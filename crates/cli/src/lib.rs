@@ -3,6 +3,7 @@
 //! dependencies.
 
 mod args;
+pub mod associations;
 pub mod explorer;
 mod instance;
 

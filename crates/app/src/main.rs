@@ -18,6 +18,7 @@ mod commands;
 mod compare;
 mod context_menu;
 mod date_time;
+mod default_app;
 mod disk;
 #[cfg(test)]
 mod disk_tests;
@@ -106,10 +107,14 @@ fn updated() {
     }
 }
 
-/// About to be uninstalled: the Explorer's menu loses it.
+/// About to be uninstalled: the Explorer's menu loses it, and the text file types Birchpad
+/// registered for go.
 fn uninstalling() {
     if let Err(error) = birchpad_cli::explorer::remove_for_uninstall() {
         eprintln!("cannot take Edit with Birchpad from the Explorer: {error}");
+    }
+    if let Err(error) = birchpad_cli::associations::unregister() {
+        eprintln!("cannot take Birchpad's file types away: {error}");
     }
 }
 
@@ -215,6 +220,9 @@ fn main() {
             })
             .detach();
             updates::start_background_checks(window, workspace.downgrade(), cx);
+            window
+                .update(cx, |_, window, cx| default_app::offer(window, cx))
+                .ok();
             #[cfg(feature = "e2e")]
             e2e::run_script(window, workspace.clone(), cx);
             if let Some(server) = server {

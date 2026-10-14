@@ -54,7 +54,10 @@ lists SHA-256 checksums and carries GitHub build provenance (`gh attestation ver
 
 On Windows, the installer and the MSI add "Edit with Birchpad" to the Explorer's context menu
 of files (the MSI's `ExplorerMenu` feature can be left out: `ADDLOCAL=Main`); Preferences > Files
-adds it for a portable copy, or takes it away.
+adds it for a portable copy, or takes it away. At its first start Birchpad offers to open text
+files (Settings > Make Birchpad the Default Editor does it later): on Windows you then choose it
+in Default apps, which programs may not do themselves; on macOS, use Finder's Get Info > Open
+with > Change All.
 
 To uninstall, use Installed apps in Windows Settings for the installer and the MSI, or delete the
 folder of a portable copy.

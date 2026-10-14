@@ -290,6 +290,8 @@ pub struct FileSettings {
     pub default_directory: DefaultDirectory,
     /// With `default-directory = "custom"`, the folder.
     pub default_directory_path: String,
+    /// At startup, offer to make Birchpad the default editor of text files, unless it is.
+    pub offer_default_app: bool,
 }
 
 /// Notepad++'s "Backup on save".
@@ -330,6 +332,7 @@ impl Default for FileSettings {
             backup_folder: String::new(),
             default_directory: DefaultDirectory::default(),
             default_directory_path: String::new(),
+            offer_default_app: true,
         }
     }
 }

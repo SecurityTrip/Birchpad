@@ -255,6 +255,7 @@ command:
     word-left: "Расширить выделение до предыдущего слова"
     word-right: "Расширить выделение до следующего слова"
   settings:
+    default-app: "Сделать Birchpad редактором по умолчанию..."
     edit-context-menu: "Изменить контекстное меню"
     import-theme: "Импортировать темы..."
     preferences: "Настройки..."
@@ -343,6 +344,15 @@ compare:
   there-is-no-document-to-compare: "нет документа для сравнения"
 context-menu:
   there-is-no-settings-folder: "нет папки настроек для context-menu.toml"
+default-app:
+  birchpad-opens-text-files: "Теперь текстовые файлы открывает Birchpad."
+  cannot-register: "не удалось зарегистрировать Birchpad для текстовых файлов: {error}"
+  do-not-ask-again: "Больше не спрашивать"
+  not-now: "Не сейчас"
+  open-text-files-with-birchpad: "Открывать текстовые файлы в Birchpad?"
+  set-up: "Настроить"
+  text-files: "Birchpad станет редактором по умолчанию для текстовых файлов: .txt, .json, .xml, .md, .log и других."
+  windows-asks: "Birchpad зарегистрируется для .txt, .json, .xml, .md, .log и других текстовых файлов; затем Windows откроет «Приложения по умолчанию», где нужно выбрать Birchpad."
 disk:
   changed: "{name} изменён другой программой. Загрузить заново?"
   changed-modified: "{name} изменён другой программой. Загрузить его заново и потерять ваши изменения?"
@@ -888,6 +898,7 @@ preferences:
   none: "Нет"
   notify: "Уведомлять"
   off: "Выкл."
+  offer-to-open-text-files-at-startup: "Предлагать открывать текстовые файлы при запуске"
   open: "Открывающий"
   open-and-save-as-start-in: "Открытие и сохранение начинаются в"
   open-session-in-a-new-instance: "Открывать сессию в новом экземпляре"

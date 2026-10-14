@@ -256,6 +256,7 @@ command:
     word-left: "Extend Selection to Previous Word"
     word-right: "Extend Selection to Next Word"
   settings:
+    default-app: "Make Birchpad the Default Editor..."
     edit-context-menu: "Edit Popup ContextMenu"
     import-theme: "Import Style Themes..."
     preferences: "Preferences..."
@@ -344,6 +345,15 @@ compare:
   there-is-no-document-to-compare: "there is no document to compare"
 context-menu:
   there-is-no-settings-folder: "there is no settings folder for context-menu.toml"
+default-app:
+  birchpad-opens-text-files: "Birchpad opens text files now."
+  cannot-register: "cannot register Birchpad for text files: {error}"
+  do-not-ask-again: "Don't Ask Again"
+  not-now: "Not Now"
+  open-text-files-with-birchpad: "Open text files with Birchpad?"
+  set-up: "Set Up"
+  text-files: "Birchpad becomes the default editor of text files: .txt, .json, .xml, .md, .log and others."
+  windows-asks: "Birchpad registers for .txt, .json, .xml, .md, .log and other text files; Windows then opens Default apps, where you choose Birchpad."
 disk:
   changed: "{name} was changed by another program. Reload it?"
   changed-modified: "{name} was changed by another program. Reload it and lose your changes?"
@@ -876,6 +886,7 @@ preferences:
   none: "None"
   notify: "Notify"
   off: "Off"
+  offer-to-open-text-files-at-startup: "Offer to open text files at startup"
   open: "Open"
   open-and-save-as-start-in: "Open and Save As start in"
   open-session-in-a-new-instance: "Open session in a new instance"

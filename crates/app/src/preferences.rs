@@ -436,6 +436,12 @@ pub(crate) const ENTRIES: &[Entry] = &[
     ),
     entry(
         "Files",
+        "files.offer-default-app",
+        "Offer to open text files at startup",
+        Kind::Bool,
+    ),
+    entry(
+        "Files",
         EXPLORER_MENU,
         "Edit with Birchpad in the Explorer's menu of files",
         Kind::ExplorerMenu,

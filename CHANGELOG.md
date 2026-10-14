@@ -116,6 +116,14 @@ version's release notes from its section here.
   copy, the portable one too, or takes it away
   ([#24](https://github.com/SecurityTrip/Birchpad/issues/24)).
 
+- Birchpad as the default editor of text files (.txt, .json, .xml, .md, .log and others): at
+  startup it offers to set itself up (Set Up, Not Now, Don't Ask Again;
+  `files.offer-default-app`), and Settings > Make Birchpad the Default Editor does it at any
+  time. Windows lets no program make itself the default, so Birchpad registers for those types
+  and opens Default apps, where the user picks it; on Linux it becomes the default with
+  `xdg-mime`; on macOS Finder lists it under Open With
+  ([#32](https://github.com/SecurityTrip/Birchpad/issues/32)).
+
 ### Fixed
 
 - Preferences: the sections at the bottom of the list could not be reached, and the rows of a

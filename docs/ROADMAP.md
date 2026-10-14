@@ -287,7 +287,12 @@ done and closed with the release.
       as Notepad++'s: added by the installers (the per-user one for the user, at install and at
       every update unless the user took it away; the MSI for the machine) and removed with them; for the portable build, a switch in Preferences that adds
       it for the user or takes it away
-- [ ] 0.2.8 Release 0.2.0: the workspace version (0.2.0, so that nightly builds are its
+- [x] 0.2.8 [#32](https://github.com/SecurityTrip/Birchpad/issues/32) Birchpad as the default
+      editor of text files (.txt, .json, .xml, .md, .log and others), offered at startup until
+      set up or declined, and in Settings: Windows registers it for the user and opens Default
+      apps for the choice, which no program may make; Linux makes it the default with
+      `xdg-mime`; on macOS the app declares its document types for Finder's Change All
+- [ ] 0.2.9 Release 0.2.0: the workspace version (0.2.0, so that nightly builds are its
       pre-releases), `CHANGELOG.md` and this roadmap updated; the
       [release checklist](release-checklist.md) gone through; the answered issues closed
 

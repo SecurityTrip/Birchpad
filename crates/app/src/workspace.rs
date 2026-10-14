@@ -176,6 +176,7 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
     crate::context_menu::register_commands(registry);
     crate::search_extras::register_commands(registry);
     crate::view_extras::register_commands(registry);
+    crate::default_app::register_commands(registry);
 }
 
 #[derive(serde::Deserialize)]
