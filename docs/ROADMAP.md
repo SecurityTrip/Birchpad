@@ -260,12 +260,35 @@ What Phase 1 left for later is marked *(from Phase 1)* in the phases below.
 
 What Phases 1 to 4 built differently from Notepad++, or left out, is brought in line here; what
 Phase 5 leaves for later is added once it is done. Birchpad goes beyond Notepad++ only after
-this phase. Closing it releases Birchpad 1.0.0.
+this phase. Closing it releases Birchpad 1.0.0; what is done by 2026-10-14 (6.1 to 6.21) ships
+before that as 0.2.0, with the issues users opened on GitHub
+([Release 0.2.0](#release-020)).
 
 Every step follows the clean-room rules of [CONTRIBUTING.md](../CONTRIBUTING.md#clean-room).
 The steps are ordered by dependency; each one lands as its own commit with its tests, docs and
 a `CHANGELOG.md` entry. A step that adds a feature with options adds them to Preferences too;
 step 6.11 brings in the sections no feature brings.
+
+### Release 0.2.0
+
+Steps 6.1 to 6.21, and the open issues: those 6.1 to 6.21 answer are closed with the release,
+the others are steps of their own.
+
+- [x] [#25](https://github.com/SecurityTrip/Birchpad/issues/25) Close All to the Left and to the
+      Right; [#26](https://github.com/SecurityTrip/Birchpad/issues/26) pinned tabs;
+      [#27](https://github.com/SecurityTrip/Birchpad/issues/27) the tab's context menu;
+      [#28](https://github.com/SecurityTrip/Birchpad/issues/28) a new document on a double click
+      on the tab bar (6.1)
+- [x] [#30](https://github.com/SecurityTrip/Birchpad/issues/30) the text's context menu (6.7)
+- [ ] 0.2.1 [#29](https://github.com/SecurityTrip/Birchpad/issues/29) File > Reload from Disk
+      (6.3) on Ctrl+R by default (Cmd+R on macOS)
+- [ ] 0.2.2 [#24](https://github.com/SecurityTrip/Birchpad/issues/24) "Edit with Birchpad" in the
+      Windows Explorer's context menu of files, as Notepad++'s: added by the installers (the
+      per-user one for the user, the MSI for the machine) and removed with them; for the
+      portable build, a switch in Preferences that adds it for the user or takes it away
+- [ ] 0.2.3 Release 0.2.0: the workspace version (0.2.0, so that nightly builds are its
+      pre-releases), `CHANGELOG.md` and this roadmap updated; the
+      [release checklist](release-checklist.md) gone through; the answered issues closed
 
 ### Window, tabs and files
 

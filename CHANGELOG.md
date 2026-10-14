@@ -9,22 +9,23 @@ version's release notes from its section here.
 ### Added
 
 - Pinned tabs (View > Tab > Pin Tab, or the pin on a tab): they stay at the start of the tab
-  bar, and File > Close Multiple Documents > Close All but Pinned leaves them.
+  bar, and File > Close Multiple Documents > Close All but Pinned leaves them
+  ([#26](https://github.com/SecurityTrip/Birchpad/issues/26)).
 - Tab colors: View > Tab > Apply Color 1 to 5 and Remove Color. Themes get `tab-color-1` to
   `tab-color-5`; a Notepad++ theme's tab colors are imported with it.
 - View > Tab: 1st to 9th Tab, Last Tab, Move Tab Forward (Ctrl+Shift+PageDown) and Backward
   (Ctrl+Shift+PageUp), Move Tab to Start and to End.
 - File > Close Multiple Documents: Close All but This, Close All but Pinned, Close All to the
-  Left, Close All to the Right, Close All Unchanged.
+  Left, Close All to the Right, Close All Unchanged ([#25](https://github.com/SecurityTrip/Birchpad/issues/25)).
 - The tab's context menu: close it or groups of tabs, save, print, pin, color, move or clone it
-  to the other view.
+  to the other view ([#27](https://github.com/SecurityTrip/Birchpad/issues/27)).
 - The document switcher: Ctrl+Tab and Ctrl+Shift+Tab go through the view's documents, most
   recently used first, in a list shown while Ctrl is held.
 - The document peeker: hovering over a tab shows the start of its document.
 - Preferences > Tab Bar (`[tabs]` in `settings.toml`): vertical tabs, tabs on several rows,
   smaller tabs, locked tabs, the close button on each tab, closing a tab with a double click,
   the document peeker, and the document switcher with or without most recently used first.
-- A double click on the empty part of the tab bar opens a new document.
+- A double click on the empty part of the tab bar opens a new document ([#28](https://github.com/SecurityTrip/Birchpad/issues/28)).
 - Pinned tabs and tab colors are kept in sessions, and read from Notepad++'s `session.xml`.
 - The Window menu: the documents of the active view, Sort By (name, path, type, content
   length or modified time, either way), and Windows..., a list of the view's documents with
@@ -33,7 +34,8 @@ version's release notes from its section here.
 - File > Open Containing Folder (in the file manager, a terminal or Folder as Workspace), Open
   in Default Viewer, Reload from Disk, Save a Copy As (in the document's encoding, leaving it
   as it is), Rename (the file in its folder, or the name of an untitled document, kept in
-  sessions) and Move to Recycle Bin, also in the tab's context menu.
+  sessions) and Move to Recycle Bin, also in the tab's context menu. Reload from Disk answers
+  ([#29](https://github.com/SecurityTrip/Birchpad/issues/29)).
 - File > Recent Files > Restore Recent Closed File (Ctrl+Shift+T) and Open All Recent Files.
 - Edit > Copy to Clipboard: the document's full path, file name and folder, also in the tab's
   context menu.
@@ -58,7 +60,8 @@ version's release notes from its section here.
 - The text's context menu, on a right click: cut, copy, paste, styles of tokens, case,
   opening the selected file, searching the Internet, comments. Its items are
   `context-menu.toml` next to the settings, opened by Settings > Edit Popup ContextMenu, as
-  Notepad++'s `contextMenu.xml`: any command with its arguments, own labels, submenus.
+  Notepad++'s `contextMenu.xml`: any command with its arguments, own labels, submenus
+  ([#30](https://github.com/SecurityTrip/Birchpad/issues/30)).
 - Search > Find (Volatile) Next and Previous (Ctrl+Alt+F3, Ctrl+Alt+Shift+F3): as Select and
   Find, leaving the find panel's text as it is.
 - Search > Find in Projects: a tab of the find panel that searches the files of the chosen
