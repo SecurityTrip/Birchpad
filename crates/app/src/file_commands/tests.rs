@@ -177,6 +177,40 @@ fn reloading_from_disk(cx: &mut TestAppContext) {
     assert_eq!(active_text(&workspace, cx), "two");
 }
 
+/// Ctrl+R (Cmd+R on macOS) reloads the file, asking first when it has changes; in an untitled
+/// document it does nothing.
+#[gpui_kit::test]
+fn ctrl_r_reloads_from_disk(cx: &mut TestAppContext) {
+    let dir = tempfile::tempdir().unwrap();
+    let file = write(dir.path(), "a.txt", "one");
+    let (workspace, cx) = open_workspace(cx);
+    cx.simulate_keystrokes(&secondary("r"));
+    assert!(!cx.has_pending_prompt());
+    assert_eq!(active_text(&workspace, cx), "", "untitled: nothing to read");
+
+    open(&workspace, &file, cx);
+    fs::write(&file, "two").unwrap();
+    cx.simulate_keystrokes(&secondary("r"));
+    cx.run_until_parked();
+    assert_eq!(active_text(&workspace, cx), "two");
+
+    cx.simulate_input("x");
+    cx.simulate_keystrokes(&secondary("r"));
+    cx.run_until_parked();
+    assert!(cx.has_pending_prompt(), "changes: asked first");
+    cx.simulate_prompt_answer("Reload");
+    cx.run_until_parked();
+    assert_eq!(active_text(&workspace, cx), "two");
+    // One binding: Ctrl+Shift+R (macro recording) and Ctrl+Alt+R (case) are other commands.
+    let keymap = cx.update(|_, cx| cx.global::<crate::commands::ActiveKeymap>().0.clone());
+    let reload = birchpad_commands::Invocation::new("file.reload");
+    let keys: Vec<String> = keymap
+        .bindings_for(&reload)
+        .map(|binding| binding.keys_string())
+        .collect();
+    assert_eq!(keys, [secondary("r")]);
+}
+
 #[gpui_kit::test]
 fn saving_a_copy_leaves_the_document_as_it_is(cx: &mut TestAppContext) {
     let dir = tempfile::tempdir().unwrap();

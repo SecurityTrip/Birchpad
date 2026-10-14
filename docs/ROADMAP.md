@@ -281,7 +281,7 @@ done and closed with the release.
       (6.1)
 - [x] 0.2.4 [#28](https://github.com/SecurityTrip/Birchpad/issues/28) A new document on a double click on the tab bar's empty part (6.1)
 - [x] 0.2.5 [#30](https://github.com/SecurityTrip/Birchpad/issues/30) The text's context menu with the main commands (6.7)
-- [ ] 0.2.6 [#29](https://github.com/SecurityTrip/Birchpad/issues/29) Reloading a tab from disk: File > Reload from Disk (6.3) on Ctrl+R by
+- [x] 0.2.6 [#29](https://github.com/SecurityTrip/Birchpad/issues/29) Reloading a tab from disk: File > Reload from Disk (6.3) on Ctrl+R by
       default (Cmd+R on macOS)
 - [ ] 0.2.7 [#24](https://github.com/SecurityTrip/Birchpad/issues/24) "Edit with Birchpad" in the Windows Explorer's context menu of files,
       as Notepad++'s: added by the installers (the per-user one for the user, the MSI for the

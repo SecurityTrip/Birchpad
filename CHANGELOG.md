@@ -34,8 +34,8 @@ version's release notes from its section here.
 - File > Open Containing Folder (in the file manager, a terminal or Folder as Workspace), Open
   in Default Viewer, Reload from Disk, Save a Copy As (in the document's encoding, leaving it
   as it is), Rename (the file in its folder, or the name of an untitled document, kept in
-  sessions) and Move to Recycle Bin, also in the tab's context menu. Reload from Disk answers
-  ([#29](https://github.com/SecurityTrip/Birchpad/issues/29)).
+  sessions) and Move to Recycle Bin, also in the tab's context menu. Reload from Disk is on
+  Ctrl+R (Cmd+R on macOS) ([#29](https://github.com/SecurityTrip/Birchpad/issues/29)).
 - File > Recent Files > Restore Recent Closed File (Ctrl+Shift+T) and Open All Recent Files.
 - Edit > Copy to Clipboard: the document's full path, file name and folder, also in the tab's
   context menu.

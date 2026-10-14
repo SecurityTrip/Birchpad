@@ -28,6 +28,11 @@ command = "file.save"
 keys = "secondary-alt-s"
 command = "file.save-as"
 
+# Not Notepad++'s (it has no shortcut for it); asked for in issue #29.
+[[binding]]
+keys = "secondary-r"
+command = "file.reload"
+
 [[binding]]
 keys = "secondary-shift-s"
 command = "file.save-all"
