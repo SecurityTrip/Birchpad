@@ -8,7 +8,7 @@ use serde_json::json;
 
 use super::*;
 use crate::find::{FindBarEvent, FindTab};
-use crate::workspace::tests::{active_text, open_workspace, secondary};
+use crate::workspace::tests::{active_text, document_start, open_workspace, secondary};
 
 fn run(
     workspace: &Entity<Workspace>,
@@ -69,7 +69,7 @@ fn going_through_changes_and_clearing_them(cx: &mut TestAppContext) {
     cx.simulate_keystrokes("down down down end");
     cx.simulate_input("y");
     cx.run_until_parked();
-    cx.simulate_keystrokes(&secondary("home"));
+    cx.simulate_keystrokes(document_start());
     command(&workspace, "search.next-change", cx).unwrap();
     assert_eq!(caret_line(&workspace, cx), 1);
     command(&workspace, "search.next-change", cx).unwrap();
@@ -81,7 +81,7 @@ fn going_through_changes_and_clearing_them(cx: &mut TestAppContext) {
 
     // Cleared: the text stays, there is no change to go to.
     command(&workspace, "search.clear-changes", cx).unwrap();
-    cx.simulate_keystrokes(&secondary("home"));
+    cx.simulate_keystrokes(document_start());
     command(&workspace, "search.next-change", cx).unwrap();
     assert_eq!(caret_line(&workspace, cx), 0);
     assert_eq!(active_text(&workspace, cx), "0\n1x\n2\n3\n4y\n5\n");
@@ -98,7 +98,7 @@ fn in_range(from: u32, to: u32, backward: bool, wrap: bool) -> Invocation {
 fn finding_characters_in_a_range(cx: &mut TestAppContext) {
     let (workspace, cx) = open_workspace(cx);
     cx.simulate_input("aé\tb€");
-    cx.simulate_keystrokes(&secondary("home"));
+    cx.simulate_keystrokes(document_start());
     run(&workspace, in_range(128, MAX_CODE, false, false), cx).unwrap();
     assert_eq!(selection(&workspace, cx), (1, 3));
     run(&workspace, in_range(128, MAX_CODE, false, false), cx).unwrap();
@@ -131,7 +131,7 @@ fn character_codes_as_typed() {
 fn the_find_characters_in_range_window(cx: &mut TestAppContext) {
     let (workspace, cx) = open_workspace(cx);
     cx.simulate_input("x7é");
-    cx.simulate_keystrokes(&secondary("home"));
+    cx.simulate_keystrokes(document_start());
     command(&workspace, "search.find-characters-in-range", cx).unwrap();
     assert!(cx.update(|window, cx| window.has_active_dialog(cx)));
     let weak = workspace.downgrade();
@@ -216,7 +216,7 @@ fn volatile_find_leaves_the_find_text(cx: &mut TestAppContext) {
         let view = workspace.active_view(cx).unwrap();
         workspace.activate_view(&view, window, cx);
     });
-    cx.simulate_keystrokes(&secondary("home"));
+    cx.simulate_keystrokes(document_start());
     // The word at the caret, whole: "food" is not found.
     command(&workspace, "search.find-volatile-next", cx).unwrap();
     assert_eq!(selection(&workspace, cx), (8, 11));

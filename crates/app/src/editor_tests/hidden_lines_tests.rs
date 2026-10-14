@@ -5,7 +5,7 @@ use birchpad_commands::Invocation;
 use gpui_kit::{Entity, Modifiers, MouseButton, TestAppContext, VisualTestContext, point, px};
 
 use crate::workspace::Workspace;
-use crate::workspace::tests::{active_text, open_workspace, pane_views, secondary};
+use crate::workspace::tests::{active_text, document_start, open_workspace, pane_views, secondary};
 
 fn run(
     workspace: &Entity<Workspace>,
@@ -36,7 +36,7 @@ fn hiding_lines_and_showing_them_again(cx: &mut TestAppContext) {
     let (workspace, cx) = open_workspace(cx);
     cx.simulate_input("0\n1\n2\n3\n4");
     // Lines 1 and 2 (the selection ends at the start of line 3).
-    cx.simulate_keystrokes(&secondary("home"));
+    cx.simulate_keystrokes(document_start());
     cx.simulate_keystrokes("down shift-down shift-down");
     cx.simulate_keystrokes("alt-h");
     assert_eq!(visible_lines(&workspace, cx), [0, 3, 4]);
@@ -68,7 +68,7 @@ fn hiding_lines_and_showing_them_again(cx: &mut TestAppContext) {
     assert_eq!(visible_lines(&workspace, cx), [0]);
     run(&workspace, Invocation::new("view.show-hidden-lines"), cx).unwrap();
     assert_eq!(visible_lines(&workspace, cx), [0, 1, 2, 3, 4]);
-    cx.simulate_keystrokes(&secondary("home"));
+    cx.simulate_keystrokes(document_start());
     let error = run(&workspace, Invocation::new("view.hide-lines"), cx).unwrap_err();
     assert!(error.to_string().contains("first line"), "{error}");
 

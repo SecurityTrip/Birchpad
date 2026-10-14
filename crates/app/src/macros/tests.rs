@@ -2,7 +2,7 @@ use gpui_kit::{TestAppContext, VisualTestContext};
 use serde_json::json;
 
 use super::*;
-use crate::workspace::tests::{active_text, open_workspace, secondary};
+use crate::workspace::tests::{active_text, document_start, open_workspace, secondary};
 
 fn run(
     workspace: &Entity<Workspace>,
@@ -270,7 +270,7 @@ fn searches_are_recorded_with_their_text(cx: &mut TestAppContext) {
     use birchpad_core::search::Direction;
     let (workspace, cx, _dir) = setup(cx);
     cx.simulate_input("one foo two foo three foo");
-    cx.simulate_keystrokes(&secondary("home"));
+    cx.simulate_keystrokes(document_start());
     run(&workspace, Invocation::new("macro.start-recording"), cx).unwrap();
     find_bar_text(&workspace, "foo", Some("bar"), cx);
     bar_event(
