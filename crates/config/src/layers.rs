@@ -119,7 +119,12 @@ pub fn resolve(sources: Sources) -> ResolvedSettings {
         }
     }
 
-    let settings = merged.try_into().expect("every merged key was validated");
+    let mut settings: Settings = merged.try_into().expect("every merged key was validated");
+    // A language with nothing of its own (only unknown keys under it) is no language entry: it
+    // would not survive being written out and read again.
+    settings
+        .languages
+        .retain(|_, own| own.tab_width.is_some() || own.insert_spaces.is_some());
     ResolvedSettings {
         settings,
         diagnostics,
@@ -174,6 +179,27 @@ mod tests {
 
     fn table(toml: &str) -> Option<Table> {
         Some(toml::from_str(toml).unwrap())
+    }
+
+    #[test]
+    fn a_language_with_nothing_of_its_own_is_dropped() {
+        let resolved = resolve(Sources {
+            user: table(
+                "[languages.python]\ntab-widt = -1\n[languages.rust]\ntab-width = 2\n\
+                 [languages.go]\ninsert-spaces = false\n",
+            ),
+            ..Sources::default()
+        });
+        let ids: Vec<&String> = resolved.settings.languages.keys().collect();
+        assert_eq!(ids, ["go", "rust"], "python has only an unknown key");
+        // Written out and read again, the same.
+        let written = Table::try_from(&resolved.settings).unwrap();
+        let again = resolve(Sources {
+            user: Some(written),
+            ..Sources::default()
+        });
+        assert_eq!(again.settings, resolved.settings);
+        assert!(resolve(Sources::default()).settings.languages.is_empty());
     }
 
     #[test]
