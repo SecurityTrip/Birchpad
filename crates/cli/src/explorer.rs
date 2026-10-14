@@ -92,6 +92,7 @@ fn is_added_at(path: &str) -> bool {
 }
 
 /// The value under [`STATE_KEY`].
+#[cfg(windows)]
 const REMOVED: &str = "ExplorerMenu";
 
 #[cfg(windows)]
