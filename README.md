@@ -52,6 +52,10 @@ needs Birchpad.app opened once with Control-click > Open until the app is notari
 lists SHA-256 checksums and carries GitHub build provenance (`gh attestation verify <file>
 --repo SecurityTrip/Birchpad`).
 
+On Windows, the installer and the MSI add "Edit with Birchpad" to the Explorer's context menu
+of files (the MSI's `ExplorerMenu` feature can be left out: `ADDLOCAL=Main`); Preferences > Files
+adds it for a portable copy, or takes it away.
+
 To uninstall, use Installed apps in Windows Settings for the installer and the MSI, or delete the
 folder of a portable copy.
 

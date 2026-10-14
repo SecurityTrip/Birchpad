@@ -109,6 +109,13 @@ version's release notes from its section here.
 - Preferences > Multi-Instance (`instances.mode`): every launch, or a launch opening a session,
   can start a Birchpad of its own instead of handing its files to the running one.
 
+- "Edit with Birchpad" in the Windows Explorer's context menu of files: the per-user installer
+  adds it for the user, also when an earlier version updates (unless the user took it away in
+  Preferences), and the MSI for the machine (its `ExplorerMenu` feature, which administrators
+  can leave out), and both take it away when uninstalled; Preferences > Files adds it for any
+  copy, the portable one too, or takes it away
+  ([#24](https://github.com/SecurityTrip/Birchpad/issues/24)).
+
 ### Fixed
 
 - Preferences: the sections at the bottom of the list could not be reached, and the rows of a

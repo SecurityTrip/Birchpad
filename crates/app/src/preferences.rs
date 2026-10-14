@@ -43,6 +43,9 @@ pub(crate) enum Kind {
     },
     /// Preferences > Language: tab size and spaces of each language (`languages`).
     LanguageTabs,
+    /// "Edit with Birchpad" in the Windows Explorer's menu of files, for the user: the
+    /// registry's, not a setting.
+    ExplorerMenu,
 }
 
 /// A setting the dialog shows.
@@ -65,6 +68,9 @@ const fn entry(section: &'static str, key: &'static str, label: &'static str, ki
 }
 
 const OFF_ON: &[(&str, &str)] = &[("off", "Off"), ("margin", "In the margin")];
+
+/// The key of Preferences > Files > Edit with Birchpad, which is no setting.
+const EXPLORER_MENU: &str = "explorer-menu";
 
 /// Every setting the dialog shows, by section. View > Word Wrap and Show Symbol stay in the
 /// View menu, which remembers them.
@@ -429,6 +435,12 @@ pub(crate) const ENTRIES: &[Entry] = &[
         Kind::Bool,
     ),
     entry(
+        "Files",
+        EXPLORER_MENU,
+        "Edit with Birchpad in the Explorer's menu of files",
+        Kind::ExplorerMenu,
+    ),
+    entry(
         "Backup",
         "files.backup-on-save",
         "Backup on save",
@@ -555,7 +567,7 @@ pub(crate) fn parse_field(kind: Kind, text: &str) -> Result<Option<Value>> {
             let text = text.trim();
             Ok((!text.is_empty()).then(|| Value::String(text.to_owned())))
         }
-        Kind::Bool | Kind::Choice(_) | Kind::LanguageTabs => {
+        Kind::Bool | Kind::Choice(_) | Kind::LanguageTabs | Kind::ExplorerMenu => {
             bail!("{}", t!("preferences.this-setting-has-no-text-field"))
         }
     }
@@ -643,7 +655,7 @@ impl Preferences {
         for entry in ENTRIES {
             if matches!(
                 entry.kind,
-                Kind::Bool | Kind::Choice(_) | Kind::LanguageTabs
+                Kind::Bool | Kind::Choice(_) | Kind::LanguageTabs | Kind::ExplorerMenu
             ) {
                 continue;
             }
@@ -691,6 +703,30 @@ impl Preferences {
         let text = self.inputs[entry.key].read(cx).value().to_string();
         let result = parse_field(entry.kind, &text);
         self.apply(entry.key, result, cx);
+    }
+
+    /// Preferences > Files: "Edit with Birchpad" in the Explorer's menu, for this copy.
+    pub(crate) fn switch_explorer_menu(&mut self, on: bool, cx: &mut Context<Self>) {
+        let result = if on {
+            std::env::current_exe().and_then(|exe| birchpad_cli::explorer::add(&exe))
+        } else {
+            birchpad_cli::explorer::remove()
+        };
+        match result {
+            Ok(()) => {
+                self.errors.remove(EXPLORER_MENU);
+            }
+            Err(error) => {
+                self.errors.insert(
+                    EXPLORER_MENU,
+                    t!(
+                        "preferences.cannot-change-the-explorer-s-menu",
+                        error = error
+                    ),
+                );
+            }
+        }
+        cx.notify();
     }
 
     /// Preferences > Language > Set: the language's own tab size and spaces.
@@ -915,6 +951,18 @@ impl Render for Preferences {
                                             )),
                                     ),
                             )
+                            .into_any_element()
+                    }
+                    Kind::ExplorerMenu => {
+                        let added = birchpad_cli::explorer::is_added();
+                        Checkbox::new(("preferences-check", index))
+                            .debug_selector(move || format!("preferences-{key}"))
+                            .label(label(entry.label))
+                            .checked(added)
+                            .disabled(!cfg!(windows))
+                            .on_click(cx.listener(move |this, _, _, cx| {
+                                this.switch_explorer_menu(!added, cx);
+                            }))
                             .into_any_element()
                     }
                     Kind::LanguageTabs => language_tabs

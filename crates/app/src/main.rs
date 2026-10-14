@@ -88,8 +88,33 @@ const APP_ID: &str = "io.github.securitytrip.birchpad";
 
 pub(crate) use birchpad_editor::MONOSPACE;
 
+/// Installed for the user: "Edit with Birchpad" in the Explorer's menu of files.
+fn installed() {
+    if let Ok(exe) = std::env::current_exe()
+        && let Err(error) = birchpad_cli::explorer::add(&exe)
+    {
+        eprintln!("cannot add Edit with Birchpad to the Explorer: {error}");
+    }
+}
+
+/// Updated: "Edit with Birchpad" in the Explorer's menu too, unless the user took it away.
+fn updated() {
+    if let Ok(exe) = std::env::current_exe()
+        && let Err(error) = birchpad_cli::explorer::add_unless_removed(&exe)
+    {
+        eprintln!("cannot add Edit with Birchpad to the Explorer: {error}");
+    }
+}
+
+/// About to be uninstalled: the Explorer's menu loses it.
+fn uninstalling() {
+    if let Err(error) = birchpad_cli::explorer::remove_for_uninstall() {
+        eprintln!("cannot take Edit with Birchpad from the Explorer: {error}");
+    }
+}
+
 fn main() {
-    birchpad_update::install::run_hooks();
+    birchpad_update::install::run_hooks(installed, updated, uninstalling);
     let cwd = std::env::current_dir().unwrap_or_default();
     let command_line = CommandLine::parse(std::env::args_os().skip(1), &cwd);
     for warning in &command_line.warnings {

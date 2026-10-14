@@ -9,6 +9,10 @@ fn every_entry_is_a_setting_with_valid_choices() {
     let mut keys = std::collections::HashSet::new();
     for entry in ENTRIES {
         assert!(keys.insert(entry.key), "{} twice", entry.key);
+        if entry.kind == Kind::ExplorerMenu {
+            assert!(birchpad_config::check_setting(entry.key, &Value::Boolean(true)).is_err());
+            continue;
+        }
         // Every setting but the optional text ones has a value to show.
         let value = current_value(&settings, entry.key);
         if entry.kind != Kind::Text {
