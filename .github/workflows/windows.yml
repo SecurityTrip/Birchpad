@@ -63,7 +63,7 @@ jobs:
   # The built application in a real window (crates/app/tests/e2e.rs): start, open, edit, save,
   # quit, restore the session.
   e2e:
-    name: e2e (windows)
+    name: e2e (windows-latest)
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v7

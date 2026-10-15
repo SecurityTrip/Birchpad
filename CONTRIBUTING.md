@@ -37,6 +37,10 @@ on every push to `main` and every pull request, each job of them side by side:
   [`cargo-deny`](https://github.com/EmbarkStudios/cargo-deny) for licenses and advisories,
   coverage and fuzzing.
 
+The jobs' names (`test (ubuntu-latest)`, `e2e (windows-latest)`, ...) are the checks the `main`
+branch's ruleset requires: a job renamed without the ruleset leaves a pull request waiting for a
+check that never comes.
+
 Clippy runs in a job of its own beside the tests, and CI builds keep only line numbers as debug
 information (`CARGO_PROFILE_DEV_DEBUG=line-tables-only`), so test binaries link and cache faster.
 

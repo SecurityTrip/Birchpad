@@ -24,7 +24,7 @@ env:
 
 jobs:
   clippy:
-    name: clippy (macos)
+    name: clippy (macos-latest)
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v7
@@ -33,7 +33,7 @@ jobs:
       - run: cargo clippy -p birchpad --features e2e --all-targets --locked
 
   test:
-    name: test (macos)
+    name: test (macos-latest)
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v7
@@ -46,7 +46,7 @@ jobs:
   # The built application in a real window (crates/app/tests/e2e.rs): start, open, edit, save,
   # quit, restore the session. Non-blocking until it has been green on the runners.
   e2e:
-    name: e2e (macos)
+    name: e2e (macos-latest)
     runs-on: macos-latest
     continue-on-error: true
     steps:
