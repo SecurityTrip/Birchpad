@@ -12,6 +12,11 @@ version's release notes from its section here.
   proptest 1.12, serde_json 1.0.154, smallvec 1.16.3, tree-sitter 0.27.1, tree-sitter-erlang
   0.21, tree-sitter-php 0.25, x11rb 0.14.
 
+### Security
+
+- wasmtime 49.0.3, with the fixes for RUSTSEC-2026-0353 to RUSTSEC-2026-0364: panics and
+  unenforced limits in the component model that a plugin could cause in the plugin host.
+
 ### Fixed
 
 - Dragging a selection past the left or right edge of the editor scrolls the text sideways, so
