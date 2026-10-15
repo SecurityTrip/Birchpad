@@ -414,6 +414,12 @@ floors in `.github/coverage-floors.toml` with its tests.
       run), the Shortcut Mapper (76.9%), the column editor (64.1%), the path dialog, the Tools
       menu (62.4%), the banners, the menus and the window modes; the command catalog of
       `birchpad-commands` (63.2%)
+- [ ] 0.3.2 Fewer dependencies, before the steps that build and test more: `cargo tree
+      --duplicates` and what each crate pulls in reviewed; duplicate versions unified, unused
+      ones and unused default features dropped (`cargo-machete`, `cargo-udeps`), heavy crates
+      used for little replaced by a few lines or by what the standard library has; the number
+      of crates in `Cargo.lock` and a clean build's time, locally and per CI job, measured
+      before and after. Nothing the application does changes
 - [ ] 6.22 The editor view (`editor/mod.rs`, 83.8%): smart highlighting (78.7%), the Edit menu's
       extras (81.2%), what clicks, drags and the keyboard do at the edges of the text, in
       wrapped and folded rows and with several carets
