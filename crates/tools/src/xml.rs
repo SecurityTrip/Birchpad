@@ -9,6 +9,8 @@ use roxmltree::{Document, ParsingOptions};
 
 use crate::{Layout, SyntaxError};
 
+const BOM: &str = "\u{feff}";
+
 /// Checks that `text` is a well-formed XML document.
 pub fn check(text: &str) -> Result<(), SyntaxError> {
     let options = ParsingOptions {
@@ -155,11 +157,16 @@ fn declaration_end(rest: &str) -> usize {
 /// `text` with every element on a line of its own, indented by nesting.
 pub fn pretty_print(text: &str, layout: Layout<'_>) -> Result<String, SyntaxError> {
     check(text)?;
+    // A byte order mark stays first, with the XML declaration right after it.
+    let (bom, text) = text
+        .strip_prefix(BOM)
+        .map_or(("", text), |rest| (BOM, rest));
     let tokens = tokens(text);
     let mut out = String::with_capacity(text.len() * 2);
+    out.push_str(bom);
     let mut depth = 0usize;
     let line = |out: &mut String, depth: usize, piece: &str| {
-        if !out.is_empty() {
+        if out.len() > bom.len() {
             out.push_str(layout.line_ending);
         }
         layout.indent.write(out, depth);
@@ -306,6 +313,30 @@ mod tests {
         assert_eq!(offset_of("ab", 1, 9), 2);
         assert_eq!(offset_of("ab", 5, 1), 2);
         assert_eq!(offset_of("ab", 0, 0), 0);
+    }
+
+    #[test]
+    fn a_byte_order_mark_stays_right_before_the_declaration() {
+        let text = "\u{feff}<?xml version=\"1.0\"?>\n<a><b/></a>";
+        let pretty_text = pretty(text);
+        assert_eq!(
+            pretty_text,
+            "\u{feff}<?xml version=\"1.0\"?>\n<a>\n  <b/>\n</a>"
+        );
+        assert!(check(&pretty_text).is_ok());
+        assert_eq!(pretty(&pretty_text), pretty_text);
+        assert_eq!(
+            linearize(text).unwrap(),
+            "\u{feff}<?xml version=\"1.0\"?><a><b/></a>"
+        );
+    }
+
+    #[test]
+    fn a_byte_order_mark_before_the_root_alone() {
+        assert_eq!(pretty("\u{feff}<a/>"), "\u{feff}<a/>");
+        assert!(pretty_print("\u{feff}", Layout::default()).is_err());
+        // Only at the very start is it a byte order mark.
+        assert!(pretty_print("<a/>\u{feff}", Layout::default()).is_err());
     }
 
     #[test]

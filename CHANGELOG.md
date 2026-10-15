@@ -6,6 +6,28 @@ version's release notes from its section here.
 
 ## [Unreleased]
 
+## [0.2.5] - 2026-10-15
+
+### Changed
+
+- Dependency updates: embed-resource 3.0.12, gpui-kit 0.7.3, interprocess 2.4.5, objc2 0.6.5,
+  proptest 1.12, serde_json 1.0.154, smallvec 1.16.3, tree-sitter 0.27.1, tree-sitter-erlang
+  0.21, tree-sitter-php 0.25, x11rb 0.14.
+
+### Security
+
+- wasmtime 49.0.3, with the fixes for RUSTSEC-2026-0353 to RUSTSEC-2026-0364: panics and
+  unenforced limits in the component model that a plugin could cause in the plugin host.
+
+### Fixed
+
+- Dragging a selection past the left or right edge of the editor scrolls the text sideways, so
+  the selection goes on past the visible part of a long line ([#34](https://github.com/SecurityTrip/Birchpad/issues/34)).
+- In a low window the menus stay below the menu bar and scroll, instead of being pushed up over
+  it, where the click that opened a menu chose its first item ([#33](https://github.com/SecurityTrip/Birchpad/issues/33)).
+- Plugins > XML Tools > Pretty Print XML keeps a byte order mark right before the declaration;
+  a line break between them made the result not well formed.
+
 ## [0.2.0] - 2026-10-14
 
 ### Added
@@ -409,7 +431,8 @@ The first release: a Notepad++-like editor for Windows, Linux and macOS.
   entirely (`updates.mode = "off"`).
 - Nightly builds of `main` on the nightly channel.
 
-[Unreleased]: https://github.com/SecurityTrip/Birchpad/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/SecurityTrip/Birchpad/compare/v0.2.5...HEAD
+[0.2.5]: https://github.com/SecurityTrip/Birchpad/compare/v0.2.0...v0.2.5
 [0.2.0]: https://github.com/SecurityTrip/Birchpad/compare/v0.1.5...v0.2.0
 [0.1.5]: https://github.com/SecurityTrip/Birchpad/compare/v0.1.4...v0.1.5
 [0.1.4]: https://github.com/SecurityTrip/Birchpad/compare/v0.1.3...v0.1.4

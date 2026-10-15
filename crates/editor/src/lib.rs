@@ -1694,6 +1694,14 @@ impl EditorView {
             Range::new(origin.start, unit.end.max(origin.end))
         };
         self.selection = self.with_primary(range);
+        // Dragging past the left or right edge scrolls the caret into view, a few columns at a
+        // time, so the selection goes on past the visible part of a long line.
+        if let Some(layout) = &self.layout
+            && (event.position.x < layout.text_bounds.left()
+                || event.position.x > layout.text_bounds.right())
+        {
+            self.autoscroll = true;
+        }
         self.pause_blink(cx);
         cx.notify();
     }
@@ -2131,6 +2139,89 @@ three",
         // A click on a line number selects the line with its line break.
         cx.simulate_click(number, Modifiers::none());
         assert_eq!(primary(&workspace, cx), Range::new(9, 13));
+    }
+
+    fn scroll_left(workspace: &Entity<Workspace>, cx: &mut VisualTestContext) -> Pixels {
+        workspace.read_with(cx, |workspace, cx| {
+            workspace.active_view(cx).unwrap().read(cx).scroll_left
+        })
+    }
+
+    /// Window points on the first row: at its column zero, just inside the left edge of the
+    /// text area, and just past its left and right edges, from the last frame's layout.
+    fn edge_points(
+        workspace: &Entity<Workspace>,
+        cx: &mut VisualTestContext,
+    ) -> (Point<Pixels>, Point<Pixels>, Point<Pixels>, Point<Pixels>) {
+        workspace.read_with(cx, |workspace, cx| {
+            let view = workspace.active_view(cx).unwrap();
+            let layout = view.read(cx).layout.as_ref().expect("a frame was drawn");
+            let y = layout.rows[0].y + layout.metrics.line_height / 2.;
+            (
+                point(layout.column_zero, y),
+                point(layout.text_bounds.left() + px(8.), y),
+                point(layout.text_bounds.left() - px(4.), y),
+                point(layout.text_bounds.right() + px(4.), y),
+            )
+        })
+    }
+
+    #[gpui_kit::test]
+    fn dragging_past_the_right_edge_scrolls_and_extends_the_selection(cx: &mut TestAppContext) {
+        let (workspace, cx) = open_workspace(cx);
+        let line = "x".repeat(2000);
+        set_text(&line, cx);
+        let (start, _, _, right) = edge_points(&workspace, cx);
+        cx.simulate_mouse_down(start, MouseButton::Left, Modifiers::none());
+        cx.simulate_mouse_move(right, MouseButton::Left, Modifiers::none());
+        let first = primary(&workspace, cx);
+        assert!(scroll_left(&workspace, cx) > px(0.), "scrolled right");
+        for _ in 0..20 {
+            cx.simulate_mouse_move(right, MouseButton::Left, Modifiers::none());
+        }
+        let last = primary(&workspace, cx);
+        assert_eq!(last.anchor, 0);
+        assert!(
+            last.head > first.head,
+            "the selection went on past the first visible part: {first:?} -> {last:?}"
+        );
+        cx.simulate_mouse_up(right, MouseButton::Left, Modifiers::none());
+    }
+
+    #[gpui_kit::test]
+    fn dragging_past_the_left_edge_scrolls_back_to_the_line_start(cx: &mut TestAppContext) {
+        let (workspace, cx) = open_workspace(cx);
+        let line = "x".repeat(2000);
+        set_text(&line, cx);
+        cx.simulate_keystrokes("end");
+        assert!(scroll_left(&workspace, cx) > px(0.));
+        let (_, inside, left, _) = edge_points(&workspace, cx);
+        cx.simulate_mouse_down(inside, MouseButton::Left, Modifiers::none());
+        for _ in 0..1000 {
+            cx.simulate_mouse_move(left, MouseButton::Left, Modifiers::none());
+            if scroll_left(&workspace, cx) == px(0.) {
+                break;
+            }
+        }
+        cx.simulate_mouse_move(left, MouseButton::Left, Modifiers::none());
+        // At the line start it stops there.
+        assert_eq!(scroll_left(&workspace, cx), px(0.));
+        assert_eq!(primary(&workspace, cx).head, 0);
+    }
+
+    #[gpui_kit::test]
+    fn dragging_inside_the_text_area_does_not_scroll_sideways(cx: &mut TestAppContext) {
+        let (workspace, cx) = open_workspace(cx);
+        let line = "x".repeat(2000);
+        set_text(&line, cx);
+        let (start, _, _, right) = edge_points(&workspace, cx);
+        let inside = point(right.x - px(40.), right.y);
+        cx.simulate_mouse_down(start, MouseButton::Left, Modifiers::none());
+        for _ in 0..5 {
+            cx.simulate_mouse_move(inside, MouseButton::Left, Modifiers::none());
+        }
+        assert_eq!(scroll_left(&workspace, cx), px(0.));
+        assert!(primary(&workspace, cx).head > 0);
     }
 
     #[gpui_kit::test]
