@@ -262,9 +262,10 @@ What Phase 1 left for later is marked *(from Phase 1)* in the phases below.
 What Phases 1 to 4 built differently from Notepad++, or left out, is brought in line here; what
 Phase 5 leaves for later is added once it is done. Birchpad goes beyond Notepad++ only after
 this phase. It ships in releases: what is done by 2026-10-14 (6.1 to 6.21) as 0.2.0, with the
-issues users opened on GitHub ([Release 0.2.0](#release-020)), then 0.3.0 (tests), 0.4.0
-(languages and text), 0.5.0 (printing, tools and help) and 0.6.0 (plugins, documentation in
-Russian, the last comparison with Notepad++), which closes the phase.
+issues users opened on GitHub ([Release 0.2.0](#release-020)), the fixes of 0.2.5
+([Release 0.2.5](#release-025)), then 0.3.0 (tests), 0.4.0 (languages and text), 0.5.0
+(printing, tools and help) and 0.6.0 (plugins, documentation in Russian, the last comparison
+with Notepad++), which closes the phase.
 
 Every step follows the clean-room rules of [CONTRIBUTING.md](../CONTRIBUTING.md#clean-room).
 The steps are ordered by dependency; each one lands as its own commit with its tests, docs and
@@ -297,6 +298,18 @@ done and closed with the release.
 - [x] 0.2.9 Release 0.2.0: the workspace version (0.2.0, so that nightly builds are its
       pre-releases), `CHANGELOG.md` and this roadmap updated; the
       [release checklist](release-checklist.md) gone through; the answered issues closed
+
+### Release 0.2.5
+
+The issues users opened after 0.2.0 and the dependency updates, one commit each.
+
+- [x] [#34](https://github.com/SecurityTrip/Birchpad/issues/34) Dragging a selection past the
+      left or right edge of the text scrolls it sideways
+- [x] [#33](https://github.com/SecurityTrip/Birchpad/issues/33) In a low window the menus stay
+      below the menu bar and scroll instead of covering it
+- [x] Dependabot's updates (#35 to #38) and wasmtime 49.0.3 for RUSTSEC-2026-0353 to 0364
+- [x] Release 0.2.5: the workspace version, `CHANGELOG.md` and this roadmap updated; the
+      answered issues closed
 
 ### Window, tabs and files
 

@@ -6,6 +6,8 @@ version's release notes from its section here.
 
 ## [Unreleased]
 
+## [0.2.5] - 2026-10-15
+
 ### Changed
 
 - Dependency updates: embed-resource 3.0.12, gpui-kit 0.7.3, interprocess 2.4.5, objc2 0.6.5,
@@ -427,7 +429,8 @@ The first release: a Notepad++-like editor for Windows, Linux and macOS.
   entirely (`updates.mode = "off"`).
 - Nightly builds of `main` on the nightly channel.
 
-[Unreleased]: https://github.com/SecurityTrip/Birchpad/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/SecurityTrip/Birchpad/compare/v0.2.5...HEAD
+[0.2.5]: https://github.com/SecurityTrip/Birchpad/compare/v0.2.0...v0.2.5
 [0.2.0]: https://github.com/SecurityTrip/Birchpad/compare/v0.1.5...v0.2.0
 [0.1.5]: https://github.com/SecurityTrip/Birchpad/compare/v0.1.4...v0.1.5
 [0.1.4]: https://github.com/SecurityTrip/Birchpad/compare/v0.1.3...v0.1.4
