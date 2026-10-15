@@ -449,12 +449,13 @@ floors in `.github/coverage-floors.toml` with its tests.
 - [ ] 0.3.3 The window that announces an update: instead of Download, which opens the release
       page on GitHub, an Update button that does what Help > Update and Restart does (the
       application downloads the update, checks it against the signed manifest, installs it and
-      starts again with the documents), and a "Don't show again" check box that turns update
-      checks off (`updates.mode = "off"`, shown so in Preferences and Help > About), so that
-      the window does not come back. A portable copy, which cannot update itself, keeps the
-      link to the download page. Tests: the button installs from a local server, a failed
-      download leaves the application as it was and says why, the check box with and without
-      the button
+      starts again with the documents; once pressed, the bottom of the window, where the
+      buttons were, becomes a progress bar of the download), and a "Don't show again" check
+      box that turns update checks off (`updates.mode = "off"`, shown so in Preferences and
+      Help > About), so that the window does not come back. A portable copy, which cannot
+      update itself, keeps the link to the download page. Tests: the button installs from a
+      local server and the bar follows the download, a failed download leaves the
+      application as it was and says why, the check box with and without the button
 - [ ] 6.22 The editor view (`editor/mod.rs`, 83.8%): smart highlighting (78.7%), the Edit menu's
       extras (81.2%), what clicks, drags and the keyboard do at the edges of the text, in
       wrapped and folded rows and with several carets
