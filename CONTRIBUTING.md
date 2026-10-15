@@ -26,8 +26,19 @@ Its settings are in `.config/nextest.toml`. Debug builds optimize the dependenci
 GPUI, and the test window turns motion off (`set_reduce_motion`), so no test waits for a dialog
 to slide in.
 
-CI runs the same commands with warnings treated as errors, on Windows (x64 and ARM64), Linux and
-macOS, plus [`cargo-deny`](https://github.com/EmbarkStudios/cargo-deny) for licenses and advisories.
+CI runs the same commands with warnings treated as errors, in four workflows that start together
+on every push to `main` and every pull request, each job of them side by side:
+
+- **Linux** (`.github/workflows/linux.yml`): Clippy, the tests and the end-to-end tests on
+  Ubuntu, and the tests in Debian trixie and bookworm containers, against Debian's own libraries;
+- **Windows** (`windows.yml`): Clippy and the tests on x64 and ARM64, the end-to-end tests on x64;
+- **macOS** (`macos.yml`): Clippy, the tests and the end-to-end tests;
+- **Checks** (`checks.yml`): formatting,
+  [`cargo-deny`](https://github.com/EmbarkStudios/cargo-deny) for licenses and advisories,
+  coverage and fuzzing.
+
+Clippy runs in a job of its own beside the tests, and CI builds keep only line numbers as debug
+information (`CARGO_PROFILE_DEV_DEBUG=line-tables-only`), so test binaries link and cache faster.
 
 ### Ground rules for the code
 

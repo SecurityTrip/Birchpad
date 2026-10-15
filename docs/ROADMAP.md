@@ -418,6 +418,13 @@ floors in `.github/coverage-floors.toml` with its tests.
       optimized dependencies 268 s); the sweeps take 33 to 93 s. A flaky session test (a file
       a virus scanner still holds) retries its writes too. CI's times per job are recorded
       with the branch's first run
+- [x] CI by platform: four workflows that start together, each job side by side: Linux
+      (Clippy, tests and end-to-end tests on Ubuntu, tests in Debian trixie and bookworm),
+      Windows (Clippy and tests on x64 and ARM64, end-to-end tests), macOS (the same three) and
+      Checks (formatting, cargo-deny, coverage, fuzzing). Clippy has jobs of its own beside the
+      tests; CI builds keep only line tables as debug information; the Debian jobs install
+      their libraries with the same action as Ubuntu's (`.github/actions/linux-deps`) and run
+      nextest. Nothing is run less: the ARM64 Clippy and every test run as before
 - [x] 6.21 Dialogs and menus driven in a test window, every control: Preferences (62.8% of lines
       run), the Shortcut Mapper (76.9%), the column editor (64.1%), the path dialog, the Tools
       menu (62.4%), the banners, the menus and the window modes; the command catalog of

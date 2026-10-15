@@ -1,0 +1,111 @@
+name: Checks
+
+# What does not depend on the platform: formatting, licenses and advisories, coverage and
+# fuzzing. Every job runs side by side, and beside the Linux, Windows and macOS workflows.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  # Fail on warnings in our crates (cargo 1.97+ `build.warnings`).
+  CARGO_BUILD_WARNINGS: deny
+
+jobs:
+  fmt:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions-rust-lang/setup-rust-toolchain@v2
+      - run: cargo fmt --all --check
+
+  deny:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: EmbarkStudios/cargo-deny-action@v2
+
+  # Which code no test runs: a report per crate and per file in the run's summary, an lcov file
+  # for tools, and for each crate a floor under the share of lines run that only ever rises
+  # (.github/coverage-floors.toml; CONTRIBUTING.md, Tests).
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/linux-deps
+      - uses: actions-rust-lang/setup-rust-toolchain@v2
+        with:
+          components: llvm-tools-preview
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-llvm-cov,cargo-nextest
+      - name: Tests with coverage
+        run: cargo llvm-cov nextest --workspace --locked --profile ci --lcov --output-path lcov.info
+      - name: Test the floor check
+        run: python3 -m unittest discover -s .github -p "*_test.py"
+      - name: Report
+        run: |
+          cargo llvm-cov report --json --summary-only > coverage.json
+          {
+            echo '## Test coverage by crate'
+            python3 .github/coverage_floors.py < coverage.json || failed=1
+            echo '## By file'
+            echo '```'
+            cargo llvm-cov report --summary-only
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit "${failed:-0}"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: coverage-lcov
+          path: lcov.info
+
+  # libFuzzer on everything that reads outside input (fuzz/, crates/fuzz): each target for a
+  # minute from its seeds and from the corpus earlier runs grew. A crash fails the run and its
+  # input is kept; fixed, it becomes a seed.
+  fuzz:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions-rust-lang/setup-rust-toolchain@v2
+        with:
+          # libFuzzer needs nightly; the checks themselves are tested on the pinned toolchain
+          # (`cargo test -p birchpad-fuzz`), so new nightly warnings do not fail this job.
+          toolchain: nightly
+          rustflags: ""
+          # fuzz/ is a workspace of its own.
+          cache-workspaces: fuzz -> target
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-fuzz
+      - uses: actions/cache@v6
+        with:
+          path: fuzz/corpus
+          key: fuzz-corpus-${{ github.run_id }}
+          restore-keys: fuzz-corpus-
+      # The prebuilt cargo-fuzz is a musl build, and builds for its own target unless told.
+      - name: Build the targets
+        run: cargo +nightly fuzz build --target x86_64-unknown-linux-gnu
+      - name: Fuzz each target
+        # A minute each, as many at once as the runner has cores; xargs fails if one does.
+        run: |
+          cargo +nightly fuzz list | xargs -P "$(nproc)" -I{} sh -c '
+            mkdir -p "fuzz/corpus/{}"
+            cargo +nightly fuzz run --target x86_64-unknown-linux-gnu "{}" \
+              "fuzz/corpus/{}" "fuzz/seeds/{}" -- -max_total_time=60 -timeout=10 \
+              > "fuzz-{}.log" 2>&1 || { cat "fuzz-{}.log"; exit 1; }
+            tail -n 1 "fuzz-{}.log"'
+      - if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: fuzz-artifacts
+          path: fuzz/artifacts

@@ -1,0 +1,90 @@
+name: Linux
+
+# Clippy, the tests and the end-to-end tests on Ubuntu, and the tests against Debian's own
+# libraries, the stable and the previous stable release: the Linux build is used there as much
+# as on Ubuntu. Every job runs side by side, and beside the Windows, macOS and Checks workflows.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  # Fail on warnings in our crates (cargo 1.97+ `build.warnings`).
+  CARGO_BUILD_WARNINGS: deny
+  # Line numbers in backtraces and nothing more: smaller binaries link and cache faster.
+  CARGO_PROFILE_DEV_DEBUG: line-tables-only
+
+jobs:
+  clippy:
+    name: clippy (ubuntu)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/linux-deps
+      - uses: actions-rust-lang/setup-rust-toolchain@v2
+      - run: cargo clippy --workspace --all-targets --locked
+      - run: cargo clippy -p birchpad --features e2e --all-targets --locked
+
+  test:
+    name: test (ubuntu)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/linux-deps
+      - uses: actions-rust-lang/setup-rust-toolchain@v2
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-nextest
+      - run: cargo nextest run --workspace --locked --profile ci
+
+  debian:
+    name: test (debian ${{ matrix.release }})
+    strategy:
+      fail-fast: false
+      matrix:
+        release: [trixie, bookworm]
+    runs-on: ubuntu-latest
+    container: debian:${{ matrix.release }}
+    steps:
+      # Without git in the image, the checkout downloads the commit's files, which is all the
+      # build needs.
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/linux-deps
+      - name: Install Rust
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
+            | sh -s -- -y --profile minimal --default-toolchain none
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+      # The version and components of rust-toolchain.toml.
+      - run: rustup toolchain install
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: debian-${{ matrix.release }}
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-nextest
+      - run: cargo nextest run --workspace --locked --profile ci
+
+  # The built application in a real window (crates/app/tests/e2e.rs): start, open, edit, save,
+  # quit, restore the session, on a virtual display with software Vulkan. Non-blocking until it
+  # has been green on the runners.
+  e2e:
+    name: e2e (ubuntu)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/linux-deps
+        with:
+          extra: xvfb xauth mesa-vulkan-drivers
+      - uses: actions-rust-lang/setup-rust-toolchain@v2
+      - run: xvfb-run -a cargo test -p birchpad --features e2e --test e2e --locked
