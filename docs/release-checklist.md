@@ -16,6 +16,9 @@ desktops are welcome but not required.
       tests on Linux and macOS, fuzzing); a red one is understood and written down
 - [ ] `CHANGELOG.md`: the `[Unreleased]` section becomes the version's, with the date; the
       workspace version in `Cargo.toml` matches the tag
+- [ ] `cargo run -p birchpad-release-tool -- crate-versions` passes: the crates that changed
+      since the last release rose, the others kept their versions (the release workflow checks
+      it again)
 - [ ] `docs/ROADMAP.md` marks what the release delivers
 
 ## Installers and the first start

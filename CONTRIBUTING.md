@@ -119,6 +119,26 @@ cargo test -p birchpad --features e2e --test e2e
 What no automated test sees (input methods, screen readers, displays, installers and updates)
 is checked by hand before each release: [docs/release-checklist.md](docs/release-checklist.md).
 
+### Versions
+
+The workspace version in `Cargo.toml` is the application's: the version of the release, set
+when the release's branch opens, taken by `birchpad` and by the tools that ship with it
+(`birchpad-fuzz`, `birchpad-release-tool`). Every other crate has a version of its own, and it
+rises in a release only if the crate changed in it:
+
+- a crate whose folder changed since the last release (its code, its tests, its
+  `Cargo.toml` other than the version) takes a version above the one it had, the release's
+  version as a rule, once, in the change that first touches it in the release;
+- a crate that did not change keeps its version, even when a crate it depends on rose;
+- the workspace's dependency on it (`[workspace.dependencies]`) names the same version.
+
+```bash
+cargo run -p birchpad-release-tool -- crate-versions
+```
+
+checks this against the latest release's tag (or `--since TAG`); the release workflow runs it
+before it builds.
+
 ## Commits and pull requests
 
 - Use [Conventional Commits](https://www.conventionalcommits.org/) (`feat:`, `fix:`, `docs:`,

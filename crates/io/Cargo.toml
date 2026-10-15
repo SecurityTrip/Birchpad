@@ -1,7 +1,7 @@
 [package]
 name = "birchpad-io"
 description = "Reading and writing text files for Birchpad: encoding detection, decoding, encoding, safe saving. No UI."
-version.workspace = true
+version = "0.2.5"
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true

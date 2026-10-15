@@ -568,7 +568,7 @@ checksum = "ac07cdecf99051d9a5238b80f35af32cdeba5b336e55d957b318b50137e18da5"
 
 [[package]]
 name = "birchpad"
-version = "0.2.5"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "birchpad-cli",
@@ -632,7 +632,7 @@ dependencies = [
 
 [[package]]
 name = "birchpad-config"
-version = "0.2.5"
+version = "0.3.0"
 dependencies = [
  "birchpad-core",
  "birchpad-i18n",
@@ -647,7 +647,7 @@ dependencies = [
 
 [[package]]
 name = "birchpad-core"
-version = "0.2.5"
+version = "0.3.0"
 dependencies = [
  "base64 0.23.1",
  "birchpad-i18n",
@@ -665,7 +665,7 @@ dependencies = [
 
 [[package]]
 name = "birchpad-editor"
-version = "0.2.5"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "birchpad-cli",
@@ -687,7 +687,7 @@ dependencies = [
 
 [[package]]
 name = "birchpad-fuzz"
-version = "0.2.5"
+version = "0.3.0"
 dependencies = [
  "base64 0.23.1",
  "birchpad-cli",
@@ -707,7 +707,7 @@ dependencies = [
 
 [[package]]
 name = "birchpad-i18n"
-version = "0.2.5"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "sys-locale",
@@ -755,7 +755,7 @@ dependencies = [
 
 [[package]]
 name = "birchpad-release-tool"
-version = "0.2.5"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "birchpad-update",
@@ -767,11 +767,12 @@ dependencies = [
  "sha1",
  "sha2 0.11.0",
  "tempfile",
+ "toml 1.1.6+spec-1.1.0",
 ]
 
 [[package]]
 name = "birchpad-syntax"
-version = "0.2.5"
+version = "0.3.0"
 dependencies = [
  "birchpad-core",
  "birchpad-i18n",
@@ -846,7 +847,7 @@ dependencies = [
 
 [[package]]
 name = "birchpad-tools"
-version = "0.2.5"
+version = "0.3.0"
 dependencies = [
  "birchpad-core",
  "birchpad-i18n",

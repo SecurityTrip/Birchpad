@@ -1,7 +1,7 @@
 [package]
 name = "birchpad-i18n"
 description = "The languages of Birchpad's interface: YAML locales, texts by key with named arguments and plural forms, the current language. No UI."
-version.workspace = true
+version = "0.3.0"
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true

@@ -17,7 +17,9 @@ versions, without breaking the zero-network guarantee.
 ## Decision
 
 **Release workflow.** Pushing a tag `v<version>` runs `.github/workflows/release.yml`. The tag
-must equal the workspace version. The channel comes from the version: no pre-release part is
+must equal the workspace version, the application's; library crates keep versions of their own,
+raised only in a release that changes them, which the workflow checks first
+(`birchpad-release crate-versions`, CONTRIBUTING.md, Versions). The channel comes from the version: no pre-release part is
 stable, `-beta.N`/`-rc.N` is beta, any other pre-release is nightly. The workflow builds:
 
 | Artifact | Notes |

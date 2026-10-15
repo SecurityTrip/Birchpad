@@ -8,7 +8,11 @@
 //! birchpad-release remove --manifest FILE --out FILE --version V [--expires-days N]
 //! birchpad-release refresh --manifest FILE --out FILE [--expires-days N] [--if-older-than-days N]
 //! birchpad-release verify --manifest FILE
+//! birchpad-release crate-versions [--since TAG] [--repo DIR]
 //! ```
+//!
+//! `crate-versions` checks that a library crate's version rose since the last release only if
+//! the crate changed (`crate_versions`).
 //!
 //! Signing commands (and `public-key`) read the secret keys from `BIRCHPAD_UPDATE_KEY` (base64,
 //! several separated by commas or newlines while a key is being replaced). An existing manifest
@@ -27,6 +31,8 @@ use std::io::Read as _;
 use std::path::Path;
 use std::process::ExitCode;
 use std::time::{SystemTime, UNIX_EPOCH};
+
+mod crate_versions;
 
 use anyhow::{Context as _, Result, bail, ensure};
 use birchpad_update::manifest::{self, PRODUCT, SCHEMA};
@@ -77,7 +83,7 @@ impl Env {
 fn run(args: &[String], env: &Env) -> Result<()> {
     let Some((command, rest)) = args.split_first() else {
         bail!(
-            "usage: birchpad-release keygen|public-key|add|remove|refresh|verify ... (see the source)"
+            "usage: birchpad-release keygen|public-key|add|remove|refresh|verify|crate-versions ... (see the source)"
         );
     };
     let options = Options::parse(rest)?;
@@ -88,6 +94,10 @@ fn run(args: &[String], env: &Env) -> Result<()> {
         "remove" => remove(&options, env),
         "refresh" => refresh(&options, env),
         "verify" => verify(&options, env),
+        "crate-versions" => crate_versions::check(
+            Path::new(options.get("repo").unwrap_or(".")),
+            options.get("since"),
+        ),
         other => bail!("unknown command {other:?}"),
     }
 }
