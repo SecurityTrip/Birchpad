@@ -49,3 +49,9 @@ print_stdout = "warn"
 [profile.release]
 lto = "thin"
 codegen-units = 1
+
+# The dependencies (GPUI, its layout and text, tree-sitter, wasmtime) optimized in debug builds:
+# the window's tests and a debug run of the application spend most of their time in them, and
+# they are built once while the workspace's crates still build quickly.
+[profile.dev.package."*"]
+opt-level = 1

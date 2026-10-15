@@ -405,11 +405,19 @@ CONTRIBUTING.md asks for (failed reads and writes, refused input, interrupted do
 covers the positive scenario, the negative ones and the boundary values, and raises the crates'
 floors in `.github/coverage-floors.toml` with its tests.
 
-- [ ] 0.3.1 Faster tests, first, since the steps after it add many: `cargo-nextest` (each test
+- [x] 0.3.1 Faster tests, first, since the steps after it add many: `cargo-nextest` (each test
       in a process of its own, run side by side) locally and in CI; the slowest tests of the
       window found and made faster (waits for redraws, sleeps while bounds settle, dialogs'
       animations); what a full run takes locally and per CI job measured before and after.
-      Nothing is run less: every job still runs on every push
+      Nothing is run less: every job still runs on every push. The sweeps of every command
+      (`command_sweep_tests.rs`, 100 to 210 s each) spent their time drawing frames of
+      animations in debug code: the test window now turns motion off (`set_reduce_motion`),
+      debug builds optimize the dependencies (`opt-level = 1`), and a click waits only while
+      what it clicks still moves. A full run of the 1092 tests on Windows with 12 cores, built:
+      `cargo test` 393 s, `cargo nextest` 235 s, both changes 83 to 101 s (without the
+      optimized dependencies 268 s); the sweeps take 33 to 93 s. A flaky session test (a file
+      a virus scanner still holds) retries its writes too. CI's times per job are recorded
+      with the branch's first run
 - [x] 6.21 Dialogs and menus driven in a test window, every control: Preferences (62.8% of lines
       run), the Shortcut Mapper (76.9%), the column editor (64.1%), the path dialog, the Tools
       menu (62.4%), the banners, the menus and the window modes; the command catalog of

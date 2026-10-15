@@ -87,8 +87,11 @@ cargo run -p birchpad
 ```
 
 ```bash
-cargo test --workspace
+cargo nextest run --workspace
 ```
+
+or `cargo test --workspace`, more slowly; [CONTRIBUTING.md](CONTRIBUTING.md#development) has the
+checks CI runs.
 
 ## Command line
 

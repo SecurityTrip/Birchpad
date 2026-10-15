@@ -47,8 +47,11 @@ jobs:
           sudo apt-get install -y libxkbcommon-dev libxkbcommon-x11-dev libwayland-dev \
             libvulkan-dev libx11-xcb-dev libxcb1-dev libfontconfig-dev libfreetype-dev \
             libssl-dev libzstd-dev
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-nextest
       - run: cargo clippy --workspace --all-targets --locked
-      - run: cargo test --workspace --locked
+      - run: cargo nextest run --workspace --locked --profile ci
 
   # Debian's own libraries, the stable and the previous stable release: the Linux build is used
   # there as much as on Ubuntu.
@@ -79,7 +82,10 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           key: debian-${{ matrix.release }}
-      - run: cargo test --workspace --locked
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-nextest
+      - run: cargo nextest run --workspace --locked --profile ci
 
   # Which code no test runs: a report per crate and per file in the run's summary, an lcov file
   # for tools, and for each crate a floor under the share of lines run that only ever rises
@@ -93,7 +99,7 @@ jobs:
           components: llvm-tools-preview
       - uses: taiki-e/install-action@v2
         with:
-          tool: cargo-llvm-cov
+          tool: cargo-llvm-cov,cargo-nextest
       - name: Install Linux GUI dependencies
         run: |
           sudo apt-get update
@@ -101,7 +107,7 @@ jobs:
             libvulkan-dev libx11-xcb-dev libxcb1-dev libfontconfig-dev libfreetype-dev \
             libssl-dev libzstd-dev
       - name: Tests with coverage
-        run: cargo llvm-cov --workspace --locked --lcov --output-path lcov.info
+        run: cargo llvm-cov nextest --workspace --locked --profile ci --lcov --output-path lcov.info
       - name: Test the floor check
         run: python3 -m unittest discover -s .github -p "*_test.py"
       - name: Report

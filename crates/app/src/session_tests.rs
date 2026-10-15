@@ -21,6 +21,7 @@ use crate::workspace::tests::{
 fn set_up(cx: &mut TestAppContext, data: &Path, configure: impl FnOnce(&mut Settings)) {
     cx.update(|cx| {
         gpui_kit::init(cx);
+        cx.set_reduce_motion(true);
         let mut settings = resolve(Sources::default());
         configure(&mut settings.settings);
         let paths = ConfigPaths {

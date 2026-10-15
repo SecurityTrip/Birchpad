@@ -14,8 +14,17 @@ Thanks for your interest in Birchpad!
 ```bash
 cargo fmt --all
 cargo clippy --workspace --all-targets
-cargo test --workspace
+cargo nextest run --workspace
 ```
+
+[`cargo-nextest`](https://nexte.st) (`cargo install cargo-nextest --locked`) runs each test in a
+process of its own, as many at once as there are cores; `cargo test --workspace` runs the same
+tests more slowly, one test binary after another. The crates have no doctests, which nextest
+would not run; examples are tests.
+Its settings are in `.config/nextest.toml`. Debug builds optimize the dependencies
+(`[profile.dev.package."*"]` in `Cargo.toml`): the window's tests spend most of their time in
+GPUI, and the test window turns motion off (`set_reduce_motion`), so no test waits for a dialog
+to slide in.
 
 CI runs the same commands with warnings treated as errors, on Windows (x64 and ARM64), Linux and
 macOS, plus [`cargo-deny`](https://github.com/EmbarkStudios/cargo-deny) for licenses and advisories.

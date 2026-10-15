@@ -152,6 +152,8 @@ pub(crate) fn open_workspace(
 ) -> (Entity<Workspace>, &mut VisualTestContext) {
     cx.update(|cx| {
         gpui_kit::init(cx);
+        // Dialogs open in place instead of sliding in over a quarter of a second.
+        cx.set_reduce_motion(true);
         let mut settings = birchpad_config::resolve(birchpad_config::Sources::default());
         // Tests type brackets and press Enter as before auto-completion; its own tests turn it
         // on (`completion::tests`).
@@ -248,7 +250,8 @@ pub(crate) fn column_editor() -> &'static str {
     }
 }
 
-/// Clicks the middle of what `selector` marks, once it no longer moves (dialogs slide in).
+/// Clicks the middle of what `selector` marks, once it no longer moves (the test window turns
+/// motion off, so dialogs open in place without sliding in).
 pub(crate) fn click(selector: &'static str, cx: &mut VisualTestContext) {
     cx.update(|window, _| window.refresh());
     cx.run_until_parked();
@@ -256,7 +259,6 @@ pub(crate) fn click(selector: &'static str, cx: &mut VisualTestContext) {
         panic!("{selector} is not drawn");
     };
     for _ in 0..100 {
-        std::thread::sleep(std::time::Duration::from_millis(10));
         cx.update(|window, _| window.refresh());
         cx.run_until_parked();
         let Some(now) = cx.debug_bounds(selector) else {
@@ -266,6 +268,7 @@ pub(crate) fn click(selector: &'static str, cx: &mut VisualTestContext) {
             break;
         }
         bounds = now;
+        std::thread::sleep(std::time::Duration::from_millis(10));
     }
     let center = bounds.center();
     cx.simulate_mouse_down(
