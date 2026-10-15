@@ -25,6 +25,8 @@ version's release notes from its section here.
   the selection goes on past the visible part of a long line ([#34](https://github.com/SecurityTrip/Birchpad/issues/34)).
 - In a low window the menus stay below the menu bar and scroll, instead of being pushed up over
   it, where the click that opened a menu chose its first item ([#33](https://github.com/SecurityTrip/Birchpad/issues/33)).
+- Plugins > XML Tools > Pretty Print XML keeps a byte order mark right before the declaration;
+  a line break between them made the result not well formed.
 
 ## [0.2.0] - 2026-10-14
 
