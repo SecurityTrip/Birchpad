@@ -8,6 +8,12 @@ updates:
       cargo:
         patterns: ["*"]
         update-types: [minor, patch]
+    # Held at the versions GPUI (gpui-kit) uses, so that one copy of each is built; raised when
+    # GPUI raises them (docs/ROADMAP.md, 0.3.2).
+    ignore:
+      - dependency-name: resvg
+      - dependency-name: similar
+      - dependency-name: x11rb
   - package-ecosystem: github-actions
     directory: /
     schedule:

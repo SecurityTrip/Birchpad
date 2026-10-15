@@ -74,4 +74,5 @@ objc2-app-kit = { version = "0.3", features = ["NSPasteboard", "NSResponder", "N
 objc2-foundation = { version = "0.3", features = ["NSString"] }
 
 [target.'cfg(all(unix, not(target_os = "macos")))'.dependencies]
-x11rb = "0.14"
+# The version GPUI uses (`.github/dependabot.yml`).
+x11rb = "0.13"

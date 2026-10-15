@@ -111,8 +111,62 @@ fn highlight_snapshots() {
         .map(|entry| entry.unwrap().path())
         .collect();
     paths.sort();
+    let snapshots = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/snapshots");
+    let bless = std::env::var_os("BIRCHPAD_BLESS").is_some();
+    let mut changed = Vec::new();
     for path in paths {
         let name = path.file_name().unwrap().to_string_lossy().into_owned();
-        insta::assert_snapshot!(name, render(&path));
+        let snapshot = snapshots.join(format!("highlights__{name}.snap"));
+        let rendered = render(&path);
+        let expected = std::fs::read_to_string(&snapshot).ok();
+        if expected.as_deref().map(snapshot_body) == Some(rendered.trim_end()) {
+            continue;
+        }
+        let new = format!("{SNAPSHOT_HEADER}{rendered}");
+        if bless {
+            std::fs::write(&snapshot, new).unwrap();
+        } else {
+            std::fs::write(snapshot.with_extension("snap.new"), new).unwrap();
+            changed.push(first_difference(&name, expected.as_deref(), &rendered));
+        }
     }
+    assert!(
+        changed.is_empty(),
+        "highlighting differs from tests/snapshots (each new one is in a .snap.new file; \
+         BIRCHPAD_BLESS=1 accepts them):\n{}",
+        changed.join("\n")
+    );
+}
+
+/// The header snapshot files have kept since they were written with insta.
+const SNAPSHOT_HEADER: &str =
+    "---\nsource: crates/syntax/tests/highlights.rs\nexpression: render(&path)\n---\n";
+
+/// What a snapshot file holds after its header, without the final line break.
+fn snapshot_body(file: &str) -> &str {
+    let file = file.strip_prefix("---\n").unwrap_or(file);
+    let body = file.split_once("\n---\n").map_or(file, |(_, body)| body);
+    body.trim_end()
+}
+
+/// The first line where `rendered` and the snapshot part, or that there is no snapshot.
+fn first_difference(name: &str, expected: Option<&str>, rendered: &str) -> String {
+    let Some(expected) = expected.map(snapshot_body) else {
+        return format!("{name}: no snapshot yet");
+    };
+    let mut old = expected.lines();
+    let mut new = rendered.trim_end().lines();
+    for line in 1.. {
+        match (old.next(), new.next()) {
+            (Some(a), Some(b)) if a == b => {}
+            (a, b) => {
+                return format!(
+                    "{name}, line {line}: {:?} became {:?}",
+                    a.unwrap_or("(end)"),
+                    b.unwrap_or("(end)")
+                );
+            }
+        }
+    }
+    unreachable!()
 }

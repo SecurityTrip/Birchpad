@@ -6,6 +6,11 @@ version's release notes from its section here.
 
 ## [Unreleased]
 
+### Changed
+
+- Fewer dependencies: x11rb 0.13 and similar 2.7, the versions GPUI already builds, and
+  yaml-rust2 without its encoding detection; 13 crates fewer in the build.
+
 ## [0.2.5] - 2026-10-15
 
 ### Changed

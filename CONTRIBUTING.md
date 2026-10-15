@@ -77,6 +77,18 @@ code no test runs yet; cover that first. CI fails when a crate's share of lines 
 its floor in `.github/coverage-floors.toml`, and floors only rise: raise one in the change whose
 tests lift the crate well over it.
 
+Syntax highlighting is compared with snapshots (`crates/syntax/tests/snapshots`). A grammar or
+query change that alters the colors fails the test and writes the new snapshot beside the old one
+as `.snap.new`; once the difference is reviewed, accept the new ones with:
+
+```bash
+BIRCHPAD_BLESS=1 cargo nextest run -p birchpad-syntax --test highlights
+```
+
+A new dependency is the last resort: check `cargo tree --duplicates` first, prefer what the
+workspace or GPUI already builds, and turn off default features it does not need.
+`.github/dependabot.yml` holds a few crates at the versions GPUI uses, so that one copy is built.
+
 Everything that reads input from outside (files and their encodings, settings, the state file,
 sessions and Notepad++'s `session.xml`, `.workspace` files, the keymap, the text's context menu
 (`context-menu.toml`), the command line and the message that hands it to a running instance, the

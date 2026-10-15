@@ -416,8 +416,11 @@ floors in `.github/coverage-floors.toml` with its tests.
       what it clicks still moves. A full run of the 1092 tests on Windows with 12 cores, built:
       `cargo test` 393 s, `cargo nextest` 235 s, both changes 83 to 101 s (without the
       optimized dependencies 268 s); the sweeps take 33 to 93 s. A flaky session test (a file
-      a virus scanner still holds) retries its writes too. CI's times per job are recorded
-      with the branch's first run
+      a virus scanner still holds) retries its writes too. In CI (minutes per job, the last
+      green run of the old workflow, then the first of the new ones, with every cache cold):
+      tests on Windows 19, 26 (and Clippy beside them, 12), ARM64 14, 18, macOS 11, 16,
+      Ubuntu 7, 16, Debian trixie 20, 15, bookworm 20, 19, coverage 9, 11, fuzzing 13, 7; the
+      runs with warm caches are the measure
 - [x] CI by platform: four workflows that start together, each job side by side: Linux
       (Clippy, tests and end-to-end tests on Ubuntu, tests in Debian trixie and bookworm),
       Windows (Clippy and tests on x64 and ARM64, end-to-end tests), macOS (the same three) and
@@ -429,12 +432,20 @@ floors in `.github/coverage-floors.toml` with its tests.
       run), the Shortcut Mapper (76.9%), the column editor (64.1%), the path dialog, the Tools
       menu (62.4%), the banners, the menus and the window modes; the command catalog of
       `birchpad-commands` (63.2%)
-- [ ] 0.3.2 Fewer dependencies, before the steps that build and test more: `cargo tree
+- [x] 0.3.2 Fewer dependencies, before the steps that build and test more: `cargo tree
       --duplicates` and what each crate pulls in reviewed; duplicate versions unified, unused
       ones and unused default features dropped (`cargo-machete`, `cargo-udeps`), heavy crates
       used for little replaced by a few lines or by what the standard library has; the number
       of crates in `Cargo.lock` and a clean build's time, locally and per CI job, measured
-      before and after. Nothing the application does changes
+      before and after. Nothing the application does changes. Almost all of the
+      crates come with GPUI (523 of 976 only through `gpui-kit`) and wasmtime (46); what
+      Birchpad pulls in on its own: insta (3 crates; the highlighting snapshots compare
+      themselves, `BIRCHPAD_BLESS=1` accepts new ones), a third resvg for the icon example (5,
+      now the version GPUI draws with), yaml-rust2's encoding detection (2), x11rb 0.14 beside
+      GPUI's 0.13 (2) and similar 3 beside GPUI's 2.7 (1); an unused `tree-sitter-language`.
+      `.github/dependabot.yml` holds resvg, similar and x11rb at GPUI's versions. base64 and
+      roxmltree stay: both versions are built either way. `Cargo.lock` 1002 crates to 989;
+      a clean debug build on Windows with 12 cores 608 s and 618 crates to 569 s and 607
 - [ ] 0.3.3 The window that announces an update: instead of Download, which opens the release
       page on GitHub, an Update button that does what Help > Update and Restart does (the
       application downloads the update, checks it against the signed manifest, installs it and

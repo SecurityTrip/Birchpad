@@ -14,7 +14,7 @@ birchpad-i18n.workspace = true
 birchpad-theme.workspace = true
 chrono = { version = "0.4", default-features = false, features = ["std"] }
 roxmltree = "0.21"
-similar = { version = "3.2", default-features = false, features = ["std"] }
+similar.workspace = true
 spellbook = "0.4"
 thiserror.workspace = true
 
