@@ -308,6 +308,8 @@ The issues users opened after 0.2.0 and the dependency updates, one commit each.
 - [x] [#33](https://github.com/SecurityTrip/Birchpad/issues/33) In a low window the menus stay
       below the menu bar and scroll instead of covering it
 - [x] Dependabot's updates (#35 to #38) and wasmtime 49.0.3 for RUSTSEC-2026-0353 to 0364
+- [x] What CI found on the way: a byte order mark before the XML declaration (the xml fuzz
+      target); the fuzz job runs its targets in parallel
 - [x] Release 0.2.5: the workspace version, `CHANGELOG.md` and this roadmap updated; the
       answered issues closed
 
