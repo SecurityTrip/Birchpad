@@ -16,6 +16,8 @@ version's release notes from its section here.
 
 - Dragging a selection past the left or right edge of the editor scrolls the text sideways, so
   the selection goes on past the visible part of a long line ([#34](https://github.com/SecurityTrip/Birchpad/issues/34)).
+- In a low window the menus stay below the menu bar and scroll, instead of being pushed up over
+  it, where the click that opened a menu chose its first item ([#33](https://github.com/SecurityTrip/Birchpad/issues/33)).
 
 ## [0.2.0] - 2026-10-14
 

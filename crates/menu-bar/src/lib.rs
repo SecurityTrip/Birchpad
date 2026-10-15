@@ -52,6 +52,11 @@ actions!(
 
 const CONTEXT: &str = "MenuBar";
 const ITEM_HEIGHT: Pixels = px(26.);
+/// The room menus keep from the window's edges.
+const WINDOW_MARGIN: Pixels = px(8.);
+/// The gap between the menu bar and a menu below it.
+const POPUP_GAP: Pixels = px(4.);
+
 /// The colors of the menu bar and its menus, `0xRRGGBB`, from the application's theme.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Colors {
@@ -724,112 +729,122 @@ impl MenuBar {
         let items = self.level_items(menu, path, level);
         let show_mnemonics = self.keyboard || self.alt_held;
         let context = self.previous_focus.clone();
-        let max_height = (window.viewport_size().height - px(16.)).max(ITEM_HEIGHT * 3.);
-        let rows: Vec<_> =
-            items
-                .iter()
-                .enumerate()
-                .map(|(index, item)| {
-                    let selected = path[level] == Some(index);
-                    let id = ElementId::Name(format!("menu-item-{level}-{index}").into());
-                    let selector = move || format!("menu-item-{level}-{index}");
-                    if item.is_separator() {
-                        return div()
-                            .id(id)
-                            .debug_selector(selector)
-                            .flex_none()
-                            .h(px(1.))
-                            .my_1()
-                            .mx_2()
-                            .bg(rgb(colors().border))
-                            .into_any_element();
-                    }
-                    let (checked, disabled, shortcut, submenu) = match &item.kind {
-                        Kind::Command {
-                            action,
-                            checked,
-                            disabled,
-                        } => (
-                            *checked,
-                            *disabled,
-                            shortcut(
-                                action.as_ref(),
-                                context.as_ref(),
-                                &self.focus_handle,
-                                window,
-                            ),
-                            false,
-                        ),
-                        Kind::Submenu(_) => (false, false, None, true),
-                        Kind::Separator => unreachable!(),
-                    };
-                    let open_submenu = selected && submenu && path.len() > level + 1;
-                    div()
+        // A menu hangs below the bar and must not reach up over it when the window is low: the
+        // window would push it up over its title, and the release of the click that opened it
+        // would choose the item under the pointer. A submenu may use the window's height.
+        let top = if level == 0 {
+            self.bounds.bottom() + POPUP_GAP
+        } else {
+            WINDOW_MARGIN
+        };
+        let max_height = (window.viewport_size().height - top - WINDOW_MARGIN).max(ITEM_HEIGHT);
+        let rows: Vec<_> = items
+            .iter()
+            .enumerate()
+            .map(|(index, item)| {
+                let selected = path[level] == Some(index);
+                let id = ElementId::Name(format!("menu-item-{level}-{index}").into());
+                let selector = move || format!("menu-item-{level}-{index}");
+                if item.is_separator() {
+                    return div()
                         .id(id)
                         .debug_selector(selector)
-                        .relative()
                         .flex_none()
-                        .flex()
-                        .flex_row()
-                        .items_center()
-                        .h(ITEM_HEIGHT)
-                        .mx_1()
-                        .pl_1()
-                        .pr_2()
-                        .gap_2()
-                        .rounded(px(4.))
-                        .when(selected, |row| row.bg(rgb(colors().selected)))
-                        .when(disabled, |row| row.text_color(rgb(colors().muted)))
-                        .child(
-                            div()
-                                .w(px(16.))
-                                .flex_none()
-                                .flex()
-                                .justify_center()
-                                .child(if checked { "✓" } else { "" }),
-                        )
-                        .child(div().flex_1().whitespace_nowrap().child(label(
-                            &item.label,
-                            item.mnemonic.as_ref(),
-                            show_mnemonics,
-                        )))
-                        .when_some(shortcut, |row, shortcut| {
-                            row.child(div().pl_6().text_color(rgb(colors().muted)).child(shortcut))
-                        })
-                        .when(submenu, |row| {
-                            row.child(div().text_color(rgb(colors().muted)).child("›"))
-                        })
-                        .on_hover(cx.listener(move |this, hovered: &bool, _, cx| {
-                            if *hovered {
-                                this.hover_item(level, index, cx);
-                            }
-                        }))
-                        .on_mouse_down(MouseButton::Left, |_, window, cx| {
-                            window.prevent_default();
-                            cx.stop_propagation();
-                        })
-                        .on_mouse_up(
-                            MouseButton::Left,
-                            cx.listener(move |this, _, window, cx| {
-                                this.click_item(level, index, window, cx);
-                            }),
-                        )
-                        .when(open_submenu, |row| {
-                            row.child(
-                                div().absolute().left_full().top(px(-5.)).child(
-                                    deferred(anchored().snap_to_window_with_margin(px(8.)).child(
+                        .h(px(1.))
+                        .my_1()
+                        .mx_2()
+                        .bg(rgb(colors().border))
+                        .into_any_element();
+                }
+                let (checked, disabled, shortcut, submenu) = match &item.kind {
+                    Kind::Command {
+                        action,
+                        checked,
+                        disabled,
+                    } => (
+                        *checked,
+                        *disabled,
+                        shortcut(
+                            action.as_ref(),
+                            context.as_ref(),
+                            &self.focus_handle,
+                            window,
+                        ),
+                        false,
+                    ),
+                    Kind::Submenu(_) => (false, false, None, true),
+                    Kind::Separator => unreachable!(),
+                };
+                let open_submenu = selected && submenu && path.len() > level + 1;
+                div()
+                    .id(id)
+                    .debug_selector(selector)
+                    .relative()
+                    .flex_none()
+                    .flex()
+                    .flex_row()
+                    .items_center()
+                    .h(ITEM_HEIGHT)
+                    .mx_1()
+                    .pl_1()
+                    .pr_2()
+                    .gap_2()
+                    .rounded(px(4.))
+                    .when(selected, |row| row.bg(rgb(colors().selected)))
+                    .when(disabled, |row| row.text_color(rgb(colors().muted)))
+                    .child(
+                        div()
+                            .w(px(16.))
+                            .flex_none()
+                            .flex()
+                            .justify_center()
+                            .child(if checked { "✓" } else { "" }),
+                    )
+                    .child(div().flex_1().whitespace_nowrap().child(label(
+                        &item.label,
+                        item.mnemonic.as_ref(),
+                        show_mnemonics,
+                    )))
+                    .when_some(shortcut, |row, shortcut| {
+                        row.child(div().pl_6().text_color(rgb(colors().muted)).child(shortcut))
+                    })
+                    .when(submenu, |row| {
+                        row.child(div().text_color(rgb(colors().muted)).child("›"))
+                    })
+                    .on_hover(cx.listener(move |this, hovered: &bool, _, cx| {
+                        if *hovered {
+                            this.hover_item(level, index, cx);
+                        }
+                    }))
+                    .on_mouse_down(MouseButton::Left, |_, window, cx| {
+                        window.prevent_default();
+                        cx.stop_propagation();
+                    })
+                    .on_mouse_up(
+                        MouseButton::Left,
+                        cx.listener(move |this, _, window, cx| {
+                            this.click_item(level, index, window, cx);
+                        }),
+                    )
+                    .when(open_submenu, |row| {
+                        row.child(
+                            div().absolute().left_full().top(px(-5.)).child(
+                                deferred(
+                                    anchored().snap_to_window_with_margin(WINDOW_MARGIN).child(
                                         self.render_popup(menu, path, level + 1, window, cx),
-                                    ))
-                                    .with_priority(3 + level),
-                                ),
-                            )
-                        })
-                        .into_any_element()
-                })
-                .collect();
+                                    ),
+                                )
+                                .with_priority(3 + level),
+                            ),
+                        )
+                    })
+                    .into_any_element()
+            })
+            .collect();
         let scroll = self.scroll_handles.get(level).cloned().unwrap_or_default();
         div()
             .id(ElementId::Name(format!("menu-level-{level}").into()))
+            .debug_selector(move || format!("menu-level-{level}"))
             .occlude()
             .flex()
             .flex_col()
@@ -1048,8 +1063,8 @@ impl Render for MenuBar {
                             deferred(
                                 anchored()
                                     .anchor(Anchor::TopLeft)
-                                    .snap_to_window_with_margin(px(8.))
-                                    .child(div().mt_1().child(popup)),
+                                    .snap_to_window_with_margin(WINDOW_MARGIN)
+                                    .child(div().mt(POPUP_GAP).child(popup)),
                             )
                             .with_priority(2),
                         )
@@ -1465,6 +1480,57 @@ mod gpui_tests {
         assert_eq!(state(&root, cx), State::Selected(4));
         reload(menus().into_iter().take(2).collect(), cx);
         assert_eq!(state(&root, cx), State::Closed);
+    }
+
+    /// The bounds of the menu bar's first title and of the open menu, after a click on the
+    /// title in a window `height` high.
+    fn open_file_in_window(
+        height: f32,
+        cx: &mut VisualTestContext,
+    ) -> (Bounds<Pixels>, Bounds<Pixels>) {
+        cx.simulate_resize(gpui_kit::size(px(640.), px(height)));
+        cx.run_until_parked();
+        let title = cx.debug_bounds("menu-title-0").expect("the title is drawn");
+        cx.simulate_click(title.center(), Modifiers::none());
+        let popup = cx.debug_bounds("menu-level-0").expect("the menu is drawn");
+        (title, popup)
+    }
+
+    #[gpui_kit::test]
+    fn a_menu_in_a_tall_window_shows_all_its_items(cx: &mut TestAppContext) {
+        let (root, cx) = open_window(cx);
+        let (title, popup) = open_file_in_window(600., cx);
+        assert!(popup.top() >= title.bottom());
+        let last = cx.debug_bounds("menu-item-0-4").expect("Exit is drawn");
+        assert!(last.bottom() <= popup.bottom(), "Exit is inside the menu");
+        assert_eq!(state(&root, cx), open(0, &[None]));
+    }
+
+    #[gpui_kit::test]
+    fn a_menu_in_a_low_window_stays_below_the_bar(cx: &mut TestAppContext) {
+        let (root, cx) = open_window(cx);
+        let (title, popup) = open_file_in_window(110., cx);
+        assert!(
+            popup.top() >= title.bottom(),
+            "the menu {popup:?} does not cover its title {title:?}"
+        );
+        assert!(popup.bottom() <= px(110.) - WINDOW_MARGIN + px(1.));
+        // The click that opened it chose nothing, and the items scroll into view.
+        assert_eq!(state(&root, cx), open(0, &[None]));
+        assert!(chosen(&root, cx).is_empty());
+        cx.simulate_keystrokes("up enter");
+        assert_eq!(state(&root, cx), State::Closed, "Exit, scrolled to");
+    }
+
+    #[gpui_kit::test]
+    fn a_menu_in_a_window_lower_than_an_item_keeps_one_row(cx: &mut TestAppContext) {
+        let (root, cx) = open_window(cx);
+        let (title, popup) = open_file_in_window(40., cx);
+        assert!(popup.size.height <= ITEM_HEIGHT + px(1.));
+        assert!(popup.size.height > px(0.));
+        assert!(title.bottom() <= px(40.));
+        assert_eq!(state(&root, cx), open(0, &[None]));
+        assert!(chosen(&root, cx).is_empty());
     }
 
     #[gpui_kit::test]
