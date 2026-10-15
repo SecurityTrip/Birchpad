@@ -9,7 +9,8 @@ version's release notes from its section here.
 ### Changed
 
 - Dependency updates: embed-resource 3.0.12, gpui-kit 0.7.3, interprocess 2.4.5, objc2 0.6.5,
-  proptest 1.12, serde_json 1.0.154, smallvec 1.16.3, tree-sitter 0.27.1, tree-sitter-erlang 0.21, x11rb 0.14.
+  proptest 1.12, serde_json 1.0.154, smallvec 1.16.3, tree-sitter 0.27.1, tree-sitter-erlang
+  0.21, tree-sitter-php 0.25, x11rb 0.14.
 
 ## [0.2.0] - 2026-10-14
 
