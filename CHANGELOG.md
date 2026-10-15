@@ -12,6 +12,11 @@ version's release notes from its section here.
   proptest 1.12, serde_json 1.0.154, smallvec 1.16.3, tree-sitter 0.27.1, tree-sitter-erlang
   0.21, tree-sitter-php 0.25, x11rb 0.14.
 
+### Fixed
+
+- Dragging a selection past the left or right edge of the editor scrolls the text sideways, so
+  the selection goes on past the visible part of a long line ([#34](https://github.com/SecurityTrip/Birchpad/issues/34)).
+
 ## [0.2.0] - 2026-10-14
 
 ### Added
