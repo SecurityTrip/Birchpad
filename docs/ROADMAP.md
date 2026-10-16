@@ -466,9 +466,10 @@ floors in `.github/coverage-floors.toml` with its tests.
       status bar; hovering it says what is happening (the version being downloaded, how much
       of it has arrived, or that it is stalled), and it goes away once the update is ready.
       Tests: the button installs from a local server and the bar follows the download, in
-      both windows and in the status bar with its tooltip; a server that sends slowly but steadily for longer than the old limit
-      completes, one that stops sending fails as stalled, a failed download leaves the
-      application as it was and says why, the check box with and without the button
+      both windows and in the status bar with its tooltip; a server that sends slowly but
+      steadily for longer than the old limit completes, one that stops sending fails as
+      stalled, a failed download leaves the application as it was and says why, the check
+      box with and without the button
 - [ ] 6.22 The editor view (`editor/mod.rs`, 83.8%): smart highlighting (78.7%), the Edit menu's
       extras (81.2%), what clicks, drags and the keyboard do at the edges of the text, in
       wrapped and folded rows and with several carets
