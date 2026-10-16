@@ -1250,5 +1250,6 @@ update:
   no-keys: "this build of Birchpad has no key to check update manifests with"
   other-product: "the update manifest is for {product}, not Birchpad"
   rollback: "the update manifest was signed on {signed}, before one seen already or this build ({newest}): the update server may be serving an old one"
+  stalled: "the download stalled: nothing arrived in {seconds} s"
   turned-off: "checking for updates is turned off (updates.mode = \"off\")"
   untrusted: "the update manifest is not signed with a key this Birchpad trusts"
