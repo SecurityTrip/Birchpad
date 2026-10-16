@@ -453,9 +453,15 @@ floors in `.github/coverage-floors.toml` with its tests.
       buttons were, becomes a progress bar of the download), and a "Don't show again" check
       box that turns update checks off (`updates.mode = "off"`, shown so in Preferences and
       Help > About), so that the window does not come back. A portable copy, which cannot
-      update itself, keeps the link to the download page. Tests: the button installs from a
-      local server and the bar follows the download, a failed download leaves the
-      application as it was and says why, the check box with and without the button
+      update itself, keeps the link to the download page. No time limit on the download as a
+      whole: today `timeout_recv_body` (30 s, `crates/update/src/lib.rs`) bounds the whole
+      body, so over a slow connection a package fails with a timeout while it is still
+      arriving. The download fails only when it stalls, nothing received for a minute, and
+      says so; while bytes arrive, however slowly, it goes on and the bar shows it moving.
+      Tests: the button installs from a local server and the bar follows the download, a
+      server that sends slowly but steadily for longer than the old limit completes, one
+      that stops sending fails as stalled, a failed download leaves the application as it
+      was and says why, the check box with and without the button
 - [ ] 6.22 The editor view (`editor/mod.rs`, 83.8%): smart highlighting (78.7%), the Edit menu's
       extras (81.2%), what clicks, drags and the keyboard do at the edges of the text, in
       wrapped and folded rows and with several carets
