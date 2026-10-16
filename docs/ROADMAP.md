@@ -512,10 +512,12 @@ floors in `.github/coverage-floors.toml` with its tests.
       (`bidi.rs`), `birchpad-tools` (`compare.rs`), `birchpad-core` (`search.rs`,
       `ops/column.rs`), `birchpad-commands` (`keystroke.rs`) and `birchpad-syntax`
       (`syntax.rs`, Rust sources built from pieces, 64 cases)
-- [ ] 6.26 Fuzzing what reads outside input and is not fuzzed yet: Hunspell dictionaries
+- [x] 6.26 Fuzzing what reads outside input and is not fuzzed yet: Hunspell dictionaries
       (`.aff`, `.dic`), search queries (regular expressions, the extended mode's escapes, Find
       in Files' filters), plugins' calls into the host with any arguments, Rhai scripts under
-      their time and memory limits
+      their time and memory limits. Done: the targets `spell_dictionary`,
+      `search_query`, `plugin_calls` and `rhai_script` (`crates/fuzz`, `fuzz/`), with seeds;
+      scripts run there with a smaller limit on operations (`script::run_limited`)
 - [ ] 6.27 End-to-end scenarios beyond the four of `tests/e2e.rs`: Find in Files and Replace in
       Files, recording and playing a macro, a second instance handing over its files,
       restoring unsaved text after the process is killed, a plugin installed and run, Export
@@ -529,8 +531,8 @@ floors in `.github/coverage-floors.toml` with its tests.
 - [x] Versions: the workspace version, the application's, is 0.3.0; library crates have
       versions of their own, raised only in a release that changes them (CONTRIBUTING.md,
       Versions), checked by `birchpad-release crate-versions` and the release workflow. In
-      0.3.0 so far: cli, commands, config, core, editor, i18n, syntax, tools, update and view
-      at 0.3.0, the others at 0.2.5
+      0.3.0 so far: cli, commands, config, core, editor, i18n, plugin, syntax, tools, update
+      and view at 0.3.0, the others at 0.2.5
 - [ ] Release 0.3.0: the workspace version (0.3.0, set when its branch opens, so that nightly
       builds are its pre-releases), `CHANGELOG.md` and this roadmap updated; the
       [release checklist](release-checklist.md) gone through

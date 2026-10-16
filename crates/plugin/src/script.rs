@@ -129,8 +129,15 @@ fn engine(session: &Shared) -> Engine {
 
 /// Runs the script `source` (named `name` in messages) over `session`.
 pub fn run(name: &str, source: &str, session: Session) -> Result<Outcome> {
+    run_limited(name, source, session, MAX_OPERATIONS)
+}
+
+/// [`run`], stopping the script after `operations` (at most [`MAX_OPERATIONS`]): for fuzzing,
+/// where a script that loops must end in a fraction of the time.
+pub fn run_limited(name: &str, source: &str, session: Session, operations: u64) -> Result<Outcome> {
     let shared: Shared = Rc::new(RefCell::new(session));
-    let engine = engine(&shared);
+    let mut engine = engine(&shared);
+    engine.set_max_operations(operations.min(MAX_OPERATIONS));
     let result = engine.run(source);
     drop(engine);
     let session = Rc::try_unwrap(shared)

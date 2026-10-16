@@ -160,3 +160,31 @@ path = "fuzz_targets/hex_dump.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "spell_dictionary"
+path = "fuzz_targets/spell_dictionary.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "search_query"
+path = "fuzz_targets/search_query.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "plugin_calls"
+path = "fuzz_targets/plugin_calls.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "rhai_script"
+path = "fuzz_targets/rhai_script.rs"
+test = false
+doc = false
+bench = false
