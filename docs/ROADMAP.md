@@ -405,46 +405,146 @@ CONTRIBUTING.md asks for (failed reads and writes, refused input, interrupted do
 covers the positive scenario, the negative ones and the boundary values, and raises the crates'
 floors in `.github/coverage-floors.toml` with its tests.
 
-- [ ] 0.3.1 Faster tests, first, since the steps after it add many: `cargo-nextest` (each test
+- [x] 0.3.1 Faster tests, first, since the steps after it add many: `cargo-nextest` (each test
       in a process of its own, run side by side) locally and in CI; the slowest tests of the
       window found and made faster (waits for redraws, sleeps while bounds settle, dialogs'
       animations); what a full run takes locally and per CI job measured before and after.
-      Nothing is run less: every job still runs on every push
+      Nothing is run less: every job still runs on every push. The sweeps of every command
+      (`command_sweep_tests.rs`, 100 to 210 s each) spent their time drawing frames of
+      animations in debug code: the test window now turns motion off (`set_reduce_motion`),
+      debug builds optimize the dependencies (`opt-level = 1`), and a click waits only while
+      what it clicks still moves. A full run of the 1092 tests on Windows with 12 cores, built:
+      `cargo test` 393 s, `cargo nextest` 235 s, both changes 83 to 101 s (without the
+      optimized dependencies 268 s); the sweeps take 33 to 93 s. A flaky session test (a file
+      a virus scanner still holds) retries its writes too. In CI (minutes per job, the last
+      green run of the old workflow, then the first of the new ones, with every cache cold):
+      tests on Windows 19, 26 (and Clippy beside them, 12), ARM64 14, 18, macOS 11, 16,
+      Ubuntu 7, 16, Debian trixie 20, 15, bookworm 20, 19, coverage 9, 11, fuzzing 13, 7; the
+      runs with warm caches are the measure
+- [x] CI by platform: four workflows that start together, each job side by side: Linux
+      (Clippy, tests and end-to-end tests on Ubuntu, tests in Debian trixie and bookworm),
+      Windows (Clippy and tests on x64 and ARM64, end-to-end tests), macOS (the same three) and
+      Checks (formatting, cargo-deny, coverage, fuzzing). Clippy has jobs of its own beside the
+      tests; CI builds keep only line tables as debug information; the Debian jobs install
+      their libraries with the same action as Ubuntu's (`.github/actions/linux-deps`) and run
+      nextest. Nothing is run less: the ARM64 Clippy and every test run as before
 - [x] 6.21 Dialogs and menus driven in a test window, every control: Preferences (62.8% of lines
       run), the Shortcut Mapper (76.9%), the column editor (64.1%), the path dialog, the Tools
       menu (62.4%), the banners, the menus and the window modes; the command catalog of
       `birchpad-commands` (63.2%)
-- [ ] 6.22 The editor view (`editor/mod.rs`, 83.8%): smart highlighting (78.7%), the Edit menu's
+- [x] 0.3.2 Fewer dependencies, before the steps that build and test more: `cargo tree
+      --duplicates` and what each crate pulls in reviewed; duplicate versions unified, unused
+      ones and unused default features dropped (`cargo-machete`, `cargo-udeps`), heavy crates
+      used for little replaced by a few lines or by what the standard library has; the number
+      of crates in `Cargo.lock` and a clean build's time, locally and per CI job, measured
+      before and after. Nothing the application does changes. Almost all of the
+      crates come with GPUI (523 of 976 only through `gpui-kit`) and wasmtime (46); what
+      Birchpad pulls in on its own: insta (3 crates; the highlighting snapshots compare
+      themselves, `BIRCHPAD_BLESS=1` accepts new ones), a third resvg for the icon example (5,
+      now the version GPUI draws with), yaml-rust2's encoding detection (2), x11rb 0.14 beside
+      GPUI's 0.13 (2) and similar 3 beside GPUI's 2.7 (1); an unused `tree-sitter-language`.
+      `.github/dependabot.yml` holds resvg, similar and x11rb at GPUI's versions. base64 and
+      roxmltree stay: both versions are built either way. `Cargo.lock` 1002 crates to 989;
+      a clean debug build on Windows with 12 cores 608 s and 618 crates to 569 s and 607
+- [x] 0.3.3 The window that announces an update: instead of Download, which opens the release
+      page on GitHub, an Update button that does what Help > Update and Restart does (the
+      application downloads the update, checks it against the signed manifest, installs it and
+      starts again with the documents; once pressed, the bottom of the window, where the
+      buttons were, becomes a progress bar of the download), and a "Don't show again" check
+      box that turns update checks off (`updates.mode = "off"`, shown so in Preferences and
+      Help > About), so that the window does not come back. A portable copy, which cannot
+      update itself, keeps the link to the download page. No time limit on the download as a
+      whole: today `timeout_recv_body` (30 s, `crates/update/src/lib.rs`) bounds the whole
+      body, so over a slow connection a package fails with a timeout while it is still
+      arriving. The download fails only when it stalls, nothing received for a minute, and
+      says so; while bytes arrive, however slowly, it goes on and the bar shows it moving.
+      The same bar wherever an update is downloaded on request: in the window that announces
+      an update found by a background check, and in Help > Check for Updates, whose window
+      stays open after Update and Restart with the bar in place of its buttons (today both
+      show only a "Downloading" notification until the download ends or fails). A download
+      that no window shows, the one `updates.mode = "auto"` starts by itself, has a bar in the
+      status bar; hovering it says what is happening (the version being downloaded, how much
+      of it has arrived, or that it is stalled), and it goes away once the update is ready.
+      Tests: the button installs from a local server and the bar follows the download, in
+      both windows and in the status bar with its tooltip; a server that sends slowly but
+      steadily for longer than the old limit completes, one that stops sending fails as
+      stalled, a failed download leaves the application as it was and says why, the check
+      box with and without the button. Done: each read of a body waits at most a minute
+      (`STALL`, a ureq connector over the default one) and none bounds the body as a whole; the
+      installer reports the bytes received; the announcement of a background check stays open
+      with the bar after Update, Help > Check for Updates' window too, and a window closed while
+      its download goes on leaves the bar to the status bar. `birchpad-update` 0.3.0
+- [x] 6.22 The editor view (`editor/mod.rs`, 83.8%): smart highlighting (78.7%), the Edit menu's
       extras (81.2%), what clicks, drags and the keyboard do at the edges of the text, in
-      wrapped and folded rows and with several carets
-- [ ] 6.23 Files, folders and sessions when the file system refuses: a file changed or deleted
+      wrapped and folded rows and with several carets. Done (`birchpad-editor`'s
+      `edge_tests.rs`): the wheel (sideways, Ctrl to zoom, at the top), the scroll bars,
+      drags past the top and bottom, input methods composing over characters of two UTF-16
+      units, pasting nothing or an image, clicks in wrapped rows, carets at the start and end
+      of the text; the longest token smart highlighting takes, its search over several frames
+      and reused while it covers the shown text; selected paths absolute and quoted
+- [x] 6.23 Files, folders and sessions when the file system refuses: a file changed or deleted
       outside (`disk.rs`, 71.6%), saving, renaming and moving that fail (`file_ops.rs`,
       `file_commands.rs`, about 84%), sessions with missing files and broken backups (84.0%),
       Folder as Workspace (78.1%), Find in Files over unreadable files; the configuration
       folders (`config/load.rs`, 86.1%) and the hand-off to a running instance
-      (`cli/instance.rs`, 87.8%)
-- [ ] 6.24 Updates and Plugins Admin against a local server: checks, downloads cut short, a
+      (`cli/instance.rs`, 87.8%). Done: the watcher on the folders of open files (an outside
+      change noticed without a check, folders unwatched when their files close or detection
+      is off) and monitored files checked every second without it; saving into a deleted
+      folder or with a backup copy that cannot be made keeps the changes; renaming a file
+      deleted meanwhile; a recent file that is gone; session files missing, malformed or of
+      files that are gone, a lost backup falling back to the file, backups on their
+      interval; the running executable's paths; a socket that cannot be made. Left: Folder
+      as Workspace's context menu and Find in Files over unreadable files (permissions that
+      Windows tests cannot take away)
+- [x] 6.24 Updates and Plugins Admin against a local server: checks, downloads cut short, a
       wrong signature or checksum, an older version offered, installing and rolling back
-      (`updates.rs` 76.2%, `update/install.rs` 87.6%, `extensions/admin.rs` 80.7%)
-- [ ] 6.25 Property tests where there are none yet: the bidirectional row (logical and visual
+      (`updates.rs` 76.2%, `update/install.rs` 87.6%, `extensions/admin.rs` 80.7%). Done:
+      checks over HTTP from a local server (a newer release, an older one, a manifest signed
+      with a key not trusted, nobody listening), packages cut short or tampered with that
+      install nothing and leave the window saying why; Plugins Admin's Install... cancelled,
+      given a file that is no manifest, and given a plugin's. Velopack's own install and
+      rollback cannot run outside an installation; its feed is tested in `update/install.rs`
+- [x] 6.25 Property tests where there are none yet: the bidirectional row (logical and visual
       positions map one to one), comparing texts (the differences applied give the other
       text), search and replace against a plain reference implementation, keystrokes and key
       sequences that read back as written, syntax trees reparsed after an edit equal to a
-      fresh parse, the column editor's numbering
-- [ ] 6.26 Fuzzing what reads outside input and is not fuzzed yet: Hunspell dictionaries
+      fresh parse, the column editor's numbering. Done with proptest in `birchpad-view`
+      (`bidi.rs`), `birchpad-tools` (`compare.rs`), `birchpad-core` (`search.rs`,
+      `ops/column.rs`), `birchpad-commands` (`keystroke.rs`) and `birchpad-syntax`
+      (`syntax.rs`, Rust sources built from pieces, 64 cases)
+- [x] 6.26 Fuzzing what reads outside input and is not fuzzed yet: Hunspell dictionaries
       (`.aff`, `.dic`), search queries (regular expressions, the extended mode's escapes, Find
       in Files' filters), plugins' calls into the host with any arguments, Rhai scripts under
-      their time and memory limits
-- [ ] 6.27 End-to-end scenarios beyond the four of `tests/e2e.rs`: Find in Files and Replace in
+      their time and memory limits. Done: the targets `spell_dictionary`,
+      `search_query`, `plugin_calls` and `rhai_script` (`crates/fuzz`, `fuzz/`), with seeds;
+      scripts run there with a smaller limit on operations (`script::run_limited`)
+- [x] 6.27 End-to-end scenarios beyond the four of `tests/e2e.rs`: Find in Files and Replace in
       Files, recording and playing a macro, a second instance handing over its files,
       restoring unsaved text after the process is killed, a plugin installed and run, Export
-      to HTML; the run counted in the coverage report, so that `main.rs` (0%) is measured
-- [ ] 6.28 Performance in CI: the timing checks (`view/tests/performance.rs`, now ignored) and
+      to HTML; the run counted in the coverage report, so that `main.rs` (0%) is measured. Done: the six scenarios; scripts gained
+      `wait` and `files` steps (Replace in Files there does not ask: its question is the
+      system's dialog) and reports the search results; `file.export-html` takes a `path` to
+      write without asking; the coverage job runs the end-to-end tests on a virtual display
+- [x] 6.28 Performance in CI: the timing checks (`view/tests/performance.rs`, now ignored) and
       new ones for opening, searching and editing a 100 MB file and for a frame of the editor
-      view run nightly in release, failing when a time grows past its limit
-- [ ] 6.29 Mutation testing: `cargo-mutants` nightly over the crates without a window; the
+      view run nightly in release, failing when a time grows past its limit. Done: every timing check states its
+      limit (`birchpad_core::timing::within`); new ones search (a word, a regular expression,
+      nothing, the replacements) and edit (a keystroke and its undo, every line) 100 MB
+      (`core/tests/performance.rs`) and draw frames of a 100 MB document; the Performance
+      workflow runs them every night in release, one at a time. The limits are generous
+      until the first nightly runs measure them
+- [x] 6.29 Mutation testing: `cargo-mutants` nightly over the crates without a window; the
       mutants that survive get tests, and the share caught gets a floor that only rises, as
-      coverage does
+      coverage does. Done: the Mutants workflow, a job per crate (`.cargo/mutants.toml`),
+      against `.github/mutants-floors.toml` (`.github/mutants_floors.py`, tested beside the
+      coverage check); the missed mutants in the run's summary
+- [ ] 6.29a The first nightly mutants runs: the floors set from them, a point or two under, and
+      tests for the mutants that survive
+- [x] Versions: the workspace version, the application's, is 0.3.0; library crates have
+      versions of their own, raised only in a release that changes them (CONTRIBUTING.md,
+      Versions), checked by `birchpad-release crate-versions` and the release workflow. In
+      0.3.0 so far: cli, commands, config, core, editor, i18n, io, plugin, syntax, tools,
+      update and view at 0.3.0, the others at 0.2.5
 - [ ] Release 0.3.0: the workspace version (0.3.0, set when its branch opens, so that nightly
       builds are its pre-releases), `CHANGELOG.md` and this roadmap updated; the
       [release checklist](release-checklist.md) gone through

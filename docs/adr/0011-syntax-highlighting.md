@@ -74,7 +74,9 @@ features.
   partners come from the bracket's parent node; plain text counts brackets within 1 MB.
 - **Tests**: each language has a sample in `crates/syntax/tests/samples`, written like real
   code of that language, whose highlights are a snapshot (all of them: checks query without
-  the screen's time budget, which a busy machine can run out of). Every sample must parse without
+  the screen's time budget, which a busy machine can run out of) in `tests/snapshots`: one that
+  changes fails the test and is written next to it as `.snap.new`, and `BIRCHPAD_BLESS=1` accepts
+  the new ones (the test compares them itself, without `insta`). Every sample must parse without
   error or missing nodes, since error recovery colors whatever it guessed. And every color the
   language's query can give must show up in its sample: a capture hidden by a later pattern
   for the same node (JSON's keys colored as strings) or put on the wrong node (TOML's keys

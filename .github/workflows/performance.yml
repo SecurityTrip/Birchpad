@@ -1,0 +1,30 @@
+name: Performance
+
+# The timing checks (tests marked `#[ignore = "... run in release"]`): opening, searching and
+# editing a 100 MB document, wrapping and folding it, a frame of the editor view and typing with
+# many carets. Each fails when it takes longer than its limit (birchpad_core::timing), so that a
+# slowdown shows the night after it lands. In release, one at a time, so that the checks do not
+# slow each other down.
+on:
+  schedule:
+    # 04:00 Moscow time, after the nightly build.
+    - cron: "0 1 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  timings:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/linux-deps
+      - uses: actions-rust-lang/setup-rust-toolchain@v2
+      - name: Timing checks
+        run: >
+          cargo test --release --locked -p birchpad-core -p birchpad-io -p birchpad-view
+          -p birchpad-editor -- --ignored --nocapture --test-threads=1

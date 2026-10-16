@@ -21,6 +21,7 @@ use crate::workspace::tests::{
 fn set_up(cx: &mut TestAppContext, data: &Path, configure: impl FnOnce(&mut Settings)) {
     cx.update(|cx| {
         gpui_kit::init(cx);
+        cx.set_reduce_motion(true);
         let mut settings = resolve(Sources::default());
         configure(&mut settings.settings);
         let paths = ConfigPaths {
@@ -339,4 +340,131 @@ fn session_files_open_alongside(cx: &mut TestAppContext) {
         4,
         "an open file is not opened twice"
     );
+}
+
+#[gpui_kit::test]
+fn sessions_that_cannot_be_used_say_why(cx: &mut TestAppContext) {
+    let data = tempfile::tempdir().unwrap();
+    let kept = data.path().join("kept.txt");
+    fs::write(&kept, "kept").unwrap();
+    set_up(cx, data.path(), |_| {});
+    let (workspace, cx) = launch(cx);
+    let load = |path: &Path, cx: &mut VisualTestContext| {
+        let result = workspace.update_in(cx, |workspace, window, cx| {
+            workspace.load_session_file(path, window, cx)
+        });
+        cx.run_until_parked();
+        result
+    };
+    // No file, and a file that is no session.
+    assert!(load(&data.path().join("missing.toml"), cx).is_err());
+    let garbage = data.path().join("garbage.toml");
+    fs::write(&garbage, "documents = [[[").unwrap();
+    assert!(load(&garbage, cx).is_err());
+    assert_eq!(panes(&workspace, cx).0[0], names(&["new 1"]));
+
+    // A session of files that are gone opens nothing and says so.
+    let gone = data.path().join("gone.txt");
+    fs::write(&gone, "gone").unwrap();
+    open(&workspace, &gone, cx);
+    let session = workspace.read_with(cx, |workspace, cx| workspace.session(false, cx));
+    let saved = data.path().join("gone.toml");
+    birchpad_config::write_private(&saved, session.to_toml().as_bytes()).unwrap();
+    run(&workspace, Invocation::new("file.close"), cx);
+    fs::remove_file(&gone).unwrap();
+    let error = load(&saved, cx).unwrap_err();
+    assert!(error.to_string().contains("gone.toml"), "{error}");
+    assert_eq!(panes(&workspace, cx).0[0], names(&["new 1"]));
+
+    // One gone and one there: the one there opens.
+    fs::write(&gone, "gone").unwrap();
+    open(&workspace, &gone, cx);
+    open(&workspace, &kept, cx);
+    let session = workspace.read_with(cx, |workspace, cx| workspace.session(false, cx));
+    birchpad_config::write_private(&saved, session.to_toml().as_bytes()).unwrap();
+    run(&workspace, Invocation::new("file.close"), cx);
+    run(&workspace, Invocation::new("file.close"), cx);
+    fs::remove_file(&gone).unwrap();
+    load(&saved, cx).unwrap();
+    assert_eq!(panes(&workspace, cx).0[0], names(&["new 1", "kept.txt"]));
+}
+
+#[gpui_kit::test]
+fn a_lost_backup_falls_back_to_the_file(cx: &mut TestAppContext) {
+    let data = tempfile::tempdir().unwrap();
+    let file = data.path().join("notes.txt");
+    fs::write(&file, "on disk").unwrap();
+    set_up(cx, data.path(), |_| {});
+    let (workspace, first) = launch(cx);
+    first.simulate_input("lost draft");
+    open(&workspace, &file, first);
+    first.simulate_input("unsaved ");
+    workspace.update_in(first, |workspace, window, cx| {
+        drop(workspace.prepare_to_quit(window, cx));
+    });
+    first.run_until_parked();
+    assert_eq!(backup_files(data.path()).len(), 2);
+    // The backups are deleted (cleaned up, or a broken disk) before the next launch.
+    fs::remove_dir_all(data.path().join("backup")).unwrap();
+
+    let (workspace, second) = launch(cx);
+    let tabs = panes(&workspace, second).0[0].clone();
+    assert!(tabs.contains(&"notes.txt".to_owned()), "{tabs:?}");
+    let views = pane_views(&workspace, 0, second);
+    let notes = views
+        .iter()
+        .find(|view| {
+            view.read_with(second, |view, cx| {
+                view.buffer.read(cx).display_name() == "notes.txt"
+            })
+        })
+        .unwrap()
+        .clone();
+    let (text, modified, ..) = describe(&notes, second);
+    assert_eq!(
+        (text.as_str(), modified),
+        ("on disk", false),
+        "the file as it is"
+    );
+    assert!(
+        !views
+            .iter()
+            .any(|view| describe(view, second).0 == "lost draft"),
+        "the draft is gone with its backup"
+    );
+}
+
+#[gpui_kit::test]
+fn backups_are_written_on_their_interval(cx: &mut TestAppContext) {
+    let data = tempfile::tempdir().unwrap();
+    set_up(cx, data.path(), |settings| {
+        settings.session.backup_interval_seconds = 5;
+    });
+    let (workspace, first) = launch(cx);
+    workspace.update(first, |workspace, cx| workspace.start_backups(cx));
+    first.simulate_input("typed");
+    first
+        .executor()
+        .advance_clock(std::time::Duration::from_secs(4));
+    first.run_until_parked();
+    assert!(backup_files(data.path()).is_empty(), "not yet");
+    first
+        .executor()
+        .advance_clock(std::time::Duration::from_secs(2));
+    first.run_until_parked();
+    assert_eq!(backup_files(data.path()).len(), 1);
+
+    // Without backups of unsaved changes, there is no timer.
+    let other = tempfile::tempdir().unwrap();
+    set_up(cx, other.path(), |settings| {
+        settings.session.backup_unsaved = false;
+    });
+    let (workspace, second) = launch(cx);
+    workspace.update(second, |workspace, cx| workspace.start_backups(cx));
+    second.simulate_input("typed");
+    second
+        .executor()
+        .advance_clock(std::time::Duration::from_secs(60));
+    second.run_until_parked();
+    assert!(backup_files(other.path()).is_empty());
 }

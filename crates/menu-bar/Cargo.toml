@@ -1,7 +1,7 @@
 [package]
 name = "birchpad-menu-bar"
 description = "The menu bar Birchpad draws in its window on Windows and Linux, used with the mouse or the keyboard as Windows menus are."
-version.workspace = true
+version = "0.2.5"
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true

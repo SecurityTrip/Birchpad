@@ -27,6 +27,9 @@ jobs:
       prerelease: ${{ steps.version.outputs.prerelease }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          # The tags and their history, for the crate versions below.
+          fetch-depth: 0
       - name: Check the tag against the workspace version
         id: version
         shell: bash
@@ -51,6 +54,11 @@ jobs:
             echo "channel=$channel"
             echo "prerelease=$prerelease"
           } >> "$GITHUB_OUTPUT"
+      - uses: actions-rust-lang/setup-rust-toolchain@v2
+      # A library crate's version rose since the last release only if the crate changed
+      # (CONTRIBUTING.md, Versions).
+      - name: Check the crate versions
+        run: cargo run -q -p birchpad-release-tool --locked -- crate-versions
 
   build:
     needs: prepare

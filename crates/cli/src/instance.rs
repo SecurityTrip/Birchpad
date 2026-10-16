@@ -433,4 +433,17 @@ mod tests {
             Address::for_installation(Path::new("/home/u/.local/share/birchpad"))
         );
     }
+
+    #[test]
+    fn a_socket_that_cannot_be_made_means_running_alone() {
+        let dir = tempfile::tempdir().unwrap();
+        // The socket's folder would be inside a file.
+        let file = dir.path().join("file");
+        std::fs::write(&file, "").unwrap();
+        let address = Address::File(file.join("sub").join("test.sock"));
+        assert!(matches!(
+            start(&address, &CommandLine::default()),
+            Instance::Standalone(_)
+        ));
+    }
 }

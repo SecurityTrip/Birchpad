@@ -366,4 +366,24 @@ mod tests {
         );
         assert_eq!(resolved.settings.cloud.folder, cloud.display().to_string());
     }
+
+    #[test]
+    fn without_user_settings_there_is_no_cloud_folder_to_follow() {
+        let paths = ConfigPaths {
+            user_settings: None,
+            ..ConfigPaths::default()
+        };
+        assert_eq!(paths.clone().following_cloud(), paths);
+    }
+
+    #[test]
+    fn the_running_executable_is_not_portable_without_its_marker() {
+        // The test executable has no marker next to it.
+        let current = ConfigPaths::current();
+        assert!(!current.portable);
+        assert_eq!(current, ConfigPaths::platform());
+        // Reading the platform's files never fails: missing or unreadable ones are reported.
+        let settings = load_platform_settings();
+        assert!(settings.diagnostics.iter().all(|d| !d.message.is_empty()));
+    }
 }

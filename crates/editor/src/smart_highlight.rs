@@ -296,6 +296,101 @@ mod tests {
         assert!(highlights(&workspace, cx).is_empty());
     }
 
+    #[gpui_kit::test]
+    fn selections_up_to_the_longest_token_are_highlighted(cx: &mut TestAppContext) {
+        let (workspace, cx) = open_workspace(cx);
+        settings(cx, |s| s.highlighting.smart.whole_word = false);
+        let token = "y".repeat(MAX_TOKEN + 1);
+        let view = view(&workspace, cx);
+        view.update(cx, |view, cx| {
+            view.insert(&token, crate::LastEdit::None, cx)
+        });
+        let query = |range: ByteRange<usize>, cx: &mut VisualTestContext| {
+            view.update(cx, |view, cx| {
+                view.selection = Selection::single(Range::new(range.start, range.end));
+                let text = view.text(cx).clone();
+                view.smart_highlight_query(&text, cx)
+                    .map(|query| query.pattern.len())
+            })
+        };
+        assert_eq!(
+            query(0..MAX_TOKEN, cx),
+            Some(MAX_TOKEN),
+            "the longest token"
+        );
+        assert_eq!(query(0..MAX_TOKEN + 1, cx), None, "a byte more");
+        assert_eq!(query(3..3, cx), None, "nothing selected");
+        assert_eq!(query(3..4, cx), Some(1));
+    }
+
+    #[gpui_kit::test]
+    fn a_search_is_reused_while_it_covers_the_shown_text(cx: &mut TestAppContext) {
+        let (workspace, cx) = open_workspace(cx);
+        let text = "word other word
+"
+        .repeat(20_000);
+        let view = view(&workspace, cx);
+        view.update(cx, |view, cx| view.insert(&text, crate::LastEdit::None, cx));
+        select(&workspace, 0..4, cx);
+        let rope = view.read_with(cx, |view, cx| view.text(cx).clone());
+        let finish = |shown: &[ByteRange<usize>], cx: &mut VisualTestContext| {
+            // A frame searches for at most its budget; the rest is left to the next ones.
+            let mut frames = 0;
+            while view.update(cx, |view, cx| view.update_smart_highlight(shown, &rope, cx)) {
+                frames += 1;
+                assert!(frames < 10_000, "the search ends");
+            }
+            view.read_with(cx, |view, _| {
+                let smart = view.smart_highlight.as_ref().unwrap();
+                (smart.matches.iter().count(), smart.scans.len())
+            })
+        };
+        // The whole text shown at once: two words a line.
+        assert_eq!(finish(&[0..rope.len()], cx), (40_000, 1));
+        // Less of it is answered from the same result, without a new search.
+        assert_eq!(finish(&[16..32], cx), (40_000, 1));
+        // An edit is a new revision: searched again, around the shown text only.
+        view.update(cx, |view, cx| {
+            view.selection = Selection::single(Range::new(rope.len(), rope.len()));
+            view.insert("word", crate::LastEdit::None, cx);
+            view.selection = Selection::single(Range::new(0, 4));
+        });
+        let rope = view.read_with(cx, |view, cx| view.text(cx).clone());
+        let (found, scans) = view.update(cx, |view, cx| {
+            while view.update_smart_highlight(&[160_000..160_016], &rope, cx) {}
+            let smart = view.smart_highlight.as_ref().unwrap();
+            (smart.matches.iter().count(), smart.scans.len())
+        });
+        assert_eq!(scans, 1);
+        assert!((1..40_000).contains(&found), "{found}");
+    }
+
+    #[test]
+    fn search_ranges_keep_to_characters() {
+        // Two-byte characters: a margin never ends inside one.
+        let text = Rope::from_str(&"é".repeat(MARGIN));
+        let ranges = search_ranges(&[MARGIN + 1..MARGIN + 3], &text);
+        assert_eq!(ranges.len(), 1);
+        let range = ranges[0].clone();
+        assert!(text.is_char_boundary(range.start) && text.is_char_boundary(range.end));
+        assert_eq!(range, 0..text.len());
+        // Nothing shown, nothing searched.
+        assert!(search_ranges(&[], &text).is_empty());
+        // Ranges that only touch once extended are merged.
+        let text = Rope::from_str(&"x".repeat(10 * MARGIN));
+        assert_eq!(
+            search_ranges(&[3 * MARGIN..3 * MARGIN, 5 * MARGIN..5 * MARGIN], &text),
+            [2 * MARGIN..6 * MARGIN]
+        );
+        assert_eq!(
+            search_ranges(
+                &[3 * MARGIN..3 * MARGIN, 5 * MARGIN + 1..5 * MARGIN + 1],
+                &text
+            ),
+            [2 * MARGIN..4 * MARGIN, 4 * MARGIN + 1..6 * MARGIN + 1]
+        );
+    }
+
     #[test]
     fn search_ranges_extend_and_merge() {
         let text = Rope::from_str(&"x".repeat(100_000));
@@ -356,10 +451,23 @@ mod tests {
         let with_smart = frame(cx);
         settings(cx, |s| s.highlighting.smart.enabled = false);
         let without = frame(cx);
-        eprintln!(
-            "10 000 lines, {} bytes shown, {found} highlights: search {cold:?} (cached {cached:?}); \
-             frame {with_smart:?} with smart highlighting, {without:?} without",
-            shown[0].len()
+        eprintln!("{} bytes shown, {found} highlights", shown[0].len());
+        let within = birchpad_core::timing::within;
+        within(
+            "smart highlighting, a search",
+            cold,
+            Duration::from_millis(10),
         );
+        within(
+            "smart highlighting, cached",
+            cached,
+            Duration::from_millis(1),
+        );
+        within(
+            "a frame with smart highlighting",
+            with_smart,
+            Duration::from_millis(50),
+        );
+        within("a frame without", without, Duration::from_millis(50));
     }
 }

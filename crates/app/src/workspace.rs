@@ -1259,6 +1259,8 @@ pub(crate) mod tests {
     ) -> (Entity<Workspace>, &mut VisualTestContext) {
         cx.update(|cx| {
             gpui_kit::init(cx);
+            // Dialogs open in place instead of sliding in over a quarter of a second.
+            cx.set_reduce_motion(true);
             let mut settings = birchpad_config::resolve(birchpad_config::Sources::default());
             // Tests type brackets and press Enter as before auto-completion; its own tests turn
             // it on (`crate::editor::completion::tests`).
@@ -1403,8 +1405,8 @@ pub(crate) mod tests {
     }
 
     /// Clicks the element drawn with this debug selector, with `button`, once it stands still:
-    /// dialogs slide in over a quarter of a second of real time, and a frame drawn between
-    /// finding the element and clicking it would move it from under the mouse on a slow run.
+    /// the test window turns motion off, so dialogs open in place, but something that still
+    /// moves between finding it and clicking it would leave the mouse behind on a slow run.
     #[track_caller]
     pub(crate) fn click_on(
         selector: &'static str,
@@ -1415,7 +1417,6 @@ pub(crate) mod tests {
             panic!("{selector} is not drawn");
         };
         for _ in 0..100 {
-            std::thread::sleep(std::time::Duration::from_millis(10));
             cx.update(|window, _| window.refresh());
             cx.run_until_parked();
             let Some(now) = cx.debug_bounds(selector) else {
@@ -1425,6 +1426,7 @@ pub(crate) mod tests {
                 break;
             }
             bounds = now;
+            std::thread::sleep(std::time::Duration::from_millis(10));
         }
         let center = bounds.center();
         cx.simulate_mouse_down(center, button, Modifiers::none());

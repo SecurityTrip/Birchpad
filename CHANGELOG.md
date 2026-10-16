@@ -6,6 +6,25 @@ version's release notes from its section here.
 
 ## [Unreleased]
 
+### Added
+
+- Update from the window that announces an update: Update downloads it, checks it against the
+  signed manifest, installs it and restarts with your documents, with a progress bar in place
+  of the buttons; Help > Check for Updates keeps its window open with the same bar. A download
+  no window shows (automatic updates) has a bar in the status bar, whose tooltip says how much
+  has arrived or that it stalled.
+- "Don't show again" in the window that announces an update turns update checks off.
+
+### Fixed
+
+- Update downloads over a slow connection no longer fail after 30 seconds: a download fails
+  only when nothing arrives for a minute, and says so.
+
+### Changed
+
+- Fewer dependencies: x11rb 0.13 and similar 2.7, the versions GPUI already builds, and
+  yaml-rust2 without its encoding detection; 13 crates fewer in the build.
+
 ## [0.2.5] - 2026-10-15
 
 ### Changed

@@ -32,8 +32,11 @@ pub const DEFAULT_MANIFEST: &str =
 
 /// Manifests larger than this are rejected.
 const MAX_MANIFEST_SIZE: u64 = 1024 * 1024;
-/// A request that sends nothing for this long fails.
+/// Connecting, or waiting for the answer to begin, fails after this long.
 const TIMEOUT: Duration = Duration::from_secs(30);
+/// A body that receives nothing for this long fails as stalled. There is no limit on the time a
+/// body takes as a whole: while bytes arrive, however slowly, the download goes on.
+pub const STALL: Duration = Duration::from_secs(60);
 
 /// A release newer than the running version.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -212,16 +215,19 @@ pub fn hex(bytes: &[u8]) -> String {
 /// and the proxy from `HTTPS_PROXY`/`ALL_PROXY` or, on Windows, the system proxy settings.
 pub struct HttpTransport {
     agent: ureq::Agent,
+    stall: Duration,
 }
 
 impl HttpTransport {
     /// Creating the transport does not touch the network.
     pub fn new(user_agent: &str) -> Self {
-        Self::build(user_agent, ureq::Proxy::try_from_env())
+        Self::build(user_agent, ureq::Proxy::try_from_env(), STALL)
     }
 
-    fn build(user_agent: &str, proxy: Option<ureq::Proxy>) -> Self {
+    fn build(user_agent: &str, proxy: Option<ureq::Proxy>, stall: Duration) -> Self {
         use ureq::tls::{RootCerts, TlsConfig, TlsProvider};
+        use ureq::unversioned::resolver::DefaultResolver;
+        use ureq::unversioned::transport::{Connector as _, DefaultConnector};
 
         let crypto = Arc::new(rustls::crypto::ring::default_provider());
         let tls = TlsConfig::builder()
@@ -229,16 +235,99 @@ impl HttpTransport {
             .root_certs(RootCerts::PlatformVerifier)
             .unversioned_rustls_crypto_provider(crypto)
             .build();
-        let agent = ureq::Agent::config_builder()
+        // No `timeout_recv_body`: it bounds the body as a whole. Each read waits at most `stall`.
+        let config = ureq::Agent::config_builder()
             .tls_config(tls)
             .proxy(proxy)
             .timeout_connect(Some(TIMEOUT))
             .timeout_recv_response(Some(TIMEOUT))
-            .timeout_recv_body(Some(TIMEOUT))
             .user_agent(user_agent)
-            .build()
-            .new_agent();
-        Self { agent }
+            .build();
+        let connector = DefaultConnector::new().chain(stall::Connector(stall));
+        let agent = ureq::Agent::with_parts(config, connector, DefaultResolver::default());
+        Self { agent, stall }
+    }
+
+    /// A failed read of a body, said as a stall when nothing arrived in time.
+    fn read_error(&self, error: &std::io::Error) -> String {
+        let timed_out = error.kind() == std::io::ErrorKind::TimedOut
+            || error
+                .get_ref()
+                .and_then(|inner| inner.downcast_ref::<ureq::Error>())
+                .is_some_and(|inner| matches!(inner, ureq::Error::Timeout(_)));
+        if timed_out {
+            birchpad_i18n::t!("update.stalled", seconds = self.stall.as_secs())
+        } else {
+            error.to_string()
+        }
+    }
+}
+
+mod stall {
+    //! Reads that wait at most a given time for the next bytes, whatever the timeouts ureq
+    //! would allow them: a stalled body fails without a limit on the body as a whole.
+
+    use std::time::Duration;
+
+    use ureq::Timeout;
+    use ureq::unversioned::transport::{self, Buffers, ConnectionDetails, NextTimeout, Transport};
+
+    #[derive(Debug)]
+    pub(super) struct Connector(pub(super) Duration);
+
+    impl transport::Connector<Box<dyn Transport>> for Connector {
+        type Out = Stalling;
+
+        fn connect(
+            &self,
+            _: &ConnectionDetails,
+            chained: Option<Box<dyn Transport>>,
+        ) -> Result<Option<Self::Out>, ureq::Error> {
+            Ok(chained.map(|inner| Stalling {
+                inner,
+                stall: self.0,
+            }))
+        }
+    }
+
+    #[derive(Debug)]
+    pub(super) struct Stalling {
+        inner: Box<dyn Transport>,
+        stall: Duration,
+    }
+
+    impl Transport for Stalling {
+        fn buffers(&mut self) -> &mut dyn Buffers {
+            self.inner.buffers()
+        }
+
+        fn transmit_output(
+            &mut self,
+            amount: usize,
+            timeout: NextTimeout,
+        ) -> Result<(), ureq::Error> {
+            self.inner.transmit_output(amount, timeout)
+        }
+
+        fn await_input(&mut self, timeout: NextTimeout) -> Result<bool, ureq::Error> {
+            let timeout = if *timeout.after > self.stall {
+                NextTimeout {
+                    after: self.stall.into(),
+                    reason: Timeout::RecvBody,
+                }
+            } else {
+                timeout
+            };
+            self.inner.await_input(timeout)
+        }
+
+        fn is_open(&mut self) -> bool {
+            self.inner.is_open()
+        }
+
+        fn is_tls(&self) -> bool {
+            self.inner.is_tls()
+        }
     }
 }
 
@@ -257,7 +346,7 @@ impl Transport for HttpTransport {
             .with_config()
             .limit(MAX_MANIFEST_SIZE + 1)
             .read_to_vec()
-            .map_err(|error| error.to_string())?;
+            .map_err(|error| self.read_error(&error.into_io()))?;
         if body.len() as u64 > MAX_MANIFEST_SIZE {
             return Err(format!("larger than {MAX_MANIFEST_SIZE} bytes"));
         }
@@ -289,7 +378,7 @@ impl Transport for HttpTransport {
         loop {
             let read = reader
                 .read(&mut buffer)
-                .map_err(|error| error.to_string())?;
+                .map_err(|error| self.read_error(&error))?;
             if read == 0 {
                 break;
             }
@@ -541,7 +630,7 @@ mod tests {
 
     #[test]
     fn http_transport_reads_and_downloads() {
-        let transport = HttpTransport::build("Birchpad/0.1.0 (test)", None);
+        let transport = HttpTransport::build("Birchpad/0.1.0 (test)", None, STALL);
         let (base, server) = serve_once(signed(&["1.0.0"]));
         let body = transport.get(&format!("{base}/manifest")).unwrap();
         assert!(manifest::verify(&body, &[key().verifying_key()], NOW, 0).is_ok());
@@ -590,7 +679,7 @@ mod tests {
 
     #[test]
     fn manifests_up_to_the_limit_are_read_and_larger_ones_refused() {
-        let transport = HttpTransport::build("Birchpad/0.1.0 (test)", None);
+        let transport = HttpTransport::build("Birchpad/0.1.0 (test)", None, STALL);
         let limit = MAX_MANIFEST_SIZE as usize;
         let (base, server) = serve_once(vec![b'{'; limit]);
         assert_eq!(transport.get(&format!("{base}/m")).unwrap().len(), limit);
@@ -608,7 +697,7 @@ mod tests {
     #[test]
     fn http_errors_and_absent_servers_are_errors() {
         let transport = HttpTransport::new("Birchpad/0.1.0 (test)");
-        let transport_without_proxy = HttpTransport::build("Birchpad/0.1.0 (test)", None);
+        let transport_without_proxy = HttpTransport::build("Birchpad/0.1.0 (test)", None, STALL);
         let (base, server) = serve_status(404, b"not here".to_vec());
         assert!(transport_without_proxy.get(&format!("{base}/m")).is_err());
         server.join().unwrap();
@@ -623,6 +712,104 @@ mod tests {
                 .is_err()
         );
         drop(transport);
+    }
+
+    /// Answers one request with `size` bytes, sent in `chunks` pieces `pause` apart; after
+    /// `stop_after` pieces it holds the connection without sending more for `hold`.
+    fn serve_slowly(
+        size: usize,
+        chunks: usize,
+        pause: Duration,
+        stop_after: Option<(usize, Duration)>,
+    ) -> (String, std::thread::JoinHandle<()>) {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let address = listener.local_addr().unwrap();
+        let server = std::thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            for line in BufReader::new(&stream).lines() {
+                if line.unwrap().is_empty() {
+                    break;
+                }
+            }
+            write!(
+                stream,
+                "HTTP/1.1 200 OK
+Content-Length: {size}
+Connection: close
+
+"
+            )
+            .unwrap();
+            let piece = size / chunks;
+            for sent in 0..chunks {
+                if let Some((after, hold)) = stop_after
+                    && sent == after
+                {
+                    std::thread::sleep(hold);
+                    return;
+                }
+                let len = if sent + 1 == chunks {
+                    size - piece * sent
+                } else {
+                    piece
+                };
+                if stream.write_all(&vec![b'x'; len]).is_err() {
+                    return;
+                }
+                stream.flush().ok();
+                std::thread::sleep(pause);
+            }
+        });
+        (format!("http://{address}"), server)
+    }
+
+    #[test]
+    fn a_slow_but_steady_download_completes_and_a_stalled_one_fails() {
+        let stall = Duration::from_secs(1);
+        let transport = HttpTransport::build("Birchpad/0.1.0 (test)", None, stall);
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("package.nupkg");
+
+        // 30 pieces 100 ms apart: three seconds, three times the stall limit, each read in time.
+        let (base, server) = serve_slowly(20_000, 30, Duration::from_millis(100), None);
+        let reports = Mutex::new(Vec::new());
+        transport
+            .download(&format!("{base}/p"), &path, 20_000, &|received| {
+                reports.lock().unwrap().push(received);
+            })
+            .unwrap();
+        server.join().unwrap();
+        assert_eq!(std::fs::metadata(&path).unwrap().len(), 20_000);
+        let reports = reports.into_inner().unwrap();
+        assert!(reports.len() >= 10, "the progress moves: {reports:?}");
+        assert!(reports.is_sorted());
+        assert_eq!(reports.last(), Some(&20_000));
+
+        // A piece just inside the limit still counts as arriving.
+        let (base, server) = serve_slowly(4_000, 3, Duration::from_millis(800), None);
+        transport
+            .download(&format!("{base}/p"), &path, 4_000, &|_| {})
+            .unwrap();
+        server.join().unwrap();
+
+        // Half sent, then nothing for longer than the limit: stalled, well before the server
+        // gives up.
+        let hold = Duration::from_secs(3);
+        let (base, server) = serve_slowly(20_000, 20, Duration::ZERO, Some((10, hold)));
+        let started = std::time::Instant::now();
+        let error = transport
+            .download(&format!("{base}/p"), &path, 20_000, &|_| {})
+            .unwrap_err();
+        assert!(started.elapsed() < hold, "{:?}", started.elapsed());
+        assert_eq!(error, "the download stalled: nothing arrived in 1 s");
+        // Not waited for: it only sleeps out its hold.
+        drop(server);
+
+        // The same for a manifest.
+        let (base, server) = serve_slowly(1_000, 2, Duration::ZERO, Some((1, hold)));
+        let error = transport.get(&format!("{base}/m")).unwrap_err();
+        assert!(error.contains("stalled"), "{error}");
+        drop(server);
     }
 
     /// A transport that answers with the same bytes, downloading the default way.

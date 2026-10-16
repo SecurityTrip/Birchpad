@@ -219,7 +219,7 @@ impl Workspace {
         });
     }
 
-    fn files_running(&self, cx: &App) -> bool {
+    pub(crate) fn files_running(&self, cx: &App) -> bool {
         self.find_bar.read(cx).files_running.is_some()
     }
 
@@ -449,6 +449,20 @@ impl Workspace {
     /// Replace in Files, after asking: open documents are changed in their tabs, the other
     /// files on disk.
     pub(crate) fn replace_in_files(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.replace_in_files_asking(true, window, cx);
+    }
+
+    /// Replace in Files as if the question had been answered Replace.
+    #[cfg(feature = "e2e")]
+    pub(crate) fn replace_in_files_without_asking(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.replace_in_files_asking(false, window, cx);
+    }
+
+    fn replace_in_files_asking(&mut self, ask: bool, window: &mut Window, cx: &mut Context<Self>) {
         const WHAT: &str = "Replace in Files";
         if self.files_running(cx) {
             return;
@@ -462,7 +476,8 @@ impl Workspace {
         let template = self.find_bar.read(cx).replacement(cx);
         let answers = [t!("common.replace"), t!("common.cancel")];
         let answers: Vec<&str> = answers.iter().map(String::as_str).collect();
-        let answer = window.prompt(
+        let answer = ask.then(|| {
+            window.prompt(
             PromptLevel::Warning,
             &t!(
                 "find-in-files.replace-question",
@@ -471,11 +486,14 @@ impl Workspace {
             Some(&t!("find-in-files.open-documents-are-changed-in-their-tabs-where-undo-takes-the-change-back-other-files-are-changed-on-disk")),
             &answers,
             cx,
-        );
+            )
+        });
         let ansi = AppState::global(cx).ansi;
         let recovery = AppState::global(cx).recovery_dir();
         cx.spawn(async move |this, cx| {
-            if answer.await != Ok(0) {
+            if let Some(answer) = answer
+                && answer.await != Ok(0)
+            {
                 return;
             }
             let Ok(cancel) = this.update(cx, |this, cx| this.start_files(cx)) else {

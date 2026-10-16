@@ -46,6 +46,10 @@ pub const TARGETS: &[(&str, Check)] = &[
     ("json", json),
     ("xml", xml),
     ("hex_dump", hex_dump),
+    ("spell_dictionary", spell_dictionary),
+    ("search_query", search_query),
+    ("plugin_calls", plugin_calls),
+    ("rhai_script", rhai_script),
 ];
 
 /// Every encoding a file can be opened in.
@@ -607,4 +611,221 @@ pub fn hex_dump(data: &[u8]) -> bool {
         bytes
     );
     true
+}
+
+/// A Hunspell dictionary: the `.aff` file, a NUL byte, then the `.dic` file. A dictionary that
+/// reads checks and suggests words, and finds the misspelled ones in a text, without a panic.
+pub fn spell_dictionary(data: &[u8]) -> bool {
+    let text = String::from_utf8_lossy(data);
+    let (aff, dic) = text.split_once('\0').unwrap_or((&text, ""));
+    let Ok(mut speller) = birchpad_tools::spell::Speller::new(aff, dic) else {
+        return false;
+    };
+    let words: Vec<&str> = dic
+        .lines()
+        .skip(1)
+        .take(8)
+        .filter_map(|line| line.split(['/', '\t', ' ']).next())
+        .chain(["", "a", "Word", "naïve", "x-y", "o'clock"])
+        .collect();
+    for word in &words {
+        speller.check(word);
+        // Suggestions are slow by design: a few short words.
+        if word.chars().count() <= 12 {
+            speller.suggest(word);
+        }
+    }
+    let sample: String = dic.chars().take(500).collect();
+    for range in speller.misspelled(&sample) {
+        assert!(sample.is_char_boundary(range.start) && sample.is_char_boundary(range.end));
+    }
+    speller.add("zzyzx");
+    assert!(speller.check("zzyzx"));
+    true
+}
+
+/// A search: the first byte chooses the mode and options; then the pattern, a NUL, the text, a
+/// NUL and the replacement. A query that reads finds matches in order, inside the text and on
+/// character boundaries, and replaces them; the pattern read as Find in Files' filters takes
+/// or leaves out any name.
+pub fn search_query(data: &[u8]) -> bool {
+    use birchpad_core::Rope;
+    use birchpad_core::search::{Query, SearchMode, Searcher};
+
+    let Some((&flags, rest)) = data.split_first() else {
+        return false;
+    };
+    let text = String::from_utf8_lossy(rest);
+    let mut parts = text.splitn(3, '\0');
+    let (pattern, haystack, template) = (
+        parts.next().unwrap_or_default(),
+        parts.next().unwrap_or_default(),
+        parts.next().unwrap_or_default(),
+    );
+    if let Ok(filters) = birchpad_io::Filters::parse(pattern) {
+        for name in haystack.split(['/', '\\', '\n']).take(16) {
+            filters.takes_file(name);
+            filters.leaves_out_folder(name, flags & 0x20 != 0);
+        }
+    }
+    let query = Query {
+        pattern: pattern.to_owned(),
+        match_case: flags & 0x04 != 0,
+        whole_word: flags & 0x08 != 0,
+        mode: match flags % 3 {
+            0 => SearchMode::Normal,
+            1 => SearchMode::Extended,
+            _ => SearchMode::Regex,
+        },
+        dot_matches_newline: flags & 0x10 != 0,
+    };
+    let Ok(searcher) = Searcher::new(&query) else {
+        return false;
+    };
+    let rope = Rope::from_str(haystack);
+    let on_boundaries = |range: &std::ops::Range<usize>| {
+        range.start <= range.end
+            && range.end <= haystack.len()
+            && haystack.is_char_boundary(range.start)
+            && haystack.is_char_boundary(range.end)
+    };
+    let found = searcher.find_all(&rope);
+    for pair in found.windows(2) {
+        assert!(pair[0].start <= pair[1].start, "in order: {found:?}");
+    }
+    for range in &found {
+        assert!(
+            on_boundaries(range),
+            "{range:?} in {} bytes",
+            haystack.len()
+        );
+        assert!(
+            searcher.is_match(&rope, range.clone()),
+            "{range:?} is a match"
+        );
+    }
+    for (range, _) in searcher.replacements(&rope, 0..rope.len(), template) {
+        assert!(on_boundaries(&range), "{range:?}");
+    }
+    true
+}
+
+/// The calls a plugin makes into the host, with any arguments: the text up to the first NUL
+/// byte is the document, each byte after it chooses a call and the bytes after it its
+/// arguments. Every call is done or refused; the document stays text; what the calls did,
+/// applied to the document as it was, gives the text they left.
+pub fn plugin_calls(data: &[u8]) -> bool {
+    use birchpad_core::{Rope, Selection};
+    use birchpad_plugin::{DocumentState, Session};
+
+    let (document, calls) = match data.iter().position(|&byte| byte == 0) {
+        Some(at) => (&data[..at], &data[at + 1..]),
+        None => (data, &[][..]),
+    };
+    let original = Rope::from_str(&String::from_utf8_lossy(document));
+    let mut session = Session::new(DocumentState {
+        text: original.clone(),
+        selection: Selection::point(0),
+        path: None,
+        language: "text".into(),
+    });
+    let mut bytes = calls.iter().copied();
+    let number = |bytes: &mut dyn Iterator<Item = u8>| {
+        let high = usize::from(bytes.next().unwrap_or(0));
+        let low = usize::from(bytes.next().unwrap_or(0));
+        // Past the end now and then.
+        (high << 8 | low) % 600
+    };
+    let word = |bytes: &mut dyn Iterator<Item = u8>| {
+        let len = usize::from(bytes.next().unwrap_or(0) % 12);
+        let raw: Vec<u8> = bytes.take(len).collect();
+        String::from_utf8_lossy(&raw).into_owned()
+    };
+    let mut done = 0;
+    while let Some(call) = bytes.next() {
+        let accepted = match call % 9 {
+            0 => {
+                let (start, end) = (number(&mut bytes), number(&mut bytes));
+                session.text_range(start, end).is_ok()
+            }
+            1 => {
+                let (start, end) = (number(&mut bytes), number(&mut bytes));
+                session.replace(start, end, &word(&mut bytes)).is_ok()
+            }
+            2 => session.set_text(&word(&mut bytes)).is_ok(),
+            3 => session.insert(&word(&mut bytes)).is_ok(),
+            4 => {
+                let ranges = [
+                    (number(&mut bytes), number(&mut bytes)),
+                    (number(&mut bytes), number(&mut bytes)),
+                ];
+                let count = 1 + usize::from(bytes.next().unwrap_or(0) % 2);
+                session.set_selections(&ranges[..count]).is_ok()
+            }
+            5 => {
+                let id = match bytes.next().unwrap_or(0) % 3 {
+                    0 => "edit.select-all".to_owned(),
+                    1 => "view.word-wrap".to_owned(),
+                    _ => word(&mut bytes),
+                };
+                session.run_command_json(&id, &word(&mut bytes)).is_ok()
+            }
+            6 => {
+                session.message(&word(&mut bytes));
+                true
+            }
+            7 => {
+                let lines = vec![word(&mut bytes), word(&mut bytes)];
+                session.show_panel(&word(&mut bytes), lines);
+                true
+            }
+            _ => {
+                let text = session.text();
+                assert_eq!(text.len(), session.len());
+                let selected = session.selected_text();
+                assert!(selected.len() <= text.len() * 2 + 1);
+                true
+            }
+        };
+        done += usize::from(accepted);
+    }
+    let text = session.text();
+    let len = text.len();
+    for (anchor, head) in session.selections() {
+        assert!(anchor <= len && head <= len, "{anchor}, {head} in {len}");
+    }
+    let outcome = session.finish();
+    let mut applied = original;
+    if let Some(transaction) = &outcome.transaction {
+        transaction.changes().apply(&mut applied);
+    }
+    assert_eq!(applied.to_string(), text);
+    done > 0 || calls.is_empty()
+}
+
+/// A Rhai script, run over a small document within the limits on operations, strings, arrays,
+/// maps, calls and expressions: it finishes or fails, never hangs or crashes Birchpad, and what
+/// it did applies to the document.
+pub fn rhai_script(data: &[u8]) -> bool {
+    use birchpad_core::{Rope, Selection};
+    use birchpad_plugin::{DocumentState, Session};
+
+    let source = String::from_utf8_lossy(data);
+    let original = Rope::from_str("one two\nthree\n");
+    let session = Session::new(DocumentState {
+        text: original.clone(),
+        selection: Selection::point(4),
+        path: Some("notes.txt".into()),
+        language: "text".into(),
+    });
+    match birchpad_plugin::script::run_limited("fuzz", &source, session, 200_000) {
+        Ok(outcome) => {
+            let mut text = original;
+            if let Some(transaction) = &outcome.transaction {
+                transaction.changes().apply(&mut text);
+            }
+            true
+        }
+        Err(_) => false,
+    }
 }

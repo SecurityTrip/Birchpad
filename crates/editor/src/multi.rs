@@ -1170,8 +1170,11 @@ mod gpui_tests {
         for _ in 0..20 {
             cx.simulate_input("x");
         }
-        let per_key = started.elapsed() / 20;
-        eprintln!("typing with 1000 carets: {per_key:?} per keystroke, with a frame");
+        birchpad_core::timing::within(
+            "typing with 1000 carets, a keystroke with a frame",
+            started.elapsed() / 20,
+            std::time::Duration::from_millis(500),
+        );
         assert!(active_text(&workspace, cx).starts_with("somexxxxxxxxxxxxxxxxxxxx text"));
     }
 }

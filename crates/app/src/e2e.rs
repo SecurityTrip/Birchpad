@@ -10,8 +10,16 @@
 //! [[step]]
 //! command = "file.save"          # a command of the registry, with optional args
 //! [[step]]
-//! report = "after-save.json"     # the tabs, their texts and the caret, as JSON
+//! wait = 2000                    # milliseconds, for what happens outside: another launch
+//! [[step]]
+//! files = { pattern = "x", folder = ".", filters = "*.txt" }       # Find in Files
+//! [[step]]
+//! files = { pattern = "x", folder = ".", replace = "y" }           # Replace in Files
+//! [[step]]
+//! report = "after-save.json"     # the tabs, their texts, the caret, Find in Files' results
 //! ```
+//!
+//! Replace in Files does not ask first here: its question is the system's dialog.
 //!
 //! A step that fails is recorded in the next report. Quitting is a step like any other
 //! (`command = "file.exit"`); a script that does not quit leaves the application running.
@@ -46,7 +54,20 @@ struct Step {
     text: Option<String>,
     command: Option<String>,
     args: Option<serde_json::Value>,
+    wait: Option<u64>,
+    files: Option<FilesStep>,
     report: Option<PathBuf>,
+}
+
+/// Find in Files, or Replace in Files with `replace`.
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct FilesStep {
+    pattern: String,
+    folder: PathBuf,
+    #[serde(default)]
+    filters: String,
+    replace: Option<String>,
 }
 
 /// What the window shows, for the test to check.
@@ -57,6 +78,9 @@ struct Report {
     active: Option<usize>,
     /// The steps that failed since the last report.
     errors: Vec<String>,
+    /// The rows of the search results panel, and the find panel's message.
+    results: Vec<String>,
+    status: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -96,6 +120,12 @@ async fn run(
     let mut errors = Vec::new();
     for (index, step) in script.step.into_iter().enumerate() {
         settle(window, workspace, cx).await;
+        if let Some(wait) = step.wait {
+            cx.background_executor()
+                .timer(Duration::from_millis(wait))
+                .await;
+            continue;
+        }
         if let Some(report_path) = &step.report {
             let errors = std::mem::take(&mut errors);
             let report = cx.update_window(window, |_, _, cx| report(workspace, errors, cx))?;
@@ -104,7 +134,7 @@ async fn run(
             continue;
         }
         let done = cx.update_window(window, |_, window, cx| {
-            perform(&step, workspace, window, cx)
+            perform(&step, dir, workspace, window, cx)
         })?;
         if let Err(error) = done {
             errors.push(format!("step {}: {error:#}", index + 1));
@@ -113,17 +143,19 @@ async fn run(
     Ok(())
 }
 
-/// Waits for a frame or two, then until no document is still being read or written (at most ten
-/// seconds): a save runs in the background, and a slow disk can take longer than a frame.
+/// Waits for a frame or two, then until no document is still being read or written and no Find
+/// or Replace in Files runs (at most ten seconds): a save runs in the background, and a slow disk
+/// can take longer than a frame.
 async fn settle(window: AnyWindowHandle, workspace: &Entity<Workspace>, cx: &mut AsyncApp) {
     cx.background_executor().timer(SETTLE).await;
     for _ in 0..200 {
         let busy = cx.update_window(window, |_, _, cx| {
             let workspace = workspace.read(cx);
-            workspace.all_views(cx).iter().any(|view| {
-                let buffer = view.read(cx).buffer.read(cx);
-                buffer.loading_progress().is_some() || buffer.is_saving()
-            })
+            workspace.files_running(cx)
+                || workspace.all_views(cx).iter().any(|view| {
+                    let buffer = view.read(cx).buffer.read(cx);
+                    buffer.loading_progress().is_some() || buffer.is_saving()
+                })
         });
         if !matches!(busy, Ok(true)) {
             return;
@@ -136,6 +168,7 @@ async fn settle(window: AnyWindowHandle, workspace: &Entity<Workspace>, cx: &mut
 
 fn perform(
     step: &Step,
+    dir: &Path,
     workspace: &Entity<Workspace>,
     window: &mut Window,
     cx: &mut App,
@@ -173,6 +206,34 @@ fn perform(
             workspace.dispatch(&invocation, window, cx)
         })?;
     }
+    if let Some(files) = &step.files {
+        let folder = dir.join(&files.folder);
+        workspace.update(cx, |workspace, cx| {
+            workspace.find_bar.update(cx, |bar, cx| {
+                bar.show(
+                    crate::find::FindTab::FindInFiles,
+                    Some(files.pattern.clone()),
+                    None,
+                    window,
+                    cx,
+                );
+                bar.folder.follow_current_document = false;
+                bar.set_directory(&folder, window, cx);
+                bar.set_filters(&files.filters, window, cx);
+                if let Some(replace) = &files.replace {
+                    bar.replace_input_for_tests(replace, window, cx);
+                }
+            });
+            match files.replace {
+                Some(_) => workspace.replace_in_files_without_asking(window, cx),
+                None => {
+                    let bar = workspace.find_bar.clone();
+                    let event = crate::find::FindBarEvent::FindInFiles;
+                    workspace.on_find_bar_event(&bar, &event, window, cx);
+                }
+            }
+        });
+    }
     Ok(())
 }
 
@@ -199,5 +260,7 @@ fn report(workspace: &Entity<Workspace>, errors: Vec<String>, cx: &App) -> Repor
         tabs,
         active: active.and_then(|active| views.iter().position(|view| *view == active)),
         errors,
+        results: workspace.search_results.read(cx).rows_text(),
+        status: workspace.find_bar.read(cx).status_text(),
     }
 }
