@@ -446,7 +446,7 @@ floors in `.github/coverage-floors.toml` with its tests.
       `.github/dependabot.yml` holds resvg, similar and x11rb at GPUI's versions. base64 and
       roxmltree stay: both versions are built either way. `Cargo.lock` 1002 crates to 989;
       a clean debug build on Windows with 12 cores 608 s and 618 crates to 569 s and 607
-- [ ] 0.3.3 The window that announces an update: instead of Download, which opens the release
+- [x] 0.3.3 The window that announces an update: instead of Download, which opens the release
       page on GitHub, an Update button that does what Help > Update and Restart does (the
       application downloads the update, checks it against the signed manifest, installs it and
       starts again with the documents; once pressed, the bottom of the window, where the
@@ -469,7 +469,11 @@ floors in `.github/coverage-floors.toml` with its tests.
       both windows and in the status bar with its tooltip; a server that sends slowly but
       steadily for longer than the old limit completes, one that stops sending fails as
       stalled, a failed download leaves the application as it was and says why, the check
-      box with and without the button
+      box with and without the button. Done: each read of a body waits at most a minute
+      (`STALL`, a ureq connector over the default one) and none bounds the body as a whole; the
+      installer reports the bytes received; the announcement of a background check stays open
+      with the bar after Update, Help > Check for Updates' window too, and a window closed while
+      its download goes on leaves the bar to the status bar. `birchpad-update` 0.3.0
 - [ ] 6.22 The editor view (`editor/mod.rs`, 83.8%): smart highlighting (78.7%), the Edit menu's
       extras (81.2%), what clicks, drags and the keyboard do at the edges of the text, in
       wrapped and folded rows and with several carets
@@ -504,7 +508,8 @@ floors in `.github/coverage-floors.toml` with its tests.
 - [x] Versions: the workspace version, the application's, is 0.3.0; library crates have
       versions of their own, raised only in a release that changes them (CONTRIBUTING.md,
       Versions), checked by `birchpad-release crate-versions` and the release workflow. In
-      0.3.0 so far: config, core, editor, i18n, syntax and tools at 0.3.0, the others at 0.2.5
+      0.3.0 so far: config, core, editor, i18n, syntax, tools and update at 0.3.0, the others
+      at 0.2.5
 - [ ] Release 0.3.0: the workspace version (0.3.0, set when its branch opens, so that nightly
       builds are its pre-releases), `CHANGELOG.md` and this roadmap updated; the
       [release checklist](release-checklist.md) gone through

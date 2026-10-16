@@ -123,7 +123,7 @@ fn section(child: impl IntoElement) -> gpui_kit::Div {
 pub(crate) fn render<V: 'static>(
     info: Option<StatusInfo>,
     ansi: Encoding,
-    _: &mut Context<V>,
+    cx: &mut Context<V>,
 ) -> impl IntoElement {
     let mut bar = div()
         .flex()
@@ -135,13 +135,20 @@ pub(crate) fn render<V: 'static>(
         .border_color(crate::theme::paint(crate::theme::ui().border))
         .bg(crate::theme::paint(crate::theme::ui().surface))
         .text_size(px(12.));
+    // A download of an update that no window shows.
+    let update = crate::updates::Updates::download(cx)
+        .filter(|download| download.in_status_bar())
+        .cloned()
+        .map(|download| section(crate::updates::status_bar_item(download)));
     let Some(info) = info else {
-        return bar.child(
-            div()
-                .px_3()
-                .flex_1()
-                .child(t!("status-bar.normal-text-file")),
-        );
+        return bar
+            .child(
+                div()
+                    .px_3()
+                    .flex_1()
+                    .child(t!("status-bar.normal-text-file")),
+            )
+            .children(update);
     };
     bar = bar.child(
         div().px_3().flex_1().child(
@@ -153,6 +160,7 @@ pub(crate) fn render<V: 'static>(
     let [length, position, selection, eol, encoding, mode] = info.sections();
     let format = info.format;
     bar = bar
+        .children(update)
         .child(section(length))
         .child(section(position))
         .child(section(selection))
