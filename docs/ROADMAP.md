@@ -461,9 +461,12 @@ floors in `.github/coverage-floors.toml` with its tests.
       The same bar wherever an update is downloaded on request: in the window that announces
       an update found by a background check, and in Help > Check for Updates, whose window
       stays open after Update and Restart with the bar in place of its buttons (today both
-      show only a "Downloading" notification until the download ends or fails).
+      show only a "Downloading" notification until the download ends or fails). A download
+      that no window shows, the one `updates.mode = "auto"` starts by itself, has a bar in the
+      status bar; hovering it says what is happening (the version being downloaded, how much
+      of it has arrived, or that it is stalled), and it goes away once the update is ready.
       Tests: the button installs from a local server and the bar follows the download, in
-      both windows; a server that sends slowly but steadily for longer than the old limit
+      both windows and in the status bar with its tooltip; a server that sends slowly but steadily for longer than the old limit
       completes, one that stops sending fails as stalled, a failed download leaves the
       application as it was and says why, the check box with and without the button
 - [ ] 6.22 The editor view (`editor/mod.rs`, 83.8%): smart highlighting (78.7%), the Edit menu's
