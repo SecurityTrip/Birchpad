@@ -18,6 +18,7 @@ pub mod motion;
 pub mod ops;
 pub mod search;
 mod selection;
+pub mod timing;
 mod transaction;
 
 pub use change::{Assoc, ChangeSet, Edit, InvalidEdit, Operation, PosMapper};

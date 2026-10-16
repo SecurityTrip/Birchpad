@@ -451,10 +451,23 @@ mod tests {
         let with_smart = frame(cx);
         settings(cx, |s| s.highlighting.smart.enabled = false);
         let without = frame(cx);
-        eprintln!(
-            "10 000 lines, {} bytes shown, {found} highlights: search {cold:?} (cached {cached:?}); \
-             frame {with_smart:?} with smart highlighting, {without:?} without",
-            shown[0].len()
+        eprintln!("{} bytes shown, {found} highlights", shown[0].len());
+        let within = birchpad_core::timing::within;
+        within(
+            "smart highlighting, a search",
+            cold,
+            Duration::from_millis(10),
         );
+        within(
+            "smart highlighting, cached",
+            cached,
+            Duration::from_millis(1),
+        );
+        within(
+            "a frame with smart highlighting",
+            with_smart,
+            Duration::from_millis(50),
+        );
+        within("a frame without", without, Duration::from_millis(50));
     }
 }

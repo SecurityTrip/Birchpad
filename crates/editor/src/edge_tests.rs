@@ -422,3 +422,52 @@ fn several_carets_at_the_edges_of_the_text(cx: &mut TestAppContext) {
     );
     assert_eq!(primary(&view, cx).from(), 0);
 }
+
+/// `cargo test -p birchpad-editor --release a_frame_of -- --ignored --nocapture`
+#[gpui_kit::test]
+#[ignore = "performance check; run in release"]
+fn a_frame_of_a_hundred_megabyte_document(cx: &mut TestAppContext) {
+    let (workspace, cx) = open_workspace(cx);
+    let line = "The quick brown fox jumps over the lazy dog; 0123456789\n";
+    let text = Rope::from_str(&line.repeat(100 * 1024 * 1024 / line.len()));
+    workspace.update_in(cx, |workspace, window, cx| {
+        let doc = birchpad_core::Document::from_text(text);
+        workspace.open_document(doc, window, cx);
+    });
+    cx.run_until_parked();
+    let view = view(&workspace, cx);
+    let frame = |cx: &mut VisualTestContext| {
+        let started = std::time::Instant::now();
+        cx.update(|window, cx| {
+            window.refresh();
+            window.draw(cx).clear(cx);
+        });
+        started.elapsed()
+    };
+    frame(cx);
+    let within = birchpad_core::timing::within;
+    within(
+        "a frame of 100 MB at the start",
+        frame(cx),
+        std::time::Duration::from_millis(100),
+    );
+    // In the middle, with a caret to bring into view.
+    view.update(cx, |view, cx| {
+        let middle = view.text(cx).len() / 2;
+        view.selection = Selection::point(middle);
+        view.autoscroll = true;
+        cx.notify();
+    });
+    frame(cx);
+    within(
+        "a frame of 100 MB in the middle",
+        frame(cx),
+        std::time::Duration::from_millis(100),
+    );
+    cx.simulate_input("x");
+    within(
+        "a frame after a keystroke in 100 MB",
+        frame(cx),
+        std::time::Duration::from_millis(200),
+    );
+}

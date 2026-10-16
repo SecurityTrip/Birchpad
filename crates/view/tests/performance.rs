@@ -1,7 +1,8 @@
 //! Timing checks for large documents. `cargo test -p birchpad-view --release -- --ignored --nocapture`
 
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
+use birchpad_core::timing::within;
 use birchpad_core::{ChangeSet, Edit, Rope};
 use birchpad_view::{DisplayMap, LayoutConfig};
 
@@ -24,9 +25,10 @@ fn wrapping_a_large_document() {
         },
     );
     let rows = map.row_count(&text);
-    eprintln!(
-        "wrap 100 MB at 120 columns: {rows} rows in {:?}",
-        started.elapsed()
+    within(
+        &format!("wrap 100 MB at 120 columns ({rows} rows)"),
+        started.elapsed(),
+        Duration::from_secs(20),
     );
 
     let started = Instant::now();
@@ -35,7 +37,11 @@ fn wrapping_a_large_document() {
     changes.apply(&mut edited);
     map.edit(&edited, &changes);
     map.row_count(&edited);
-    eprintln!("one keystroke: {:?}", started.elapsed());
+    within(
+        "one keystroke in 100 MB, wrapped",
+        started.elapsed(),
+        Duration::from_millis(500),
+    );
 }
 
 #[test]
@@ -45,9 +51,10 @@ fn ten_megabyte_line() {
     let mut map = DisplayMap::new(&text, LayoutConfig::default());
     let started = Instant::now();
     let column = map.column(&text, text.len() - 1);
-    eprintln!(
-        "first column lookup at the end (builds the index): {:?}",
-        started.elapsed()
+    within(
+        "first column lookup at the end of a 10 MB line (builds the index)",
+        started.elapsed(),
+        Duration::from_secs(3),
     );
     let started = Instant::now();
     for i in 0..1000 {
@@ -55,7 +62,11 @@ fn ten_megabyte_line() {
     }
     let row = map.row(&text, 0);
     map.pos_at_column(&text, &row, column / 2);
-    eprintln!("1000 lookups with the index: {:?}", started.elapsed());
+    within(
+        "1000 lookups with the index",
+        started.elapsed(),
+        Duration::from_millis(500),
+    );
 
     let started = Instant::now();
     let mut wrapped = DisplayMap::new(
@@ -67,10 +78,11 @@ fn ten_megabyte_line() {
     );
     let rows = wrapped.row_count(&text);
     let last = wrapped.row(&text, rows - 1);
-    eprintln!(
-        "wrap the 10 MB line: {rows} rows in {:?} (last starts at {})",
+    assert!(last.range.start > 0);
+    within(
+        &format!("wrap the 10 MB line ({rows} rows)"),
         started.elapsed(),
-        last.range.start
+        Duration::from_secs(10),
     );
 }
 
@@ -89,13 +101,17 @@ fn folds_of_a_large_document() {
         .collect();
     let started = Instant::now();
     let folds = birchpad_view::folds_from_ranges(&text, &ranges);
-    eprintln!("{} folds in lines: {:?}", folds.len(), started.elapsed());
+    within(
+        &format!("{} folds in lines", folds.len()),
+        started.elapsed(),
+        Duration::from_secs(3),
+    );
     let collapsed: Vec<usize> = folds.iter().map(|fold| fold.header).collect();
     let started = Instant::now();
     let hidden = birchpad_view::hidden_lines(&folds, &collapsed);
-    eprintln!(
-        "hidden lines of {} collapsed folds: {:?}",
-        hidden.len(),
-        started.elapsed()
+    within(
+        &format!("hidden lines of {} collapsed folds", hidden.len()),
+        started.elapsed(),
+        Duration::from_secs(2),
     );
 }

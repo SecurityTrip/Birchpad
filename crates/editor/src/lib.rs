@@ -2264,8 +2264,11 @@ three",
                 cx.simulate_input("x");
                 frame(cx);
             }
-            let per_key = started.elapsed() / 20;
-            eprintln!("typing into a 10 MB line (word wrap {wrap}): {per_key:?} per keystroke");
+            birchpad_core::timing::within(
+                &format!("typing into a 10 MB line (word wrap {wrap}), a keystroke with a frame"),
+                started.elapsed() / 20,
+                std::time::Duration::from_secs(1),
+            );
         }
         assert_eq!(active_text(&workspace, cx).len(), line.len() + 40);
     }

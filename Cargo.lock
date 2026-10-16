@@ -718,7 +718,7 @@ dependencies = [
 
 [[package]]
 name = "birchpad-io"
-version = "0.2.5"
+version = "0.3.0"
 dependencies = [
  "birchpad-core",
  "birchpad-i18n",
