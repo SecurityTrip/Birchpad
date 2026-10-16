@@ -1,0 +1,15 @@
+# cargo-mutants (the Mutants workflow, CONTRIBUTING.md, Tests): the crates without a window. The
+# window's crates are left out: their tests drive a test window and take minutes per mutant.
+exclude_globs = [
+    "crates/app/**",
+    "crates/editor/**",
+    "crates/ui/**",
+    "crates/menu-bar/**",
+    "crates/fuzz/**",
+    "crates/release-tool/**",
+    "**/tests.rs",
+    "**/*_tests.rs",
+]
+test_tool = "nextest"
+# A mutant that makes a test loop is caught by the timeout, a few times the tests' own time.
+timeout_multiplier = 3.0

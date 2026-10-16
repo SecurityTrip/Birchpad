@@ -533,9 +533,13 @@ floors in `.github/coverage-floors.toml` with its tests.
       (`core/tests/performance.rs`) and draw frames of a 100 MB document; the Performance
       workflow runs them every night in release, one at a time. The limits are generous
       until the first nightly runs measure them
-- [ ] 6.29 Mutation testing: `cargo-mutants` nightly over the crates without a window; the
+- [x] 6.29 Mutation testing: `cargo-mutants` nightly over the crates without a window; the
       mutants that survive get tests, and the share caught gets a floor that only rises, as
-      coverage does
+      coverage does. Done: the Mutants workflow, a job per crate (`.cargo/mutants.toml`),
+      against `.github/mutants-floors.toml` (`.github/mutants_floors.py`, tested beside the
+      coverage check); the missed mutants in the run's summary
+- [ ] 6.29a The first nightly mutants runs: the floors set from them, a point or two under, and
+      tests for the mutants that survive
 - [x] Versions: the workspace version, the application's, is 0.3.0; library crates have
       versions of their own, raised only in a release that changes them (CONTRIBUTING.md,
       Versions), checked by `birchpad-release crate-versions` and the release workflow. In

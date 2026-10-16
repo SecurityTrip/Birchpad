@@ -92,8 +92,9 @@ workspace or GPUI already builds, and turn off default features it does not need
 Everything that reads input from outside (files and their encodings, settings, the state file,
 sessions and Notepad++'s `session.xml`, `.workspace` files, the keymap, the text's context menu
 (`context-menu.toml`), the command line and the message that hands it to a running instance, the
-update manifest, plugins' `plugin.toml`, and the JSON, XML and hex dumps the built-in tools
-read) is fuzzed. The checks live in `crates/fuzz`: each takes any bytes and checks more than "no
+update manifest, plugins' `plugin.toml`, the JSON, XML and hex dumps the built-in tools read,
+Hunspell dictionaries, search queries and Find in Files' filters, the calls plugins make into
+Birchpad, and Rhai scripts) is fuzzed. The checks live in `crates/fuzz`: each takes any bytes and checks more than "no
 panic" (what reads cleanly writes back the same). `cargo test -p birchpad-fuzz` runs them over
 the seeds in `fuzz/seeds`, every cut of each seed and a few hundred mutants of it
 (`BIRCHPAD_FUZZ_MUTANTS=20000` for more); CI also runs them under libFuzzer for a minute each.
@@ -114,6 +115,25 @@ run; on Linux, run them under `xvfb-run`:
 
 ```bash
 cargo test -p birchpad --features e2e --test e2e
+```
+
+Timing checks are tests marked `#[ignore = "... run in release"]`: each prints what it measured
+and fails past its limit (`birchpad_core::timing::within`). The Performance workflow runs them
+every night; to run them yourself:
+
+```bash
+cargo test --release -p birchpad-core -p birchpad-io -p birchpad-view -p birchpad-editor -- --ignored --nocapture --test-threads=1
+```
+
+Mutation testing checks the tests themselves: [cargo-mutants](https://mutants.rs) changes the
+code of the crates without a window a little at a time (`.cargo/mutants.toml`), and a change no
+test notices is a gap in them. The Mutants workflow runs it every night, a crate per job, and
+fails when a crate's tests catch fewer mutants than its floor in `.github/mutants-floors.toml`;
+those floors only rise too. A mutant that survives gets a test, or, if it changes nothing that
+matters, an exclusion in `.cargo/mutants.toml` that says why. For one crate:
+
+```bash
+cargo mutants --package birchpad-core
 ```
 
 What no automated test sees (input methods, screen readers, displays, installers and updates)
