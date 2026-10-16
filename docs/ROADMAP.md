@@ -482,12 +482,20 @@ floors in `.github/coverage-floors.toml` with its tests.
       units, pasting nothing or an image, clicks in wrapped rows, carets at the start and end
       of the text; the longest token smart highlighting takes, its search over several frames
       and reused while it covers the shown text; selected paths absolute and quoted
-- [ ] 6.23 Files, folders and sessions when the file system refuses: a file changed or deleted
+- [x] 6.23 Files, folders and sessions when the file system refuses: a file changed or deleted
       outside (`disk.rs`, 71.6%), saving, renaming and moving that fail (`file_ops.rs`,
       `file_commands.rs`, about 84%), sessions with missing files and broken backups (84.0%),
       Folder as Workspace (78.1%), Find in Files over unreadable files; the configuration
       folders (`config/load.rs`, 86.1%) and the hand-off to a running instance
-      (`cli/instance.rs`, 87.8%)
+      (`cli/instance.rs`, 87.8%). Done: the watcher on the folders of open files (an outside
+      change noticed without a check, folders unwatched when their files close or detection
+      is off) and monitored files checked every second without it; saving into a deleted
+      folder or with a backup copy that cannot be made keeps the changes; renaming a file
+      deleted meanwhile; a recent file that is gone; session files missing, malformed or of
+      files that are gone, a lost backup falling back to the file, backups on their
+      interval; the running executable's paths; a socket that cannot be made. Left: Folder
+      as Workspace's context menu and Find in Files over unreadable files (permissions that
+      Windows tests cannot take away)
 - [ ] 6.24 Updates and Plugins Admin against a local server: checks, downloads cut short, a
       wrong signature or checksum, an older version offered, installing and rolling back
       (`updates.rs` 76.2%, `update/install.rs` 87.6%, `extensions/admin.rs` 80.7%)
@@ -513,8 +521,8 @@ floors in `.github/coverage-floors.toml` with its tests.
 - [x] Versions: the workspace version, the application's, is 0.3.0; library crates have
       versions of their own, raised only in a release that changes them (CONTRIBUTING.md,
       Versions), checked by `birchpad-release crate-versions` and the release workflow. In
-      0.3.0 so far: config, core, editor, i18n, syntax, tools and update at 0.3.0, the others
-      at 0.2.5
+      0.3.0 so far: cli, config, core, editor, i18n, syntax, tools and update at 0.3.0, the
+      others at 0.2.5
 - [ ] Release 0.3.0: the workspace version (0.3.0, set when its branch opens, so that nightly
       builds are its pre-releases), `CHANGELOG.md` and this roadmap updated; the
       [release checklist](release-checklist.md) gone through

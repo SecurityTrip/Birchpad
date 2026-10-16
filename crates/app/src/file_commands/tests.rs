@@ -467,3 +467,81 @@ fn untitled_names_are_kept_in_sessions(cx: &mut TestAppContext) {
     cx.run_until_parked();
     assert_eq!(tab_names(&workspace, cx), ["new 1", "Plan", "new 7"]);
 }
+
+#[gpui_kit::test]
+fn saving_where_the_file_system_refuses_keeps_the_changes(cx: &mut TestAppContext) {
+    let dir = tempfile::tempdir().unwrap();
+    let folder = dir.path().join("gone");
+    fs::create_dir(&folder).unwrap();
+    let file = write(&folder, "a.txt", "old");
+    let (workspace, cx) = open_workspace(cx);
+    open(&workspace, &file, cx);
+    cx.simulate_input("new ");
+    // Its folder is deleted by another program: the save fails and says so.
+    fs::remove_dir_all(&folder).unwrap();
+    take_info();
+    cx.simulate_keystrokes(&secondary("s"));
+    cx.run_until_parked();
+    assert!(modified(&workspace, cx), "still unsaved");
+    assert_eq!(active_text(&workspace, cx), "new old");
+    assert!(!file.exists());
+    let errors = cx.update(|window, cx| window.notifications(cx).len());
+    assert!(errors >= 1, "the error is shown");
+
+    // A backup copy that cannot be made stops the save, which leaves the file as it was.
+    fs::create_dir(&folder).unwrap();
+    fs::write(&file, "old").unwrap();
+    let blocker = dir.path().join("not a folder");
+    fs::write(&blocker, "").unwrap();
+    cx.update(|_, cx| {
+        let files = &mut cx.global_mut::<AppState>().settings.files;
+        files.backup_on_save = birchpad_config::BackupOnSave::Verbose;
+        files.backup_folder = blocker.join("copies").display().to_string();
+    });
+    cx.simulate_keystrokes(&secondary("s"));
+    cx.run_until_parked();
+    assert_eq!(fs::read_to_string(&file).unwrap(), "old");
+    assert!(modified(&workspace, cx));
+    // Once the copy can be made, the save goes through.
+    cx.update(|_, cx| {
+        let files = &mut cx.global_mut::<AppState>().settings.files;
+        files.backup_folder = dir.path().join("copies").display().to_string();
+    });
+    cx.simulate_keystrokes(&secondary("s"));
+    cx.run_until_parked();
+    assert_eq!(fs::read_to_string(&file).unwrap(), "new old");
+    assert!(!modified(&workspace, cx));
+}
+
+#[gpui_kit::test]
+fn renaming_a_file_deleted_meanwhile_fails(cx: &mut TestAppContext) {
+    let dir = tempfile::tempdir().unwrap();
+    let file = write(dir.path(), "a.txt", "text");
+    let (workspace, cx) = open_workspace(cx);
+    open(&workspace, &file, cx);
+    fs::remove_file(&file).unwrap();
+    assert!(rename(&workspace, "b.txt", cx).is_err());
+    assert_eq!(tab_names(&workspace, cx), ["a.txt"]);
+    assert!(!dir.path().join("b.txt").exists());
+}
+
+#[gpui_kit::test]
+fn a_recent_file_that_is_gone_leaves_the_list(cx: &mut TestAppContext) {
+    let dir = tempfile::tempdir().unwrap();
+    let file = write(dir.path(), "a.txt", "a");
+    let (workspace, cx) = open_workspace(cx);
+    open(&workspace, &file, cx);
+    command(&workspace, "file.close", cx).unwrap();
+    assert_eq!(recent(cx).len(), 1);
+    fs::remove_file(&file).unwrap();
+    let path = recent(cx)[0].clone();
+    let error = run(
+        &workspace,
+        Invocation::with_args("file.open-recent", json!({ "path": path })),
+        cx,
+    )
+    .unwrap_err();
+    assert!(error.to_string().contains("a.txt"), "{error}");
+    assert!(recent(cx).is_empty());
+    assert_eq!(tab_names(&workspace, cx), ["new 1"]);
+}
