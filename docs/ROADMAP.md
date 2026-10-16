@@ -504,11 +504,14 @@ floors in `.github/coverage-floors.toml` with its tests.
       install nothing and leave the window saying why; Plugins Admin's Install... cancelled,
       given a file that is no manifest, and given a plugin's. Velopack's own install and
       rollback cannot run outside an installation; its feed is tested in `update/install.rs`
-- [ ] 6.25 Property tests where there are none yet: the bidirectional row (logical and visual
+- [x] 6.25 Property tests where there are none yet: the bidirectional row (logical and visual
       positions map one to one), comparing texts (the differences applied give the other
       text), search and replace against a plain reference implementation, keystrokes and key
       sequences that read back as written, syntax trees reparsed after an edit equal to a
-      fresh parse, the column editor's numbering
+      fresh parse, the column editor's numbering. Done with proptest in `birchpad-view`
+      (`bidi.rs`), `birchpad-tools` (`compare.rs`), `birchpad-core` (`search.rs`,
+      `ops/column.rs`), `birchpad-commands` (`keystroke.rs`) and `birchpad-syntax`
+      (`syntax.rs`, Rust sources built from pieces, 64 cases)
 - [ ] 6.26 Fuzzing what reads outside input and is not fuzzed yet: Hunspell dictionaries
       (`.aff`, `.dic`), search queries (regular expressions, the extended mode's escapes, Find
       in Files' filters), plugins' calls into the host with any arguments, Rhai scripts under
@@ -526,8 +529,8 @@ floors in `.github/coverage-floors.toml` with its tests.
 - [x] Versions: the workspace version, the application's, is 0.3.0; library crates have
       versions of their own, raised only in a release that changes them (CONTRIBUTING.md,
       Versions), checked by `birchpad-release crate-versions` and the release workflow. In
-      0.3.0 so far: cli, config, core, editor, i18n, syntax, tools and update at 0.3.0, the
-      others at 0.2.5
+      0.3.0 so far: cli, commands, config, core, editor, i18n, syntax, tools, update and view
+      at 0.3.0, the others at 0.2.5
 - [ ] Release 0.3.0: the workspace version (0.3.0, set when its branch opens, so that nightly
       builds are its pre-releases), `CHANGELOG.md` and this roadmap updated; the
       [release checklist](release-checklist.md) gone through

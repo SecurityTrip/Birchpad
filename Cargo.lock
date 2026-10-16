@@ -621,9 +621,10 @@ dependencies = [
 
 [[package]]
 name = "birchpad-commands"
-version = "0.2.5"
+version = "0.3.0"
 dependencies = [
  "birchpad-i18n",
+ "proptest",
  "serde",
  "serde_json",
  "thiserror 2.0.21",
@@ -897,7 +898,7 @@ dependencies = [
 
 [[package]]
 name = "birchpad-view"
-version = "0.2.5"
+version = "0.3.0"
 dependencies = [
  "birchpad-core",
  "proptest",
