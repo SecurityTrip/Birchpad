@@ -23,6 +23,8 @@ mod bidi_tests;
 mod capture_coverage_tests;
 mod column_editor;
 mod completion;
+#[cfg(test)]
+mod edge_tests;
 mod element;
 mod folding;
 pub mod layout;

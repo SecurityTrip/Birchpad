@@ -474,9 +474,14 @@ floors in `.github/coverage-floors.toml` with its tests.
       installer reports the bytes received; the announcement of a background check stays open
       with the bar after Update, Help > Check for Updates' window too, and a window closed while
       its download goes on leaves the bar to the status bar. `birchpad-update` 0.3.0
-- [ ] 6.22 The editor view (`editor/mod.rs`, 83.8%): smart highlighting (78.7%), the Edit menu's
+- [x] 6.22 The editor view (`editor/mod.rs`, 83.8%): smart highlighting (78.7%), the Edit menu's
       extras (81.2%), what clicks, drags and the keyboard do at the edges of the text, in
-      wrapped and folded rows and with several carets
+      wrapped and folded rows and with several carets. Done (`birchpad-editor`'s
+      `edge_tests.rs`): the wheel (sideways, Ctrl to zoom, at the top), the scroll bars,
+      drags past the top and bottom, input methods composing over characters of two UTF-16
+      units, pasting nothing or an image, clicks in wrapped rows, carets at the start and end
+      of the text; the longest token smart highlighting takes, its search over several frames
+      and reused while it covers the shown text; selected paths absolute and quoted
 - [ ] 6.23 Files, folders and sessions when the file system refuses: a file changed or deleted
       outside (`disk.rs`, 71.6%), saving, renaming and moving that fail (`file_ops.rs`,
       `file_commands.rs`, about 84%), sessions with missing files and broken backups (84.0%),
