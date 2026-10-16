@@ -518,10 +518,13 @@ floors in `.github/coverage-floors.toml` with its tests.
       their time and memory limits. Done: the targets `spell_dictionary`,
       `search_query`, `plugin_calls` and `rhai_script` (`crates/fuzz`, `fuzz/`), with seeds;
       scripts run there with a smaller limit on operations (`script::run_limited`)
-- [ ] 6.27 End-to-end scenarios beyond the four of `tests/e2e.rs`: Find in Files and Replace in
+- [x] 6.27 End-to-end scenarios beyond the four of `tests/e2e.rs`: Find in Files and Replace in
       Files, recording and playing a macro, a second instance handing over its files,
       restoring unsaved text after the process is killed, a plugin installed and run, Export
-      to HTML; the run counted in the coverage report, so that `main.rs` (0%) is measured
+      to HTML; the run counted in the coverage report, so that `main.rs` (0%) is measured. Done: the six scenarios; scripts gained
+      `wait` and `files` steps (Replace in Files there does not ask: its question is the
+      system's dialog) and reports the search results; `file.export-html` takes a `path` to
+      write without asking; the coverage job runs the end-to-end tests on a virtual display
 - [ ] 6.28 Performance in CI: the timing checks (`view/tests/performance.rs`, now ignored) and
       new ones for opening, searching and editing a 100 MB file and for a frame of the editor
       view run nightly in release, failing when a time grows past its limit

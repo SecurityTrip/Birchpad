@@ -42,14 +42,20 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/linux-deps
+        with:
+          # The end-to-end tests run the built application on a virtual display.
+          extra: xvfb xauth mesa-vulkan-drivers
       - uses: actions-rust-lang/setup-rust-toolchain@v2
         with:
           components: llvm-tools-preview
       - uses: taiki-e/install-action@v2
         with:
           tool: cargo-llvm-cov,cargo-nextest
+      # With the end-to-end tests, whose runs of the application count too: main.rs is measured.
       - name: Tests with coverage
-        run: cargo llvm-cov nextest --workspace --locked --profile ci --lcov --output-path lcov.info
+        run: >
+          xvfb-run -a cargo llvm-cov nextest --workspace --features birchpad/e2e --locked
+          --profile ci --lcov --output-path lcov.info
       - name: Test the floor check
         run: python3 -m unittest discover -s .github -p "*_test.py"
       - name: Report

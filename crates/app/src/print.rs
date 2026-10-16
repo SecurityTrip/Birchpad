@@ -55,10 +55,17 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
         ));
         Ok(())
     });
-    registry.workspace("file.export-html", |this, (), window, cx| {
-        this.export_html(window, cx);
+    registry.workspace("file.export-html", |this, args: ExportArgs, window, cx| {
+        this.export_html(args.path, window, cx);
         Ok(())
     });
+}
+
+/// File > Export to HTML: the file to write, or none to ask for one.
+#[derive(Debug, Default, serde::Deserialize)]
+struct ExportArgs {
+    #[serde(default)]
+    path: Option<PathBuf>,
 }
 
 /// Where the page to print goes: a temporary file named after the document.
@@ -77,7 +84,7 @@ pub(crate) fn print_path(title: &str) -> PathBuf {
 }
 
 impl Workspace {
-    fn export_html(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+    fn export_html(&mut self, to: Option<PathBuf>, window: &mut Window, cx: &mut Context<Self>) {
         let (title, html) = match active_html(self, false, cx) {
             Ok(found) => found,
             Err(error) => {
@@ -87,9 +94,15 @@ impl Workspace {
         };
         let start = self.default_directory(cx);
         cx.spawn_in(window, async move |_, cx| {
-            let Some(path) = crate::path_dialog::ask_save(start, format!("{title}.html"), cx).await
-            else {
-                return;
+            let path = match to {
+                Some(path) => path,
+                None => {
+                    let asked = crate::path_dialog::ask_save(start, format!("{title}.html"), cx);
+                    let Some(path) = asked.await else {
+                        return;
+                    };
+                    path
+                }
             };
             if let Err(error) = std::fs::write(&path, html) {
                 let error = anyhow!(
