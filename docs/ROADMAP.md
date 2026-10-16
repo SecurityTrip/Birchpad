@@ -496,9 +496,14 @@ floors in `.github/coverage-floors.toml` with its tests.
       interval; the running executable's paths; a socket that cannot be made. Left: Folder
       as Workspace's context menu and Find in Files over unreadable files (permissions that
       Windows tests cannot take away)
-- [ ] 6.24 Updates and Plugins Admin against a local server: checks, downloads cut short, a
+- [x] 6.24 Updates and Plugins Admin against a local server: checks, downloads cut short, a
       wrong signature or checksum, an older version offered, installing and rolling back
-      (`updates.rs` 76.2%, `update/install.rs` 87.6%, `extensions/admin.rs` 80.7%)
+      (`updates.rs` 76.2%, `update/install.rs` 87.6%, `extensions/admin.rs` 80.7%). Done:
+      checks over HTTP from a local server (a newer release, an older one, a manifest signed
+      with a key not trusted, nobody listening), packages cut short or tampered with that
+      install nothing and leave the window saying why; Plugins Admin's Install... cancelled,
+      given a file that is no manifest, and given a plugin's. Velopack's own install and
+      rollback cannot run outside an installation; its feed is tested in `update/install.rs`
 - [ ] 6.25 Property tests where there are none yet: the bidirectional row (logical and visual
       positions map one to one), comparing texts (the differences applied give the other
       text), search and replace against a plain reference implementation, keystrokes and key

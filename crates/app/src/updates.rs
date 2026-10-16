@@ -1614,4 +1614,192 @@ mod tests {
         let state = cx.update(|_, cx| AppState::global(cx).state.updates.clone());
         assert_eq!((state.manifest_timestamp, state.last_check), (seen, 0));
     }
+
+    /// What a server answers for a path: the body, or only its first bytes (the connection
+    /// closes before the length it announced).
+    type Route = (&'static str, Vec<u8>, Option<usize>);
+
+    /// A server for every request, with the routes `routes` makes for its address.
+    fn serve_paths(routes: impl FnOnce(&str) -> Vec<Route>) -> String {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let base = format!("http://{}", listener.local_addr().unwrap());
+        let routes = routes(&base);
+        std::thread::spawn(move || {
+            for stream in listener.incoming() {
+                let Ok(mut stream) = stream else {
+                    continue;
+                };
+                let mut first = String::new();
+                for line in BufReader::new(&stream).lines() {
+                    let line = line.unwrap_or_default();
+                    if first.is_empty() {
+                        first = line.clone();
+                    }
+                    if line.is_empty() {
+                        break;
+                    }
+                }
+                let path = first.split(' ').nth(1).unwrap_or_default().to_owned();
+                match routes.iter().find(|(route, ..)| *route == path) {
+                    Some((_, body, cut)) => {
+                        write!(
+                            stream,
+                            "HTTP/1.1 200 OK
+Content-Length: {}
+Connection: close
+
+",
+                            body.len()
+                        )
+                        .ok();
+                        stream.write_all(&body[..cut.unwrap_or(body.len())]).ok();
+                    }
+                    None => {
+                        write!(
+                            stream,
+                            "HTTP/1.1 404 Not Found
+Content-Length: 0
+Connection: close
+
+"
+                        )
+                        .ok();
+                    }
+                }
+            }
+        });
+        base
+    }
+
+    /// A manifest announcing `version` with `package`, signed with `key`.
+    fn manifest_of(version: &str, package: Package, signer: &SigningKey) -> Vec<u8> {
+        let manifest = Manifest {
+            schema: SCHEMA,
+            product: PRODUCT.into(),
+            timestamp: now(),
+            expires: now() + 30 * 86_400,
+            releases: vec![ManifestRelease {
+                version: Version::parse(version).unwrap(),
+                page: format!("https://example.com/{version}"),
+                packages: vec![package],
+            }],
+        };
+        serde_json::to_vec(&manifest::sign(&manifest, &[signer.clone()])).unwrap()
+    }
+
+    /// The package of `body`, served at `base`/p.nupkg.
+    fn package_at(base: &str, body: &[u8]) -> Package {
+        Package {
+            platform: "windows-x64".into(),
+            file: "Birchpad-99.0.0-full.nupkg".into(),
+            url: format!("{base}/p.nupkg"),
+            size: body.len() as u64,
+            sha256: birchpad_update::hex(&Sha256::digest(body)),
+            sha1: String::new(),
+        }
+    }
+
+    /// Updates read from `base`/m.json over HTTP, installed with a fetching installer.
+    fn over_http(base: &str, cx: &mut VisualTestContext) -> Arc<FakeInstaller> {
+        let installer = Arc::new(FakeInstaller {
+            fetch: true,
+            ..FakeInstaller::default()
+        });
+        let as_installer: Arc<dyn Installer> = installer.clone();
+        let url = format!("{base}/m.json");
+        cx.update(|_, cx| {
+            let transport = Arc::new(birchpad_update::HttpTransport::new("Birchpad (test)"));
+            Updates::install(
+                transport,
+                vec![key().verifying_key()],
+                Some(as_installer),
+                cx,
+            );
+            cx.global_mut::<Updates>().platform = Some("windows-x64");
+            let updates = &mut cx.global_mut::<AppState>().settings.updates;
+            updates.mode = UpdateMode::Notify;
+            updates.channel = UpdateChannel::Stable;
+            updates.url = Some(url);
+        });
+        installer
+    }
+
+    fn available(cx: &mut VisualTestContext) -> Option<Version> {
+        cx.update(|_, cx| {
+            cx.global::<Updates>()
+                .available
+                .as_ref()
+                .map(|release| release.version.clone())
+        })
+    }
+
+    #[gpui_kit::test]
+    fn a_local_server_offers_what_its_signed_manifest_says(cx: &mut TestAppContext) {
+        let (workspace, cx) = open_workspace(cx);
+        let body = b"the package".to_vec();
+        let other_key = SigningKey::from_bytes(&[3; 32]);
+        // A newer release, then an older one, then one signed with a key not trusted.
+        for (version, signer, offered) in [
+            ("99.0.0", key(), true),
+            ("0.0.1", key(), false),
+            ("99.0.0", other_key, false),
+        ] {
+            let base = serve_paths(|base| {
+                let manifest = manifest_of(version, package_at(base, &body), &signer);
+                vec![
+                    ("/m.json", manifest, None),
+                    ("/p.nupkg", body.clone(), None),
+                ]
+            });
+            over_http(&base, cx);
+            check(&workspace, Trigger::Request, cx);
+            assert!(dialog_open(cx), "{version}: a window answers");
+            assert_eq!(
+                available(cx).is_some(),
+                offered,
+                "{version} offered: {offered}"
+            );
+            cx.simulate_keystrokes("escape");
+            cx.run_until_parked();
+        }
+        // Nobody listening: the check fails and says so.
+        let address = TcpListener::bind("127.0.0.1:0")
+            .unwrap()
+            .local_addr()
+            .unwrap();
+        over_http(&format!("http://{address}"), cx);
+        check(&workspace, Trigger::Request, cx);
+        assert!(dialog_open(cx), "Cannot Check for Updates");
+        assert_eq!(available(cx), None);
+    }
+
+    #[gpui_kit::test]
+    fn downloads_cut_short_or_tampered_with_install_nothing(cx: &mut TestAppContext) {
+        let (workspace, cx) = open_workspace(cx);
+        let body: Vec<u8> = (0..50_000u32).map(|byte| byte as u8).collect();
+        let mut tampered = body.clone();
+        tampered[25_000] ^= 1;
+        for (served, cut, why) in [
+            (body.clone(), Some(10_000), ""),
+            (tampered, None, "SHA-256"),
+        ] {
+            let base = serve_paths(|base| {
+                let manifest = manifest_of("99.0.0", package_at(base, &body), &key());
+                vec![("/m.json", manifest, None), ("/p.nupkg", served, cut)]
+            });
+            let installer = over_http(&base, cx);
+            check(&workspace, Trigger::Request, cx);
+            cx.simulate_keystrokes("enter");
+            cx.run_until_parked();
+            assert_eq!(calls(&installer), ["download 99.0.0"], "never restarted");
+            assert!(dialog_open(cx), "the window stays and says why");
+            let failed = cx.update(|_, cx| cx.global::<Updates>().failed.clone());
+            let (version, error) = failed.expect("the download failed");
+            assert_eq!(version, Version::new(99, 0, 0));
+            assert!(error.contains(why), "{error}");
+            assert!(cx.update(|_, cx| cx.global::<Updates>().ready.is_none()));
+            cx.simulate_keystrokes("escape");
+            cx.run_until_parked();
+        }
+    }
 }

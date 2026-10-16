@@ -160,3 +160,35 @@ fn opens_and_draws_the_dialog(cx: &mut TestAppContext) {
     let (_, problems) = cx.update(|_, cx| rows(cx));
     assert_eq!(problems.len(), 1);
 }
+
+#[gpui_kit::test]
+fn install_asks_for_the_plugins_manifest(cx: &mut TestAppContext) {
+    let (workspace, cx, dir) = setup(cx);
+    let ask = |cx: &mut VisualTestContext| {
+        workspace.update_in(cx, |workspace, window, cx| {
+            workspace.ask_plugin_to_install(window, cx);
+        });
+        cx.run_until_parked();
+        assert!(cx.did_prompt_for_paths());
+    };
+    // Cancelled: nothing installed.
+    ask(cx);
+    cx.simulate_path_prompt_response(|_| None);
+    cx.run_until_parked();
+    assert!(listed(cx).is_empty());
+    // A file that is no plugin's manifest: an error, nothing installed.
+    let other = dir.path().join("notes.txt");
+    std::fs::write(&other, "not a manifest").unwrap();
+    ask(cx);
+    cx.simulate_path_prompt_response(move |_| Some(vec![other]));
+    cx.run_until_parked();
+    assert!(listed(cx).is_empty());
+    assert!(cx.update(|window, cx| !window.notifications(cx).is_empty()));
+    // The manifest of a plugin: installed and on.
+    let manifest = download(&dir, "probe");
+    ask(cx);
+    cx.simulate_path_prompt_response(move |_| Some(vec![manifest]));
+    cx.run_until_parked();
+    assert_eq!(listed(cx).len(), 1);
+    assert_eq!(listed(cx)[0].0, "probe");
+}
