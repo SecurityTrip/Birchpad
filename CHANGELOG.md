@@ -26,6 +26,14 @@ version's release notes from its section here.
 - Compare marks a line removed at the start of a text against the right line of the other one;
   with lines added after it, the removal could be shown a few lines further down.
 
+### Security
+
+- RUSTSEC-2026-0367 to 0369 (zip 8.6, through Velopack, the updater of per-user installs on
+  Windows) do not affect Birchpad: they concern Unix permission bits and symbolic links of
+  attacker-controlled archives, and Velopack only extracts Birchpad's own update packages,
+  checked against the signed manifest first. Velopack moves to zip 9 once it ships one in a
+  release.
+
 ### Changed
 
 - Tests run in about a quarter of the time (cargo-nextest, the test window without animations)
