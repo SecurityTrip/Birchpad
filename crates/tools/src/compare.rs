@@ -78,38 +78,26 @@ pub fn compare(old: &str, new: &str, options: Options) -> Vec<Difference> {
         Some(Instant::now() + DEADLINE),
     );
     let mut differences: Vec<Difference> = Vec::new();
+    // Where each operation starts, from the lengths of the ones before it: the operations come in
+    // order, but a deletion's `new_index` is not always where it is (similar 2.7 gave a deletion
+    // at the start of the old text the new index 3 after an insertion of three lines).
+    let (mut old_at, mut new_at) = (0, 0);
     for op in ops {
-        let (change, old_range, new_range) = match op {
-            DiffOp::Equal { .. } => continue,
-            DiffOp::Delete {
-                old_index,
-                old_len,
-                new_index,
-            } => (
-                Change::Removed,
-                old_index..old_index + old_len,
-                new_index..new_index,
-            ),
-            DiffOp::Insert {
-                old_index,
-                new_index,
-                new_len,
-            } => (
-                Change::Added,
-                old_index..old_index,
-                new_index..new_index + new_len,
-            ),
+        let (change, old_len, new_len) = match op {
+            DiffOp::Equal { len, .. } => {
+                old_at += len;
+                new_at += len;
+                continue;
+            }
+            DiffOp::Delete { old_len, .. } => (Change::Removed, old_len, 0),
+            DiffOp::Insert { new_len, .. } => (Change::Added, 0, new_len),
             DiffOp::Replace {
-                old_index,
-                old_len,
-                new_index,
-                new_len,
-            } => (
-                Change::Changed,
-                old_index..old_index + old_len,
-                new_index..new_index + new_len,
-            ),
+                old_len, new_len, ..
+            } => (Change::Changed, old_len, new_len),
         };
+        let old_range = old_at..old_at + old_len;
+        let new_range = new_at..new_at + new_len;
+        (old_at, new_at) = (old_range.end, new_range.end);
         // A removal next to an addition is a change.
         if let Some(last) = differences.last_mut()
             && last.old.end == old_range.start
@@ -231,6 +219,33 @@ mod properties {
     fn text() -> impl Strategy<Value = String> {
         proptest::collection::vec("[abc]{0,2}", 0..20)
             .prop_map(|lines| lines.into_iter().map(|line| format!("{line}\n")).collect())
+    }
+
+    #[test]
+    fn a_line_removed_at_the_start_before_lines_added_is_where_it_is() {
+        // similar's own diff of these says the removal is at new line 3.
+        let old = "
+b
+b
+
+";
+        let new = "b
+a
+a
+b
+b
+
+
+
+
+
+
+
+
+";
+        let differences = compare(old, new, Options::default());
+        assert_eq!(differences[0].old, 0..1);
+        assert_eq!(differences[0].new, 0..0);
     }
 
     proptest! {

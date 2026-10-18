@@ -1684,7 +1684,7 @@ Connection: close
                 packages: vec![package],
             }],
         };
-        serde_json::to_vec(&manifest::sign(&manifest, &[signer.clone()])).unwrap()
+        serde_json::to_vec(&manifest::sign(&manifest, std::slice::from_ref(signer))).unwrap()
     }
 
     /// The package of `body`, served at `base`/p.nupkg.

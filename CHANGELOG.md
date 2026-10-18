@@ -19,6 +19,8 @@ version's release notes from its section here.
 
 - Update downloads over a slow connection no longer fail after 30 seconds: a download fails
   only when nothing arrives for a minute, and says so.
+- Compare marks a line removed at the start of a text against the right line of the other one;
+  with lines added after it, the removal could be shown a few lines further down.
 
 ### Changed
 
