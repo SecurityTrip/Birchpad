@@ -331,4 +331,8 @@ fuzz_tests!(
     json,
     xml,
     hex_dump,
+    spell_dictionary,
+    search_query,
+    plugin_calls,
+    rhai_script,
 );
