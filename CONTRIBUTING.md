@@ -14,11 +14,35 @@ Thanks for your interest in Birchpad!
 ```bash
 cargo fmt --all
 cargo clippy --workspace --all-targets
-cargo test --workspace
+cargo nextest run --workspace
 ```
 
-CI runs the same commands with warnings treated as errors, on Windows (x64 and ARM64), Linux and
-macOS, plus [`cargo-deny`](https://github.com/EmbarkStudios/cargo-deny) for licenses and advisories.
+[`cargo-nextest`](https://nexte.st) (`cargo install cargo-nextest --locked`) runs each test in a
+process of its own, as many at once as there are cores; `cargo test --workspace` runs the same
+tests more slowly, one test binary after another. The crates have no doctests, which nextest
+would not run; examples are tests.
+Its settings are in `.config/nextest.toml`. Debug builds optimize the dependencies
+(`[profile.dev.package."*"]` in `Cargo.toml`): the window's tests spend most of their time in
+GPUI, and the test window turns motion off (`set_reduce_motion`), so no test waits for a dialog
+to slide in.
+
+CI runs the same commands with warnings treated as errors, in four workflows that start together
+on every push to `main` and every pull request, each job of them side by side:
+
+- **Linux** (`.github/workflows/linux.yml`): Clippy, the tests and the end-to-end tests on
+  Ubuntu, and the tests in Debian trixie and bookworm containers, against Debian's own libraries;
+- **Windows** (`windows.yml`): Clippy and the tests on x64 and ARM64, the end-to-end tests on x64;
+- **macOS** (`macos.yml`): Clippy, the tests and the end-to-end tests;
+- **Checks** (`checks.yml`): formatting,
+  [`cargo-deny`](https://github.com/EmbarkStudios/cargo-deny) for licenses and advisories,
+  coverage and fuzzing.
+
+The jobs' names (`test (ubuntu-latest)`, `e2e (windows-latest)`, ...) are the checks the `main`
+branch's ruleset requires: a job renamed without the ruleset leaves a pull request waiting for a
+check that never comes.
+
+Clippy runs in a job of its own beside the tests, and CI builds keep only line numbers as debug
+information (`CARGO_PROFILE_DEV_DEBUG=line-tables-only`), so test binaries link and cache faster.
 
 ### Ground rules for the code
 
@@ -53,11 +77,24 @@ code no test runs yet; cover that first. CI fails when a crate's share of lines 
 its floor in `.github/coverage-floors.toml`, and floors only rise: raise one in the change whose
 tests lift the crate well over it.
 
+Syntax highlighting is compared with snapshots (`crates/syntax/tests/snapshots`). A grammar or
+query change that alters the colors fails the test and writes the new snapshot beside the old one
+as `.snap.new`; once the difference is reviewed, accept the new ones with:
+
+```bash
+BIRCHPAD_BLESS=1 cargo nextest run -p birchpad-syntax --test highlights
+```
+
+A new dependency is the last resort: check `cargo tree --duplicates` first, prefer what the
+workspace or GPUI already builds, and turn off default features it does not need.
+`.github/dependabot.yml` holds a few crates at the versions GPUI uses, so that one copy is built.
+
 Everything that reads input from outside (files and their encodings, settings, the state file,
 sessions and Notepad++'s `session.xml`, `.workspace` files, the keymap, the text's context menu
 (`context-menu.toml`), the command line and the message that hands it to a running instance, the
-update manifest, plugins' `plugin.toml`, and the JSON, XML and hex dumps the built-in tools
-read) is fuzzed. The checks live in `crates/fuzz`: each takes any bytes and checks more than "no
+update manifest, plugins' `plugin.toml`, the JSON, XML and hex dumps the built-in tools read,
+Hunspell dictionaries, search queries and Find in Files' filters, the calls plugins make into
+Birchpad, and Rhai scripts) is fuzzed. The checks live in `crates/fuzz`: each takes any bytes and checks more than "no
 panic" (what reads cleanly writes back the same). `cargo test -p birchpad-fuzz` runs them over
 the seeds in `fuzz/seeds`, every cut of each seed and a few hundred mutants of it
 (`BIRCHPAD_FUZZ_MUTANTS=20000` for more); CI also runs them under libFuzzer for a minute each.
@@ -80,8 +117,47 @@ run; on Linux, run them under `xvfb-run`:
 cargo test -p birchpad --features e2e --test e2e
 ```
 
+Timing checks are tests marked `#[ignore = "... run in release"]`: each prints what it measured
+and fails past its limit (`birchpad_core::timing::within`). The Performance workflow runs them
+every night; to run them yourself:
+
+```bash
+cargo test --release -p birchpad-core -p birchpad-io -p birchpad-view -p birchpad-editor -- --ignored --nocapture --test-threads=1
+```
+
+Mutation testing checks the tests themselves: [cargo-mutants](https://mutants.rs) changes the
+code of the crates without a window a little at a time (`.cargo/mutants.toml`), and a change no
+test notices is a gap in them. The Mutants workflow runs it every night, a crate per job, and
+fails when a crate's tests catch fewer mutants than its floor in `.github/mutants-floors.toml`;
+those floors only rise too. A mutant that survives gets a test, or, if it changes nothing that
+matters, an exclusion in `.cargo/mutants.toml` that says why. For one crate:
+
+```bash
+cargo mutants --package birchpad-core
+```
+
 What no automated test sees (input methods, screen readers, displays, installers and updates)
 is checked by hand before each release: [docs/release-checklist.md](docs/release-checklist.md).
+
+### Versions
+
+The workspace version in `Cargo.toml` is the application's: the version of the release, set
+when the release's branch opens, taken by `birchpad` and by the tools that ship with it
+(`birchpad-fuzz`, `birchpad-release-tool`). Every other crate has a version of its own, and it
+rises in a release only if the crate changed in it:
+
+- a crate whose folder changed since the last release (its code, its tests, its
+  `Cargo.toml` other than the version) takes a version above the one it had, the release's
+  version as a rule, once, in the change that first touches it in the release;
+- a crate that did not change keeps its version, even when a crate it depends on rose;
+- the workspace's dependency on it (`[workspace.dependencies]`) names the same version.
+
+```bash
+cargo run -p birchpad-release-tool -- crate-versions
+```
+
+checks this against the latest release's tag (or `--since TAG`); the release workflow runs it
+before it builds.
 
 ## Commits and pull requests
 

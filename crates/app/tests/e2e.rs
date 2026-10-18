@@ -11,7 +11,7 @@
 
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
+use std::process::{Child, Command, Stdio};
 use std::time::{Duration, Instant};
 
 use serde_json::Value;
@@ -28,6 +28,11 @@ struct Install {
 
 impl Install {
     fn new() -> Self {
+        Self::with_settings("")
+    }
+
+    /// With more settings (TOML) after the ones every run has.
+    fn with_settings(extra: &str) -> Self {
         let dir = tempfile::tempdir().unwrap();
         let built = Path::new(env!("CARGO_BIN_EXE_birchpad"));
         let exe = dir.path().join(built.file_name().unwrap());
@@ -40,8 +45,10 @@ impl Install {
         // language.
         fs::write(
             data.join("settings.toml"),
-            "[updates]\nmode = \"off\"\n\n[files]\noffer-default-app = false\n\n\
-             [appearance]\nlanguage = \"en\"\n",
+            format!(
+                "[updates]\nmode = \"off\"\n\n[files]\noffer-default-app = false\n\n\
+                 [appearance]\nlanguage = \"en\"\n\n{extra}"
+            ),
         )
         .unwrap();
         Self { dir, exe }
@@ -54,6 +61,11 @@ impl Install {
     /// Runs the application with `args` and `script` (TOML steps), until it quits; returns its
     /// reports by name.
     fn run(&self, args: &[&str], script: &str) -> Reports {
+        self.spawn(args, script).wait()
+    }
+
+    /// Starts the application with `args` and `script`, without waiting for it.
+    fn spawn(&self, args: &[&str], script: &str) -> Running {
         let script_path = self.path("script.toml");
         fs::write(&script_path, script).unwrap();
         for entry in fs::read_dir(self.dir.path()).unwrap() {
@@ -66,7 +78,7 @@ impl Install {
             }
         }
         let log = self.path("stderr.txt");
-        let mut child = Command::new(&self.exe)
+        let child = Command::new(&self.exe)
             .args(args)
             .current_dir(self.dir.path())
             .env("BIRCHPAD_E2E_SCRIPT", &script_path)
@@ -74,26 +86,84 @@ impl Install {
             .stderr(fs::File::create(&log).unwrap())
             .spawn()
             .unwrap();
-        let started = Instant::now();
+        Running {
+            child,
+            log,
+            dir: self.dir.path().to_owned(),
+            started: Instant::now(),
+        }
+    }
+
+    /// The path of `name` in the folder, as a literal TOML string.
+    fn literal(&self, name: &str) -> String {
+        format!("'{}'", self.path(name).display())
+    }
+}
+
+/// A run that has started.
+struct Running {
+    child: Child,
+    log: PathBuf,
+    dir: PathBuf,
+    started: Instant,
+}
+
+impl Running {
+    /// Waits until it quits; its reports by name.
+    fn wait(mut self) -> Reports {
         let status = loop {
-            if let Some(status) = child.try_wait().unwrap() {
+            if let Some(status) = self.child.try_wait().unwrap() {
                 break status;
             }
-            if started.elapsed() > TIMEOUT {
-                child.kill().unwrap();
-                child.wait().unwrap();
+            if self.started.elapsed() > TIMEOUT {
+                self.kill();
                 panic!(
                     "still running after {TIMEOUT:?}; stderr:\n{}",
-                    fs::read_to_string(&log).unwrap_or_default()
+                    self.stderr()
                 );
             }
             std::thread::sleep(Duration::from_millis(100));
         };
-        let stderr = fs::read_to_string(&log).unwrap_or_default();
+        let stderr = self.stderr();
         assert!(status.success(), "exited with {status}; stderr:\n{stderr}");
+        self.reports()
+    }
+
+    /// Waits until the report `name` is written.
+    fn wait_for(&mut self, name: &str) -> Reports {
+        let path = self.dir.join(name);
+        while !path.exists() {
+            if let Some(status) = self.child.try_wait().unwrap() {
+                panic!(
+                    "quit with {status} before {name}; stderr:\n{}",
+                    self.stderr()
+                );
+            }
+            if self.started.elapsed() > TIMEOUT {
+                self.kill();
+                panic!("no {name} after {TIMEOUT:?}; stderr:\n{}", self.stderr());
+            }
+            std::thread::sleep(Duration::from_millis(100));
+        }
+        // Written whole before it is read.
+        std::thread::sleep(Duration::from_millis(200));
+        self.reports()
+    }
+
+    /// Ends it as a crash would: nothing is saved.
+    fn kill(&mut self) {
+        self.child.kill().ok();
+        self.child.wait().ok();
+    }
+
+    fn stderr(&self) -> String {
+        fs::read_to_string(&self.log).unwrap_or_default()
+    }
+
+    fn reports(&self) -> Reports {
         Reports {
-            dir: self.dir.path().to_owned(),
-            stderr,
+            dir: self.dir.clone(),
+            stderr: self.stderr(),
         }
     }
 }
@@ -320,4 +390,219 @@ fn a_utf16_file_with_crlf_saves_in_its_own_encoding() {
         fs::read(install.path("wide.txt")).unwrap(),
         utf16("é\r\nbc\r\nd")
     );
+}
+
+/// The rows of a report's search results.
+fn results(report: &Value) -> Vec<String> {
+    report["results"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|row| row.as_str().unwrap().to_owned())
+        .collect()
+}
+
+#[test]
+fn find_and_replace_in_files() {
+    let install = Install::new();
+    let src = install.path("src");
+    fs::create_dir(&src).unwrap();
+    fs::write(src.join("a.txt"), "red apple\nred\n").unwrap();
+    fs::write(src.join("b.md"), "red").unwrap();
+    fs::write(src.join("c.txt"), "blue").unwrap();
+    let run = install.run(
+        &[],
+        r#"
+        [[step]]
+        files = { pattern = "red", folder = "src", filters = "*.txt" }
+        [[step]]
+        report = "found.json"
+        [[step]]
+        files = { pattern = "red", folder = "src", filters = "*.txt", replace = "green" }
+        [[step]]
+        report = "replaced.json"
+        [[step]]
+        command = "file.exit"
+        "#,
+    );
+    let found = results(&run.get("found.json"));
+    assert!(
+        found
+            .iter()
+            .any(|row| row.contains("a.txt") && row.contains("(2)")),
+        "{found:?}"
+    );
+    assert!(
+        !found.iter().any(|row| row.contains("b.md")),
+        "filtered out"
+    );
+    assert!(!found.iter().any(|row| row.contains("c.txt")), "no hit");
+    run.get("replaced.json");
+    assert_eq!(
+        fs::read_to_string(src.join("a.txt")).unwrap(),
+        "green apple\ngreen\n"
+    );
+    assert_eq!(fs::read_to_string(src.join("b.md")).unwrap(), "red");
+    assert_eq!(fs::read_to_string(src.join("c.txt")).unwrap(), "blue");
+}
+
+#[test]
+fn a_recorded_macro_plays_back() {
+    let install = Install::new();
+    let run = install.run(
+        &[],
+        r#"
+        [[step]]
+        command = "macro.start-recording"
+        [[step]]
+        text = "ab"
+        [[step]]
+        command = "macro.stop-recording"
+        [[step]]
+        command = "macro.playback"
+        [[step]]
+        command = "macro.playback"
+        [[step]]
+        report = "played.json"
+        [[step]]
+        command = "file.exit"
+        "#,
+    );
+    let played = run.get("played.json");
+    assert_eq!(tabs(&played), [tab("new 1", "ababab", true)]);
+    assert_eq!(played["tabs"][0]["caret"], 6);
+}
+
+#[test]
+fn a_second_launch_hands_its_files_to_the_first() {
+    let install = Install::new();
+    fs::write(install.path("a.txt"), "alpha").unwrap();
+    fs::write(install.path("b.txt"), "beta").unwrap();
+    let mut first = install.spawn(
+        &["a.txt"],
+        r#"
+        [[step]]
+        report = "ready.json"
+        [[step]]
+        wait = 4000
+        [[step]]
+        report = "handed.json"
+        [[step]]
+        command = "file.exit"
+        "#,
+    );
+    first.wait_for("ready.json");
+    // The second launch hands b.txt over and quits, without a window of its own.
+    let second = Command::new(&install.exe)
+        .arg("b.txt")
+        .current_dir(install.dir.path())
+        .status()
+        .unwrap();
+    assert!(second.success());
+    let reports = first.wait();
+    assert_eq!(
+        tabs(&reports.get("handed.json")),
+        [tab("a.txt", "alpha", false), tab("b.txt", "beta", false)]
+    );
+}
+
+#[test]
+fn unsaved_text_comes_back_after_the_process_is_killed() {
+    let install = Install::with_settings("[session]\nbackup-interval-seconds = 1\n");
+    let mut first = install.spawn(
+        &[],
+        r#"
+        [[step]]
+        text = "draft before the crash"
+        [[step]]
+        wait = 3000
+        [[step]]
+        report = "typed.json"
+        [[step]]
+        wait = 60000
+        "#,
+    );
+    let typed = first.wait_for("typed.json");
+    assert_eq!(
+        tabs(&typed.get("typed.json")),
+        [tab("new 1", "draft before the crash", true)]
+    );
+    first.kill();
+    let second = install.run(
+        &[],
+        r#"
+        [[step]]
+        report = "restored.json"
+        [[step]]
+        command = "file.exit"
+        "#,
+    );
+    assert_eq!(
+        tabs(&second.get("restored.json")),
+        [tab("new 1", "draft before the crash", true)]
+    );
+}
+
+#[test]
+fn a_plugin_is_installed_and_run() {
+    let install = Install::new();
+    let folder = install.path("downloads").join("probe");
+    fs::create_dir_all(&folder).unwrap();
+    fs::write(
+        folder.join("plugin.toml"),
+        "id = \"probe\"\nname = \"Probe\"\nversion = \"1.0\"\napi = \"0.1\"\n",
+    )
+    .unwrap();
+    let wasm = Path::new(env!("CARGO_MANIFEST_DIR")).join("../plugin/tests/fixtures/probe.wasm");
+    fs::copy(wasm, folder.join("plugin.wasm")).unwrap();
+    let manifest = install.literal("downloads/probe/plugin.toml");
+    let run = install.run(
+        &[],
+        &format!(
+            r#"
+            [[step]]
+            command = "plugin.install"
+            args = {{ path = {manifest} }}
+            [[step]]
+            wait = 3000
+            [[step]]
+            text = "one two"
+            [[step]]
+            command = "edit.select-all"
+            [[step]]
+            command = "plugin.run"
+            args = {{ plugin = "probe", command = "upper" }}
+            [[step]]
+            report = "ran.json"
+            [[step]]
+            command = "file.exit"
+            "#
+        ),
+    );
+    assert_eq!(tabs(&run.get("ran.json")), [tab("new 1", "ONE TWO", true)]);
+}
+
+#[test]
+fn a_document_is_exported_to_html() {
+    let install = Install::new();
+    fs::write(install.path("main.rs"), "fn main() {}\n").unwrap();
+    let out = install.literal("main.html");
+    let run = install.run(
+        &["main.rs"],
+        &format!(
+            r#"
+            [[step]]
+            command = "file.export-html"
+            args = {{ path = {out} }}
+            [[step]]
+            report = "exported.json"
+            [[step]]
+            command = "file.exit"
+            "#
+        ),
+    );
+    run.get("exported.json");
+    let html = fs::read_to_string(install.path("main.html")).unwrap();
+    assert!(html.contains("<html"), "{html}");
+    assert!(html.contains("main"), "{html}");
 }

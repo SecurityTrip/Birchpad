@@ -1,0 +1,55 @@
+name: macOS
+
+# Clippy, the tests and the end-to-end tests on macOS. Every job runs side by side, and beside
+# the Linux, Windows and Checks workflows.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  # Fail on warnings in our crates (cargo 1.97+ `build.warnings`).
+  CARGO_BUILD_WARNINGS: deny
+  # Line numbers in backtraces and nothing more: smaller binaries link and cache faster.
+  CARGO_PROFILE_DEV_DEBUG: line-tables-only
+
+jobs:
+  clippy:
+    name: clippy (macos-latest)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions-rust-lang/setup-rust-toolchain@v2
+      - run: cargo clippy --workspace --all-targets --locked
+      - run: cargo clippy -p birchpad --features e2e --all-targets --locked
+
+  test:
+    name: test (macos-latest)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions-rust-lang/setup-rust-toolchain@v2
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-nextest
+      - run: cargo nextest run --workspace --locked --profile ci
+
+  # The built application in a real window (crates/app/tests/e2e.rs): start, open, edit, save,
+  # quit, restore the session. Non-blocking until it has been green on the runners.
+  e2e:
+    name: e2e (macos-latest)
+    runs-on: macos-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions-rust-lang/setup-rust-toolchain@v2
+      - run: cargo test -p birchpad --features e2e --test e2e --locked

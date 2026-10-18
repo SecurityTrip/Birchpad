@@ -1,0 +1,55 @@
+name: Mutants
+
+# Mutation testing of the crates without a window (.cargo/mutants.toml): cargo-mutants changes
+# the code a little at a time and runs the crate's tests; a change no test notices is a gap in
+# them. Each crate has a floor under the share of mutants caught that only rises
+# (.github/mutants-floors.toml). Every night, a job per crate side by side; the mutants that
+# survive are listed in the run's summary and uploaded.
+on:
+  schedule:
+    # 05:00 Moscow time, after the nightly build and the timing checks.
+    - cron: "0 2 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  mutants:
+    name: mutants (${{ matrix.crate }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    strategy:
+      fail-fast: false
+      matrix:
+        crate: [cli, commands, config, core, i18n, io, plugin, syntax, theme, tools, update, view]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/linux-deps
+      - uses: actions-rust-lang/setup-rust-toolchain@v2
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-mutants,cargo-nextest
+      - name: Mutants of birchpad-${{ matrix.crate }}
+        # Missed mutants make cargo-mutants exit with 2; the floor decides instead.
+        run: cargo mutants --package "birchpad-${{ matrix.crate }}" --no-shuffle || [ $? -eq 2 ]
+      - name: Against the floor
+        run: |
+          {
+            echo "## Mutants of ${{ matrix.crate }}"
+            python3 .github/mutants_floors.py "${{ matrix.crate }}" < mutants.out/outcomes.json \
+              || failed=1
+            echo '### Missed'
+            echo '```'
+            cat mutants.out/missed.txt || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit "${failed:-0}"
+      - if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: mutants-${{ matrix.crate }}
+          path: mutants.out

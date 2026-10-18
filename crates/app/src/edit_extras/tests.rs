@@ -291,3 +291,41 @@ fn tab_and_shift_tab_indent_lines(cx: &mut TestAppContext) {
     command(&workspace, "edit.outdent", cx).unwrap();
     assert_eq!(active_text(&workspace, cx), "  a\n  b");
 }
+
+#[gpui_kit::test]
+fn on_selection_takes_absolute_and_quoted_paths(cx: &mut TestAppContext) {
+    let dir = tempfile::tempdir().unwrap();
+    let target = dir.path().join("target file.txt");
+    fs::write(&target, "target").unwrap();
+    let (workspace, cx) = open_workspace(cx);
+    let insert = |text: String, cx: &mut VisualTestContext| {
+        select_all(cx);
+        run(
+            &workspace,
+            Invocation::with_args("edit.insert-text", json!({ "text": text })),
+            cx,
+        )
+        .unwrap();
+        select_all(cx);
+    };
+    // An absolute path, in single quotes, in an unsaved document.
+    insert(format!(" '{}' ", target.display()), cx);
+    command(&workspace, "edit.open-selected-file", cx).unwrap();
+    assert_eq!(tab_names(&workspace, cx).last().unwrap(), "target file.txt");
+    // A folder is no file to open, but shown by Open Containing Folder.
+    workspace.update_in(cx, |workspace, window, cx| workspace.new_file(window, cx));
+    insert(format!("\"{}\"", dir.path().display()), cx);
+    let error = command(&workspace, "edit.open-selected-file", cx).unwrap_err();
+    assert!(
+        error
+            .to_string()
+            .contains(&dir.path().display().to_string())
+    );
+    shell_requests();
+    command(&workspace, "edit.open-selected-folder", cx).unwrap();
+    assert!(matches!(&shell_requests()[..], [Shell::Reveal(path)] if path == dir.path()));
+    // Only blanks selected: nothing to take.
+    insert("  \t ".into(), cx);
+    let error = command(&workspace, "edit.open-selected-file", cx).unwrap_err();
+    assert!(error.to_string().contains("select"), "{error}");
+}

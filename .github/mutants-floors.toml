@@ -1,0 +1,20 @@
+# The least share of mutants each crate's tests must catch, in percent (.github/mutants_floors.py,
+# the Mutants workflow). A mutant is a small change cargo-mutants makes to the code (a condition
+# turned around, a function returning a default); the tests catch it when one fails. Floors only
+# rise: when a crate is well over its floor, raise it, and give the mutants that survive tests.
+#
+# Set to 0 until the first nightly runs measure each crate.
+
+[caught]
+cli = 0
+commands = 0
+config = 0
+core = 0
+i18n = 0
+io = 0
+plugin = 0
+syntax = 0
+theme = 0
+tools = 0
+update = 0
+view = 0

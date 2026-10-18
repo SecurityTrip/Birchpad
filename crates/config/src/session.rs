@@ -288,11 +288,11 @@ mod tests {
         session
     }
 
-    /// Removes a file that a virus scanner or indexer may still hold for a moment after it was
-    /// written (Windows refuses with a sharing violation meanwhile).
-    fn remove(path: &Path) {
+    /// Does `io` to `path`, again while a virus scanner or indexer still holds the file for a
+    /// moment after it was written (Windows refuses with a sharing violation meanwhile).
+    fn retry(path: &Path, mut io: impl FnMut(&Path) -> std::io::Result<()>) {
         for _ in 0..100 {
-            match fs::remove_file(path) {
+            match io(path) {
                 Err(error) if error.raw_os_error() == Some(32) => {
                     std::thread::sleep(std::time::Duration::from_millis(10));
                 }
@@ -300,6 +300,14 @@ mod tests {
             }
         }
         panic!("{} stays in use", path.display());
+    }
+
+    fn remove(path: &Path) {
+        retry(path, |path| fs::remove_file(path));
+    }
+
+    fn write(path: &Path, contents: &str) {
+        retry(path, |path| fs::write(path, contents));
     }
 
     fn temp_dir(name: &str) -> PathBuf {
@@ -360,7 +368,7 @@ mod tests {
         // Cut short (a crash in the middle of copying it, a full disk): the previous one loads.
         let text = fs::read_to_string(&path).unwrap();
         let cut = text.find("notes.txt@1").unwrap() + 4;
-        fs::write(&path, &text[..cut]).unwrap();
+        write(&path, &text[..cut]);
         assert_eq!(Session::load(&path), Some(first.clone()));
 
         // Missing, as after a crash between the two renames of a save.

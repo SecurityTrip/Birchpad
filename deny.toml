@@ -19,6 +19,16 @@ yanked = "deny"
 # Only crates we depend on directly are checked for being unmaintained; transitive ones (mostly
 # under GPUI) are outside our control.
 unmaintained = "workspace"
+# zip 8.6, through Velopack 1.2.161 (the updater of per-user installs, built only for Windows),
+# which requires zip ^8.6; the Velopack release with zip 9 is a pre-release so far. Velopack only
+# extracts Birchpad's own update packages, checked against the size and SHA-256 in the signed
+# manifest before it sees them, and these three concern Unix permission bits and symbolic links
+# of attacker-controlled archives. Remove once Velopack ships zip 9 in a release.
+ignore = [
+    { id = "RUSTSEC-2026-0367", reason = "Unix SUID/SGID bits; Velopack runs on Windows, on signed packages only" },
+    { id = "RUSTSEC-2026-0368", reason = "symbolic links of attacker-controlled archives; Velopack extracts signed packages only" },
+    { id = "RUSTSEC-2026-0369", reason = "Unix permissions through symbolic links; Velopack runs on Windows, on signed packages only" },
+]
 
 [licenses]
 version = 2

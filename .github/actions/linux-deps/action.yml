@@ -1,0 +1,20 @@
+name: Linux build dependencies
+description: >
+  The libraries the window needs to build on Linux (Ubuntu's runner or a Debian container), and
+  whatever else a job asks for.
+inputs:
+  extra:
+    description: More packages, separated by spaces.
+    default: ""
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: |
+        # A Debian container runs as root and has no sudo.
+        if command -v sudo > /dev/null; then sudo=sudo; else sudo=; fi
+        $sudo apt-get update
+        $sudo apt-get install -y --no-install-recommends ca-certificates curl git \
+          build-essential pkg-config libxkbcommon-dev libxkbcommon-x11-dev libwayland-dev \
+          libvulkan-dev libx11-xcb-dev libxcb1-dev libfontconfig-dev libfreetype-dev \
+          libssl-dev libzstd-dev ${{ inputs.extra }}

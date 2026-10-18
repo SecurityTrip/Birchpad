@@ -394,13 +394,13 @@ impl FindBar {
             .update(cx, |input, cx| input.set_value(directory, window, cx));
     }
 
-    #[cfg(test)]
+    #[cfg(any(test, feature = "e2e"))]
     pub(crate) fn set_filters(&mut self, filters: &str, window: &mut Window, cx: &mut App) {
         self.filters_input
             .update(cx, |input, cx| input.set_value(filters, window, cx));
     }
 
-    #[cfg(test)]
+    #[cfg(any(test, feature = "e2e"))]
     pub(crate) fn replace_input_for_tests(
         &mut self,
         text: &str,
@@ -412,7 +412,7 @@ impl FindBar {
     }
 
     /// The panel's message, for tests.
-    #[cfg(test)]
+    #[cfg(any(test, feature = "e2e"))]
     pub(crate) fn status_text(&self) -> Option<String> {
         self.status.as_ref().map(|(message, _)| message.clone())
     }

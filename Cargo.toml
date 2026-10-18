@@ -3,7 +3,7 @@ resolver = "3"
 members = ["crates/*"]
 
 [workspace.package]
-version = "0.2.5"
+version = "0.3.0"
 edition = "2024"
 rust-version = "1.98"
 license = "MIT OR Apache-2.0"
@@ -11,27 +11,29 @@ repository = "https://github.com/SecurityTrip/Birchpad"
 authors = ["The Birchpad Contributors"]
 
 [workspace.dependencies]
-birchpad-cli = { path = "crates/cli", version = "0.2.5" }
-birchpad-commands = { path = "crates/commands", version = "0.2.5" }
-birchpad-config = { path = "crates/config", version = "0.2.5" }
-birchpad-core = { path = "crates/core", version = "0.2.5" }
-birchpad-editor = { path = "crates/editor", version = "0.2.5" }
-birchpad-i18n = { path = "crates/i18n", version = "0.2.5" }
-birchpad-io = { path = "crates/io", version = "0.2.5" }
+birchpad-cli = { path = "crates/cli", version = "0.3.0" }
+birchpad-commands = { path = "crates/commands", version = "0.3.0" }
+birchpad-config = { path = "crates/config", version = "0.3.0" }
+birchpad-core = { path = "crates/core", version = "0.3.0" }
+birchpad-editor = { path = "crates/editor", version = "0.3.0" }
+birchpad-i18n = { path = "crates/i18n", version = "0.3.0" }
+birchpad-io = { path = "crates/io", version = "0.3.0" }
 birchpad-menu-bar = { path = "crates/menu-bar", version = "0.2.5" }
-birchpad-plugin = { path = "crates/plugin", version = "0.2.5" }
-birchpad-syntax = { path = "crates/syntax", version = "0.2.5" }
+birchpad-plugin = { path = "crates/plugin", version = "0.3.0" }
+birchpad-syntax = { path = "crates/syntax", version = "0.3.0" }
 birchpad-theme = { path = "crates/theme", version = "0.2.5" }
-birchpad-tools = { path = "crates/tools", version = "0.2.5" }
+birchpad-tools = { path = "crates/tools", version = "0.3.0" }
 birchpad-ui = { path = "crates/ui", version = "0.2.5" }
-birchpad-update = { path = "crates/update", version = "0.2.5" }
-birchpad-view = { path = "crates/view", version = "0.2.5" }
+birchpad-update = { path = "crates/update", version = "0.3.0" }
+birchpad-view = { path = "crates/view", version = "0.3.0" }
 
 anyhow = "1"
 proptest = "1.11"
 ropey = { version = "=2.0.0-beta.1", features = ["metric_utf16", "metric_lines_lf"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+# The version GPUI uses, so that one copy is built (`.github/dependabot.yml` holds it).
+similar = { version = "2.7", default-features = false }
 smallvec = "1.15"
 thiserror = "2"
 toml = "1.1"
@@ -49,3 +51,9 @@ print_stdout = "warn"
 [profile.release]
 lto = "thin"
 codegen-units = 1
+
+# The dependencies (GPUI, its layout and text, tree-sitter, wasmtime) optimized in debug builds:
+# the window's tests and a debug run of the application spend most of their time in them, and
+# they are built once while the workspace's crates still build quickly.
+[profile.dev.package."*"]
+opt-level = 1

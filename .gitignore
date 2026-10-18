@@ -1,5 +1,6 @@
 /target
 /packaging/out
+/mutants.out*
 
 # IDEs and OS files
 .idea/

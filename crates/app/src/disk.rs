@@ -133,6 +133,21 @@ impl Workspace {
         self.disk_state.watched = watched;
     }
 
+    /// The folders watched, sorted.
+    #[cfg(test)]
+    pub(crate) fn watched_folders(&self) -> Vec<PathBuf> {
+        let mut folders: Vec<PathBuf> = self.disk_state.watched.iter().cloned().collect();
+        folders.sort();
+        folders
+    }
+
+    /// Stops the watcher, leaving the checks of monitored files every second.
+    #[cfg(test)]
+    pub(crate) fn drop_watcher(&mut self) {
+        self.disk_state.watcher = None;
+        self.disk_state.watched.clear();
+    }
+
     /// Checks whether other programs changed or deleted open files, and deals with each.
     pub(crate) fn check_files(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         if self.disk_state.checking {

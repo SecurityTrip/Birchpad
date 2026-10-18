@@ -23,7 +23,7 @@ is in `birchpad-core`, and its decorations already follow edits (ADR 0010).
   line breaks, so converting line endings changes every line, as in Notepad++.
 - **Diff only what changed.** `birchpad_core::diff_lines` finds the bytes both texts start and
   end with by comparing the ropes' chunks (memory comparisons), then compares only the lines
-  between with Myers' diff (`similar`, already in the lock file through `insta`) on line hashes,
+  between with Myers' diff (`similar`, the version GPUI's components already build) on line hashes,
   with a time limit for very different texts. One edit in a 10 MB file takes under 2 ms, edits
   at both ends of it about 60 ms.
 - **In the background.** After each edit, save or text appended to the file, the buffer

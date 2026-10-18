@@ -6,6 +6,44 @@ version's release notes from its section here.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-18
+
+### Added
+
+- Update from the window that announces an update: Update downloads it, checks it against the
+  signed manifest, installs it and restarts with your documents, with a progress bar in place
+  of the buttons; Help > Check for Updates keeps its window open with the same bar. A download
+  no window shows (automatic updates) has a bar in the status bar, whose tooltip says how much
+  has arrived or that it stalled.
+- "Don't show again" in the window that announces an update turns update checks off.
+- File > Export to HTML (`file.export-html`) takes a `path` argument, for macros, plugins and
+  scripts: the page is written there without asking.
+
+### Fixed
+
+- Update downloads over a slow connection no longer fail after 30 seconds: a download fails
+  only when nothing arrives for a minute, and says so.
+- Compare marks a line removed at the start of a text against the right line of the other one;
+  with lines added after it, the removal could be shown a few lines further down.
+
+### Security
+
+- RUSTSEC-2026-0367 to 0369 (zip 8.6, through Velopack, the updater of per-user installs on
+  Windows) do not affect Birchpad: they concern Unix permission bits and symbolic links of
+  attacker-controlled archives, and Velopack only extracts Birchpad's own update packages,
+  checked against the signed manifest first. Velopack moves to zip 9 once it ships one in a
+  release.
+
+### Changed
+
+- Tests run in about a quarter of the time (cargo-nextest, the test window without animations)
+  and cover much more: the editor at the edges of the text, files and sessions when the file
+  system refuses, updates and Plugins Admin against a local server, property tests, end-to-end
+  scenarios counted in the coverage report; dictionaries, searches, plugin calls and scripts
+  are fuzzed; timing checks and mutation testing run every night.
+- Fewer dependencies: x11rb 0.13 and similar 2.7, the versions GPUI already builds, and
+  yaml-rust2 without its encoding detection; 13 crates fewer in the build.
+
 ## [0.2.5] - 2026-10-15
 
 ### Changed

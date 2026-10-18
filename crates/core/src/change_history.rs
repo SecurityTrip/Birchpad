@@ -492,7 +492,11 @@ mod tests {
         edited.insert(original.len() / 2, "x");
         let started = Instant::now();
         let lines = history.lines(&edited);
-        eprintln!("one edit in 10 MB: {:?}", started.elapsed());
+        crate::timing::within(
+            "change history, one edit in 10 MB",
+            started.elapsed(),
+            std::time::Duration::from_millis(500),
+        );
         assert_eq!(lines, [(125_000..125_001, Modified)]);
 
         // Edits at both ends: the whole text is compared.
@@ -500,7 +504,11 @@ mod tests {
         edited.insert(edited.len(), "x");
         let started = Instant::now();
         let lines = history.lines(&edited);
-        eprintln!("edits at both ends of 10 MB: {:?}", started.elapsed());
+        crate::timing::within(
+            "change history, edits at both ends of 10 MB",
+            started.elapsed(),
+            std::time::Duration::from_secs(5),
+        );
         assert_eq!(lines.len(), 3);
     }
 

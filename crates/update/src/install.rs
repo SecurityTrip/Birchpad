@@ -8,6 +8,9 @@ use semver::Version;
 
 use crate::{Package, Transport};
 
+/// Told the bytes of a package received so far, as they arrive.
+pub type Progress = Arc<dyn Fn(u64) + Send + Sync>;
+
 /// Installs updates of a per-user installation; tests use fakes.
 pub trait Installer: Send + Sync {
     /// Downloads the package of `version` and checks it against the manifest (blocking), so that
@@ -17,6 +20,7 @@ pub trait Installer: Send + Sync {
         version: &Version,
         package: &Package,
         transport: Arc<dyn Transport>,
+        progress: Progress,
     ) -> Result<(), String>;
 
     /// Starts the installer of the downloaded update: it waits for Birchpad to quit, installs
@@ -68,7 +72,7 @@ mod velopack_installer {
         UpdateCheck, UpdateManager, UpdateOptions, VelopackAsset, VelopackAssetFeed, bundle,
     };
 
-    use super::Installer;
+    use super::{Installer, Progress};
     use crate::manifest::PACKAGE_ID;
     use crate::{Package, Transport};
 
@@ -90,11 +94,13 @@ mod velopack_installer {
             version: &Version,
             package: &Package,
             transport: Arc<dyn Transport>,
+            progress: Progress,
         ) -> Result<(), String> {
             let source = SignedSource {
                 version: version.to_string(),
                 package: package.clone(),
                 transport,
+                progress,
             };
             let options = UpdateOptions {
                 AllowVersionDowngrade: false,
@@ -132,6 +138,8 @@ mod velopack_installer {
         version: String,
         package: Package,
         transport: Arc<dyn Transport>,
+        /// Told the bytes received, besides Velopack's percentage.
+        progress: Progress,
     }
 
     impl UpdateSource for SignedSource {
@@ -170,6 +178,7 @@ mod velopack_installer {
             }
             let size = self.package.size.max(1);
             let report = |received: u64| {
+                (self.progress)(received);
                 if let Some(progress) = &progress {
                     progress.send((received * 100 / size) as i16).ok();
                 }
@@ -186,7 +195,7 @@ mod velopack_installer {
 
     #[cfg(test)]
     mod tests {
-        use std::sync::mpsc;
+        use std::sync::{Mutex, mpsc};
 
         use sha2::{Digest as _, Sha256};
 
@@ -215,6 +224,7 @@ mod velopack_installer {
                     sha1: "unused".to_owned(),
                 },
                 transport: Arc::new(Serve(served)),
+                progress: Arc::new(|_| {}),
             }
         }
 
@@ -245,13 +255,21 @@ mod velopack_installer {
         fn only_the_package_of_the_manifest_is_downloaded() {
             let dir = tempfile::tempdir().unwrap();
             let to = dir.path().join("package.nupkg");
-            let good = source(b"package", b"package");
+            let mut good = source(b"package", b"package");
+            let received = Arc::new(Mutex::new(Vec::new()));
+            let reports = received.clone();
+            good.progress = Arc::new(move |bytes| reports.lock().unwrap().push(bytes));
             let asset = feed(&good).remove(0);
             let (sender, progress) = mpsc::channel();
             good.download_release_entry(&asset, &to, Some(sender))
                 .unwrap();
             assert_eq!(std::fs::read(&to).unwrap(), b"package");
             assert_eq!(progress.try_iter().last(), Some(100));
+            assert_eq!(
+                *received.lock().unwrap(),
+                [7],
+                "the bytes, not a percentage"
+            );
 
             // Other bytes of the same size, from a server or a mirror.
             let tampered = source(b"package", b"pockage");
@@ -305,6 +323,7 @@ mod velopack_installer {
                 &Version::new(0, 2, 0),
                 &source.package,
                 source.transport.clone(),
+                Arc::new(|_| {}),
             );
             assert!(result.is_err());
         }

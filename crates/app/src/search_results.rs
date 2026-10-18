@@ -462,7 +462,7 @@ impl SearchResults {
     }
 
     /// The rows as text, indented by level: for tests.
-    #[cfg(test)]
+    #[cfg(any(test, feature = "e2e"))]
     pub(crate) fn rows_text(&self) -> Vec<String> {
         self.rows
             .iter()

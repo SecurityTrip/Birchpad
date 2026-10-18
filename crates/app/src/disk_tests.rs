@@ -270,3 +270,113 @@ second ж
         active(&workspace, cx).read_with(cx, |view, cx| view.buffer.read(cx).read_only());
     assert_eq!(read_only, None);
 }
+
+fn watched(workspace: &Entity<Workspace>, cx: &mut VisualTestContext) -> Vec<std::path::PathBuf> {
+    workspace.read_with(cx, |workspace, _| workspace.watched_folders())
+}
+
+fn start_watching(workspace: &Entity<Workspace>, cx: &mut VisualTestContext) {
+    workspace.update_in(cx, |workspace, window, cx| {
+        workspace.start_watching(window, cx);
+    });
+    cx.run_until_parked();
+}
+
+/// Waits, in real time, for `done`: the watcher's events come from another thread.
+fn wait_for(
+    cx: &mut VisualTestContext,
+    mut done: impl FnMut(&mut VisualTestContext) -> bool,
+) -> bool {
+    for _ in 0..100 {
+        std::thread::sleep(std::time::Duration::from_millis(50));
+        cx.executor()
+            .advance_clock(std::time::Duration::from_millis(200));
+        cx.run_until_parked();
+        if done(cx) {
+            return true;
+        }
+    }
+    false
+}
+
+#[gpui_kit::test]
+fn the_folders_of_open_files_are_watched_and_their_changes_noticed(cx: &mut TestAppContext) {
+    let [one, two] = [tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap()];
+    let [a, b] = [one.path().join("a.txt"), two.path().join("b.txt")];
+    fs::write(&a, "a").unwrap();
+    fs::write(&b, "b").unwrap();
+    let (workspace, cx) = open_workspace(cx);
+    cx.executor().allow_parking();
+    start_watching(&workspace, cx);
+    assert!(watched(&workspace, cx).is_empty(), "an untitled document");
+    open(&workspace, &a, cx);
+    open(&workspace, &b, cx);
+    let mut both = vec![
+        fs::canonicalize(one.path()).unwrap(),
+        fs::canonicalize(two.path()).unwrap(),
+    ];
+    both.sort();
+    let canonical = |folders: Vec<std::path::PathBuf>| {
+        let mut folders: Vec<_> = folders
+            .into_iter()
+            .map(|folder| fs::canonicalize(folder).unwrap())
+            .collect();
+        folders.sort();
+        folders
+    };
+    assert_eq!(canonical(watched(&workspace, cx)), both);
+
+    // Another program writes b.txt: noticed without asking for a check.
+    fs::write(&b, "b 2").unwrap();
+    assert!(
+        wait_for(cx, |cx| cx.has_pending_prompt()),
+        "the change is noticed"
+    );
+    answer("Reload", cx);
+    assert_eq!(active_text(&workspace, cx), "b 2");
+
+    // Closing b.txt stops watching its folder.
+    workspace.update_in(cx, |workspace, window, cx| {
+        workspace
+            .dispatch(&Invocation::new("file.close"), window, cx)
+            .unwrap();
+    });
+    cx.run_until_parked();
+    assert_eq!(
+        canonical(watched(&workspace, cx)),
+        [fs::canonicalize(one.path()).unwrap()]
+    );
+    // With detection off, nothing is watched.
+    settings(cx, |files| files.change_detection = ChangeDetection::Off);
+    workspace.update(cx, |workspace, cx| workspace.sync_watches(cx));
+    assert!(watched(&workspace, cx).is_empty());
+}
+
+#[gpui_kit::test]
+fn monitored_files_are_checked_every_second(cx: &mut TestAppContext) {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("log.txt");
+    fs::write(&path, "first\n").unwrap();
+    let (workspace, cx) = open_workspace(cx);
+    open(&workspace, &path, cx);
+    workspace.update_in(cx, |workspace, window, cx| {
+        workspace
+            .dispatch(&Invocation::new("view.monitoring"), window, cx)
+            .unwrap();
+    });
+    // Without a watcher, as on network drives that send no events (its thread may have
+    // started meanwhile).
+    cx.executor().allow_parking();
+    settings(cx, |files| files.change_detection = ChangeDetection::Off);
+    start_watching(&workspace, cx);
+    workspace.update(cx, |workspace, _| workspace.drop_watcher());
+    let mut file = fs::OpenOptions::new().append(true).open(&path).unwrap();
+    file.write_all(b"second\n").unwrap();
+    drop(file);
+    // Within a second. (Whether it was seen sooner is up to the watcher's thread, which on
+    // Windows may still deliver an event after the watcher is dropped.)
+    cx.executor()
+        .advance_clock(std::time::Duration::from_millis(1100));
+    cx.run_until_parked();
+    assert_eq!(active_text(&workspace, cx), "first\nsecond\n");
+}
