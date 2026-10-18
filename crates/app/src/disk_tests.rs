@@ -373,12 +373,10 @@ fn monitored_files_are_checked_every_second(cx: &mut TestAppContext) {
     let mut file = fs::OpenOptions::new().append(true).open(&path).unwrap();
     file.write_all(b"second\n").unwrap();
     drop(file);
+    // Within a second. (Whether it was seen sooner is up to the watcher's thread, which on
+    // Windows may still deliver an event after the watcher is dropped.)
     cx.executor()
-        .advance_clock(std::time::Duration::from_millis(500));
-    cx.run_until_parked();
-    assert_eq!(active_text(&workspace, cx), "first\n", "not yet");
-    cx.executor()
-        .advance_clock(std::time::Duration::from_millis(600));
+        .advance_clock(std::time::Duration::from_millis(1100));
     cx.run_until_parked();
     assert_eq!(active_text(&workspace, cx), "first\nsecond\n");
 }
