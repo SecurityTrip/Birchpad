@@ -6,6 +6,8 @@ version's release notes from its section here.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-18
+
 ### Added
 
 - Update from the window that announces an update: Update downloads it, checks it against the
@@ -14,6 +16,8 @@ version's release notes from its section here.
   no window shows (automatic updates) has a bar in the status bar, whose tooltip says how much
   has arrived or that it stalled.
 - "Don't show again" in the window that announces an update turns update checks off.
+- File > Export to HTML (`file.export-html`) takes a `path` argument, for macros, plugins and
+  scripts: the page is written there without asking.
 
 ### Fixed
 
@@ -24,6 +28,11 @@ version's release notes from its section here.
 
 ### Changed
 
+- Tests run in about a quarter of the time (cargo-nextest, the test window without animations)
+  and cover much more: the editor at the edges of the text, files and sessions when the file
+  system refuses, updates and Plugins Admin against a local server, property tests, end-to-end
+  scenarios counted in the coverage report; dictionaries, searches, plugin calls and scripts
+  are fuzzed; timing checks and mutation testing run every night.
 - Fewer dependencies: x11rb 0.13 and similar 2.7, the versions GPUI already builds, and
   yaml-rust2 without its encoding detection; 13 crates fewer in the build.
 

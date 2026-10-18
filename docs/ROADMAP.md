@@ -545,9 +545,11 @@ floors in `.github/coverage-floors.toml` with its tests.
       Versions), checked by `birchpad-release crate-versions` and the release workflow. In
       0.3.0 so far: cli, commands, config, core, editor, i18n, io, plugin, syntax, tools,
       update and view at 0.3.0, the others at 0.2.5
-- [ ] Release 0.3.0: the workspace version (0.3.0, set when its branch opens, so that nightly
+- [x] Release 0.3.0: the workspace version (0.3.0, set when its branch opens, so that nightly
       builds are its pre-releases), `CHANGELOG.md` and this roadmap updated; the
-      [release checklist](release-checklist.md) gone through
+      [release checklist](release-checklist.md) gone through on 2026-10-18; the checks
+      a person makes on real systems (installers, input methods, screen readers, displays)
+      are noted in the release
 
 ### Release 0.4.0: languages and text
 
