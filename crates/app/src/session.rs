@@ -648,6 +648,7 @@ fn tab_of(document: usize, state: ViewState, marks: TabMarks) -> SessionTab {
         first_row: state.scroll_top,
         scroll_x: state.scroll_left / px(1.),
         folds: state.collapsed,
+        rtl: state.rtl,
     }
 }
 
@@ -678,6 +679,7 @@ fn state_of(tab: &SessionTab) -> ViewState {
         scroll_top: tab.first_row,
         scroll_left: px(tab.scroll_x),
         collapsed: tab.folds.clone(),
+        rtl: tab.rtl,
     }
 }
 

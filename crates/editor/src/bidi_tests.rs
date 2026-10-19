@@ -75,3 +75,63 @@ fn right_to_left_rows_end_at_the_right_edge(cx: &mut gpui_kit::TestAppContext) {
         left
     );
 }
+
+#[gpui_kit::test]
+fn the_margins_move_right_and_keys_switch_the_direction(cx: &mut gpui_kit::TestAppContext) {
+    let (workspace, cx) = editor(cx);
+    cx.simulate_input("ab");
+    let view = workspace.read_with(cx, |workspace, cx| workspace.active_view(cx).unwrap());
+    let sides = |cx: &mut gpui_kit::VisualTestContext| {
+        view.read_with(cx, |view, _| {
+            let layout = view.layout.as_ref().unwrap();
+            (layout.margins.gutter, layout.text_bounds)
+        })
+    };
+    let (gutter, text) = sides(cx);
+    assert!(
+        gutter.right() <= text.left(),
+        "left to right: margins at the left"
+    );
+    cx.simulate_keystrokes("ctrl-alt-shift-r");
+    cx.run_until_parked();
+    assert!(view.read_with(cx, |view, _| view.rtl));
+    let (gutter, text) = sides(cx);
+    assert!(
+        text.right() <= gutter.left(),
+        "right to left: margins at the right"
+    );
+    assert!(gutter.size.width > gpui_kit::px(0.));
+    cx.simulate_keystrokes("ctrl-alt-shift-l");
+    cx.run_until_parked();
+    assert!(!view.read_with(cx, |view, _| view.rtl));
+    // The direction goes with the view's state, as sessions keep it.
+    let state = view.read_with(cx, |view, cx| view.view_state(cx));
+    assert!(!state.rtl);
+    view.update(cx, |view, cx| {
+        view.restore(crate::ViewState { rtl: true, ..state }, cx);
+    });
+    assert!(view.read_with(cx, |view, cx| view.view_state(cx).rtl));
+}
+
+#[gpui_kit::test]
+fn a_selection_over_mixed_text_is_drawn_in_pieces(cx: &mut gpui_kit::TestAppContext) {
+    let (workspace, cx) = editor(cx);
+    // "ab אב cd": selecting from "b" into the Hebrew word covers two pieces apart.
+    cx.simulate_input("ab \u{5d0}\u{5d1} cd");
+    let view = workspace.read_with(cx, |workspace, cx| workspace.active_view(cx).unwrap());
+    let hebrew = "ab ".len();
+    view.update(cx, |view, cx| view.select_range(1..hebrew + 2, cx));
+    cx.run_until_parked();
+    let pieces = view.read_with(cx, |view, _| view.layout.as_ref().unwrap().selections.len());
+    assert_eq!(pieces, 2);
+    // Within one direction, one piece; nothing selected, none.
+    view.update(cx, |view, cx| view.select_range(0..2, cx));
+    cx.run_until_parked();
+    let pieces = view.read_with(cx, |view, _| view.layout.as_ref().unwrap().selections.len());
+    assert_eq!(pieces, 1);
+    view.update(cx, |view, cx| view.select_range(2..2, cx));
+    cx.run_until_parked();
+    assert!(view.read_with(cx, |view, _| {
+        view.layout.as_ref().unwrap().selections.is_empty()
+    }));
+}

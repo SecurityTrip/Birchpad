@@ -564,7 +564,7 @@ floors in `.github/coverage-floors.toml` with its tests.
       number prefixes, suffixes, extras and ranges; comments that must start a line; nested
       delimiters; colors from the theme where the UDL leaves them unset; Open User Defined
       Language Folder, the UDL collection link
-- [ ] 6.33 Right-to-left text: selections drawn piece by piece over mixed text; margins on the
+- [x] 6.33 Right-to-left text: selections drawn piece by piece over mixed text; margins on the
       right in right-to-left mode; keys for Text Direction RTL and LTR; the direction
       remembered per document in sessions; very long rows reordered too
 - [ ] 6.34 Localization: more interface languages, translated for Birchpad; Notepad++'s

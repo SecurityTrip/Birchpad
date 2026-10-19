@@ -65,6 +65,7 @@ pub(crate) fn import(xml: &str) -> Result<Session, SessionError> {
                 folds: lines("Fold"),
                 pinned: file.attribute("tabPinned") == Some("yes"),
                 color: tab_color(file.attribute("tabColourId")),
+                rtl: file.attribute("RTL") == Some("yes"),
             });
         }
         view.active = view.active.min(view.tabs.len().saturating_sub(1));
@@ -227,6 +228,18 @@ mod tests {
             ],
             "colors 0 to 4 become 1 to 5; none, past the last or not a number, no color"
         );
+    }
+
+    #[test]
+    fn the_text_direction_of_each_tab() {
+        let xml = r#"<NotepadPlus><Session><mainView>
+            <File filename="C:\a.txt" RTL="yes" />
+            <File filename="C:\b.txt" RTL="no" />
+            <File filename="C:\c.txt" />
+        </mainView></Session></NotepadPlus>"#;
+        let session = import(xml).unwrap();
+        let rtl: Vec<bool> = session.main_view.tabs.iter().map(|tab| tab.rtl).collect();
+        assert_eq!(rtl, [true, false, false]);
     }
 
     #[test]

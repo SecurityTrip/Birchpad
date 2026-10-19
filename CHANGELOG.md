@@ -41,6 +41,10 @@ version's release notes from its section here.
 - Language > User Defined Language > Define Your Language...: a dialog that writes a user
   defined language, new or one already there: extensions, keywords, comments, operators,
   delimiters, folding and numbers; the colors it does not edit stay as they were.
+- Right-to-left text: a selection over mixed directions is drawn in pieces; in Text
+  Direction RTL the margins are at the right; Ctrl+Alt+Shift+R and Ctrl+Alt+Shift+L switch
+  the direction; sessions keep it per tab (Notepad++'s sessions too); very long rows are
+  reordered as well.
 
 ### Changed
 

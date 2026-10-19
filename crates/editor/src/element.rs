@@ -105,9 +105,15 @@ impl Element for EditorElement {
             theme::paint(theme::editor().gutter_background),
         ));
         if gutter.size.width > px(0.) {
+            // The border on the side of the text.
+            let border = if gutter.left() >= layout.text_bounds.right() {
+                gutter.left()
+            } else {
+                gutter.right() - px(1.)
+            };
             window.paint_quad(fill(
                 Bounds::new(
-                    point(gutter.right() - px(1.), gutter.top()),
+                    point(border, gutter.top()),
                     size(px(1.), gutter.size.height),
                 ),
                 theme::paint(theme::editor().gutter_border),

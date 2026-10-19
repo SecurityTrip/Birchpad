@@ -138,17 +138,27 @@ pub struct Margins {
 }
 
 impl Margins {
+    /// The margins at the left of `bounds`, or in right-to-left mode (`rtl`) mirrored at the
+    /// right of the text, which ends at `right`: line numbers outermost, folding next to the
+    /// text, as Scintilla mirrors them.
     fn new(
         bounds: Bounds<Pixels>,
         settings: &ViewSettings,
         metrics: &Metrics,
         line_count: usize,
+        rtl: Option<Pixels>,
     ) -> Self {
-        let mut x = bounds.left();
+        let mut x = rtl.unwrap_or(bounds.left());
         let mut column = |enabled: bool, width: Pixels| {
             enabled.then(|| {
-                let margin = Bounds::new(point(x, bounds.top()), size(width, bounds.size.height));
-                x += width;
+                let left = if rtl.is_some() { x - width } else { x };
+                let margin =
+                    Bounds::new(point(left, bounds.top()), size(width, bounds.size.height));
+                if rtl.is_some() {
+                    x -= width;
+                } else {
+                    x += width;
+                }
                 margin
             })
         };
@@ -161,7 +171,12 @@ impl Margins {
             (metrics.line_height * 0.3).round().max(px(4.)),
         );
         let folding = column(settings.fold_margin, (metrics.line_height * 0.8).round());
-        let gutter = Bounds::from_corners(bounds.origin, point(x, bounds.bottom()));
+        let gutter = match rtl {
+            Some(right) => {
+                Bounds::from_corners(point(x, bounds.top()), point(right, bounds.bottom()))
+            }
+            None => Bounds::from_corners(bounds.origin, point(x, bounds.bottom())),
+        };
         Self {
             gutter,
             line_numbers,
@@ -221,12 +236,23 @@ impl EditorView {
         let line_height = metrics.line_height;
         let cell = metrics.cell;
 
-        let margins = Margins::new(bounds, &settings, &metrics, line_count(&text));
-        let text_left = margins.gutter.right();
-        let mut text_bounds = Bounds::from_corners(
-            point(text_left, bounds.top()),
-            point(bounds.right() - SCROLLBAR, bounds.bottom()),
+        // Right to left: the margins at the right, between the text and the scrollbar.
+        let right_edge = bounds.right() - SCROLLBAR;
+        let margins = Margins::new(
+            bounds,
+            &settings,
+            &metrics,
+            line_count(&text),
+            self.rtl.then_some(right_edge),
         );
+        let mut text_bounds = if self.rtl {
+            Bounds::from_corners(bounds.origin, point(margins.gutter.left(), bounds.bottom()))
+        } else {
+            Bounds::from_corners(
+                point(margins.gutter.right(), bounds.top()),
+                point(right_edge, bounds.bottom()),
+            )
+        };
 
         let wrap_width = settings.word_wrap.then(|| {
             let usable = text_bounds.size.width - TEXT_PADDING * 2.;
@@ -350,10 +376,8 @@ impl EditorView {
         let styles = self.frame_styles(&shown, &text, cx);
         let mut rows = Vec::with_capacity(pending.len());
         for (row, y, mut x, display) in pending {
-            // Rows shaped only in part (very long ones) keep the stored order.
-            let bidi = (row.range.len() <= LONG_ROW)
-                .then(|| birchpad_view::BidiRow::new(&display.text, self.rtl))
-                .flatten();
+            // Rows shaped only in part (very long ones) reorder the part shown.
+            let bidi = birchpad_view::BidiRow::new(&display.text, self.rtl);
             let shaped = match &bidi {
                 Some(bidi) => self.shape_bidi_row(&display, bidi, &metrics, &styles, window),
                 None => self.shape_row(&display, &metrics, &styles, window),
@@ -817,8 +841,12 @@ impl EditorView {
         };
         let anchors = self.hidden_anchors(text, first.row.line..last.row.line + 1);
         let line_height = layout.metrics.line_height;
-        let left = layout.margins.gutter.left();
-        let right = layout.text_bounds.right();
+        // Across the margins and the text, whichever side the margins are on.
+        let left = layout.margins.gutter.left().min(layout.text_bounds.left());
+        let right = layout
+            .text_bounds
+            .right()
+            .max(layout.margins.gutter.right());
         for row in layout.rows.iter().filter(|row| row.row.last_in_line) {
             if anchors.contains(&row.row.line) {
                 let bottom = row.y + line_height;
@@ -1035,6 +1063,37 @@ impl EditorView {
                 let selects_break = row.row.last_in_line
                     && range.from() <= row.row.range.end
                     && range.to() > row.row.range.end;
+                // Over mixed directions, one piece for each run of selected characters.
+                if let Some(bidi) = &row.bidi {
+                    let start = range.from().max(row.row.range.start);
+                    let end = range.to().min(row.row.range.end);
+                    if row.covers(start) && row.covers(end) {
+                        let logical = row.display.to_display(start)..row.display.to_display(end);
+                        for span in bidi.visual_spans(logical) {
+                            let left = row.x + row.shaped.x_for_index(span.start);
+                            let right = row.x + row.shaped.x_for_index(span.end);
+                            quads.push(Bounds::from_corners(
+                                point(left, row.y),
+                                point(right, row.y + line_height),
+                            ));
+                        }
+                        if selects_break {
+                            // The selected line break: half a cell past the row's end, on the
+                            // side the paragraph runs to.
+                            let half = layout.metrics.cell * 0.5;
+                            let left = if self.rtl {
+                                row.x - half
+                            } else {
+                                row.x + row.shaped.width()
+                            };
+                            quads.push(Bounds::from_corners(
+                                point(left, row.y),
+                                point(left + half, row.y + line_height),
+                            ));
+                        }
+                        continue;
+                    }
+                }
                 let left = if range.from() < row.row.range.start {
                     self.x_in_row(layout, row, row.row.range.start, text)
                 } else {

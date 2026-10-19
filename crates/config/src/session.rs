@@ -97,6 +97,9 @@ pub struct SessionTab {
     /// The tab's color, 1 to 5 as Notepad++'s Apply Color 1-5; none if unset.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub color: Option<u8>,
+    /// Edit > Text Direction RTL: the text runs right to left (Notepad++'s `RTL`).
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub rtl: bool,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -271,6 +274,7 @@ mod tests {
             folds: vec![1],
             pinned: true,
             color: Some(3),
+            rtl: true,
         }];
         session.second_view = SessionView {
             active: 1,

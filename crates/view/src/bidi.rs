@@ -118,6 +118,26 @@ impl BidiRow {
         }
     }
 
+    /// The pieces of the visual text the characters stored in `logical` show as, left to right:
+    /// a selection over mixed directions shows as several.
+    pub fn visual_spans(&self, logical: Range<usize>) -> Vec<Range<usize>> {
+        let mut shown: Vec<Range<usize>> = self
+            .chars
+            .iter()
+            .filter(|ch| logical.start <= ch.logical && ch.logical + ch.len <= logical.end)
+            .map(|ch| ch.visual..ch.visual + ch.len)
+            .collect();
+        shown.sort_by_key(|span| span.start);
+        let mut spans: Vec<Range<usize>> = Vec::new();
+        for span in shown {
+            match spans.last_mut() {
+                Some(last) if last.end == span.start => last.end = span.end,
+                _ => spans.push(span),
+            }
+        }
+        spans
+    }
+
     /// The stored range of each character in visual order, for coloring the shown text.
     pub fn visual_chars(&self) -> Vec<Range<usize>> {
         let mut by_visual: Vec<&Char> = self.chars.iter().collect();
@@ -175,6 +195,25 @@ mod tests {
             let back = row.logical_caret(visual);
             assert!(text.is_char_boundary(back));
         }
+    }
+
+    #[test]
+    fn selections_over_mixed_text_are_pieces() {
+        // "ab אב cd": the Hebrew pair shows reversed in the middle.
+        let text = "ab \u{5d0}\u{5d1} cd";
+        let row = BidiRow::new(text, false).unwrap();
+        let hebrew_start = text.find('\u{5d0}').unwrap();
+        // From "b" into the Hebrew word: "b" on the left, the first Hebrew letter at the right
+        // of the pair.
+        let spans = row.visual_spans(1..hebrew_start + 2);
+        assert_eq!(spans.len(), 2, "{spans:?}");
+        assert_eq!(spans[0], 1..hebrew_start, "b and the space");
+        // All of it is one piece; nothing is none.
+        let whole = row.visual_spans(0..text.len());
+        assert_eq!(whole.len(), 1);
+        assert_eq!(whole[0], 0..text.len());
+        assert!(row.visual_spans(2..2).is_empty());
+        assert!(row.visual_spans(text.len()..text.len() + 5).is_empty());
     }
 
     #[test]

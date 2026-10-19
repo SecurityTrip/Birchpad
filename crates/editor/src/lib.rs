@@ -499,6 +499,8 @@ pub struct ViewState {
     pub scroll_left: Pixels,
     /// First lines of the collapsed folds.
     pub collapsed: Vec<usize>,
+    /// Edit > Text Direction RTL, remembered per tab in sessions.
+    pub rtl: bool,
 }
 
 pub struct EditorView {
@@ -728,12 +730,15 @@ impl EditorView {
             scroll_top: self.scroll_top,
             scroll_left: self.scroll_left,
             collapsed: self.collapsed.lines(self.text(cx)),
+            rtl: self.rtl,
         }
     }
 
     /// Puts the view where `state` says, now or, while the file is being read, once it has
     /// been. Positions past the end of the text (the file changed meanwhile) move to the end.
     pub fn restore(&mut self, state: ViewState, cx: &mut Context<Self>) {
+        // The direction shows at once, the file read or not.
+        self.rtl = state.rtl;
         if self.buffer.read(cx).read_only() == Some(ReadOnly::Loading) {
             self.pending_state = Some(state);
             return;
