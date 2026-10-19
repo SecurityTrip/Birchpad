@@ -1,7 +1,7 @@
 [package]
 name = "birchpad-syntax"
 description = "Languages and syntax trees for Birchpad: detection, tree-sitter parsing, highlighting, folding. No UI."
-version = "0.3.0"
+version = "0.4.0"
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true

@@ -20,11 +20,12 @@ use std::sync::{Arc, LazyLock};
 use yaml_rust2::{Yaml, YamlLoader};
 
 /// The interface languages, by code, with their names in themselves.
-pub const LANGUAGES: &[(&str, &str)] = &[("en", "English"), ("ru", "Русский")];
+pub const LANGUAGES: &[(&str, &str)] = &[("en", "English"), ("de", "Deutsch"), ("ru", "Русский")];
 
 /// The locales built in, by language code; English first.
 pub const LOCALES: &[(&str, &str)] = &[
     ("en", include_str!("../locales/en.yaml")),
+    ("de", include_str!("../locales/de.yaml")),
     ("ru", include_str!("../locales/ru.yaml")),
 ];
 
@@ -142,6 +143,8 @@ struct Current {
     code: String,
     /// Its locale, when it is not English.
     translation: Option<Arc<Locale>>,
+    /// Texts from a Notepad++ translation, which come first (menu names, command titles).
+    native: Option<Arc<HashMap<String, String>>>,
 }
 
 fn load(code: &str) -> Option<Arc<Locale>> {
@@ -162,6 +165,7 @@ fn english() -> Current {
     Current {
         code: "en".to_owned(),
         translation: None,
+        native: None,
     }
 }
 
@@ -226,6 +230,18 @@ pub fn set_language(code: &str) {
     set_current(Current {
         code: code.to_owned(),
         translation,
+        native: current().native.clone(),
+    });
+}
+
+/// Puts `texts` (by key) before the language's own: the menu names and command titles of a
+/// Notepad++ translation the user has (`appearance.native-lang`); `None` takes them away.
+pub fn set_native_texts(texts: Option<HashMap<String, String>>) {
+    let current = current();
+    set_current(Current {
+        code: current.code.clone(),
+        translation: current.translation.clone(),
+        native: texts.map(Arc::new),
     });
 }
 
@@ -236,6 +252,9 @@ pub fn language() -> String {
 
 fn lookup(key: &str) -> Option<Value> {
     let current = current();
+    if let Some(text) = current.native.as_ref().and_then(|native| native.get(key)) {
+        return Some(Value::Text(text.clone()));
+    }
     current
         .translation
         .as_ref()
@@ -352,4 +371,5 @@ pub fn system_language() -> Option<String> {
 }
 
 #[cfg(test)]
+#[path = "../tests/unit/tests.rs"]
 mod tests;

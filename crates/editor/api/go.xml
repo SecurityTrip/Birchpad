@@ -1,0 +1,191 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Birchpad's API file for this language (ADR 0031), written for Birchpad and
+     licensed as Birchpad is. A file of the same name in the autoCompletion folder next to
+     the settings takes its place. -->
+<NotepadPlus>
+  <AutoComplete language="go">
+    <Environment ignoreCase="no" startFunc="(" stopFunc=")" paramSeparator="," />
+    <KeyWord name="any" />
+    <KeyWord name="append" func="yes">
+      <Overload retVal="[]T" descr="Appends elements to the end of a slice.">
+        <Param name="slice []T" />
+        <Param name="elems ...T" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="Atoi" func="yes">
+      <Overload retVal="(int, error)" descr="strconv.Atoi">
+        <Param name="s string" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="bool" />
+    <KeyWord name="break" />
+    <KeyWord name="byte" />
+    <KeyWord name="cap" func="yes">
+      <Overload retVal="int">
+        <Param name="v Type" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="case" />
+    <KeyWord name="chan" />
+    <KeyWord name="close" func="yes">
+      <Overload retVal="">
+        <Param name="c chan&lt;- Type" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="comparable" />
+    <KeyWord name="complex128" />
+    <KeyWord name="complex64" />
+    <KeyWord name="const" />
+    <KeyWord name="Contains" func="yes">
+      <Overload retVal="bool" descr="strings.Contains">
+        <Param name="s" />
+        <Param name="substr string" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="continue" />
+    <KeyWord name="copy" func="yes">
+      <Overload retVal="int">
+        <Param name="dst" />
+        <Param name="src []Type" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="default" />
+    <KeyWord name="defer" />
+    <KeyWord name="delete" func="yes">
+      <Overload retVal="">
+        <Param name="m map[Type]Type1" />
+        <Param name="key Type" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="else" />
+    <KeyWord name="error" />
+    <KeyWord name="Errorf" func="yes">
+      <Overload retVal="error" descr="fmt.Errorf">
+        <Param name="format string" />
+        <Param name="a ...any" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="fallthrough" />
+    <KeyWord name="false" />
+    <KeyWord name="float32" />
+    <KeyWord name="float64" />
+    <KeyWord name="for" />
+    <KeyWord name="func" />
+    <KeyWord name="go" />
+    <KeyWord name="goto" />
+    <KeyWord name="if" />
+    <KeyWord name="import" />
+    <KeyWord name="int" />
+    <KeyWord name="int16" />
+    <KeyWord name="int32" />
+    <KeyWord name="int64" />
+    <KeyWord name="int8" />
+    <KeyWord name="interface" />
+    <KeyWord name="iota" />
+    <KeyWord name="Is" func="yes">
+      <Overload retVal="bool" descr="errors.Is">
+        <Param name="err" />
+        <Param name="target error" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="Itoa" func="yes">
+      <Overload retVal="string" descr="strconv.Itoa">
+        <Param name="i int" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="Join" func="yes">
+      <Overload retVal="string" descr="strings.Join">
+        <Param name="elems []string" />
+        <Param name="sep string" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="len" func="yes">
+      <Overload retVal="int">
+        <Param name="v Type" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="make" func="yes">
+      <Overload retVal="Type">
+        <Param name="t Type" />
+        <Param name="size ...IntegerType" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="map" />
+    <KeyWord name="New" func="yes">
+      <Overload retVal="error" descr="errors.New">
+        <Param name="text string" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="new" func="yes">
+      <Overload retVal="*Type">
+        <Param name="Type" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="nil" />
+    <KeyWord name="package" />
+    <KeyWord name="panic" func="yes">
+      <Overload retVal="">
+        <Param name="v any" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="Printf" func="yes">
+      <Overload retVal="(n int, err error)" descr="fmt.Printf">
+        <Param name="format string" />
+        <Param name="a ...any" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="Println" func="yes">
+      <Overload retVal="(n int, err error)" descr="fmt.Println">
+        <Param name="a ...any" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="range" />
+    <KeyWord name="ReadFile" func="yes">
+      <Overload retVal="([]byte, error)" descr="os.ReadFile">
+        <Param name="name string" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="recover" func="yes">
+      <Overload retVal="any" />
+    </KeyWord>
+    <KeyWord name="return" />
+    <KeyWord name="rune" />
+    <KeyWord name="select" />
+    <KeyWord name="Split" func="yes">
+      <Overload retVal="[]string" descr="strings.Split">
+        <Param name="s" />
+        <Param name="sep string" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="Sprintf" func="yes">
+      <Overload retVal="string" descr="fmt.Sprintf">
+        <Param name="format string" />
+        <Param name="a ...any" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="string" />
+    <KeyWord name="struct" />
+    <KeyWord name="switch" />
+    <KeyWord name="TrimSpace" func="yes">
+      <Overload retVal="string" descr="strings.TrimSpace">
+        <Param name="s string" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="true" />
+    <KeyWord name="type" />
+    <KeyWord name="uint" />
+    <KeyWord name="uint16" />
+    <KeyWord name="uint32" />
+    <KeyWord name="uint64" />
+    <KeyWord name="uint8" />
+    <KeyWord name="uintptr" />
+    <KeyWord name="var" />
+    <KeyWord name="WriteFile" func="yes">
+      <Overload retVal="error" descr="os.WriteFile">
+        <Param name="name string" />
+        <Param name="data []byte" />
+        <Param name="perm FileMode" />
+      </Overload>
+    </KeyWord>
+  </AutoComplete>
+</NotepadPlus>

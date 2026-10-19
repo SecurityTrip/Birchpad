@@ -1,0 +1,285 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Birchpad's API file for this language (ADR 0031), written for Birchpad and
+     licensed as Birchpad is. A file of the same name in the autoCompletion folder next to
+     the settings takes its place. -->
+<NotepadPlus>
+  <AutoComplete language="php">
+    <Environment ignoreCase="yes" startFunc="(" stopFunc=")" paramSeparator="," />
+    <KeyWord name="__CLASS__" />
+    <KeyWord name="__construct" />
+    <KeyWord name="__DIR__" />
+    <KeyWord name="__FILE__" />
+    <KeyWord name="__LINE__" />
+    <KeyWord name="abstract" />
+    <KeyWord name="and" />
+    <KeyWord name="array" />
+    <KeyWord name="array_filter" func="yes">
+      <Overload retVal="array">
+        <Param name="array $array" />
+        <Param name="?callable $callback = null" />
+        <Param name="int $mode = 0" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="array_key_exists" func="yes">
+      <Overload retVal="bool">
+        <Param name="string|int $key" />
+        <Param name="array $array" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="array_keys" func="yes">
+      <Overload retVal="array">
+        <Param name="array $array" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="array_map" func="yes">
+      <Overload retVal="array">
+        <Param name="?callable $callback" />
+        <Param name="array $array" />
+        <Param name="array ...$arrays" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="array_merge" func="yes">
+      <Overload retVal="array">
+        <Param name="array ...$arrays" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="array_push" func="yes">
+      <Overload retVal="int">
+        <Param name="array &amp;$array" />
+        <Param name="mixed ...$values" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="as" />
+    <KeyWord name="break" />
+    <KeyWord name="callable" />
+    <KeyWord name="case" />
+    <KeyWord name="catch" />
+    <KeyWord name="class" />
+    <KeyWord name="clone" />
+    <KeyWord name="const" />
+    <KeyWord name="continue" />
+    <KeyWord name="count" func="yes">
+      <Overload retVal="int">
+        <Param name="Countable|array $value" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="date" func="yes">
+      <Overload retVal="string">
+        <Param name="string $format" />
+        <Param name="?int $timestamp = null" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="declare" />
+    <KeyWord name="default" />
+    <KeyWord name="do" />
+    <KeyWord name="echo" />
+    <KeyWord name="else" />
+    <KeyWord name="elseif" />
+    <KeyWord name="empty" />
+    <KeyWord name="enddeclare" />
+    <KeyWord name="endfor" />
+    <KeyWord name="endforeach" />
+    <KeyWord name="endif" />
+    <KeyWord name="endswitch" />
+    <KeyWord name="endwhile" />
+    <KeyWord name="enum" />
+    <KeyWord name="exit" func="yes">
+      <Overload retVal="never">
+        <Param name="string|int $status = 0" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="explode" func="yes">
+      <Overload retVal="array">
+        <Param name="string $separator" />
+        <Param name="string $string" />
+        <Param name="int $limit = PHP_INT_MAX" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="extends" />
+    <KeyWord name="false" />
+    <KeyWord name="file_exists" func="yes">
+      <Overload retVal="bool">
+        <Param name="string $filename" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="file_get_contents" func="yes">
+      <Overload retVal="string|false">
+        <Param name="string $filename" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="file_put_contents" func="yes">
+      <Overload retVal="int|false">
+        <Param name="string $filename" />
+        <Param name="mixed $data" />
+        <Param name="int $flags = 0" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="final" />
+    <KeyWord name="finally" />
+    <KeyWord name="fn" />
+    <KeyWord name="for" />
+    <KeyWord name="foreach" />
+    <KeyWord name="function" />
+    <KeyWord name="global" />
+    <KeyWord name="goto" />
+    <KeyWord name="htmlspecialchars" func="yes">
+      <Overload retVal="string">
+        <Param name="string $string" />
+        <Param name="int $flags = ENT_QUOTES" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="if" />
+    <KeyWord name="implements" />
+    <KeyWord name="implode" func="yes">
+      <Overload retVal="string">
+        <Param name="string $separator" />
+        <Param name="array $array" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="in_array" func="yes">
+      <Overload retVal="bool">
+        <Param name="mixed $needle" />
+        <Param name="array $haystack" />
+        <Param name="bool $strict = false" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="include" />
+    <KeyWord name="include_once" />
+    <KeyWord name="instanceof" />
+    <KeyWord name="insteadof" />
+    <KeyWord name="interface" />
+    <KeyWord name="intval" func="yes">
+      <Overload retVal="int">
+        <Param name="mixed $value" />
+        <Param name="int $base = 10" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="is_array" func="yes">
+      <Overload retVal="bool">
+        <Param name="mixed $value" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="is_string" func="yes">
+      <Overload retVal="bool">
+        <Param name="mixed $value" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="isset" />
+    <KeyWord name="json_decode" func="yes">
+      <Overload retVal="mixed">
+        <Param name="string $json" />
+        <Param name="?bool $associative = null" />
+        <Param name="int $depth = 512" />
+        <Param name="int $flags = 0" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="json_encode" func="yes">
+      <Overload retVal="string|false">
+        <Param name="mixed $value" />
+        <Param name="int $flags = 0" />
+        <Param name="int $depth = 512" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="list" />
+    <KeyWord name="match" />
+    <KeyWord name="namespace" />
+    <KeyWord name="new" />
+    <KeyWord name="null" />
+    <KeyWord name="or" />
+    <KeyWord name="parent" />
+    <KeyWord name="preg_match" func="yes">
+      <Overload retVal="int|false">
+        <Param name="string $pattern" />
+        <Param name="string $subject" />
+        <Param name="array &amp;$matches = null" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="preg_replace" func="yes">
+      <Overload retVal="string|array|null">
+        <Param name="string|array $pattern" />
+        <Param name="string|array $replacement" />
+        <Param name="string|array $subject" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="print" />
+    <KeyWord name="printf" func="yes">
+      <Overload retVal="int">
+        <Param name="string $format" />
+        <Param name="mixed ...$values" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="private" />
+    <KeyWord name="protected" />
+    <KeyWord name="public" />
+    <KeyWord name="readonly" />
+    <KeyWord name="require" />
+    <KeyWord name="require_once" />
+    <KeyWord name="return" />
+    <KeyWord name="self" />
+    <KeyWord name="sort" func="yes">
+      <Overload retVal="bool">
+        <Param name="array &amp;$array" />
+        <Param name="int $flags = SORT_REGULAR" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="sprintf" func="yes">
+      <Overload retVal="string">
+        <Param name="string $format" />
+        <Param name="mixed ...$values" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="static" />
+    <KeyWord name="str_replace" func="yes">
+      <Overload retVal="string">
+        <Param name="mixed $search" />
+        <Param name="mixed $replace" />
+        <Param name="mixed $subject" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="strlen" func="yes">
+      <Overload retVal="int">
+        <Param name="string $string" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="strpos" func="yes">
+      <Overload retVal="int|false">
+        <Param name="string $haystack" />
+        <Param name="string $needle" />
+        <Param name="int $offset = 0" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="substr" func="yes">
+      <Overload retVal="string">
+        <Param name="string $string" />
+        <Param name="int $offset" />
+        <Param name="?int $length = null" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="switch" />
+    <KeyWord name="throw" />
+    <KeyWord name="time" func="yes">
+      <Overload retVal="int" />
+    </KeyWord>
+    <KeyWord name="trait" />
+    <KeyWord name="trim" func="yes">
+      <Overload retVal="string">
+        <Param name="string $string" />
+        <Param name='string $characters = " \n\r\t\v\x00"' />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="true" />
+    <KeyWord name="try" />
+    <KeyWord name="unset" />
+    <KeyWord name="use" />
+    <KeyWord name="var" />
+    <KeyWord name="var_dump" func="yes">
+      <Overload retVal="void">
+        <Param name="mixed $value" />
+        <Param name="mixed ...$values" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="while" />
+    <KeyWord name="xor" />
+    <KeyWord name="yield" />
+  </AutoComplete>
+</NotepadPlus>

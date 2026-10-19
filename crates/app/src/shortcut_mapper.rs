@@ -677,7 +677,9 @@ impl Render for ShortcutMapper {
 }
 
 #[cfg(test)]
+#[path = "../tests/unit/shortcut_mapper/tests.rs"]
 mod tests;
 
 #[cfg(test)]
+#[path = "../tests/unit/shortcut_mapper/dialog_tests.rs"]
 mod dialog_tests;

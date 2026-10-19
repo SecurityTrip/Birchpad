@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use birchpad_core::{Encoding, Format, Rope};
+use birchpad_core::{Encoding, Format, LineEnding, Rope};
 
 use crate::changes::ByteChanges;
 use crate::decode::{DecodeProblem, decode};
@@ -152,6 +152,15 @@ pub fn load(
     Ok(decode_file(bytes, info, options))
 }
 
+/// Whether an EBCDIC file breaks its lines with NEL (0x15) alone: then NEL becomes LF in the
+/// text and is written back on saving. A file that also has LF (0x25) or CR (0x0D) keeps NEL as
+/// a character, so that saving gives back the same bytes.
+fn breaks_with_nel(bytes: &[u8], encoding: Encoding) -> bool {
+    crate::encode::is_ebcdic(encoding)
+        && bytes.contains(&0x15)
+        && !bytes.iter().any(|&byte| byte == 0x25 || byte == 0x0D)
+}
+
 /// Decodes bytes read from a file.
 pub fn decode_file(bytes: Vec<u8>, info: FileInfo, options: LoadOptions) -> LoadedFile {
     let (encoding, detected_by) = match options.encoding {
@@ -162,13 +171,19 @@ pub fn decode_file(bytes: Vec<u8>, info: FileInfo, options: LoadOptions) -> Load
         }
     };
     let head = Head::of(&bytes);
+    let nel = breaks_with_nel(&bytes, encoding);
     let decoded = decode(bytes, encoding);
+    let (text, line_ending) = if nel {
+        (decoded.text.replace('\u{85}', "\n"), LineEnding::Nel)
+    } else {
+        (decoded.text, Format::new().line_ending)
+    };
     LoadedFile {
-        text: Rope::from_str(&decoded.text),
+        text: Rope::from_str(&text),
         format: Format {
             encoding,
             bom: decoded.bom,
-            ..Format::new()
+            line_ending,
         },
         detected_by,
         problem: decoded.problem,
@@ -379,45 +394,5 @@ pub fn discard_recovery(recovery: &Recovery) {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn files_up_to_the_limit_are_read_and_larger_ones_refused() {
-        let dir = tempfile::tempdir().unwrap();
-        let path = dir.path().join("a.bin");
-        let progress = AtomicU64::new(0);
-
-        // Empty, exactly at the limit, and one byte over it.
-        fs::write(&path, b"").unwrap();
-        let (bytes, info) = read_file_within(&path, &progress, 10).unwrap();
-        assert!(bytes.is_empty());
-        assert!(!info.read_only);
-        fs::write(&path, b"0123456789").unwrap();
-        let (bytes, _) = read_file_within(&path, &progress, 10).unwrap();
-        assert_eq!(bytes, b"0123456789");
-        assert_eq!(
-            progress.load(Ordering::Relaxed),
-            10,
-            "progress counts every byte"
-        );
-        fs::write(&path, b"0123456789!").unwrap();
-        let error = read_file_within(&path, &progress, 10).unwrap_err();
-        assert!(
-            matches!(
-                error,
-                ReadError::TooLarge {
-                    size: 11,
-                    limit: 10,
-                    ..
-                }
-            ),
-            "{error}"
-        );
-    }
-
-    #[test]
-    fn the_real_limit_is_two_gigabytes() {
-        assert_eq!(MAX_FILE_SIZE, 1 << 31);
-    }
-}
+#[path = "../tests/unit/file/tests.rs"]
+mod tests;

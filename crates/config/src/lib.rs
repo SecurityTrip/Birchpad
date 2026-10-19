@@ -7,6 +7,7 @@
 mod api;
 mod layers;
 mod load;
+mod native_lang;
 mod notepad_session;
 mod policy;
 mod project;
@@ -19,6 +20,7 @@ mod write;
 pub use api::{ApiError, ApiFile, ApiKeyword, ApiOverload};
 pub use layers::{Diagnostic, Layer, ResolvedSettings, Sources, resolve};
 pub use load::{ConfigPaths, PORTABLE_DATA_DIR, PORTABLE_MARKER, load, load_platform_settings};
+pub use native_lang::{COMMANDS as NATIVE_LANG_COMMANDS, NativeLang, parse_native_lang};
 pub use policy::{POLICIES, PolicyDef, PolicyKind, REGISTRY_KEY};
 pub use project::{ProjectError, ProjectFolder, ProjectItem, ProjectWorkspace};
 pub use session::{
@@ -34,12 +36,12 @@ pub use settings::{
     CompletionSettings, CurrentLine, DEFAULT_TOOLBAR, DateSettings, DefaultDirectory,
     DiagnosticsSettings, Edge, EditorSettings, FileSettings, HighlightingSettings, InstanceMode,
     InstanceSettings, InterfaceMode, LanguageSettings, LinkSettings, NetworkSettings,
-    NewDocumentSettings, PluginInstall, PluginSettings, SearchEngine, SearchEngineSettings,
-    SessionSettings, Settings, SmartHighlighting, TabSettings, TokenMatching, ToolbarSettings,
-    ToolbarSize, UpdateChannel, UpdateMode, UpdateSettings,
+    NewDocumentSettings, PluginInstall, PluginSettings, PreviewSettings, SearchEngine,
+    SearchEngineSettings, SessionSettings, Settings, SmartHighlighting, TabSettings, TokenMatching,
+    ToolbarSettings, ToolbarSize, UpdateChannel, UpdateMode, UpdateSettings,
 };
 pub use state::{
-    FindInFilesState, MAX_RECENT_FILES, PanelsState, SearchResultsState, SpellCheckState,
-    SplitOrientation, UpdateState, UserState,
+    FindInFilesState, MAX_RECENT_FILES, PanelsState, PreviewMode, SearchResultsState,
+    SpellCheckState, SplitOrientation, UpdateState, UserState,
 };
 pub use write::{SettingError, check_setting, edit_settings, write_setting};

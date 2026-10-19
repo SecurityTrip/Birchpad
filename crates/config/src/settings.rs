@@ -28,6 +28,7 @@ pub struct Settings {
     pub plugins: PluginSettings,
     pub network: NetworkSettings,
     pub diagnostics: DiagnosticsSettings,
+    pub preview: PreviewSettings,
 }
 
 /// How Birchpad looks.
@@ -38,8 +39,11 @@ pub struct AppearanceSettings {
     /// file in the `themes` folder next to the settings, without its extension. Settings > Theme
     /// chooses another (remembered in `state.toml`).
     pub theme: String,
-    /// The interface's language: `en`, `ru`, or `auto` for the system's.
+    /// The interface's language: `en`, `de`, `ru`, or `auto` for the system's.
     pub language: String,
+    /// A Notepad++ translation (`localization/german.xml` of a Notepad++ folder) whose menu
+    /// names and command titles come before the language's own; empty for none.
+    pub native_lang: String,
     /// The title bar shows the file's name, not its whole path ("Show only filename in title
     /// bar").
     pub title_file_name_only: bool,
@@ -66,6 +70,7 @@ impl Default for AppearanceSettings {
         Self {
             theme: "Default".to_owned(),
             language: "auto".to_owned(),
+            native_lang: String::new(),
             title_file_name_only: false,
             interface: InterfaceMode::default(),
         }
@@ -184,12 +189,22 @@ pub struct CompletionSettings {
     /// Brackets and quotes typed in pairs, written as pairs of characters: `()[]{}""''`. Typing the
     /// closing one steps over it; Backspace between an empty pair deletes both.
     pub auto_close: String,
-    /// Show the words of the document and the language's API keywords while typing.
+    /// Show the words of the document while typing ("Word completion").
     pub words: bool,
-    /// From how many characters of a word the list shows.
+    /// From how many characters of a word the document's words show.
     pub min_chars: u8,
+    /// Show the language's API keywords and functions while typing ("Function completion").
+    pub api: bool,
+    /// From how many characters of a word the API's keywords show.
+    pub api_min_chars: u8,
+    /// Words and keywords match what is typed without regard to case.
+    pub ignore_case: bool,
+    /// Numbers are not offered as words.
+    pub ignore_numbers: bool,
     /// Show a function's parameters after its opening bracket, from the language's API file.
     pub call_tips: bool,
+    /// Typing the `>` of an HTML or XML opening tag inserts its closing tag after the caret.
+    pub close_tags: bool,
 }
 
 impl Default for CompletionSettings {
@@ -198,7 +213,12 @@ impl Default for CompletionSettings {
             auto_close: "()[]{}\"\"''".to_owned(),
             words: true,
             min_chars: 1,
+            api: true,
+            api_min_chars: 1,
+            ignore_case: true,
+            ignore_numbers: true,
             call_tips: true,
+            close_tags: false,
         }
     }
 }
@@ -797,6 +817,23 @@ impl Default for NetworkSettings {
     }
 }
 
+/// The previews beside the text (View > Preview).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, rename_all = "kebab-case")]
+pub struct PreviewSettings {
+    /// What draws PlantUML diagrams: the `plantuml` command (found on `PATH` by its name, or
+    /// a path to it), or a path to `plantuml.jar`, run with `java -jar`.
+    pub plantuml: String,
+}
+
+impl Default for PreviewSettings {
+    fn default() -> Self {
+        Self {
+            plantuml: "plantuml".to_owned(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default, rename_all = "kebab-case")]
 pub struct DiagnosticsSettings {
@@ -805,111 +842,13 @@ pub struct DiagnosticsSettings {
 }
 
 #[cfg(test)]
-mod link_tests {
-    use super::*;
-
-    #[test]
-    fn schemes_and_delimiters() {
-        let links = LinkSettings::default();
-        assert_eq!(
-            links.extra_schemes(),
-            ["svn://", "git://", "ssh://", "sftp://"]
-        );
-        let none = LinkSettings {
-            schemes: "  ".into(),
-            ..LinkSettings::default()
-        };
-        assert!(none.extra_schemes().is_empty());
-        assert_eq!(DelimiterSettings::default().pair(), Some(('"', '"')));
-        let brackets = DelimiterSettings {
-            open: "(".into(),
-            close: ")".into(),
-            multi_line: true,
-        };
-        assert_eq!(brackets.pair(), Some(('(', ')')));
-        for (open, close) in [("", ")"), ("((", ")"), ("(", "")] {
-            let wrong = DelimiterSettings {
-                open: open.into(),
-                close: close.into(),
-                multi_line: false,
-            };
-            assert_eq!(wrong.pair(), None, "{open:?} {close:?}");
-        }
-    }
-}
+#[path = "../tests/unit/settings/link_tests.rs"]
+mod link_tests;
 
 #[cfg(test)]
-mod search_engine_tests {
-    use super::*;
-
-    #[test]
-    fn engines_search_for_the_words() {
-        let mut settings = SearchEngineSettings::default();
-        assert_eq!(
-            settings.url("rust fmt").as_deref(),
-            Some("https://duckduckgo.com/?q=rust+fmt")
-        );
-        settings.engine = SearchEngine::Google;
-        assert_eq!(
-            settings.url("a&b=c/d").as_deref(),
-            Some("https://www.google.com/search?q=a%26b%3Dc%2Fd")
-        );
-        settings.engine = SearchEngine::StackOverflow;
-        assert_eq!(
-            settings.url("é").as_deref(),
-            Some("https://stackoverflow.com/search?q=%C3%A9")
-        );
-        assert_eq!(
-            settings.url("").as_deref(),
-            Some("https://stackoverflow.com/search?q=")
-        );
-    }
-
-    #[test]
-    fn a_custom_address() {
-        let mut settings = SearchEngineSettings {
-            engine: SearchEngine::Custom,
-            custom_url: " https://example.com/s?w=$(CURRENT_WORD)&x=1 ".into(),
-        };
-        assert_eq!(
-            settings.url("a b").as_deref(),
-            Some("https://example.com/s?w=a+b&x=1")
-        );
-        // Without the placeholder, the words go at the end.
-        settings.custom_url = "HTTP://example.com/?q=".into();
-        assert_eq!(
-            settings.url("x").as_deref(),
-            Some("HTTP://example.com/?q=x")
-        );
-        // Only web addresses.
-        for bad in [
-            "",
-            "file:///etc/passwd",
-            "javascript:alert(1)",
-            "example.com",
-        ] {
-            settings.custom_url = bad.into();
-            assert_eq!(settings.url("x"), None, "{bad}");
-        }
-    }
-}
+#[path = "../tests/unit/settings/search_engine_tests.rs"]
+mod search_engine_tests;
 
 #[cfg(test)]
-mod completion_tests {
-    use super::*;
-
-    #[test]
-    fn pairs_of_auto_close() {
-        let mut settings = CompletionSettings::default();
-        assert_eq!(
-            settings.pairs(),
-            [('(', ')'), ('[', ']'), ('{', '}'), ('"', '"'), ('\'', '\'')]
-        );
-        settings.auto_close = "<>(".into();
-        assert_eq!(settings.pairs(), [('<', '>')]);
-        settings.auto_close.clear();
-        assert!(settings.pairs().is_empty());
-        settings.auto_close = "«»".into();
-        assert_eq!(settings.pairs(), [('«', '»')]);
-    }
-}
+#[path = "../tests/unit/settings/completion_tests.rs"]
+mod completion_tests;

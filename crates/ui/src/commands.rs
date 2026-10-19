@@ -142,4 +142,5 @@ impl CommandRegistry {
 }
 
 #[cfg(test)]
+#[path = "../tests/unit/commands/tests.rs"]
 mod tests;

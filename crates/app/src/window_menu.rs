@@ -451,4 +451,5 @@ impl Render for WindowsDialog {
 }
 
 #[cfg(test)]
+#[path = "../tests/unit/window_menu/tests.rs"]
 mod tests;

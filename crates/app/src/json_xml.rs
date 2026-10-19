@@ -126,4 +126,5 @@ fn validate(
 }
 
 #[cfg(test)]
+#[path = "../tests/unit/json_xml/tests.rs"]
 mod tests;

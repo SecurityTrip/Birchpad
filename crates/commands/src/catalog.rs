@@ -114,6 +114,8 @@ pub const COMMANDS: &[CommandSpec] = &[
     editor("completion.previous", "Previous Completion"),
     editor("completion.accept", "Accept Completion"),
     editor("completion.cancel", "Close Completion"),
+    editor("completion.next-overload", "Next Overload"),
+    editor("completion.previous-overload", "Previous Overload"),
     // { "text": "..." }: typed text, overwriting in overwrite mode (what macros record)
     editor("edit.type", "Type Text"),
     editor("edit.text-direction-rtl", "Text Direction RTL"),
@@ -264,6 +266,11 @@ pub const COMMANDS: &[CommandSpec] = &[
     workspace("panel.function-list", "Function List"),
     workspace("panel.clipboard-history", "Clipboard History"),
     workspace("panel.character-panel", "Character Panel"),
+    // View > Preview: a Markdown or PlantUML document's text, its preview beside it, or the
+    // preview alone
+    workspace("view.preview-editor", "Editor Only"),
+    workspace("view.preview-split", "Editor and Preview"),
+    workspace("view.preview-only", "Preview Only"),
     editor("search.go-to-matching-brace", "Go to Matching Brace"),
     editor(
         "search.select-to-matching-brace",
@@ -359,7 +366,16 @@ pub const COMMANDS: &[CommandSpec] = &[
     workspace("file.print", "Print..."),
     workspace("file.export-html", "Export to HTML..."),
     workspace("language.set", "Language"),
+    workspace("language.define-udl", "Define Your Language..."),
     workspace("language.import-udl", "Import..."),
+    workspace(
+        "language.open-udl-folder",
+        "Open User Defined Language Folder...",
+    ),
+    workspace(
+        "language.udl-collection",
+        "Notepad++ User Defined Languages Collection",
+    ),
     // Tools; { "hash": "md5" | "sha1" | "sha256" | "sha512" }
     workspace("tools.hash-files", "Generate from Files..."),
     editor(
@@ -447,61 +463,5 @@ pub fn find(id: &str) -> Option<&'static CommandSpec> {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use std::collections::HashSet;
-
-    #[test]
-    fn ids_are_unique_and_well_formed() {
-        let mut seen = HashSet::new();
-        for spec in COMMANDS {
-            assert!(seen.insert(spec.id), "duplicate command id {}", spec.id);
-            let (group, name) = spec.id.split_once('.').expect("ids are `group.name`");
-            for part in [group, name] {
-                assert!(
-                    !part.is_empty()
-                        && part
-                            .chars()
-                            .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-'),
-                    "id {} must be lowercase kebab-case",
-                    spec.id
-                );
-            }
-        }
-    }
-
-    #[test]
-    fn entries_carry_their_scope() {
-        // Made at run time too, not only in the constant above.
-        let entries = [workspace("file.new", "New"), editor("edit.undo", "Undo")];
-        assert_eq!(
-            entries.map(|spec| (spec.id, spec.title, spec.scope)),
-            [
-                ("file.new", "New", Scope::Workspace),
-                ("edit.undo", "Undo", Scope::Editor)
-            ]
-        );
-        assert_eq!(find("file.new"), Some(&entries[0]));
-        assert_eq!(
-            find("edit.undo").map(|spec| spec.scope),
-            Some(Scope::Editor)
-        );
-        // Neither a group alone, nor an empty id, nor another case finds anything.
-        for unknown in ["", "file", "file.", "FILE.NEW", "file.new "] {
-            assert_eq!(find(unknown), None, "{unknown:?}");
-        }
-        assert_eq!(editor("", "").id, "", "an empty entry is still an entry");
-    }
-
-    #[test]
-    fn every_cursor_motion_has_a_select_twin() {
-        for spec in COMMANDS {
-            if let Some(motion) = spec.id.strip_prefix("cursor.") {
-                assert!(
-                    find(&format!("select.{motion}")).is_some(),
-                    "missing select.{motion}"
-                );
-            }
-        }
-    }
-}
+#[path = "../tests/unit/catalog/tests.rs"]
+mod tests;

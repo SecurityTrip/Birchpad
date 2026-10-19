@@ -360,4 +360,5 @@ impl Render for RunDialog {
 }
 
 #[cfg(test)]
+#[path = "../tests/unit/run_menu/tests.rs"]
 mod tests;

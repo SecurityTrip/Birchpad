@@ -517,4 +517,5 @@ pub(crate) fn is_checked(docks: &Docks, invocation: &Invocation) -> Option<bool>
 }
 
 #[cfg(test)]
+#[path = "../../tests/unit/panels/tests.rs"]
 mod tests;

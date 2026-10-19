@@ -97,4 +97,5 @@ pub fn replace_in_file(
 }
 
 #[cfg(test)]
+#[path = "../tests/unit/search_files/tests.rs"]
 mod tests;

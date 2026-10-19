@@ -6,6 +6,56 @@ version's release notes from its section here.
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-19
+
+### Added
+
+- Markdown preview, as in IntelliJ IDEA: a Markdown document shows its text and the rendered
+  page side by side. The buttons at the top right of the document and View > Preview show
+  the text alone, both, or the preview alone; the choice is remembered. Links open in the
+  browser or, for files, in Birchpad; images are read from files next to the document, never
+  from the web.
+- PlantUML preview in the same way for `.puml` files, drawn by the PlantUML installed on the
+  computer: the `plantuml` command, or a `plantuml.jar` named in `preview.plantuml`.
+- EBCDIC 875 (Greek) in Encoding > Character Sets > EBCDIC.
+- EBCDIC files whose lines end with NEL, as on IBM mainframes, open with their lines broken
+  and are saved with NEL again; the status bar shows "EBCDIC (NEL)".
+- Auto-Completion closes HTML and XML tags as their `>` is typed (Preferences >
+  Auto-Completion > Close HTML and XML tags, off by default as in Notepad++).
+- Auto-Completion's options from Notepad++: Function completion and Word completion, each
+  from its own number of characters, Ignore case and Ignore numbers.
+- A call tip shows one overload at a time with "1 of 3"; Up and Down go through them.
+- The API file of a language embedded in the document applies inside it: JavaScript's in an
+  HTML `<script>`, CSS's in `<style>`.
+- API files of Birchpad's own for 15 languages (Bash, C, C++, C#, CSS, Go, HTML, Java,
+  JavaScript, PHP, PowerShell, Python, Rust, SQL, TypeScript): keywords and common functions
+  with their parameters, in the completion list and call tips. A file of the same name in
+  `autoCompletion` takes the place of Birchpad's.
+- User Defined Languages: folding at the language's folding words and symbols, in code and
+  in comments; numbers with prefixes, extra characters, suffixes and ranges; line comments
+  that must start a line; delimiters that hold other delimiters, comments, keywords,
+  operators or numbers, as their nesting says.
+- User Defined Languages take the theme's colors where the language leaves them unset.
+- Language > User Defined Language > Open User Defined Language Folder... and Notepad++
+  User Defined Languages Collection.
+- Language > User Defined Language > Define Your Language...: a dialog that writes a user
+  defined language, new or one already there: extensions, keywords, comments, operators,
+  delimiters, folding and numbers; the colors it does not edit stay as they were.
+- Right-to-left text: a selection over mixed directions is drawn in pieces; in Text
+  Direction RTL the margins are at the right; Ctrl+Alt+Shift+R and Ctrl+Alt+Shift+L switch
+  the direction; sessions keep it per tab (Notepad++'s sessions too); very long rows are
+  reordered as well.
+- The interface in German.
+- `appearance.native-lang` (Preferences > Appearance > Notepad++ translation file): the
+  menu names and command titles of a Notepad++ translation you have, read from your own
+  copy, come before Birchpad's.
+
+### Changed
+
+- Dependency updates: sha2 0.11.1.
+- No tests in `src`: every crate's unit tests are in its `tests/unit` folder, which `src`
+  includes for them.
+
 ## [0.3.0] - 2026-10-18
 
 ### Added
@@ -469,7 +519,9 @@ The first release: a Notepad++-like editor for Windows, Linux and macOS.
   entirely (`updates.mode = "off"`).
 - Nightly builds of `main` on the nightly channel.
 
-[Unreleased]: https://github.com/SecurityTrip/Birchpad/compare/v0.2.5...HEAD
+[Unreleased]: https://github.com/SecurityTrip/Birchpad/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/SecurityTrip/Birchpad/compare/v0.3.0...v0.4.0
+[0.3.0]: https://github.com/SecurityTrip/Birchpad/compare/v0.2.5...v0.3.0
 [0.2.5]: https://github.com/SecurityTrip/Birchpad/compare/v0.2.0...v0.2.5
 [0.2.0]: https://github.com/SecurityTrip/Birchpad/compare/v0.1.5...v0.2.0
 [0.1.5]: https://github.com/SecurityTrip/Birchpad/compare/v0.1.4...v0.1.5

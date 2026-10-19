@@ -4,13 +4,13 @@
 
 A fast, extensible, cross-platform text editor in the spirit of Notepad++, written in Rust.
 
-> **Status: alpha (0.1).** A Notepad++-like editor: tabs and split views, encodings, syntax
+> **Status: alpha (0.4).** A Notepad++-like editor: tabs and split views, encodings, syntax
 > highlighting for 50 languages with folding, multi-cursor and column editing, bookmarks,
-> sessions that keep unsaved work, Find in Files, macros, themes, an interface in English and
-> Russian, plugins as WebAssembly components and scripts in Rhai, with Compare, JSON and XML
-> tools, a hex view and spell checking built in. Full parity with Notepad++ comes next. Expect
-> rough edges. See the [roadmap](docs/ROADMAP.md)
-> and the [changelog](CHANGELOG.md).
+> sessions that keep unsaved work, Find in Files, macros, themes, an interface in English,
+> German and Russian, plugins as WebAssembly components and scripts in Rhai, with Compare, JSON and XML
+> tools, a hex view, Markdown and PlantUML previews and spell checking built in. Full parity
+> with Notepad++ comes next. Expect rough edges. See the [roadmap](docs/ROADMAP.md) and the
+> [changelog](CHANGELOG.md).
 
 ## Goals
 
@@ -62,7 +62,7 @@ with > Change All.
 To uninstall, use Installed apps in Windows Settings for the installer and the MSI, or delete the
 folder of a portable copy.
 
-Nightly builds of the next version's branch (`v0.1.4` after 0.1.3) are published as
+Nightly builds of the next version's branch (`v0.4.1` or `v0.5.0` after 0.4.0) are published as
 pre-releases; set `updates.channel = "nightly"` to get them as updates.
 
 ## Code signing policy

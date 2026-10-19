@@ -23,14 +23,44 @@ which UDL files cannot become.
   as prefixes), folding words or word operators. It lexes from the start of the text, since a
   comment may begin far above, up to a little past what is shown, and keeps the result until the
   text changes.
-- **The language's own colors** are used, as in Notepad++, not the theme's.
+- **Numbers** follow the "Numbers" lists of UDL 2.1: a number may start with a prefix of
+  `prefix1` (`0x`) and then have the characters of `extras1` (`a`...`f`), likewise with
+  `prefix2` and `extras2`; it may end with a suffix (`L`); a `range` separator (`..`) joins two
+  numbers into one. With none of the lists set, numbers take the usual forms.
+- **Line comments** start anywhere, after white space only, or in the first column only, as
+  the language's `forcePureLC` says (0, 1, 2).
+- **Nested delimiters:** a delimiter holds what the `nesting` bits of its style allow:
+  other delimiters (bits 0 to 7), comments (0x100), line comments (0x200), keywords 1 to 8
+  (0x400 and up), operators (0x40000, 0x80000) and numbers (0x100000), each in its own color,
+  the delimiter's color between them. Delimiters nest at most eight deep.
+- **Folding** follows the language's folders: "Folders in code" 1 (symbols) and 2 (words)
+  outside comments and delimiters, "Folders in comment" inside comments; "middle" words
+  (`else`) neither open nor close. A fold closed on the line it opened is none, one never
+  closed runs to the end, and a line starts one fold at most. The document's indentation
+  folds are not used for a user defined language.
+- **The language's own colors** are used, as in Notepad++. Where a style leaves the text
+  color unset (or the language has no such style), the theme's color for the same kind of
+  text is used instead: comments, numbers, keywords and folders, operators, and delimiters as
+  strings; the style's background and font style stay.
+- **Define Your Language...** (`language.define-udl`, `{ "name": ... }` optional; first in
+  the submenu, as in Notepad++) edits the language named, the active document's, or a new
+  one: name and extensions, ignore case, keywords 1 to 8 with their prefix switches, line
+  and block comments and where line comments start, operators, the eight delimiters (open,
+  escape, close), the folders in code and comments, and the numbers lists. It does not edit
+  colors: where the language has none, the theme's apply. Saving writes UDL 2.1
+  (`UdlDefinition`, `udl_file`): what the dialog does not show (styles, other attributes) is
+  kept as read. A language alone in its file is written in place; one from a file of several
+  gets a file of its own named after it, the others written back without it. The languages
+  are read again and the active document, if it is in that language, takes the new one.
+- **The submenu** also has Open User Defined Language Folder... (`language.open-udl-folder`,
+  made if missing) and Notepad++ User Defined Languages Collection
+  (`language.udl-collection`), which opens the shared collection on GitHub in the browser.
 - **Detection:** a file whose extension no built-in language claims gets the user defined
   language that lists it.
 
 ## Consequences
 
-- UDL folding, the "Numbers" prefix and suffix lists, comments that must start a line, and
-  nested delimiters are not supported yet; numbers are recognized in the usual forms.
+- Folding points in the middle of a fold (`else`) do not split it, as they do in Notepad++.
 - Lexing from the start costs a pass over the text up to the screen after each edit; UDL files
   are meant for small languages, and files over the large file limit get no user defined
   language.

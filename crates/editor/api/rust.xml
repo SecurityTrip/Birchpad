@@ -1,0 +1,321 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Birchpad's API file for this language (ADR 0031), written for Birchpad and
+     licensed as Birchpad is. A file of the same name in the autoCompletion folder next to
+     the settings takes its place. -->
+<NotepadPlus>
+  <AutoComplete language="rust">
+    <Environment ignoreCase="no" startFunc="(" stopFunc=")" paramSeparator="," />
+    <KeyWord name="and_then" func="yes">
+      <Overload retVal="Option&lt;U&gt;">
+        <Param name="f: F" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="Arc" />
+    <KeyWord name="as" />
+    <KeyWord name="as_str" func="yes">
+      <Overload retVal="&amp;str" />
+    </KeyWord>
+    <KeyWord name="assert!" func="yes">
+      <Overload retVal="">
+        <Param name="condition" />
+        <Param name="message?" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="assert_eq!" func="yes">
+      <Overload retVal="">
+        <Param name="left" />
+        <Param name="right" />
+        <Param name="message?" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="assert_ne!" func="yes">
+      <Overload retVal="">
+        <Param name="left" />
+        <Param name="right" />
+        <Param name="message?" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="async" />
+    <KeyWord name="await" />
+    <KeyWord name="bool" />
+    <KeyWord name="Box" />
+    <KeyWord name="break" />
+    <KeyWord name="BTreeMap" />
+    <KeyWord name="Cell" />
+    <KeyWord name="char" />
+    <KeyWord name="Clone" />
+    <KeyWord name="clone" func="yes">
+      <Overload retVal="Self" />
+    </KeyWord>
+    <KeyWord name="collect" func="yes">
+      <Overload retVal="B" />
+    </KeyWord>
+    <KeyWord name="const" />
+    <KeyWord name="contains" func="yes">
+      <Overload retVal="bool">
+        <Param name="x: &amp;T" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="continue" />
+    <KeyWord name="Copy" />
+    <KeyWord name="crate" />
+    <KeyWord name="dbg!" func="yes">
+      <Overload retVal="T">
+        <Param name="expression" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="Debug" />
+    <KeyWord name="debug_assert!" func="yes">
+      <Overload retVal="">
+        <Param name="condition" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="Default" />
+    <KeyWord name="dyn" />
+    <KeyWord name="else" />
+    <KeyWord name="enum" />
+    <KeyWord name="enumerate" func="yes">
+      <Overload retVal="Enumerate&lt;Self&gt;" />
+    </KeyWord>
+    <KeyWord name="eprintln!" func="yes">
+      <Overload retVal="">
+        <Param name="format" />
+        <Param name="..." />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="Eq" />
+    <KeyWord name="Err" />
+    <KeyWord name="expect" func="yes">
+      <Overload retVal="T">
+        <Param name="message: &amp;str" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="extern" />
+    <KeyWord name="f32" />
+    <KeyWord name="f64" />
+    <KeyWord name="false" />
+    <KeyWord name="filter" func="yes">
+      <Overload retVal="Filter&lt;Self, P&gt;">
+        <Param name="predicate: P" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="find" func="yes">
+      <Overload retVal="Option&lt;Self::Item&gt;">
+        <Param name="predicate: P" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="fn" />
+    <KeyWord name="fold" func="yes">
+      <Overload retVal="B">
+        <Param name="init: B" />
+        <Param name="f: F" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="for" />
+    <KeyWord name="format!" func="yes">
+      <Overload retVal="String">
+        <Param name="format" />
+        <Param name="..." />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="From" />
+    <KeyWord name="from" func="yes">
+      <Overload retVal="Self">
+        <Param name="value: T" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="get" func="yes">
+      <Overload retVal="Option&lt;&amp;V&gt;">
+        <Param name="key: &amp;Q" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="Hash" />
+    <KeyWord name="HashMap" />
+    <KeyWord name="HashSet" />
+    <KeyWord name="i128" />
+    <KeyWord name="i16" />
+    <KeyWord name="i32" />
+    <KeyWord name="i64" />
+    <KeyWord name="i8" />
+    <KeyWord name="if" />
+    <KeyWord name="impl" />
+    <KeyWord name="in" />
+    <KeyWord name="insert" func="yes">
+      <Overload retVal="Option&lt;V&gt;">
+        <Param name="key: K" />
+        <Param name="value: V" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="Into" />
+    <KeyWord name="IntoIterator" />
+    <KeyWord name="is_empty" func="yes">
+      <Overload retVal="bool" />
+    </KeyWord>
+    <KeyWord name="isize" />
+    <KeyWord name="iter" func="yes">
+      <Overload retVal="Iter&lt;T&gt;" />
+    </KeyWord>
+    <KeyWord name="iter_mut" func="yes">
+      <Overload retVal="IterMut&lt;T&gt;" />
+    </KeyWord>
+    <KeyWord name="Iterator" />
+    <KeyWord name="len" func="yes">
+      <Overload retVal="usize" />
+    </KeyWord>
+    <KeyWord name="let" />
+    <KeyWord name="loop" />
+    <KeyWord name="map" func="yes">
+      <Overload retVal="Option&lt;U&gt;">
+        <Param name="f: F" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="map_err" func="yes">
+      <Overload retVal="Result&lt;T, F&gt;">
+        <Param name="f: O" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="match" />
+    <KeyWord name="matches!" func="yes">
+      <Overload retVal="bool">
+        <Param name="expression" />
+        <Param name="pattern" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="mod" />
+    <KeyWord name="move" />
+    <KeyWord name="mut" />
+    <KeyWord name="new" func="yes">
+      <Overload retVal="Self" />
+    </KeyWord>
+    <KeyWord name="None" />
+    <KeyWord name="Ok" />
+    <KeyWord name="ok" func="yes">
+      <Overload retVal="Option&lt;T&gt;" />
+    </KeyWord>
+    <KeyWord name="ok_or" func="yes">
+      <Overload retVal="Result&lt;T, E&gt;">
+        <Param name="error: E" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="Option" />
+    <KeyWord name="panic!" func="yes">
+      <Overload retVal="!">
+        <Param name="format" />
+        <Param name="..." />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="PartialEq" />
+    <KeyWord name="pop" func="yes">
+      <Overload retVal="Option&lt;T&gt;" />
+    </KeyWord>
+    <KeyWord name="print!" func="yes">
+      <Overload retVal="">
+        <Param name="format" />
+        <Param name="..." />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="println!" func="yes">
+      <Overload retVal="" descr="Prints to the standard output, with a newline.">
+        <Param name="format" />
+        <Param name="..." />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="pub" />
+    <KeyWord name="push" func="yes">
+      <Overload retVal="()">
+        <Param name="value: T" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="Rc" />
+    <KeyWord name="ref" />
+    <KeyWord name="RefCell" />
+    <KeyWord name="Result" />
+    <KeyWord name="return" />
+    <KeyWord name="Self" />
+    <KeyWord name="self" />
+    <KeyWord name="Some" />
+    <KeyWord name="split" func="yes">
+      <Overload retVal="Split&lt;P&gt;">
+        <Param name="pattern: P" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="static" />
+    <KeyWord name="str" />
+    <KeyWord name="String" />
+    <KeyWord name="struct" />
+    <KeyWord name="super" />
+    <KeyWord name="to_owned" func="yes">
+      <Overload retVal="Owned" />
+    </KeyWord>
+    <KeyWord name="to_string" func="yes">
+      <Overload retVal="String" />
+    </KeyWord>
+    <KeyWord name="todo!" func="yes">
+      <Overload retVal="!">
+        <Param name="message?" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="trait" />
+    <KeyWord name="trim" func="yes">
+      <Overload retVal="&amp;str" />
+    </KeyWord>
+    <KeyWord name="true" />
+    <KeyWord name="type" />
+    <KeyWord name="u128" />
+    <KeyWord name="u16" />
+    <KeyWord name="u32" />
+    <KeyWord name="u64" />
+    <KeyWord name="u8" />
+    <KeyWord name="unimplemented!" func="yes">
+      <Overload retVal="!">
+        <Param name="message?" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="unreachable!" func="yes">
+      <Overload retVal="!">
+        <Param name="message?" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="unsafe" />
+    <KeyWord name="unwrap" func="yes">
+      <Overload retVal="T" />
+    </KeyWord>
+    <KeyWord name="unwrap_or" func="yes">
+      <Overload retVal="T">
+        <Param name="default: T" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="unwrap_or_default" func="yes">
+      <Overload retVal="T" />
+    </KeyWord>
+    <KeyWord name="use" />
+    <KeyWord name="usize" />
+    <KeyWord name="Vec" />
+    <KeyWord name="vec!" func="yes">
+      <Overload retVal="Vec&lt;T&gt;">
+        <Param name="elements" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="where" />
+    <KeyWord name="while" />
+    <KeyWord name="with_capacity" func="yes">
+      <Overload retVal="Self">
+        <Param name="capacity: usize" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="write!" func="yes">
+      <Overload retVal="">
+        <Param name="destination" />
+        <Param name="format" />
+        <Param name="..." />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="writeln!" func="yes">
+      <Overload retVal="">
+        <Param name="destination" />
+        <Param name="format" />
+        <Param name="..." />
+      </Overload>
+    </KeyWord>
+  </AutoComplete>
+</NotepadPlus>

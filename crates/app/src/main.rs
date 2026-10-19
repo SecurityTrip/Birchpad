@@ -21,12 +21,14 @@ mod date_time;
 mod default_app;
 mod disk;
 #[cfg(test)]
+#[path = "../tests/unit/disk_tests.rs"]
 mod disk_tests;
 #[cfg(feature = "e2e")]
 mod e2e;
 mod edit_extras;
 mod editor_hooks;
 #[cfg(test)]
+#[path = "../tests/unit/editor_tests.rs"]
 mod editor_tests;
 mod encoding_ui;
 mod extensions;
@@ -40,6 +42,7 @@ mod i18n;
 mod incremental;
 mod json_xml;
 #[cfg(test)]
+#[path = "../tests/unit/language_tests.rs"]
 mod language_tests;
 mod macros;
 mod menus;
@@ -48,16 +51,19 @@ mod pane;
 mod panels;
 mod path_dialog;
 mod preferences;
+mod preview;
 mod print;
 mod run_menu;
 mod search_extras;
 mod search_results;
 mod session;
 #[cfg(test)]
+#[path = "../tests/unit/session_tests.rs"]
 mod session_tests;
 mod shortcut_mapper;
 mod spell_check;
 #[cfg(test)]
+#[path = "../tests/unit/split_tests.rs"]
 mod split_tests;
 mod status_bar;
 mod style_configurator;

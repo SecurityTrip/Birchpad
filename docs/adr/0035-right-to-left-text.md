@@ -17,15 +17,20 @@ make the whole editor run right to left.
   mode, are shaped as before at no cost.
 - **Logical and visual positions map both ways** per row: a caret before a left-to-right
   character shows at its left, before a right-to-left one at its right; a click maps back the
-  same way. Selections over mixed text are drawn from the leftmost to the rightmost of their
-  ends.
-- **Edit > Text Direction RTL** (and LTR) sets a view's paragraph direction: rows are reordered
-  with a right-to-left base, and rows that fit end at the right edge of the view. It belongs to
-  the view, as Notepad++'s does, and is not remembered.
-- Rows too long to shape whole (over 2048 bytes) keep the stored order.
+  same way. A selection over mixed text is drawn piece by piece, one for each run of
+  selected characters that show side by side (`BidiRow::visual_spans`), as Scintilla draws it;
+  a selected line break shows on the side the paragraph runs to.
+- **Edit > Text Direction RTL** (and LTR; Ctrl+Alt+Shift+R and Ctrl+Alt+Shift+L, since
+  Ctrl+Alt+R is Random Case) sets a view's paragraph direction: rows are reordered with a
+  right-to-left base, rows that fit end at the right edge of the view, and the margins move to
+  the right of the text, mirrored as Scintilla mirrors them: line numbers outermost, folding
+  next to the text. It belongs to the view, as Notepad++'s does, and sessions keep it per tab
+  (`rtl`, Notepad++'s `RTL="yes"` read from its sessions).
+- Rows too long to shape whole (over 2048 bytes) are shaped around what shows, and that part
+  is reordered on its own.
 
 ## Consequences
 
-- A selection over a line that mixes directions covers one span, where Scintilla shows several
-  pieces; moving the caret with the arrow keys follows the stored order, as Notepad++ does.
-- The margins stay on the left in right-to-left mode.
+- Moving the caret with the arrow keys follows the stored order, as Notepad++ does.
+- In a very long row, a run of right-to-left text that crosses the edge of the shaped part is
+  reordered in two pieces.

@@ -674,6 +674,14 @@ impl Buffer {
         self.syntax.syntax.as_ref()
     }
 
+    /// The language at `pos`: one embedded in the document's (a script in HTML), or the
+    /// document's.
+    pub fn language_at(&self, pos: usize) -> Option<&'static Language> {
+        self.syntax()
+            .map(|syntax| syntax.language_at(pos))
+            .or_else(|| self.language())
+    }
+
     /// Fold points as byte ranges sorted by start, their version, and the version they were
     /// mapped from if the last change was an edit mapping them.
     pub fn folds(&self) -> (&[ByteRange<usize>], u64, Option<u64>) {
@@ -690,11 +698,16 @@ impl Buffer {
         self.syntax.folds_mapped_from = None;
     }
 
-    /// Indentation folds for plain text that is small enough; none otherwise.
+    /// Folds of a document without a tree that is small enough: a user defined language's, or
+    /// by indentation; none otherwise.
     fn plain_folds(&self, cx: &Context<Self>) -> Vec<ByteRange<usize>> {
         let text = self.doc.text();
         if self.syntax.syntax.is_some() || text.len() > PLAIN_FOLD_LIMIT {
             return Vec::new();
+        }
+        // A user defined language folds at its own words, as Notepad++'s UDL does.
+        if let Some(language) = &self.syntax.user_language {
+            return language.folds(&text.to_string());
         }
         let tab_width = usize::from(AppState::global(cx).settings.editor.tab_width);
         birchpad_syntax::indent_fold_ranges(text, tab_width)
@@ -1190,15 +1203,5 @@ impl Buffer {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn mark_all_can_bookmark_the_lines_of_its_matches() {
-        let text = Rope::from_str("a\nb b\nc\nb");
-        let mut marks = DocumentMarks::default();
-        marks.bookmarks.add(&text, 0);
-        marks.bookmark_lines_of(&text, &[2..3, 4..5, 8..9]);
-        assert_eq!(marks.bookmarks.lines(&text), [0, 1, 3]);
-    }
-}
+#[path = "../tests/unit/buffer/tests.rs"]
+mod tests;

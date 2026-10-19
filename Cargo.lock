@@ -568,7 +568,7 @@ checksum = "ac07cdecf99051d9a5238b80f35af32cdeba5b336e55d957b318b50137e18da5"
 
 [[package]]
 name = "birchpad"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "birchpad-cli",
@@ -599,7 +599,7 @@ dependencies = [
  "semver",
  "serde",
  "serde_json",
- "sha2 0.11.0",
+ "sha2 0.11.1",
  "sys-locale",
  "tempfile",
  "toml 1.1.6+spec-1.1.0",
@@ -610,7 +610,7 @@ dependencies = [
 
 [[package]]
 name = "birchpad-cli"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "interprocess",
  "serde",
@@ -621,7 +621,7 @@ dependencies = [
 
 [[package]]
 name = "birchpad-commands"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "birchpad-i18n",
  "proptest",
@@ -634,7 +634,7 @@ dependencies = [
 
 [[package]]
 name = "birchpad-config"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "birchpad-core",
  "birchpad-i18n",
@@ -649,7 +649,7 @@ dependencies = [
 
 [[package]]
 name = "birchpad-core"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "base64 0.23.1",
  "birchpad-i18n",
@@ -659,7 +659,7 @@ dependencies = [
  "proptest",
  "ropey",
  "sha1",
- "sha2 0.11.0",
+ "sha2 0.11.1",
  "similar",
  "smallvec",
  "thiserror 2.0.21",
@@ -667,7 +667,7 @@ dependencies = [
 
 [[package]]
 name = "birchpad-editor"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "birchpad-cli",
@@ -689,7 +689,7 @@ dependencies = [
 
 [[package]]
 name = "birchpad-fuzz"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "base64 0.23.1",
  "birchpad-cli",
@@ -709,7 +709,7 @@ dependencies = [
 
 [[package]]
 name = "birchpad-i18n"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "sys-locale",
@@ -718,7 +718,7 @@ dependencies = [
 
 [[package]]
 name = "birchpad-io"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "birchpad-core",
  "birchpad-i18n",
@@ -732,14 +732,14 @@ dependencies = [
 
 [[package]]
 name = "birchpad-menu-bar"
-version = "0.2.5"
+version = "0.4.0"
 dependencies = [
  "gpui-kit",
 ]
 
 [[package]]
 name = "birchpad-plugin"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "birchpad-commands",
@@ -757,7 +757,7 @@ dependencies = [
 
 [[package]]
 name = "birchpad-release-tool"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "birchpad-update",
@@ -767,14 +767,14 @@ dependencies = [
  "semver",
  "serde_json",
  "sha1",
- "sha2 0.11.0",
+ "sha2 0.11.1",
  "tempfile",
  "toml 1.1.6+spec-1.1.0",
 ]
 
 [[package]]
 name = "birchpad-syntax"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "birchpad-core",
  "birchpad-i18n",
@@ -838,7 +838,7 @@ dependencies = [
 
 [[package]]
 name = "birchpad-theme"
-version = "0.2.5"
+version = "0.4.0"
 dependencies = [
  "birchpad-i18n",
  "roxmltree 0.21.1",
@@ -849,7 +849,7 @@ dependencies = [
 
 [[package]]
 name = "birchpad-tools"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "birchpad-core",
  "birchpad-i18n",
@@ -864,7 +864,7 @@ dependencies = [
 
 [[package]]
 name = "birchpad-ui"
-version = "0.2.5"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "birchpad-commands",
@@ -879,7 +879,7 @@ dependencies = [
 
 [[package]]
 name = "birchpad-update"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "base64 0.23.1",
  "birchpad-config",
@@ -889,7 +889,7 @@ dependencies = [
  "semver",
  "serde",
  "serde_json",
- "sha2 0.11.0",
+ "sha2 0.11.1",
  "tempfile",
  "thiserror 2.0.21",
  "ureq",
@@ -898,7 +898,7 @@ dependencies = [
 
 [[package]]
 name = "birchpad-view"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "birchpad-core",
  "proptest",
@@ -2038,7 +2038,7 @@ checksum = "6ebaa1a2bf1290ab3bfe5a7b771d050ebffab2711c19a81691c683a5144a25de"
 dependencies = [
  "curve25519-dalek",
  "ed25519",
- "sha2 0.11.0",
+ "sha2 0.11.1",
  "subtle",
  "zeroize",
 ]
@@ -6624,7 +6624,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "42ffa149f6aa81b58a5b3011d01a857c4ed12c7a732d2c51947a4c7c692185f0"
 dependencies = [
  "globset",
- "sha2 0.11.0",
+ "sha2 0.11.1",
  "walkdir",
 ]
 
@@ -7120,9 +7120,9 @@ dependencies = [
 
 [[package]]
 name = "sha2"
-version = "0.11.0"
+version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "446ba717509524cb3f22f17ecc096f10f4822d76ab5c0b9822c5f9c284e825f4"
+checksum = "47d7069beb7d6ac7b9acd1039986e73443f24234f41074da099d6f994ac9ad19"
 dependencies = [
  "cfg-if",
  "cpufeatures 0.3.1",
@@ -8827,7 +8827,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sha1",
- "sha2 0.11.0",
+ "sha2 0.11.1",
  "thiserror 2.0.21",
  "ureq",
  "url",

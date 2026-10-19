@@ -336,4 +336,5 @@ impl ColumnEditor {
 }
 
 #[cfg(test)]
+#[path = "../tests/unit/column_editor/tests.rs"]
 mod tests;

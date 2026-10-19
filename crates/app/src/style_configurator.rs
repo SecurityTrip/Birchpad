@@ -620,4 +620,5 @@ impl Render for StyleConfigurator {
 }
 
 #[cfg(test)]
+#[path = "../tests/unit/style_configurator/tests.rs"]
 mod tests;

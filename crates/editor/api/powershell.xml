@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Birchpad's API file for this language (ADR 0031), written for Birchpad and
+     licensed as Birchpad is. A file of the same name in the autoCompletion folder next to
+     the settings takes its place. -->
+<NotepadPlus>
+  <AutoComplete language="powershell">
+    <Environment ignoreCase="yes" startFunc="(" stopFunc=")" paramSeparator="," />
+    <KeyWord name="Add-Content" />
+    <KeyWord name="begin" />
+    <KeyWord name="break" />
+    <KeyWord name="catch" />
+    <KeyWord name="class" />
+    <KeyWord name="continue" />
+    <KeyWord name="ConvertFrom-Json" />
+    <KeyWord name="ConvertTo-Json" />
+    <KeyWord name="Copy-Item" />
+    <KeyWord name="data" />
+    <KeyWord name="define" />
+    <KeyWord name="do" />
+    <KeyWord name="dynamicparam" />
+    <KeyWord name="else" />
+    <KeyWord name="elseif" />
+    <KeyWord name="end" />
+    <KeyWord name="enum" />
+    <KeyWord name="exit" />
+    <KeyWord name="Export-Csv" />
+    <KeyWord name="filter" />
+    <KeyWord name="finally" />
+    <KeyWord name="for" />
+    <KeyWord name="foreach" />
+    <KeyWord name="ForEach-Object" />
+    <KeyWord name="from" />
+    <KeyWord name="function" />
+    <KeyWord name="Get-ChildItem" />
+    <KeyWord name="Get-Command" />
+    <KeyWord name="Get-Content" />
+    <KeyWord name="Get-Date" />
+    <KeyWord name="Get-Help" />
+    <KeyWord name="Get-Item" />
+    <KeyWord name="Get-Location" />
+    <KeyWord name="Get-Member" />
+    <KeyWord name="Get-Process" />
+    <KeyWord name="Get-Service" />
+    <KeyWord name="Group-Object" />
+    <KeyWord name="hidden" />
+    <KeyWord name="if" />
+    <KeyWord name="Import-Csv" />
+    <KeyWord name="in" />
+    <KeyWord name="Invoke-RestMethod" />
+    <KeyWord name="Invoke-WebRequest" />
+    <KeyWord name="Join-Path" />
+    <KeyWord name="Measure-Object" />
+    <KeyWord name="Move-Item" />
+    <KeyWord name="New-Item" />
+    <KeyWord name="Out-File" />
+    <KeyWord name="Out-String" />
+    <KeyWord name="param" />
+    <KeyWord name="process" />
+    <KeyWord name="Read-Host" />
+    <KeyWord name="Remove-Item" />
+    <KeyWord name="Resolve-Path" />
+    <KeyWord name="return" />
+    <KeyWord name="Select-Object" />
+    <KeyWord name="Set-Content" />
+    <KeyWord name="Set-Location" />
+    <KeyWord name="Sort-Object" />
+    <KeyWord name="Split-Path" />
+    <KeyWord name="Start-Process" />
+    <KeyWord name="Start-Sleep" />
+    <KeyWord name="static" />
+    <KeyWord name="Stop-Process" />
+    <KeyWord name="switch" />
+    <KeyWord name="Test-Path" />
+    <KeyWord name="throw" />
+    <KeyWord name="trap" />
+    <KeyWord name="try" />
+    <KeyWord name="until" />
+    <KeyWord name="using" />
+    <KeyWord name="var" />
+    <KeyWord name="Where-Object" />
+    <KeyWord name="while" />
+    <KeyWord name="Write-Error" />
+    <KeyWord name="Write-Host" />
+    <KeyWord name="Write-Output" />
+    <KeyWord name="Write-Verbose" />
+    <KeyWord name="Write-Warning" />
+  </AutoComplete>
+</NotepadPlus>

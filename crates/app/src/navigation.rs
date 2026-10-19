@@ -238,5 +238,5 @@ impl<L> History<L> {
 }
 
 #[cfg(test)]
-#[path = "navigation_tests.rs"]
+#[path = "../tests/unit/navigation_tests.rs"]
 mod tests;

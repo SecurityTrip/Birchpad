@@ -13,10 +13,14 @@ Birchpad connects to the network only for updates:
   `https://github.com/SecurityTrip/Birchpad/releases/download/updates/birchpad-updates.json`, or
   from the address in the `updates.url` setting. The request says which version of Birchpad
   asks and on which operating system (the `User-Agent` header, such as
-  `Birchpad/0.1.3 (windows)`), and nothing about you or your files.
+  `Birchpad/0.4.0 (windows)`), and nothing about you or your files.
 - **Downloading updates**: with `updates.mode = "auto"` (the default), a copy installed with the
   per-user Windows installer downloads the package of a newer version, from the address the
   manifest lists (GitHub's release downloads).
+
+The Markdown preview loads no images from the web, and a link in it opens in your browser
+only when you click it. PlantUML diagrams are drawn by the PlantUML installed on your computer,
+not by a server.
 
 GitHub serves these files and, like any web server, sees the requests: the address of your
 computer or network and the time. Its

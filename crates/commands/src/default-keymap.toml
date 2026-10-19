@@ -1124,6 +1124,17 @@ command = "edit.convert-case"
 args = { to = "random" }
 context = "Editor"
 
+# Edit > Text Direction RTL and LTR; Ctrl+Alt+R stays Random Case, as in Notepad++.
+[[binding]]
+keys = "ctrl-alt-shift-r"
+command = "edit.text-direction-rtl"
+context = "Editor"
+
+[[binding]]
+keys = "ctrl-alt-shift-l"
+command = "edit.text-direction-ltr"
+context = "Editor"
+
 [[binding]]
 keys = "ctrl-q"
 command = "edit.toggle-comment"
@@ -1210,6 +1221,16 @@ context = "Completion"
 [[binding]]
 keys = "escape"
 command = "completion.cancel"
+context = "CallTip"
+
+[[binding]]
+keys = "down"
+command = "completion.next-overload"
+context = "CallTip"
+
+[[binding]]
+keys = "up"
+command = "completion.previous-overload"
 context = "CallTip"
 
 [[binding]]

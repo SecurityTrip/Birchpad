@@ -910,5 +910,5 @@ impl Render for ProjectPanel {
 }
 
 #[cfg(test)]
-#[path = "project_tests.rs"]
+#[path = "../../tests/unit/panels/project_tests.rs"]
 mod tests;

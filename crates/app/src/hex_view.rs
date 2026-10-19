@@ -44,7 +44,7 @@ impl Workspace {
         let (bytes, eol) = {
             let doc = source.read(cx).doc();
             let format = doc.format();
-            let bytes = birchpad_io::encode(doc.text(), format.encoding, format.bom)
+            let bytes = birchpad_io::encode_document(doc.text(), format)
                 .map_err(|error| anyhow!("{error}"))?;
             (bytes, doc.line_ending())
         };
@@ -119,4 +119,5 @@ fn apply_text(view: &Entity<crate::editor::EditorView>, text: &str, cx: &mut App
 }
 
 #[cfg(test)]
+#[path = "../tests/unit/hex_view/tests.rs"]
 mod tests;
