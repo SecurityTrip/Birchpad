@@ -31,6 +31,10 @@ version's release notes from its section here.
   JavaScript, PHP, PowerShell, Python, Rust, SQL, TypeScript): keywords and common functions
   with their parameters, in the completion list and call tips. A file of the same name in
   `autoCompletion` takes the place of Birchpad's.
+- User Defined Languages: folding at the language's folding words and symbols, in code and
+  in comments; numbers with prefixes, extra characters, suffixes and ranges; line comments
+  that must start a line; delimiters that hold other delimiters, comments, keywords,
+  operators or numbers, as their nesting says.
 
 ### Changed
 

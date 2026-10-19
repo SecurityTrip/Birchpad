@@ -130,3 +130,137 @@ fn refuses_other_files() {
     let two = "\u{feff}<NotepadPlus><UserLang name=\"A\"/><UserLang name=\"B\"/></NotepadPlus>";
     assert_eq!(parse_udl(two).unwrap().len(), 2);
 }
+
+/// A language with the UDL 2.1 settings: numbers, line comments at the line start, nested
+/// delimiters and folding.
+const FULL: &str = r#"<NotepadPlus>
+    <UserLang name="Full" ext="full">
+        <Settings>
+            <Global caseIgnored="no" forcePureLC="1" />
+        </Settings>
+        <KeywordLists>
+            <Keywords name="Comments">00# 03/* 04*/</Keywords>
+            <Keywords name="Numbers, prefix1">0x</Keywords>
+            <Keywords name="Numbers, extras1">a b c d e f</Keywords>
+            <Keywords name="Numbers, prefix2">0b</Keywords>
+            <Keywords name="Numbers, suffix1">L</Keywords>
+            <Keywords name="Numbers, range">..</Keywords>
+            <Keywords name="Operators1">+</Keywords>
+            <Keywords name="Folders in code1, open">{</Keywords>
+            <Keywords name="Folders in code1, close">}</Keywords>
+            <Keywords name="Folders in code2, open">begin</Keywords>
+            <Keywords name="Folders in code2, middle">else</Keywords>
+            <Keywords name="Folders in code2, close">end</Keywords>
+            <Keywords name="Folders in comment, open">region</Keywords>
+            <Keywords name="Folders in comment, close">endregion</Keywords>
+            <Keywords name="Keywords1">let</Keywords>
+            <Keywords name="Delimiters">00&quot; 01\ 02&quot; 03${ 04 05}</Keywords>
+        </KeywordLists>
+        <Styles>
+            <WordsStyle name="DELIMITERS1" fgColor="808080" nesting="1026" />
+            <WordsStyle name="DELIMITERS2" fgColor="808080" nesting="0" />
+        </Styles>
+    </UserLang>
+</NotepadPlus>"#;
+
+fn full_kinds(text: &str) -> Vec<(&str, UdlKind)> {
+    parse_udl(FULL).unwrap()[0]
+        .highlight(text, 0)
+        .into_iter()
+        .map(|(range, kind)| (&text[range], kind))
+        .collect()
+}
+
+#[test]
+fn numbers_follow_their_lists() {
+    fn numbers(text: &str) -> Vec<&str> {
+        full_kinds(text)
+            .into_iter()
+            .filter(|(_, kind)| *kind == UdlKind::Number)
+            .map(|(piece, _)| piece)
+            .collect()
+    }
+    assert_eq!(
+        numbers("12 1.5 0xff 0b101 10L 1..10 0x"),
+        ["12", "1.5", "0xff", "0b101", "10L", "1..10"],
+        "a prefix alone is no number"
+    );
+    assert!(numbers("0xfg 1.2.3 L x1 0b").is_empty());
+    assert!(numbers("").is_empty());
+    assert_eq!(numbers("0XFF"), Vec::<&str>::new(), "case counts");
+}
+
+#[test]
+fn line_comments_start_lines_when_the_language_says_so() {
+    let text = "# yes\n  # indented\nlet x # no";
+    let comments: Vec<&str> = full_kinds(text)
+        .into_iter()
+        .filter(|(_, kind)| *kind == UdlKind::LineComment)
+        .map(|(piece, _)| piece)
+        .collect();
+    assert_eq!(comments, ["# yes", "# indented"]);
+    let at_start = r#"<NotepadPlus><UserLang name="S"><Settings><Global forcePureLC="2" /></Settings>
+        <KeywordLists><Keywords name="Comments">00#</Keywords></KeywordLists></UserLang></NotepadPlus>"#;
+    let language = parse_udl(at_start).unwrap().remove(0);
+    let pieces = language.highlight("# a\n # b", 0);
+    assert_eq!(
+        pieces,
+        [(0..3, UdlKind::LineComment)],
+        "the first column only"
+    );
+}
+
+#[test]
+fn delimiters_hold_what_their_nesting_allows() {
+    // Delimiter 1 (a string) holds delimiter 2 (`${...}`, bit 1) and keywords 1 (bit 10).
+    assert_eq!(
+        full_kinds(r#""a ${b} let c""#),
+        [
+            ("\"a ", UdlKind::Delimiter(0)),
+            ("${b}", UdlKind::Delimiter(1)),
+            (" ", UdlKind::Delimiter(0)),
+            ("let", UdlKind::Keyword(0)),
+            (" c\"", UdlKind::Delimiter(0)),
+        ]
+    );
+    // Delimiter 2 holds nothing: a string inside it is its text.
+    assert_eq!(
+        full_kinds(r#"${"x"}"#),
+        [(r#"${"x"}"#, UdlKind::Delimiter(1))]
+    );
+    // A keyword inside a word is not one; an escaped quote does not close.
+    assert_eq!(
+        full_kinds(r#""xlet\"""#),
+        [(r#""xlet\"""#, UdlKind::Delimiter(0))]
+    );
+    // Never closed: to the end.
+    assert_eq!(
+        full_kinds("\"${"),
+        [("\"", UdlKind::Delimiter(0)), ("${", UdlKind::Delimiter(1))]
+    );
+}
+
+#[test]
+fn folds_open_and_close_at_their_words() {
+    let language = parse_udl(FULL).unwrap().remove(0);
+    let text = "begin\n  x { y\n  }\nelse\nend\n# region a\n# endregion\n{ }";
+    let folds: Vec<&str> = language
+        .folds(text)
+        .into_iter()
+        .map(|range| &text[range])
+        .collect();
+    assert_eq!(
+        folds,
+        [
+            "begin\n  x { y\n  }\nelse\nend",
+            "{ y\n  }",
+            "region a\n# endregion",
+        ],
+        "a fold on one line is none"
+    );
+    // Never closed: to the end; a close without an open is ignored.
+    assert_eq!(language.folds("}\nbegin\nx"), [2..9]);
+    assert!(language.folds("").is_empty());
+    // A fold word inside a string does not fold.
+    assert!(language.folds("\"begin\"\nend").is_empty());
+}

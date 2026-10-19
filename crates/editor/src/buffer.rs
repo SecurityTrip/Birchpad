@@ -698,11 +698,16 @@ impl Buffer {
         self.syntax.folds_mapped_from = None;
     }
 
-    /// Indentation folds for plain text that is small enough; none otherwise.
+    /// Folds of a document without a tree that is small enough: a user defined language's, or
+    /// by indentation; none otherwise.
     fn plain_folds(&self, cx: &Context<Self>) -> Vec<ByteRange<usize>> {
         let text = self.doc.text();
         if self.syntax.syntax.is_some() || text.len() > PLAIN_FOLD_LIMIT {
             return Vec::new();
+        }
+        // A user defined language folds at its own words, as Notepad++'s UDL does.
+        if let Some(language) = &self.syntax.user_language {
+            return language.folds(&text.to_string());
         }
         let tab_width = usize::from(AppState::global(cx).settings.editor.tab_width);
         birchpad_syntax::indent_fold_ranges(text, tab_width)
