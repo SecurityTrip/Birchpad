@@ -221,7 +221,7 @@ pub fn register_commands(registry: &mut CommandRegistry) {
             this.call_tip = None;
         }
         if this.completion.is_some() {
-            this.update_completion(1, cx);
+            this.update_completion(false, cx);
         }
         Ok(())
     });

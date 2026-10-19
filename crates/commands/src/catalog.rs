@@ -114,6 +114,8 @@ pub const COMMANDS: &[CommandSpec] = &[
     editor("completion.previous", "Previous Completion"),
     editor("completion.accept", "Accept Completion"),
     editor("completion.cancel", "Close Completion"),
+    editor("completion.next-overload", "Next Overload"),
+    editor("completion.previous-overload", "Previous Overload"),
     // { "text": "..." }: typed text, overwriting in overwrite mode (what macros record)
     editor("edit.type", "Type Text"),
     editor("edit.text-direction-rtl", "Text Direction RTL"),

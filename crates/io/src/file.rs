@@ -419,7 +419,11 @@ mod tests {
         assert_eq!(file.format.line_ending, LineEnding::Nel);
         assert!(file.problem.is_none());
         let doc = birchpad_core::Document::with_format(file.text.clone(), file.format);
-        assert_eq!(doc.line_ending(), LineEnding::Nel, "kept although the text has LF");
+        assert_eq!(
+            doc.line_ending(),
+            LineEnding::Nel,
+            "kept although the text has LF"
+        );
         assert_eq!(
             crate::encode_document(doc.text(), doc.format()).unwrap(),
             bytes,
@@ -439,7 +443,10 @@ mod tests {
             mixed
         );
         // No line break at all, and a code page that is not EBCDIC.
-        assert_ne!(ebcdic(&[0xC1], "IBM037").format.line_ending, LineEnding::Nel);
+        assert_ne!(
+            ebcdic(&[0xC1], "IBM037").format.line_ending,
+            LineEnding::Nel
+        );
         assert_ne!(ebcdic(&[], "IBM037").format.line_ending, LineEnding::Nel);
         assert_ne!(
             ebcdic(&[b'a', 0x15], "IBM437").format.line_ending,

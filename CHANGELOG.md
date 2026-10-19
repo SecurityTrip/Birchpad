@@ -20,6 +20,13 @@ version's release notes from its section here.
 - EBCDIC 875 (Greek) in Encoding > Character Sets > EBCDIC.
 - EBCDIC files whose lines end with NEL, as on IBM mainframes, open with their lines broken
   and are saved with NEL again; the status bar shows "EBCDIC (NEL)".
+- Auto-Completion closes HTML and XML tags as their `>` is typed (Preferences >
+  Auto-Completion > Close HTML and XML tags, off by default as in Notepad++).
+- Auto-Completion's options from Notepad++: Function completion and Word completion, each
+  from its own number of characters, Ignore case and Ignore numbers.
+- A call tip shows one overload at a time with "1 of 3"; Up and Down go through them.
+- The API file of a language embedded in the document applies inside it: JavaScript's in an
+  HTML `<script>`, CSS's in `<style>`.
 
 ### Changed
 

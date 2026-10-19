@@ -1213,6 +1213,16 @@ command = "completion.cancel"
 context = "CallTip"
 
 [[binding]]
+keys = "down"
+command = "completion.next-overload"
+context = "CallTip"
+
+[[binding]]
+keys = "up"
+command = "completion.previous-overload"
+context = "CallTip"
+
+[[binding]]
 keys = "secondary-p"
 command = "file.print"
 

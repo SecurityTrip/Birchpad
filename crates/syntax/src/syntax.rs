@@ -196,6 +196,18 @@ impl Layer {
         self.reused
     }
 
+    /// Whether the byte at `pos`, or a caret there, is in one of its ranges.
+    pub fn covers(&self, pos: usize) -> bool {
+        self.ranges
+            .iter()
+            .any(|range| range.start_byte <= pos && pos <= range.end_byte)
+    }
+
+    /// 1 for a language embedded in the document's, 2 for one embedded in that, ...
+    pub fn depth(&self) -> u8 {
+        self.depth
+    }
+
     /// The bytes of the document it covers, from the start of its first range to the end of
     /// its last.
     pub fn extent(&self) -> Range<usize> {
@@ -255,6 +267,16 @@ impl Syntax {
     /// The layers of the embedded languages, sorted by where they start.
     pub fn layers(&self) -> &[Layer] {
         &self.layers
+    }
+
+    /// The language at `pos`: the most deeply embedded one whose text holds it (a script in
+    /// HTML), else the document's.
+    pub fn language_at(&self, pos: usize) -> &'static Language {
+        self.layers
+            .iter()
+            .filter(|layer| layer.covers(pos))
+            .max_by_key(|layer| layer.depth())
+            .map_or(self.language(), Layer::language)
     }
 
     /// Follows an edit of `old_text` so that the trees stay roughly right (nodes after the edit
@@ -1308,6 +1330,26 @@ mod tests {
             "no string at {end}: {:?}",
             &named[named.len().saturating_sub(5)..]
         );
+    }
+
+    #[test]
+    fn the_language_at_a_position_is_the_embedded_one() {
+        let source = "<p>a</p><script>let x = 1;</script><style>p { }</style>";
+        let text = Rope::from_str(source);
+        let syntax = parse("html", &text);
+        let at = |needle: &str| syntax.language_at(source.find(needle).unwrap()).id;
+        assert_eq!(at("a</p>"), "html");
+        assert_eq!(at("x = 1"), "javascript");
+        assert_eq!(at("{ }"), "css");
+        assert_eq!(syntax.language_at(0).id, "html", "the start");
+        assert_eq!(syntax.language_at(source.len()).id, "html", "the end");
+        assert_eq!(
+            syntax.language_at(source.len() + 10).id,
+            "html",
+            "past the end"
+        );
+        let plain = parse("rust", &Rope::from_str("fn f() {}"));
+        assert_eq!(plain.language_at(3).id, "rust", "nothing embedded");
     }
 
     #[test]

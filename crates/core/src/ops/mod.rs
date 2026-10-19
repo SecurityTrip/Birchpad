@@ -14,6 +14,7 @@ mod marks;
 mod multi;
 mod pairs;
 mod sort;
+mod tags;
 
 use std::ops::Range;
 
@@ -41,6 +42,7 @@ pub use sort::{
     SortError, SortKey, remove_duplicate_lines, remove_empty_lines, reverse_lines, shuffle_lines,
     sort_lines, sort_lines_by_columns,
 };
+pub use tags::close_tags;
 
 /// Lines a selection range covers. A non-empty range that ends at the very start of a line does
 /// not take that line, as in Scintilla's line operations (selecting whole lines with the

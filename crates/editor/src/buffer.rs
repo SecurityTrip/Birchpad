@@ -674,6 +674,14 @@ impl Buffer {
         self.syntax.syntax.as_ref()
     }
 
+    /// The language at `pos`: one embedded in the document's (a script in HTML), or the
+    /// document's.
+    pub fn language_at(&self, pos: usize) -> Option<&'static Language> {
+        self.syntax()
+            .map(|syntax| syntax.language_at(pos))
+            .or_else(|| self.language())
+    }
+
     /// Fold points as byte ranges sorted by start, their version, and the version they were
     /// mapped from if the last change was an edit mapping them.
     pub fn folds(&self) -> (&[ByteRange<usize>], u64, Option<u64>) {

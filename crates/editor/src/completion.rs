@@ -7,9 +7,9 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 
-use birchpad_config::ApiFile;
-use birchpad_core::completion::{is_word_char, word_candidates, word_start};
-use birchpad_core::ops::{Pairs, delete_pairs, type_with_pairs};
+use birchpad_config::{ApiFile, CompletionSettings};
+use birchpad_core::completion::{WordOptions, is_word_char, word_candidates_with, word_start};
+use birchpad_core::ops::{Pairs, close_tags, delete_pairs, type_with_pairs};
 use gpui_kit::{
     AnyElement, App, Context, MouseButton, Window, anchored, deferred, div, point, prelude::*, px,
 };
@@ -41,11 +41,52 @@ pub struct Popup {
     pub selected: usize,
 }
 
-/// A function's parameters, shown from its opening bracket at `open`.
+/// A function's parameters, shown from its opening bracket at `open`: one overload at a time,
+/// Up and Down going through them, as in Notepad++.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CallTip {
     pub open: usize,
-    pub text: String,
+    /// Each overload's signature, with its description on the lines below.
+    pub overloads: Vec<String>,
+    pub current: usize,
+}
+
+impl CallTip {
+    /// What the tip shows: the overload, with `1 of 3` before it when there are several.
+    pub fn text(&self) -> String {
+        let overload = self
+            .overloads
+            .get(self.current)
+            .cloned()
+            .unwrap_or_default();
+        if self.overloads.len() > 1 {
+            format!(
+                "\u{25B2} {} of {} \u{25BC} {overload}",
+                self.current + 1,
+                self.overloads.len()
+            )
+        } else {
+            overload
+        }
+    }
+
+    /// Goes `step` overloads on, around the ends.
+    pub fn cycle(&mut self, step: isize) {
+        let count = self.overloads.len() as isize;
+        if count > 0 {
+            self.current = (self.current as isize + step).rem_euclid(count) as usize;
+        }
+    }
+}
+
+/// Whether Auto-Completion closes the tags of the language `id`, and whether it is HTML (with
+/// elements that have no closing tag).
+fn tag_language(id: &str) -> Option<bool> {
+    match id {
+        "html" | "php" | "asp" | "vue" | "svelte" => Some(true),
+        "xml" | "svg" | "xsl" | "xslt" => Some(false),
+        _ => None,
+    }
 }
 
 thread_local! {
@@ -81,19 +122,57 @@ pub(crate) fn forget_api_files() {
     API_FILES.with(|files| files.borrow_mut().clear());
 }
 
+/// Which entries the list offers (Auto-Completion's options).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct Sources {
+    pub(crate) api: bool,
+    pub(crate) words: bool,
+    pub(crate) options: WordOptions,
+}
+
+impl Sources {
+    /// What the settings offer for a word of `typed` characters.
+    pub(crate) fn for_typed(settings: &CompletionSettings, typed: usize) -> Self {
+        Self {
+            api: settings.api && typed >= usize::from(settings.api_min_chars).max(1),
+            words: settings.words && typed >= usize::from(settings.min_chars).max(1),
+            options: WordOptions {
+                ignore_case: settings.ignore_case,
+                ignore_numbers: settings.ignore_numbers,
+            },
+        }
+    }
+
+    /// Everything, as Ctrl+Space asks.
+    pub(crate) fn all(settings: &CompletionSettings) -> Self {
+        Self {
+            api: true,
+            words: true,
+            ..Self::for_typed(settings, 0)
+        }
+    }
+}
+
 /// The list for the word `prefix` (at `start..pos`): the API's keywords, then the document's
-/// words, each once.
+/// words, each once, as far as `sources` offer them.
 pub(crate) fn items(
     api: Option<&ApiFile>,
     text: &birchpad_core::Rope,
     start: usize,
     pos: usize,
+    sources: Sources,
 ) -> Vec<Item> {
     let prefix = text.slice(start..pos).to_string();
+    let api = api.filter(|_| sources.api);
     let mut items: Vec<Item> = api
         .map(|api| {
             api.completions(&prefix)
                 .into_iter()
+                .filter(|keyword| {
+                    let number = keyword.name.starts_with(|ch: char| ch.is_ascii_digit());
+                    !(sources.options.ignore_numbers && number)
+                        && (sources.options.ignore_case || keyword.name.starts_with(&prefix))
+                })
                 .map(|keyword| Item {
                     label: keyword.name.clone(),
                     detail: keyword
@@ -104,7 +183,12 @@ pub(crate) fn items(
                 .collect()
         })
         .unwrap_or_default();
-    for word in word_candidates(text, &prefix, start..pos, WORD_LIMIT) {
+    let words = if sources.words {
+        word_candidates_with(text, &prefix, start..pos, WORD_LIMIT, sources.options)
+    } else {
+        Vec::new()
+    };
+    for word in words {
         if !items.iter().any(|item| item.label == word) {
             items.push(Item {
                 label: word,
@@ -120,8 +204,25 @@ impl EditorView {
         Pairs(AppState::global(cx).settings.completion.pairs())
     }
 
+    /// The language at the caret: one embedded in the document's (a script in HTML) has its
+    /// own API file.
     fn language_id(&self, cx: &App) -> Option<&'static str> {
-        self.buffer.read(cx).language().map(|language| language.id)
+        let head = self.selection.primary().head;
+        self.buffer
+            .read(cx)
+            .language_at(head)
+            .map(|language| language.id)
+    }
+
+    /// After `>` typed in HTML or XML: the closing tag of the opening tag it ended.
+    fn close_tag(&mut self, cx: &mut Context<Self>) {
+        let Some(html) = self.language_id(cx).and_then(tag_language) else {
+            return;
+        };
+        let text = self.text(cx).clone();
+        if let Some(transaction) = close_tags(&text, &self.selection, html) {
+            self.apply(transaction, LastEdit::None, cx);
+        }
     }
 
     /// Typing `typed` with auto-closing: true when it paired or stepped over a partner.
@@ -179,27 +280,37 @@ impl EditorView {
         {
             self.show_call_tip(api, cx);
         }
+        if settings.close_tags && typed == ">" {
+            self.close_tag(cx);
+        }
         let word_typed = typed.chars().last().is_some_and(is_word_char);
-        if word_typed && (settings.words || self.completion.is_some()) {
-            self.update_completion(settings.min_chars.into(), cx);
+        if word_typed && (settings.words || settings.api || self.completion.is_some()) {
+            self.update_completion(false, cx);
         } else {
             self.completion = None;
         }
         cx.notify();
     }
 
-    /// Shows or refreshes the list for the word before the caret, if it has `min_chars`.
-    pub fn update_completion(&mut self, min_chars: usize, cx: &mut Context<Self>) {
+    /// Shows or refreshes the list for the word before the caret: what the settings offer for
+    /// its length, or everything when `asked` (Ctrl+Space).
+    pub fn update_completion(&mut self, asked: bool, cx: &mut Context<Self>) {
         let text = self.text(cx).clone();
         let head = self.selection.primary().head;
         let start = word_start(&text, head);
         let typed = text.slice(start..head).chars().count();
-        if typed == 0 || typed < min_chars {
+        let settings = &AppState::global(cx).settings.completion;
+        let sources = if asked {
+            Sources::all(settings)
+        } else {
+            Sources::for_typed(settings, typed)
+        };
+        if typed == 0 || !(sources.api || sources.words) {
             self.completion = None;
             return;
         }
         let api = api_file(self.language_id(cx), cx);
-        let items = items(api.as_deref(), &text, start, head);
+        let items = items(api.as_deref(), &text, start, head, sources);
         if items.is_empty() {
             self.completion = None;
             return;
@@ -226,7 +337,7 @@ impl EditorView {
         let name_start = word_start(&text, open);
         let name = text.slice(name_start..open).to_string();
         if let Some(function) = api.function(&name) {
-            let lines: Vec<String> = function
+            let overloads: Vec<String> = function
                 .overloads
                 .iter()
                 .map(|overload| {
@@ -240,7 +351,8 @@ impl EditorView {
                 .collect();
             self.call_tip = Some(CallTip {
                 open: head,
-                text: lines.join("\n"),
+                overloads,
+                current: 0,
             });
         }
     }
@@ -361,7 +473,7 @@ impl EditorView {
                 .px_2()
                 .py_1()
                 .max_w(px(600.))
-                .children(tip.text.lines().map(|line| div().child(line.to_owned())))
+                .children(tip.text().lines().map(|line| div().child(line.to_owned())))
                 .into_any_element()
         };
         Some(
@@ -393,7 +505,21 @@ fn move_selection(view: &mut EditorView, step: isize) {
 
 pub(crate) fn register_commands(registry: &mut CommandRegistry) {
     registry.editor("completion.complete", |this, (), _, cx| {
-        this.update_completion(1, cx);
+        this.update_completion(true, cx);
+        Ok(())
+    });
+    registry.editor("completion.next-overload", |this, (), _, cx| {
+        if let Some(tip) = &mut this.call_tip {
+            tip.cycle(1);
+        }
+        cx.notify();
+        Ok(())
+    });
+    registry.editor("completion.previous-overload", |this, (), _, cx| {
+        if let Some(tip) = &mut this.call_tip {
+            tip.cycle(-1);
+        }
+        cx.notify();
         Ok(())
     });
     registry.editor(

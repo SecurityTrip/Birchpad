@@ -313,8 +313,20 @@ pub(crate) const ENTRIES: &[Entry] = &[
     ),
     entry(
         "Auto-Completion",
+        "completion.api",
+        "Function completion",
+        Kind::Bool,
+    ),
+    entry(
+        "Auto-Completion",
+        "completion.api-min-chars",
+        "Functions from character",
+        Kind::Number { min: 1, max: 9 },
+    ),
+    entry(
+        "Auto-Completion",
         "completion.words",
-        "Word and function completion",
+        "Word completion",
         Kind::Bool,
     ),
     entry(
@@ -322,6 +334,18 @@ pub(crate) const ENTRIES: &[Entry] = &[
         "completion.min-chars",
         "From character",
         Kind::Number { min: 1, max: 9 },
+    ),
+    entry(
+        "Auto-Completion",
+        "completion.ignore-case",
+        "Ignore case",
+        Kind::Bool,
+    ),
+    entry(
+        "Auto-Completion",
+        "completion.ignore-numbers",
+        "Ignore numbers",
+        Kind::Bool,
     ),
     entry(
         "Auto-Completion",
@@ -334,6 +358,12 @@ pub(crate) const ENTRIES: &[Entry] = &[
         "completion.auto-close",
         "Auto-close pairs",
         Kind::Text,
+    ),
+    entry(
+        "Auto-Completion",
+        "completion.close-tags",
+        "Close HTML and XML tags",
+        Kind::Bool,
     ),
     entry("Margins", "editor.line-numbers", "Line numbers", Kind::Bool),
     entry("Margins", "editor.bookmark-margin", "Bookmarks", Kind::Bool),

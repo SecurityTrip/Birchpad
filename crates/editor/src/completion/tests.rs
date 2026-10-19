@@ -167,7 +167,7 @@ fn api_files_add_keywords_and_call_tips(cx: &mut TestAppContext) {
     cx.simulate_keystrokes("escape");
     cx.simulate_input("rint(");
     let tip = view.read_with(cx, |view, _| view.call_tip.clone()).unwrap();
-    assert_eq!(tip.text, "None print(*values)\nPrints.");
+    assert_eq!(tip.text(), "None print(*values)\nPrints.");
     // The closing bracket steps over its partner and closes the tip.
     cx.simulate_input("x)");
     assert_eq!(view.read_with(cx, |view, _| view.call_tip.clone()), None);
@@ -208,8 +208,176 @@ fn items_put_the_api_first_and_each_word_once() {
     )
     .unwrap();
     let text = birchpad_core::Rope::from_str("print printer pr");
-    let found = items(Some(&api), &text, 14, 16);
+    let all = Sources::all(&CompletionSettings::default());
+    let found = items(Some(&api), &text, 14, 16, all);
     let labels: Vec<_> = found.iter().map(|item| item.label.as_str()).collect();
     assert_eq!(labels, ["print", "printer"]);
-    assert!(items(None, &text, 16, 16).is_empty());
+    assert!(items(None, &text, 16, 16, all).is_empty());
+}
+
+fn item_labels(found: Vec<Item>) -> Vec<String> {
+    found.into_iter().map(|item| item.label).collect()
+}
+
+#[test]
+fn each_source_from_its_own_number_of_characters() {
+    let api = ApiFile::parse(
+        r#"<NotepadPlus><AutoComplete ignoreCase="yes"><KeyWord name="Print"/><KeyWord name="1st"/></AutoComplete></NotepadPlus>"#,
+    )
+    .unwrap();
+    let settings = CompletionSettings {
+        api_min_chars: 3,
+        min_chars: 2,
+        ..CompletionSettings::default()
+    };
+    let text = birchpad_core::Rope::from_str("printer pr");
+    // Two characters: the words, not yet the API.
+    let found = items(Some(&api), &text, 8, 10, Sources::for_typed(&settings, 2));
+    assert_eq!(item_labels(found), ["printer"]);
+    // One character: nothing; three: both.
+    assert!(!Sources::for_typed(&settings, 1).api);
+    assert!(!Sources::for_typed(&settings, 1).words);
+    let three = Sources::for_typed(&settings, 3);
+    assert!(three.api && three.words);
+    // A source turned off stays off, whatever the length; Ctrl+Space asks for everything.
+    let no_api = CompletionSettings {
+        api: false,
+        ..settings.clone()
+    };
+    assert!(!Sources::for_typed(&no_api, 9).api);
+    assert!(Sources::all(&no_api).api);
+}
+
+#[test]
+fn case_and_numbers_as_the_options_say() {
+    let api = ApiFile::parse(
+        r#"<NotepadPlus><AutoComplete ignoreCase="yes"><KeyWord name="Print"/><KeyWord name="1st"/></AutoComplete></NotepadPlus>"#,
+    )
+    .unwrap();
+    let text = birchpad_core::Rope::from_str("printer 1000 pr 1");
+    let mut settings = CompletionSettings::default();
+    let all = |settings: &CompletionSettings| Sources::all(settings);
+    assert_eq!(
+        item_labels(items(Some(&api), &text, 13, 15, all(&settings))),
+        ["Print", "printer"]
+    );
+    settings.ignore_case = false;
+    assert_eq!(
+        item_labels(items(Some(&api), &text, 13, 15, all(&settings))),
+        ["printer"],
+        "Print does not start with pr"
+    );
+    assert!(item_labels(items(Some(&api), &text, 16, 17, all(&settings))).is_empty());
+    settings.ignore_numbers = false;
+    assert_eq!(
+        item_labels(items(Some(&api), &text, 16, 17, all(&settings))),
+        ["1st", "1000"]
+    );
+}
+
+#[test]
+fn a_call_tip_shows_one_overload_at_a_time() {
+    let mut tip = CallTip {
+        open: 0,
+        overloads: vec!["f(a)".into(), "f(a, b)\nTwo.".into()],
+        current: 0,
+    };
+    assert_eq!(tip.text(), "\u{25B2} 1 of 2 \u{25BC} f(a)");
+    tip.cycle(1);
+    assert_eq!(tip.text(), "\u{25B2} 2 of 2 \u{25BC} f(a, b)\nTwo.");
+    tip.cycle(1);
+    assert_eq!(tip.current, 0, "around the end");
+    tip.cycle(-1);
+    assert_eq!(tip.current, 1, "around the start");
+    let single = CallTip {
+        open: 0,
+        overloads: vec!["g()".into()],
+        current: 0,
+    };
+    assert_eq!(single.text(), "g()", "one overload has no counter");
+    let mut none = CallTip {
+        open: 0,
+        overloads: Vec::new(),
+        current: 0,
+    };
+    none.cycle(1);
+    assert_eq!(none.text(), "");
+}
+
+#[gpui_kit::test]
+fn tags_close_when_the_setting_says_so(cx: &mut TestAppContext) {
+    let (workspace, cx) = open_workspace(cx);
+    run(
+        &workspace,
+        Invocation::with_args("language.set", json!({ "language": "html" })),
+        cx,
+    );
+    cx.simulate_input("<p>");
+    assert_eq!(
+        active_text(&workspace, cx),
+        "<p>",
+        "off by default, as in Notepad++"
+    );
+    cx.update(|_, cx| {
+        cx.global_mut::<AppState>().settings.completion.close_tags = true;
+    });
+    cx.simulate_input("<b class=\"x\">");
+    cx.simulate_input("bold");
+    assert_eq!(active_text(&workspace, cx), "<p><b class=\"x\">bold</b>");
+    cx.simulate_input("<br>");
+    assert_eq!(
+        active_text(&workspace, cx),
+        "<p><b class=\"x\">bold<br></b>",
+        "a void element"
+    );
+    // Plain text closes nothing.
+    run(
+        &workspace,
+        Invocation::with_args("language.set", json!({ "language": "text" })),
+        cx,
+    );
+    cx.simulate_input("<i>");
+    assert!(active_text(&workspace, cx).ends_with("<br><i></b>"));
+}
+
+#[gpui_kit::test]
+fn up_and_down_go_through_overloads(cx: &mut TestAppContext) {
+    let (workspace, cx) = open_workspace(cx);
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::create_dir(dir.path().join("autoCompletion")).unwrap();
+    std::fs::write(
+        dir.path().join("autoCompletion").join("javascript.xml"),
+        r#"<NotepadPlus><AutoComplete><KeyWord name="max" func="yes"><Overload retVal="number"><Param name="a"/></Overload><Overload retVal="number"><Param name="a"/><Param name="b"/></Overload></KeyWord></AutoComplete></NotepadPlus>"#,
+    )
+    .unwrap();
+    forget_api_files();
+    cx.update(|_, cx| {
+        cx.global_mut::<AppState>().paths.user_settings = Some(dir.path().join("settings.toml"));
+    });
+    // JavaScript inside HTML has JavaScript's API file.
+    run(
+        &workspace,
+        Invocation::with_args("language.set", json!({ "language": "html" })),
+        cx,
+    );
+    cx.simulate_input("<script>\n");
+    cx.simulate_input("</script>");
+    cx.simulate_keystrokes("up end");
+    cx.simulate_input("max(");
+    cx.run_until_parked();
+    let view = view(&workspace, cx);
+    let tip = |cx: &mut VisualTestContext| view.read_with(cx, |view, _| view.call_tip.clone());
+    let current = tip(cx).expect("a call tip in the script").current;
+    assert_eq!(current, 0);
+    cx.simulate_keystrokes("down");
+    assert_eq!(tip(cx).unwrap().current, 1);
+    cx.simulate_keystrokes("down");
+    assert_eq!(tip(cx).unwrap().current, 0, "around the end");
+    cx.simulate_keystrokes("up");
+    assert_eq!(tip(cx).unwrap().current, 1);
+    assert!(
+        active_text(&workspace, cx).contains("max()"),
+        "the keys moved no caret"
+    );
+    forget_api_files();
 }
