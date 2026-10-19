@@ -38,7 +38,13 @@ which UDL files cannot become.
   (`else`) neither open nor close. A fold closed on the line it opened is none, one never
   closed runs to the end, and a line starts one fold at most. The document's indentation
   folds are not used for a user defined language.
-- **The language's own colors** are used, as in Notepad++, not the theme's.
+- **The language's own colors** are used, as in Notepad++. Where a style leaves the text
+  color unset (or the language has no such style), the theme's color for the same kind of
+  text is used instead: comments, numbers, keywords and folders, operators, and delimiters as
+  strings; the style's background and font style stay.
+- **The submenu** also has Open User Defined Language Folder... (`language.open-udl-folder`,
+  made if missing) and Notepad++ User Defined Languages Collection
+  (`language.udl-collection`), which opens the shared collection on GitHub in the browser.
 - **Detection:** a file whose extension no built-in language claims gets the user defined
   language that lists it.
 

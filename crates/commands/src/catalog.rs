@@ -367,6 +367,14 @@ pub const COMMANDS: &[CommandSpec] = &[
     workspace("file.export-html", "Export to HTML..."),
     workspace("language.set", "Language"),
     workspace("language.import-udl", "Import..."),
+    workspace(
+        "language.open-udl-folder",
+        "Open User Defined Language Folder...",
+    ),
+    workspace(
+        "language.udl-collection",
+        "Notepad++ User Defined Languages Collection",
+    ),
     // Tools; { "hash": "md5" | "sha1" | "sha256" | "sha512" }
     workspace("tools.hash-files", "Generate from Files..."),
     editor(

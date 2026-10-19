@@ -164,7 +164,9 @@ command:
     validate: "Validate JSON"
   language:
     import-udl: "Import..."
+    open-udl-folder: "Open User Defined Language Folder..."
     set: "Language"
+    udl-collection: "Notepad++ User Defined Languages Collection"
   macro:
     playback: "Playback"
     run: "Run Macro"

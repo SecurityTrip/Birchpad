@@ -728,6 +728,8 @@ pub fn main_menu() -> Vec<Menu> {
                     Dynamic(Placeholder::UserLanguages),
                     Separator,
                     cmd("language.import-udl"),
+                    cmd("language.open-udl-folder"),
+                    cmd("language.udl-collection"),
                 ],
             )),
         ],

@@ -110,9 +110,34 @@ pub(crate) fn text_style(style: UdlStyle) -> TextStyle {
     }
 }
 
-/// The style of each piece `language` colors.
+/// The theme's highlight for what a piece of a user defined language is.
+pub(crate) fn theme_highlight(kind: UdlKind) -> &'static str {
+    match kind {
+        UdlKind::Comment | UdlKind::LineComment => "comment",
+        UdlKind::Number => "number",
+        UdlKind::Keyword(_) | UdlKind::FolderCode1 | UdlKind::FolderCode2 => "keyword",
+        UdlKind::Operator => "operator",
+        UdlKind::Delimiter(_) => "string",
+    }
+}
+
+/// The style of each piece `language` colors: the language's own colors, and the theme's
+/// where the language leaves the text color unset.
 pub(crate) fn style_of(language: &UserLanguage, kind: UdlKind) -> Option<TextStyle> {
-    language.style(kind).map(text_style)
+    let own = language.style(kind).map(text_style);
+    if own.is_some_and(|style| style.color.is_some()) {
+        return own;
+    }
+    let theme = birchpad_syntax::resolve(theme_highlight(kind))
+        .and_then(|highlight| crate::editor::theme::syntax_style(None, highlight));
+    match (own, theme) {
+        // The language's background and font style, the theme's color.
+        (Some(own), Some(theme)) => Some(TextStyle {
+            color: theme.color,
+            ..own
+        }),
+        (own, theme) => own.or(theme),
+    }
 }
 
 /// Copies UDL files into `dir` after checking them; the languages they hold, and a message for
@@ -149,10 +174,30 @@ pub(crate) fn import(paths: &[PathBuf], dir: &Path) -> (usize, Vec<String>) {
     (imported, errors)
 }
 
+/// The collection of UDL files Notepad++'s users share.
+pub(crate) const COLLECTION_URL: &str = "https://github.com/notepad-plus-plus/userDefinedLanguages";
+
 pub(crate) fn register_commands(registry: &mut CommandRegistry) {
     registry.workspace("language.import-udl", |this, (), window, cx| {
         this.import_user_languages(window, cx);
         Ok(())
+    });
+    registry.workspace("language.open-udl-folder", |_, (), _, cx| {
+        let dir = folder(cx).ok_or_else(|| {
+            anyhow!(
+                "{}",
+                t!("user-languages.there-is-no-settings-folder-to-keep-languages-in")
+            )
+        })?;
+        std::fs::create_dir_all(&dir)
+            .with_context(|| format!("cannot create {}", dir.display()))?;
+        crate::file_commands::shell(crate::file_commands::Shell::Open(dir), cx)
+    });
+    registry.workspace("language.udl-collection", |_, (), _, cx| {
+        crate::file_commands::shell(
+            crate::file_commands::Shell::Browse(COLLECTION_URL.to_owned()),
+            cx,
+        )
     });
 }
 

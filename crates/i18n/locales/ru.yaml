@@ -163,7 +163,9 @@ command:
     validate: "Проверить JSON"
   language:
     import-udl: "Импорт..."
+    open-udl-folder: "Открыть папку пользовательских языков..."
     set: "Синтаксис"
+    udl-collection: "Коллекция пользовательских языков Notepad++"
   macro:
     playback: "Воспроизвести"
     run: "Выполнить макрос"

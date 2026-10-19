@@ -76,6 +76,37 @@ fn styles_become_text_styles() {
     assert!(style.bold && style.underline && !style.italic);
 }
 
+#[test]
+fn the_theme_colors_what_the_language_leaves_unset() {
+    let language = birchpad_syntax::parse_udl(
+        r#"<NotepadPlus><UserLang name="T"><Styles>
+            <WordsStyle name="COMMENTS" fgColor="00FF00" colorStyle="1" />
+            <WordsStyle name="KEYWORDS1" bgColor="FFFF00" colorStyle="2" fontStyle="1" />
+        </Styles></UserLang></NotepadPlus>"#,
+    )
+    .unwrap()
+    .remove(0);
+    let theme = |name: &str| {
+        crate::editor::theme::syntax_style(None, birchpad_syntax::resolve(name).unwrap())
+    };
+    // Its own color stays.
+    let comment = style_of(&language, UdlKind::Comment).unwrap();
+    assert_eq!(comment.color, Some(0x00ff00ff));
+    // A style without a color: the theme's color, its own background and boldness.
+    let keyword = style_of(&language, UdlKind::Keyword(0)).unwrap();
+    assert_eq!(
+        keyword.color,
+        theme("keyword").and_then(|style| style.color)
+    );
+    assert_eq!(keyword.background, Some(0xffff00ff));
+    assert!(keyword.bold);
+    // No style at all: the theme's.
+    assert_eq!(style_of(&language, UdlKind::Number), theme("number"));
+    assert_eq!(style_of(&language, UdlKind::Delimiter(7)), theme("string"));
+    assert_eq!(theme_highlight(UdlKind::LineComment), "comment");
+    assert_eq!(theme_highlight(UdlKind::FolderCode2), "keyword");
+}
+
 #[gpui_kit::test]
 fn chosen_detected_and_remembered(cx: &mut TestAppContext) {
     let (workspace, cx, dir) = setup(cx);
@@ -143,4 +174,26 @@ fn chosen_detected_and_remembered(cx: &mut TestAppContext) {
             .map(|found| found.name.clone())),
         Some("Mini".to_owned())
     );
+}
+
+#[gpui_kit::test]
+fn the_folder_and_the_collection_open(cx: &mut TestAppContext) {
+    use crate::file_commands::{SHELL, Shell};
+    let (workspace, cx, dir) = setup(cx);
+    let taken = || SHELL.with(|shell| std::mem::take(&mut *shell.borrow_mut()));
+    taken();
+    std::fs::remove_dir_all(dir.path().join("userDefineLangs")).unwrap();
+    run(&workspace, Invocation::new("language.open-udl-folder"), cx).unwrap();
+    assert_eq!(taken(), [Shell::Open(dir.path().join("userDefineLangs"))]);
+    assert!(
+        dir.path().join("userDefineLangs").is_dir(),
+        "made when missing"
+    );
+    run(&workspace, Invocation::new("language.udl-collection"), cx).unwrap();
+    assert_eq!(taken(), [Shell::Browse(COLLECTION_URL.to_owned())]);
+
+    // Without a settings folder there is no folder to open.
+    cx.update(|_, cx| cx.global_mut::<AppState>().paths.user_settings = None);
+    assert!(run(&workspace, Invocation::new("language.open-udl-folder"), cx).is_err());
+    assert!(taken().is_empty());
 }

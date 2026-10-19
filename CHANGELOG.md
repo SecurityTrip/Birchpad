@@ -35,6 +35,9 @@ version's release notes from its section here.
   in comments; numbers with prefixes, extra characters, suffixes and ranges; line comments
   that must start a line; delimiters that hold other delimiters, comments, keywords,
   operators or numbers, as their nesting says.
+- User Defined Languages take the theme's colors where the language leaves them unset.
+- Language > User Defined Language > Open User Defined Language Folder... and Notepad++
+  User Defined Languages Collection.
 
 ### Changed
 
