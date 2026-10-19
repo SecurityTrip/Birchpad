@@ -6,6 +6,8 @@ version's release notes from its section here.
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-19
+
 ### Added
 
 - Markdown preview, as in IntelliJ IDEA: a Markdown document shows its text and the rendered
@@ -15,6 +17,10 @@ version's release notes from its section here.
   from the web.
 - PlantUML preview in the same way for `.puml` files, drawn by the PlantUML installed on the
   computer: the `plantuml` command, or a `plantuml.jar` named in `preview.plantuml`.
+
+### Changed
+
+- Dependency updates: sha2 0.11.1.
 
 ## [0.3.0] - 2026-10-18
 
@@ -479,7 +485,9 @@ The first release: a Notepad++-like editor for Windows, Linux and macOS.
   entirely (`updates.mode = "off"`).
 - Nightly builds of `main` on the nightly channel.
 
-[Unreleased]: https://github.com/SecurityTrip/Birchpad/compare/v0.2.5...HEAD
+[Unreleased]: https://github.com/SecurityTrip/Birchpad/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/SecurityTrip/Birchpad/compare/v0.3.0...v0.4.0
+[0.3.0]: https://github.com/SecurityTrip/Birchpad/compare/v0.2.5...v0.3.0
 [0.2.5]: https://github.com/SecurityTrip/Birchpad/compare/v0.2.0...v0.2.5
 [0.2.0]: https://github.com/SecurityTrip/Birchpad/compare/v0.1.5...v0.2.0
 [0.1.5]: https://github.com/SecurityTrip/Birchpad/compare/v0.1.4...v0.1.5
