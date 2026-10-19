@@ -262,6 +262,7 @@ pub(crate) fn is_current(invocation: &Invocation, format: Format, ansi: Encoding
                 LineEnding::CrLf => "crlf",
                 LineEnding::Lf => "lf",
                 LineEnding::Cr => "cr",
+                LineEnding::Nel => "nel",
             };
             invocation.args.get("eol").and_then(|eol| eol.as_str()) == Some(current)
         }

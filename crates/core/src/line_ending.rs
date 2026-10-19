@@ -13,13 +13,16 @@ pub enum LineEnding {
     Lf,
     /// `\r`, classic Mac OS.
     Cr,
+    /// NEL, the line break of EBCDIC files on IBM mainframes (byte 0x15). The text keeps it as
+    /// `\n`, where the editor breaks lines; saving in an EBCDIC code page writes NEL.
+    Nel,
 }
 
 impl LineEnding {
     pub const fn as_str(self) -> &'static str {
         match self {
             Self::CrLf => "\r\n",
-            Self::Lf => "\n",
+            Self::Lf | Self::Nel => "\n",
             Self::Cr => "\r",
         }
     }
@@ -65,6 +68,7 @@ impl LineEnding {
             Self::CrLf => "CRLF",
             Self::Lf => "LF",
             Self::Cr => "CR",
+            Self::Nel => "NEL",
         }
     }
 }
@@ -105,7 +109,8 @@ fn push_break(
     found: LineEnding,
     target: LineEnding,
 ) {
-    if found != target {
+    // NEL is LF in the text: converting between them changes nothing.
+    if found.as_str() != target.as_str() {
         edits.push(Edit::replace(range, target.as_str()));
     }
 }
@@ -132,6 +137,20 @@ mod tests {
         );
         assert_eq!(convert(mixed, LineEnding::Cr), "a\rb\rc\rd\r\re\r");
         assert!(convert_line_breaks(&Rope::from_str("x\ny\n"), LineEnding::Lf).is_empty());
+    }
+
+    #[test]
+    fn nel_is_lf_in_the_text() {
+        assert_eq!(convert("a\r\nb\rc", LineEnding::Nel), "a\nb\nc");
+        assert!(convert_line_breaks(&Rope::from_str("x\ny\n"), LineEnding::Nel).is_empty());
+        assert!(convert_line_breaks(&Rope::from_str(""), LineEnding::Nel).is_empty());
+        assert_eq!(LineEnding::Nel.as_str(), "\n");
+        assert_eq!(LineEnding::Nel.label(), "NEL");
+        assert_eq!(
+            LineEnding::detect(&Rope::from_str("a\u{85}b")),
+            None,
+            "a NEL character in the text is no line break"
+        );
     }
 
     #[test]

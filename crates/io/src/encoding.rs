@@ -62,6 +62,7 @@ pub const CHARACTER_SETS: &[(&str, &[(&str, &str)])] = &[
             ("IBM037", "EBCDIC 037 (US, Canada)"),
             ("IBM1140", "EBCDIC 1140 (US, Canada, Euro)"),
             ("IBM500", "EBCDIC 500 (International)"),
+            ("IBM875", "EBCDIC 875 (Greek)"),
             ("IBM1026", "EBCDIC 1026 (Turkish)"),
         ],
     ),

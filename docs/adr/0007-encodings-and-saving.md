@@ -101,8 +101,16 @@ read + detect + decode + rope). Memory-mapped huge files are a phase 6 item.
   stay, and symbolic links when the system allows creating them.
 - Every save writes the content twice (recovery copy, then the file). For a 100 MB file that is
   an extra ~100 MB of I/O; acceptable for the safety it buys.
-- encoding_rs implements the WHATWG encodings: OEM code pages other than 866 (437, 850, ...)
-  and EBCDIC are not available yet.
+- encoding_rs implements the WHATWG encodings; the OEM code pages it lacks (437, 850, ...) and
+  EBCDIC (037, 500, 875, 1026, 1140) come from tables of Birchpad's own (`code_pages.rs`),
+  generated from Unicode's mapping files. EBCDIC 875 (Greek) maps 0x3F and six other bytes to
+  SUB; only 0x3F keeps SUB, the others are undefined, so that every character is written back
+  as one byte.
+- **NEL in EBCDIC.** Files from IBM mainframes break their lines with NEL (0x15, U+0085), which
+  the editor does not break lines at. An EBCDIC file whose line breaks are NEL alone opens with
+  NEL turned into LF in the text and the line ending NEL (status bar "EBCDIC (NEL)", saved in
+  sessions as `nel`); saving in an EBCDIC code page writes NEL again, so the file keeps its
+  bytes. A file that also has LF (0x25) or CR keeps NEL as a character, to be saved unchanged.
 - A document with a decoding problem opens read-only. Reopening in the right encoding is the
   usual way out. **Edit Anyway** (on the banner, command `encoding.edit-anyway`) makes it
   editable after listing where saving will change the file:

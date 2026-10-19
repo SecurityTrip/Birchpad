@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use birchpad_core::{Encoding, Format, Rope};
+use birchpad_core::{Encoding, Format, LineEnding, Rope};
 
 use crate::changes::ByteChanges;
 use crate::decode::{DecodeProblem, decode};
@@ -152,6 +152,15 @@ pub fn load(
     Ok(decode_file(bytes, info, options))
 }
 
+/// Whether an EBCDIC file breaks its lines with NEL (0x15) alone: then NEL becomes LF in the
+/// text and is written back on saving. A file that also has LF (0x25) or CR (0x0D) keeps NEL as
+/// a character, so that saving gives back the same bytes.
+fn breaks_with_nel(bytes: &[u8], encoding: Encoding) -> bool {
+    crate::encode::is_ebcdic(encoding)
+        && bytes.contains(&0x15)
+        && !bytes.iter().any(|&byte| byte == 0x25 || byte == 0x0D)
+}
+
 /// Decodes bytes read from a file.
 pub fn decode_file(bytes: Vec<u8>, info: FileInfo, options: LoadOptions) -> LoadedFile {
     let (encoding, detected_by) = match options.encoding {
@@ -162,13 +171,19 @@ pub fn decode_file(bytes: Vec<u8>, info: FileInfo, options: LoadOptions) -> Load
         }
     };
     let head = Head::of(&bytes);
+    let nel = breaks_with_nel(&bytes, encoding);
     let decoded = decode(bytes, encoding);
+    let (text, line_ending) = if nel {
+        (decoded.text.replace('\u{85}', "\n"), LineEnding::Nel)
+    } else {
+        (decoded.text, Format::new().line_ending)
+    };
     LoadedFile {
-        text: Rope::from_str(&decoded.text),
+        text: Rope::from_str(&text),
         format: Format {
             encoding,
             bom: decoded.bom,
-            ..Format::new()
+            line_ending,
         },
         detected_by,
         problem: decoded.problem,
@@ -381,6 +396,91 @@ pub fn discard_recovery(recovery: &Recovery) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn ebcdic(bytes: &[u8], name: &'static str) -> LoadedFile {
+        let info = FileInfo {
+            len: bytes.len() as u64,
+            read_only: false,
+            modified: None,
+        };
+        let options = LoadOptions {
+            encoding: Some(Encoding::Legacy(name)),
+            ansi: Encoding::Legacy("windows-1252"),
+        };
+        decode_file(bytes.to_vec(), info, options)
+    }
+
+    #[test]
+    fn ebcdic_lines_broken_with_nel_are_lines() {
+        // "Hi" NEL "A" NEL in EBCDIC 037.
+        let bytes = [0xC8, 0x89, 0x15, 0xC1, 0x15];
+        let file = ebcdic(&bytes, "IBM037");
+        assert_eq!(file.text.to_string(), "Hi\nA\n");
+        assert_eq!(file.format.line_ending, LineEnding::Nel);
+        assert!(file.problem.is_none());
+        let doc = birchpad_core::Document::with_format(file.text.clone(), file.format);
+        assert_eq!(doc.line_ending(), LineEnding::Nel, "kept although the text has LF");
+        assert_eq!(
+            crate::encode_document(doc.text(), doc.format()).unwrap(),
+            bytes,
+            "saved as it was read"
+        );
+    }
+
+    #[test]
+    fn nel_stays_a_character_where_lines_break_otherwise() {
+        // NEL and LF (0x25) in one file: both kept as they are.
+        let mixed = [0xC1, 0x15, 0xC2, 0x25];
+        let file = ebcdic(&mixed, "IBM037");
+        assert_eq!(file.text.to_string(), "A\u{85}B\n");
+        assert_ne!(file.format.line_ending, LineEnding::Nel);
+        assert_eq!(
+            crate::encode_document(&file.text, file.format).unwrap(),
+            mixed
+        );
+        // No line break at all, and a code page that is not EBCDIC.
+        assert_ne!(ebcdic(&[0xC1], "IBM037").format.line_ending, LineEnding::Nel);
+        assert_ne!(ebcdic(&[], "IBM037").format.line_ending, LineEnding::Nel);
+        assert_ne!(
+            ebcdic(&[b'a', 0x15], "IBM437").format.line_ending,
+            LineEnding::Nel
+        );
+    }
+
+    #[test]
+    fn nel_is_written_only_in_ebcdic() {
+        let text = Rope::from_str("a\nb");
+        let nel = |encoding| Format {
+            encoding,
+            bom: false,
+            line_ending: LineEnding::Nel,
+        };
+        assert_eq!(
+            crate::encode_document(&text, nel(Encoding::Legacy("IBM875"))).unwrap(),
+            [0x81, 0x15, 0x82]
+        );
+        assert_eq!(
+            crate::encode_document(&text, nel(Encoding::Utf8)).unwrap(),
+            b"a\nb",
+            "after Convert to UTF-8, LF"
+        );
+        assert!(crate::is_ebcdic(Encoding::Legacy("IBM875")));
+        assert!(crate::is_ebcdic(Encoding::Legacy("IBM1140")));
+        assert!(!crate::is_ebcdic(Encoding::Legacy("IBM866")));
+        assert!(!crate::is_ebcdic(Encoding::Legacy("windows-1253")));
+        assert!(!crate::is_ebcdic(Encoding::Utf8));
+    }
+
+    #[test]
+    fn greek_ebcdic_reads_and_writes_greek() {
+        // Alpha, omega and the final sigma in EBCDIC 875.
+        let file = ebcdic(&[0x41, 0x67, 0xBA], "IBM875");
+        assert_eq!(file.text.to_string(), "ΑΩς");
+        assert!(file.problem.is_none());
+        // 0xDC is SUB in the standard table too, but only 0x3F is kept as SUB.
+        assert!(ebcdic(&[0xDC], "IBM875").problem.is_some());
+        assert!(ebcdic(&[0x3F], "IBM875").problem.is_none());
+    }
 
     #[test]
     fn files_up_to_the_limit_are_read_and_larger_ones_refused() {

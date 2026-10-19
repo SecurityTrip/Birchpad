@@ -39,9 +39,13 @@ impl Document {
     }
 
     /// Wraps text loaded in `format`. The line-ending mode is detected from the first line break;
-    /// `format.line_ending` is used only when the text has none.
+    /// `format.line_ending` is used only when the text has none, or when it is NEL (an EBCDIC
+    /// file's, already LF in the text).
     pub fn with_format(text: Rope, format: Format) -> Self {
-        let line_ending = LineEnding::detect(&text).unwrap_or(format.line_ending);
+        let line_ending = match format.line_ending {
+            LineEnding::Nel => LineEnding::Nel,
+            other => LineEnding::detect(&text).unwrap_or(other),
+        };
         Self {
             text,
             history: History::new(),

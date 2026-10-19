@@ -105,6 +105,7 @@ fn translated_line_ending(line_ending: LineEnding) -> String {
         LineEnding::CrLf => "status-bar.eol-crlf",
         LineEnding::Lf => "status-bar.eol-lf",
         LineEnding::Cr => "status-bar.eol-cr",
+        LineEnding::Nel => "status-bar.eol-nel",
     };
     t!(key)
 }

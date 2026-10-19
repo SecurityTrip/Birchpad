@@ -457,7 +457,7 @@ async fn write_buffer(
     buffer.update(cx, |buffer, _| buffer.begin_save());
     let written = cx
         .background_spawn(async move {
-            let bytes = birchpad_io::encode(&encoded_text, format.encoding, format.bom)
+            let bytes = birchpad_io::encode_document(&encoded_text, format)
                 .map_err(WriteFailure::Unencodable)?;
             // The file as it was, before it is overwritten.
             if let Some(backup) = backup.filter(|_| target.is_file()) {

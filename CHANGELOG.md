@@ -17,6 +17,9 @@ version's release notes from its section here.
   from the web.
 - PlantUML preview in the same way for `.puml` files, drawn by the PlantUML installed on the
   computer: the `plantuml` command, or a `plantuml.jar` named in `preview.plantuml`.
+- EBCDIC 875 (Greek) in Encoding > Character Sets > EBCDIC.
+- EBCDIC files whose lines end with NEL, as on IBM mainframes, open with their lines broken
+  and are saved with NEL again; the status bar shows "EBCDIC (NEL)".
 
 ### Changed
 

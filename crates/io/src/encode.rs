@@ -3,7 +3,7 @@
 
 use std::fmt;
 
-use birchpad_core::{Encoding, Rope};
+use birchpad_core::{Encoding, Format, LineEnding, Rope};
 use encoding_rs::EncoderResult;
 
 use crate::decode::bom_bytes;
@@ -44,6 +44,31 @@ impl fmt::Display for Unencodable {
 }
 
 impl std::error::Error for Unencodable {}
+
+/// Whether `encoding` is an EBCDIC code page: one where NEL (0x15) and LF (0x25) are the line
+/// breaks.
+pub fn is_ebcdic(encoding: Encoding) -> bool {
+    let Encoding::Legacy(name) = encoding else {
+        return false;
+    };
+    crate::codec::code_page(name)
+        .is_some_and(|page| page.chars[0x15] == 0x85 && page.chars[0x25] == 0x0A)
+}
+
+/// Encodes a document's `text` in its `format`: [`encode`], with the line breaks of an EBCDIC
+/// document whose line ending is NEL written as NEL.
+pub fn encode_document(text: &Rope, format: Format) -> Result<Vec<u8>, Unencodable> {
+    let mut bytes = encode(text, format.encoding, format.bom)?;
+    if format.line_ending == LineEnding::Nel && is_ebcdic(format.encoding) {
+        // Only LF becomes 0x25 in an EBCDIC code page.
+        for byte in &mut bytes {
+            if *byte == 0x25 {
+                *byte = 0x15;
+            }
+        }
+    }
+    Ok(bytes)
+}
 
 /// Encodes `text`, with a byte order mark if `bom` is set and the encoding is Unicode.
 pub fn encode(text: &Rope, encoding: Encoding, bom: bool) -> Result<Vec<u8>, Unencodable> {

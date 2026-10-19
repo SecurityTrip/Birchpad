@@ -1032,6 +1032,7 @@ status-bar:
   eol-cr: "Macintosh (CR)"
   eol-crlf: "Windows (CR LF)"
   eol-lf: "Unix (LF)"
+  eol-nel: "EBCDIC (NEL)"
   insert: "ВСТ"
   length: "Длина : {length}    Строк : {lines}"
   normal-text-file: "Обычный текстовый файл"

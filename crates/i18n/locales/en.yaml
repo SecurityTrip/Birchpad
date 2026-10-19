@@ -1020,6 +1020,7 @@ status-bar:
   eol-cr: "Macintosh (CR)"
   eol-crlf: "Windows (CR LF)"
   eol-lf: "Unix (LF)"
+  eol-nel: "EBCDIC (NEL)"
   insert: "INS"
   length: "Length : {length}    Lines : {lines}"
   normal-text-file: "Normal text file"

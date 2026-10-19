@@ -553,7 +553,7 @@ floors in `.github/coverage-floors.toml` with its tests.
 
 ### Release 0.4.0: languages and text
 
-- [ ] 6.30 Code pages: EBCDIC 875 (Greek), whose standard table maps two bytes to one
+- [x] 6.30 Code pages: EBCDIC 875 (Greek), whose standard table maps two bytes to one
       character; NEL as a line break in EBCDIC documents
 - [ ] 6.31 Auto-completion: closing HTML and XML tags; API files for languages embedded in a
       document (scripts in HTML); cycling through a function's overloads in the call tip;

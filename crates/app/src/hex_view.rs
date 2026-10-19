@@ -44,7 +44,7 @@ impl Workspace {
         let (bytes, eol) = {
             let doc = source.read(cx).doc();
             let format = doc.format();
-            let bytes = birchpad_io::encode(doc.text(), format.encoding, format.bom)
+            let bytes = birchpad_io::encode_document(doc.text(), format)
                 .map_err(|error| anyhow!("{error}"))?;
             (bytes, doc.line_ending())
         };

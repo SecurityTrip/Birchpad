@@ -362,7 +362,7 @@ impl Workspace {
         }
         let doc = buffer.read(cx).doc();
         let format = doc.format();
-        let bytes = birchpad_io::encode(doc.text(), format.encoding, format.bom)
+        let bytes = birchpad_io::encode_document(doc.text(), format)
             .map_err(|problem| anyhow!("{problem}"))?;
         let recovery = AppState::global(cx).recovery_dir();
         birchpad_io::save(target, &bytes, recovery.as_deref()).map_err(|error| anyhow!(error))?;

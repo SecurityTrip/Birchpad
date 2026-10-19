@@ -12,6 +12,7 @@ pub fn line_ending_name(line_ending: LineEnding) -> &'static str {
         LineEnding::CrLf => "crlf",
         LineEnding::Lf => "lf",
         LineEnding::Cr => "cr",
+        LineEnding::Nel => "nel",
     }
 }
 
@@ -21,6 +22,7 @@ pub fn parse_line_ending(name: &str) -> Option<LineEnding> {
         "crlf" => Some(LineEnding::CrLf),
         "lf" => Some(LineEnding::Lf),
         "cr" => Some(LineEnding::Cr),
+        "nel" => Some(LineEnding::Nel),
         _ => None,
     }
 }
