@@ -39,7 +39,7 @@ pub use settings::{
     ToolbarSize, UpdateChannel, UpdateMode, UpdateSettings,
 };
 pub use state::{
-    FindInFilesState, MAX_RECENT_FILES, PanelsState, SearchResultsState, SpellCheckState,
-    SplitOrientation, UpdateState, UserState,
+    FindInFilesState, MAX_RECENT_FILES, PanelsState, PreviewMode, SearchResultsState,
+    SpellCheckState, SplitOrientation, UpdateState, UserState,
 };
 pub use write::{SettingError, check_setting, edit_settings, write_setting};

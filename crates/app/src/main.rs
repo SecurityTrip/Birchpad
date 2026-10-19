@@ -48,6 +48,7 @@ mod pane;
 mod panels;
 mod path_dialog;
 mod preferences;
+mod preview;
 mod print;
 mod run_menu;
 mod search_extras;

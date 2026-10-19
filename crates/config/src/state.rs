@@ -46,6 +46,8 @@ pub struct UserState {
     pub spell_check: SpellCheckState,
     /// The search results' options.
     pub search_results: SearchResultsState,
+    /// How a document with a preview (Markdown) is shown, as last chosen.
+    pub preview: PreviewMode,
     /// The folder last chosen in an Open or Save As dialog (Default Directory > Remember).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub last_directory: Option<PathBuf>,
@@ -129,6 +131,17 @@ pub struct UpdateState {
     /// The newest version announced by a background check, which is announced only once.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub announced: Option<String>,
+}
+
+/// How a document with a preview is shown, as IntelliJ IDEA shows Markdown: the text, the text
+/// and its preview side by side, or the preview alone.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum PreviewMode {
+    Editor,
+    #[default]
+    Split,
+    Preview,
 }
 
 /// How split view places its two views.

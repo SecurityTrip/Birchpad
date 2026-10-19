@@ -13,12 +13,14 @@
 //! the pane's documents, most recently used first, while Ctrl is held.
 
 use birchpad_commands::Invocation;
-use birchpad_config::{SplitOrientation, TabSettings};
+use std::collections::HashMap;
+
+use birchpad_config::{PreviewMode, SplitOrientation, TabSettings};
 use birchpad_core::Rope;
 use birchpad_core::motion::{line_count, line_range};
 use gpui_kit::component::button::{Button, ButtonVariants};
 use gpui_kit::component::menu::{ContextMenuExt as _, PopupMenu, PopupMenuItem};
-use gpui_kit::component::{Icon, IconName, Sizable};
+use gpui_kit::component::{Icon, IconName, Sizable, h_resizable, resizable_panel};
 use gpui_kit::{
     AnyElement, AnyView, App, Bounds, ClickEvent, Context, DragMoveEvent, Entity, EntityId,
     EventEmitter, MouseButton, Pixels, Point, ScrollHandle, SharedString, Subscription, WeakEntity,
@@ -30,6 +32,7 @@ use crate::app_state::AppState;
 use crate::buffer::{BufferEvent, ReadOnly};
 use crate::commands::{CommandRegistry, Register as _};
 use crate::editor::EditorView;
+use crate::preview::Preview;
 use crate::theme::{paint, ui};
 use crate::workspace::Workspace;
 
@@ -240,6 +243,9 @@ pub(crate) struct Pane {
     split_zone: Option<SplitOrientation>,
     /// Post-It and Distraction Free show the text alone.
     tabs_hidden: bool,
+    /// The previews of the documents that have one (Markdown), by their views.
+    previews: HashMap<EntityId, Entity<Preview>>,
+    workspace: WeakEntity<Workspace>,
 }
 
 impl EventEmitter<PaneEvent> for Pane {}
@@ -258,6 +264,8 @@ impl Pane {
             subscriptions: Vec::new(),
             split_zone: None,
             tabs_hidden: false,
+            previews: HashMap::new(),
+            workspace: WeakEntity::new_invalid(),
         }
     }
 
@@ -269,6 +277,88 @@ impl Pane {
 
     pub(crate) fn set_other(&mut self, other: WeakEntity<Pane>) {
         self.other = other;
+    }
+
+    pub(crate) fn set_workspace(&mut self, workspace: WeakEntity<Workspace>) {
+        self.workspace = workspace;
+    }
+
+    /// The preview of `item`, if its document has one, made when first asked for.
+    pub(crate) fn preview(
+        &mut self,
+        item: &Entity<EditorView>,
+        cx: &mut Context<Self>,
+    ) -> Option<Entity<Preview>> {
+        crate::preview::kind_of(item.read(cx).buffer.read(cx))?;
+        let workspace = self.workspace.clone();
+        let preview = self
+            .previews
+            .entry(item.entity_id())
+            .or_insert_with(|| cx.new(|cx| Preview::new(item, workspace, cx)));
+        Some(preview.clone())
+    }
+
+    /// How the active document is shown, if it has a preview.
+    pub(crate) fn preview_mode(&self, cx: &App) -> Option<PreviewMode> {
+        let item = self.active_item()?;
+        crate::preview::kind_of(item.read(cx).buffer.read(cx))?;
+        Some(
+            self.previews
+                .get(&item.entity_id())
+                .map_or(AppState::global(cx).state.preview, |preview| {
+                    preview.read(cx).mode
+                }),
+        )
+    }
+
+    /// Shows the active document as `mode` (View > Preview), remembered for documents opened
+    /// later; false if it has no preview.
+    pub(crate) fn set_preview_mode(&mut self, mode: PreviewMode, cx: &mut Context<Self>) -> bool {
+        let Some(item) = self.active_item().cloned() else {
+            return false;
+        };
+        let Some(preview) = self.preview(&item, cx) else {
+            return false;
+        };
+        preview.update(cx, |preview, _| preview.mode = mode);
+        crate::preview::remember(mode, cx);
+        cx.notify();
+        true
+    }
+
+    /// The active document: its text, with its preview beside it or in its place.
+    fn render_item(&mut self, item: Entity<EditorView>, cx: &mut Context<Self>) -> AnyElement {
+        let Some(preview) = self.preview(&item, cx) else {
+            return item.into_any_element();
+        };
+        let mode = preview.read(cx).mode;
+        let pane = cx.entity().downgrade();
+        let workspace = self.workspace.clone();
+        let switch = crate::preview::render_switch(mode, move |mode, _, cx| {
+            if let Some(pane) = pane.upgrade() {
+                pane.update(cx, |pane, cx| pane.set_preview_mode(mode, cx));
+            }
+            if let Some(workspace) = workspace.upgrade() {
+                workspace.update(cx, |workspace, cx| workspace.refresh_menus(cx));
+            }
+        });
+        let body = match mode {
+            PreviewMode::Editor => item.into_any_element(),
+            PreviewMode::Preview => preview.into_any_element(),
+            PreviewMode::Split => h_resizable(SharedString::from(format!(
+                "preview-split-{}",
+                item.entity_id()
+            )))
+            .child(resizable_panel().child(item))
+            .child(resizable_panel().child(preview))
+            .into_any_element(),
+        };
+        div()
+            .relative()
+            .size_full()
+            .child(body)
+            .child(switch)
+            .into_any_element()
     }
 
     /// How a tab dropped at `position` in the text (`bounds`) would split the panes: on the far
@@ -1052,6 +1142,9 @@ impl Render for Peek {
 impl Render for Pane {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let active = self.active_item().cloned();
+        let items = &self.items;
+        self.previews
+            .retain(|id, _| items.iter().any(|item| item.entity_id() == *id));
         let end = self.items.len();
         let split_zone = self.split_zone.filter(|_| cx.has_active_drag());
         let index = self.index;
@@ -1092,7 +1185,7 @@ impl Render for Pane {
                 }
                 cx.notify();
             }))
-            .when_some(active, |this, item| this.child(item))
+            .when_some(active, |this, item| this.child(self.render_item(item, cx)))
             .when_some(split_zone, |this, orientation| {
                 this.child(self.render_split_zone(orientation))
             })

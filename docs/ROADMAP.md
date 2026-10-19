@@ -569,6 +569,8 @@ floors in `.github/coverage-floors.toml` with its tests.
       remembered per document in sessions; very long rows reordered too
 - [ ] 6.34 Localization: more interface languages, translated for Birchpad; Notepad++'s
       `nativeLang` XML files read from the user's own copy, not bundled
+- [x] Markdown preview beside the text, as in IntelliJ IDEA: Editor Only, Editor and
+      Preview, Preview Only ([ADR 0042](adr/0042-previews.md), issue #41)
 - [ ] Release 0.4.0: the workspace version (0.4.0, set when its branch opens, so that nightly
       builds are its pre-releases), `CHANGELOG.md` and this roadmap updated; the
       [release checklist](release-checklist.md) gone through

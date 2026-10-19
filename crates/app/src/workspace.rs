@@ -168,6 +168,7 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
     crate::user_languages::register_commands(registry);
     crate::print::register_commands(registry);
     crate::pane::register_commands(registry);
+    crate::preview::register_commands(registry);
     crate::window_menu::register_commands(registry);
     crate::file_commands::register_commands(registry);
     crate::window_modes::register_commands(registry);
@@ -248,6 +249,10 @@ impl Workspace {
         for (pane, other) in [(0, 1), (1, 0)] {
             let other = panes[other].downgrade();
             panes[pane].update(cx, |pane, _| pane.set_other(other));
+        }
+        let this = cx.entity().downgrade();
+        for pane in &panes {
+            pane.update(cx, |pane, _| pane.set_workspace(this.clone()));
         }
         let mut subscriptions: Vec<Subscription> = panes
             .iter()
@@ -907,11 +912,15 @@ impl Workspace {
         let spell_enabled = crate::spell_check::is_enabled(cx);
         let spell_language = crate::spell_check::language(cx);
         let tab_marks = self.active_view(cx).map(|view| view.read(cx).tab);
+        let preview_mode = self.active_pane().read(cx).preview_mode(cx);
         let requested_read_only = self
             .active_view(cx)
             .is_some_and(|view| view.read(cx).buffer.read(cx).requested_read_only());
         let checked = |invocation: &Invocation| {
             if let Some(on) = crate::pane::is_checked(invocation, tab_marks) {
+                return on;
+            }
+            if let Some(on) = crate::preview::is_checked(&invocation.command, preview_mode) {
                 return on;
             }
             if let Some(on) = crate::window_modes::is_checked(&invocation.command, self.modes) {

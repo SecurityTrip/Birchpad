@@ -6,6 +6,14 @@ version's release notes from its section here.
 
 ## [Unreleased]
 
+### Added
+
+- Markdown preview, as in IntelliJ IDEA: a Markdown document shows its text and the rendered
+  page side by side. The buttons at the top right of the document and View > Preview show
+  the text alone, both, or the preview alone; the choice is remembered. Links open in the
+  browser or, for files, in Birchpad; images are read from files next to the document, never
+  from the web.
+
 ## [0.3.0] - 2026-10-18
 
 ### Added

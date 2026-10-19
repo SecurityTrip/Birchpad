@@ -18,6 +18,9 @@ Birchpad connects to the network only for updates:
   per-user Windows installer downloads the package of a newer version, from the address the
   manifest lists (GitHub's release downloads).
 
+The Markdown preview loads no images from the web, and a link in it opens in your browser
+only when you click it.
+
 GitHub serves these files and, like any web server, sees the requests: the address of your
 computer or network and the time. Its
 [privacy statement](https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement)

@@ -664,6 +664,15 @@ pub fn main_menu() -> Vec<Menu> {
             cmd("panel.document-list"),
             cmd("panel.function-list"),
             Separator,
+            Submenu(Menu::new(
+                "Preview",
+                vec![
+                    cmd("view.preview-editor"),
+                    cmd("view.preview-split"),
+                    cmd("view.preview-only"),
+                ],
+            )),
+            Separator,
             cmd("view.summary"),
             cmd("view.monitoring"),
         ],
