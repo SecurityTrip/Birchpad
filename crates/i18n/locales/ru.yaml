@@ -910,6 +910,7 @@ preferences:
   new-document: "Новый документ"
   nightly: "Ночной"
   none: "Нет"
+  notepad-translation-file: "Файл перевода Notepad++"
   notify: "Уведомлять"
   off: "Выкл."
   offer-to-open-text-files-at-startup: "Предлагать открывать текстовые файлы при запуске"

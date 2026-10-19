@@ -898,6 +898,7 @@ preferences:
   new-document: "New Document"
   nightly: "Nightly"
   none: "None"
+  notepad-translation-file: "Notepad++ translation file"
   notify: "Notify"
   off: "Off"
   offer-to-open-text-files-at-startup: "Offer to open text files at startup"

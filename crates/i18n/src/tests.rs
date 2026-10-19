@@ -40,6 +40,47 @@ fn languages_resolve() {
 }
 
 #[test]
+fn german_is_an_interface_language() {
+    assert_eq!(resolve("de", None), "de");
+    assert_eq!(resolve("auto", Some("uk-UA")), "en", "no Ukrainian locale");
+    assert_eq!(resolve("auto", Some("de_AT.UTF-8")), "de");
+    set_language("de");
+    assert_eq!(get("menu.file"), "Datei");
+    assert_eq!(plural("plural.files", 1), "1 Datei");
+    assert_eq!(plural("plural.files", 0), "0 Dateien");
+    assert_eq!(plural("plural.files", 2), "2 Dateien");
+    set_language("en");
+}
+
+#[test]
+fn a_notepad_translation_comes_first() {
+    set_language("ru");
+    set_native_texts(Some(HashMap::from([(
+        "menu.file".to_owned(),
+        "Datei".to_owned(),
+    )])));
+    assert_eq!(get("menu.file"), "Datei");
+    assert_eq!(
+        get("menu.edit"),
+        "Правка",
+        "what it lacks: the language's own"
+    );
+    // It stays when the language changes, and goes when taken away.
+    set_language("en");
+    assert_eq!(get("menu.file"), "Datei");
+    assert_eq!(get_or("menu.file", "Fallback"), "Datei");
+    set_native_texts(None);
+    assert_eq!(get("menu.file"), "File");
+    set_native_texts(Some(HashMap::new()));
+    assert_eq!(
+        get("menu.file"),
+        "File",
+        "an empty translation changes nothing"
+    );
+    set_native_texts(None);
+}
+
+#[test]
 fn translates_by_key_and_falls_back_to_english() {
     set_language("ru");
     assert_eq!(language(), "ru");

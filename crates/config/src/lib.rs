@@ -7,6 +7,7 @@
 mod api;
 mod layers;
 mod load;
+mod native_lang;
 mod notepad_session;
 mod policy;
 mod project;
@@ -19,6 +20,7 @@ mod write;
 pub use api::{ApiError, ApiFile, ApiKeyword, ApiOverload};
 pub use layers::{Diagnostic, Layer, ResolvedSettings, Sources, resolve};
 pub use load::{ConfigPaths, PORTABLE_DATA_DIR, PORTABLE_MARKER, load, load_platform_settings};
+pub use native_lang::{COMMANDS as NATIVE_LANG_COMMANDS, NativeLang, parse_native_lang};
 pub use policy::{POLICIES, PolicyDef, PolicyKind, REGISTRY_KEY};
 pub use project::{ProjectError, ProjectFolder, ProjectItem, ProjectWorkspace};
 pub use session::{

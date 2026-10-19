@@ -6,8 +6,8 @@ A fast, extensible, cross-platform text editor in the spirit of Notepad++, writt
 
 > **Status: alpha (0.4).** A Notepad++-like editor: tabs and split views, encodings, syntax
 > highlighting for 50 languages with folding, multi-cursor and column editing, bookmarks,
-> sessions that keep unsaved work, Find in Files, macros, themes, an interface in English and
-> Russian, plugins as WebAssembly components and scripts in Rhai, with Compare, JSON and XML
+> sessions that keep unsaved work, Find in Files, macros, themes, an interface in English,
+> German and Russian, plugins as WebAssembly components and scripts in Rhai, with Compare, JSON and XML
 > tools, a hex view, Markdown and PlantUML previews and spell checking built in. Full parity
 > with Notepad++ comes next. Expect rough edges. See the [roadmap](docs/ROADMAP.md) and the
 > [changelog](CHANGELOG.md).

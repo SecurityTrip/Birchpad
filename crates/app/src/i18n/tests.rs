@@ -61,3 +61,40 @@ fn the_setting_chooses_the_language(cx: &mut gpui_kit::TestAppContext) {
         assert_eq!(get("command.settings.preferences"), "Preferences...");
     });
 }
+
+#[test]
+fn a_notepad_translation_is_read_from_the_users_file() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("german.xml");
+    std::fs::write(
+        &path,
+        r#"<NotepadPlus><Native-Langue name="Deutsch"><Menu><Main>
+            <Entries><Item menuId="file" name="&amp;Datei"/></Entries>
+            <Commands><Item id="41001" name="&amp;Neu"/></Commands>
+        </Main></Menu></Native-Langue></NotepadPlus>"#,
+    )
+    .unwrap();
+    let texts = native_texts(&path.display().to_string()).unwrap();
+    assert_eq!(texts.get("menu.file").map(String::as_str), Some("Datei"));
+    assert_eq!(
+        texts.get("command.file.new").map(String::as_str),
+        Some("Neu")
+    );
+    // No setting, a missing file, and a file that is not a translation: none.
+    assert!(native_texts("  ").is_none());
+    assert!(native_texts(&dir.path().join("missing.xml").display().to_string()).is_none());
+    std::fs::write(&path, "<broken").unwrap();
+    assert!(native_texts(&path.display().to_string()).is_none());
+}
+
+#[test]
+fn every_notepad_command_is_birchpads() {
+    for (id, command) in birchpad_config::NATIVE_LANG_COMMANDS {
+        assert!(
+            birchpad_commands::COMMANDS
+                .iter()
+                .any(|spec| spec.id == *command),
+            "{id}: {command}"
+        );
+    }
+}

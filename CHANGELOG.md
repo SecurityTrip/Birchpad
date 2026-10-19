@@ -45,6 +45,10 @@ version's release notes from its section here.
   Direction RTL the margins are at the right; Ctrl+Alt+Shift+R and Ctrl+Alt+Shift+L switch
   the direction; sessions keep it per tab (Notepad++'s sessions too); very long rows are
   reordered as well.
+- The interface in German.
+- `appearance.native-lang` (Preferences > Appearance > Notepad++ translation file): the
+  menu names and command titles of a Notepad++ translation you have, read from your own
+  copy, come before Birchpad's.
 
 ### Changed
 

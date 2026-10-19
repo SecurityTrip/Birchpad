@@ -39,8 +39,11 @@ pub struct AppearanceSettings {
     /// file in the `themes` folder next to the settings, without its extension. Settings > Theme
     /// chooses another (remembered in `state.toml`).
     pub theme: String,
-    /// The interface's language: `en`, `ru`, or `auto` for the system's.
+    /// The interface's language: `en`, `de`, `ru`, or `auto` for the system's.
     pub language: String,
+    /// A Notepad++ translation (`localization/german.xml` of a Notepad++ folder) whose menu
+    /// names and command titles come before the language's own; empty for none.
+    pub native_lang: String,
     /// The title bar shows the file's name, not its whole path ("Show only filename in title
     /// bar").
     pub title_file_name_only: bool,
@@ -67,6 +70,7 @@ impl Default for AppearanceSettings {
         Self {
             theme: "Default".to_owned(),
             language: "auto".to_owned(),
+            native_lang: String::new(),
             title_file_name_only: false,
             interface: InterfaceMode::default(),
         }

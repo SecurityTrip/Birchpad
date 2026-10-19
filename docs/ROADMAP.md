@@ -567,7 +567,7 @@ floors in `.github/coverage-floors.toml` with its tests.
 - [x] 6.33 Right-to-left text: selections drawn piece by piece over mixed text; margins on the
       right in right-to-left mode; keys for Text Direction RTL and LTR; the direction
       remembered per document in sessions; very long rows reordered too
-- [ ] 6.34 Localization: more interface languages, translated for Birchpad; Notepad++'s
+- [x] 6.34 Localization: more interface languages, translated for Birchpad; Notepad++'s
       `nativeLang` XML files read from the user's own copy, not bundled
 - [x] Markdown preview beside the text, as in IntelliJ IDEA: Editor Only, Editor and
       Preview, Preview Only ([ADR 0042](adr/0042-previews.md), issue #41)

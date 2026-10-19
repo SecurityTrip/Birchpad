@@ -82,8 +82,15 @@ pub(crate) const ENTRIES: &[Entry] = &[
         Kind::Choice(&[
             ("auto", "Automatic (system)"),
             ("en", "English"),
+            ("de", "Deutsch"),
             ("ru", "Русский"),
         ]),
+    ),
+    entry(
+        "Appearance",
+        "appearance.native-lang",
+        "Notepad++ translation file",
+        Kind::Text,
     ),
     entry(
         "Appearance",
