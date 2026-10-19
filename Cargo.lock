@@ -610,7 +610,7 @@ dependencies = [
 
 [[package]]
 name = "birchpad-cli"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "interprocess",
  "serde",
@@ -649,7 +649,7 @@ dependencies = [
 
 [[package]]
 name = "birchpad-core"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "base64 0.23.1",
  "birchpad-i18n",
@@ -667,7 +667,7 @@ dependencies = [
 
 [[package]]
 name = "birchpad-editor"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "birchpad-cli",
@@ -718,7 +718,7 @@ dependencies = [
 
 [[package]]
 name = "birchpad-io"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "birchpad-core",
  "birchpad-i18n",
@@ -732,14 +732,14 @@ dependencies = [
 
 [[package]]
 name = "birchpad-menu-bar"
-version = "0.2.5"
+version = "0.4.0"
 dependencies = [
  "gpui-kit",
 ]
 
 [[package]]
 name = "birchpad-plugin"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "birchpad-commands",
@@ -774,7 +774,7 @@ dependencies = [
 
 [[package]]
 name = "birchpad-syntax"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "birchpad-core",
  "birchpad-i18n",
@@ -838,7 +838,7 @@ dependencies = [
 
 [[package]]
 name = "birchpad-theme"
-version = "0.2.5"
+version = "0.4.0"
 dependencies = [
  "birchpad-i18n",
  "roxmltree 0.21.1",
@@ -849,7 +849,7 @@ dependencies = [
 
 [[package]]
 name = "birchpad-tools"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "birchpad-core",
  "birchpad-i18n",
@@ -864,7 +864,7 @@ dependencies = [
 
 [[package]]
 name = "birchpad-ui"
-version = "0.2.5"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "birchpad-commands",
@@ -879,7 +879,7 @@ dependencies = [
 
 [[package]]
 name = "birchpad-update"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "base64 0.23.1",
  "birchpad-config",
@@ -898,7 +898,7 @@ dependencies = [
 
 [[package]]
 name = "birchpad-view"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "birchpad-core",
  "proptest",
