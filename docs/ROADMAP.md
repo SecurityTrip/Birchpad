@@ -560,7 +560,7 @@ floors in `.github/coverage-floors.toml` with its tests.
       Notepad++'s auto-completion options (ignore numbers, ignore case, completion from a number
       of characters per source); bundled API files for common languages, written for Birchpad
       (Notepad++'s are GPL)
-- [ ] 6.32 User Defined Languages: the UDL editor dialog; folding (code and comment folders);
+- [x] 6.32 User Defined Languages: the UDL editor dialog; folding (code and comment folders);
       number prefixes, suffixes, extras and ranges; comments that must start a line; nested
       delimiters; colors from the theme where the UDL leaves them unset; Open User Defined
       Language Folder, the UDL collection link

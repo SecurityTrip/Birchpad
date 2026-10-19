@@ -42,6 +42,16 @@ which UDL files cannot become.
   color unset (or the language has no such style), the theme's color for the same kind of
   text is used instead: comments, numbers, keywords and folders, operators, and delimiters as
   strings; the style's background and font style stay.
+- **Define Your Language...** (`language.define-udl`, `{ "name": ... }` optional; first in
+  the submenu, as in Notepad++) edits the language named, the active document's, or a new
+  one: name and extensions, ignore case, keywords 1 to 8 with their prefix switches, line
+  and block comments and where line comments start, operators, the eight delimiters (open,
+  escape, close), the folders in code and comments, and the numbers lists. It does not edit
+  colors: where the language has none, the theme's apply. Saving writes UDL 2.1
+  (`UdlDefinition`, `udl_file`): what the dialog does not show (styles, other attributes) is
+  kept as read. A language alone in its file is written in place; one from a file of several
+  gets a file of its own named after it, the others written back without it. The languages
+  are read again and the active document, if it is in that language, takes the new one.
 - **The submenu** also has Open User Defined Language Folder... (`language.open-udl-folder`,
   made if missing) and Notepad++ User Defined Languages Collection
   (`language.udl-collection`), which opens the shared collection on GitHub in the browser.

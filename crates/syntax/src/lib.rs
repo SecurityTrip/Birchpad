@@ -18,4 +18,7 @@ pub use language::{LANGUAGES, Language, by_id, detect, injected};
 pub use outline::{Symbol, SymbolKind, has_outline, outline};
 pub use syntax::{LanguageConfig, Layer, ParseJob, Parsed, Syntax, config};
 pub use tree_sitter::{Node, Tree};
-pub use udl::{LineCommentAt, UdlError, UdlKind, UdlStyle, UserLanguage, nesting, parse_udl};
+pub use udl::{
+    DELIMITERS, LISTS, LineCommentAt, UdlDefinition, UdlError, UdlKind, UdlStyle, UserLanguage,
+    nesting, parse_udl, udl_file,
+};

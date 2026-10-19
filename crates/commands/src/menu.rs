@@ -725,6 +725,8 @@ pub fn main_menu() -> Vec<Menu> {
             Submenu(Menu::new(
                 "User Defined Language",
                 vec![
+                    cmd("language.define-udl"),
+                    Separator,
                     Dynamic(Placeholder::UserLanguages),
                     Separator,
                     cmd("language.import-udl"),

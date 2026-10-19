@@ -366,6 +366,7 @@ pub const COMMANDS: &[CommandSpec] = &[
     workspace("file.print", "Print..."),
     workspace("file.export-html", "Export to HTML..."),
     workspace("language.set", "Language"),
+    workspace("language.define-udl", "Define Your Language..."),
     workspace("language.import-udl", "Import..."),
     workspace(
         "language.open-udl-folder",

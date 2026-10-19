@@ -259,7 +259,9 @@ fn folds_open_and_close_at_their_words() {
         "a fold on one line is none"
     );
     // Never closed: to the end; a close without an open is ignored.
-    assert_eq!(language.folds("}\nbegin\nx"), [2..9]);
+    let unclosed: Vec<std::ops::Range<usize>> = language.folds("}\nbegin\nx");
+    assert_eq!(unclosed.len(), 1);
+    assert_eq!(unclosed[0], 2..9);
     assert!(language.folds("").is_empty());
     // A fold word inside a string does not fold.
     assert!(language.folds("\"begin\"\nend").is_empty());

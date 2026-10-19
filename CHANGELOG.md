@@ -38,6 +38,9 @@ version's release notes from its section here.
 - User Defined Languages take the theme's colors where the language leaves them unset.
 - Language > User Defined Language > Open User Defined Language Folder... and Notepad++
   User Defined Languages Collection.
+- Language > User Defined Language > Define Your Language...: a dialog that writes a user
+  defined language, new or one already there: extensions, keywords, comments, operators,
+  delimiters, folding and numbers; the colors it does not edit stay as they were.
 
 ### Changed
 

@@ -14,6 +14,8 @@ use crate::commands::{CommandRegistry, Register as _};
 use crate::editor::theme::TextStyle;
 use crate::workspace::{Workspace, report_error};
 
+pub(crate) mod define;
+
 /// The prefix of a user defined language's id in `language.set` and sessions: `udl:Name`.
 pub(crate) const ID_PREFIX: &str = birchpad_config::USER_LANGUAGE_PREFIX;
 
@@ -193,6 +195,13 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
             .with_context(|| format!("cannot create {}", dir.display()))?;
         crate::file_commands::shell(crate::file_commands::Shell::Open(dir), cx)
     });
+    registry.workspace(
+        "language.define-udl",
+        |this, args: define::DefineArgs, window, cx| {
+            this.define_user_language(args.name, window, cx);
+            Ok(())
+        },
+    );
     registry.workspace("language.udl-collection", |_, (), _, cx| {
         crate::file_commands::shell(
             crate::file_commands::Shell::Browse(COLLECTION_URL.to_owned()),
@@ -202,6 +211,57 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
 }
 
 impl Workspace {
+    /// Language > User Defined Language > Define your language...: the language `name`, or the
+    /// active document's, or a new one.
+    fn define_user_language(
+        &mut self,
+        name: Option<String>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> gpui_kit::Entity<define::DefineDialog> {
+        let name = name.or_else(|| {
+            let view = self.active_view(cx)?;
+            let buffer = view.read(cx).buffer.read(cx);
+            buffer.user_language().map(|language| language.name.clone())
+        });
+        let base = name.and_then(|name| {
+            let dir = folder(cx)?;
+            define::find_definition(&dir, &name)
+        });
+        define::open(cx.entity().downgrade(), base, window, cx)
+    }
+
+    /// After the dialog saved a language: the menus list it, and the documents in it (by its
+    /// old name, or a new one) are colored by it as it is now.
+    pub(crate) fn user_language_saved(
+        &mut self,
+        original: Option<&str>,
+        name: &str,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.refresh_menus(cx);
+        let Some(view) = self.active_view(cx) else {
+            return;
+        };
+        let current = view
+            .read(cx)
+            .buffer
+            .read(cx)
+            .user_language()
+            .map(|language| language.name.clone());
+        if current.is_some() && (current.as_deref() == original || current.as_deref() == Some(name))
+        {
+            let invocation = birchpad_commands::Invocation::with_args(
+                "language.set",
+                serde_json::json!({ "language": format!("{ID_PREFIX}{name}") }),
+            );
+            if let Err(error) = self.dispatch(&invocation, window, cx) {
+                report_error(&error, window, cx);
+            }
+        }
+    }
+
     fn import_user_languages(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let Some(dir) = folder(cx) else {
             report_error(
