@@ -842,111 +842,13 @@ pub struct DiagnosticsSettings {
 }
 
 #[cfg(test)]
-mod link_tests {
-    use super::*;
-
-    #[test]
-    fn schemes_and_delimiters() {
-        let links = LinkSettings::default();
-        assert_eq!(
-            links.extra_schemes(),
-            ["svn://", "git://", "ssh://", "sftp://"]
-        );
-        let none = LinkSettings {
-            schemes: "  ".into(),
-            ..LinkSettings::default()
-        };
-        assert!(none.extra_schemes().is_empty());
-        assert_eq!(DelimiterSettings::default().pair(), Some(('"', '"')));
-        let brackets = DelimiterSettings {
-            open: "(".into(),
-            close: ")".into(),
-            multi_line: true,
-        };
-        assert_eq!(brackets.pair(), Some(('(', ')')));
-        for (open, close) in [("", ")"), ("((", ")"), ("(", "")] {
-            let wrong = DelimiterSettings {
-                open: open.into(),
-                close: close.into(),
-                multi_line: false,
-            };
-            assert_eq!(wrong.pair(), None, "{open:?} {close:?}");
-        }
-    }
-}
+#[path = "../tests/unit/settings/link_tests.rs"]
+mod link_tests;
 
 #[cfg(test)]
-mod search_engine_tests {
-    use super::*;
-
-    #[test]
-    fn engines_search_for_the_words() {
-        let mut settings = SearchEngineSettings::default();
-        assert_eq!(
-            settings.url("rust fmt").as_deref(),
-            Some("https://duckduckgo.com/?q=rust+fmt")
-        );
-        settings.engine = SearchEngine::Google;
-        assert_eq!(
-            settings.url("a&b=c/d").as_deref(),
-            Some("https://www.google.com/search?q=a%26b%3Dc%2Fd")
-        );
-        settings.engine = SearchEngine::StackOverflow;
-        assert_eq!(
-            settings.url("é").as_deref(),
-            Some("https://stackoverflow.com/search?q=%C3%A9")
-        );
-        assert_eq!(
-            settings.url("").as_deref(),
-            Some("https://stackoverflow.com/search?q=")
-        );
-    }
-
-    #[test]
-    fn a_custom_address() {
-        let mut settings = SearchEngineSettings {
-            engine: SearchEngine::Custom,
-            custom_url: " https://example.com/s?w=$(CURRENT_WORD)&x=1 ".into(),
-        };
-        assert_eq!(
-            settings.url("a b").as_deref(),
-            Some("https://example.com/s?w=a+b&x=1")
-        );
-        // Without the placeholder, the words go at the end.
-        settings.custom_url = "HTTP://example.com/?q=".into();
-        assert_eq!(
-            settings.url("x").as_deref(),
-            Some("HTTP://example.com/?q=x")
-        );
-        // Only web addresses.
-        for bad in [
-            "",
-            "file:///etc/passwd",
-            "javascript:alert(1)",
-            "example.com",
-        ] {
-            settings.custom_url = bad.into();
-            assert_eq!(settings.url("x"), None, "{bad}");
-        }
-    }
-}
+#[path = "../tests/unit/settings/search_engine_tests.rs"]
+mod search_engine_tests;
 
 #[cfg(test)]
-mod completion_tests {
-    use super::*;
-
-    #[test]
-    fn pairs_of_auto_close() {
-        let mut settings = CompletionSettings::default();
-        assert_eq!(
-            settings.pairs(),
-            [('(', ')'), ('[', ']'), ('{', '}'), ('"', '"'), ('\'', '\'')]
-        );
-        settings.auto_close = "<>(".into();
-        assert_eq!(settings.pairs(), [('<', '>')]);
-        settings.auto_close.clear();
-        assert!(settings.pairs().is_empty());
-        settings.auto_close = "«»".into();
-        assert_eq!(settings.pairs(), [('«', '»')]);
-    }
-}
+#[path = "../tests/unit/settings/completion_tests.rs"]
+mod completion_tests;

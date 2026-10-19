@@ -188,4 +188,5 @@ impl Workspace {
 }
 
 #[cfg(test)]
+#[path = "../tests/unit/compare/tests.rs"]
 mod tests;

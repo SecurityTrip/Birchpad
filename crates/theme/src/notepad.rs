@@ -537,4 +537,5 @@ pub(crate) fn highlight_of(lexer: &str, name: &str) -> Option<&'static str> {
 }
 
 #[cfg(test)]
+#[path = "../tests/unit/notepad/tests.rs"]
 mod tests;

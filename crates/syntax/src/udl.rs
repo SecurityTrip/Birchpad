@@ -835,4 +835,5 @@ fn comment_words(comment: &str) -> impl Iterator<Item = (usize, &str)> {
 }
 
 #[cfg(test)]
+#[path = "../tests/unit/udl/tests.rs"]
 mod tests;

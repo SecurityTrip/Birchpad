@@ -543,4 +543,5 @@ pub(crate) fn remember(mode: PreviewMode, cx: &mut App) {
 }
 
 #[cfg(test)]
+#[path = "../tests/unit/preview/tests.rs"]
 mod tests;

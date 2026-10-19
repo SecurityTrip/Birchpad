@@ -53,6 +53,8 @@ version's release notes from its section here.
 ### Changed
 
 - Dependency updates: sha2 0.11.1.
+- No tests in `src`: every crate's unit tests are in its `tests/unit` folder, which `src`
+  includes for them.
 
 ## [0.3.0] - 2026-10-18
 

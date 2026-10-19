@@ -559,5 +559,5 @@ pub(crate) fn open(
 }
 
 #[cfg(test)]
-#[path = "define_tests.rs"]
+#[path = "../../tests/unit/user_languages/define_tests.rs"]
 mod tests;

@@ -119,4 +119,5 @@ fn apply_text(view: &Entity<crate::editor::EditorView>, text: &str, cx: &mut App
 }
 
 #[cfg(test)]
+#[path = "../tests/unit/hex_view/tests.rs"]
 mod tests;

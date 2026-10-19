@@ -388,4 +388,5 @@ pub(crate) mod rich_clipboard {
 }
 
 #[cfg(test)]
+#[path = "../tests/unit/edit_extras/tests.rs"]
 mod tests;

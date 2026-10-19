@@ -1076,10 +1076,13 @@ impl Render for Preferences {
 }
 
 #[cfg(test)]
+#[path = "../tests/unit/preferences/tests.rs"]
 mod tests;
 
 #[cfg(test)]
+#[path = "../tests/unit/preferences/more_tests.rs"]
 mod more_tests;
 
 #[cfg(test)]
+#[path = "../tests/unit/preferences/dialog_tests.rs"]
 mod dialog_tests;

@@ -440,5 +440,5 @@ impl Render for FunctionList {
 }
 
 #[cfg(test)]
-#[path = "function_list_tests.rs"]
+#[path = "../../tests/unit/panels/function_list_tests.rs"]
 mod tests;

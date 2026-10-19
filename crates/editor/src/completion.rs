@@ -611,4 +611,5 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
 }
 
 #[cfg(test)]
+#[path = "../tests/unit/completion/tests.rs"]
 mod tests;

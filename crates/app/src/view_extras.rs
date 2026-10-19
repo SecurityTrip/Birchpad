@@ -150,4 +150,5 @@ fn open(rows: Vec<(String, String)>, window: &mut Window, cx: &mut App) {
 }
 
 #[cfg(test)]
+#[path = "../tests/unit/view_extras/tests.rs"]
 mod tests;

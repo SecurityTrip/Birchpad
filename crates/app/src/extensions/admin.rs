@@ -331,4 +331,5 @@ impl Render for PluginsAdmin {
 }
 
 #[cfg(test)]
+#[path = "../../tests/unit/extensions/admin/tests.rs"]
 mod tests;

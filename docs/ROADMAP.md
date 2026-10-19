@@ -573,7 +573,7 @@ floors in `.github/coverage-floors.toml` with its tests.
       Preview, Preview Only ([ADR 0042](adr/0042-previews.md), issue #41)
 - [x] PlantUML preview of `.puml` files in the same modes, drawn by the PlantUML installed
       ([ADR 0042](adr/0042-previews.md), issue #42)
-- [ ] 6.35 Tests out of `src`: every test of a crate in its `tests` folder, none in `src`;
+- [x] 6.35 Tests out of `src`: every test of a crate in its `tests` folder, none in `src`;
       for now as unit tests that `src` includes from there (`#[path]`), with access to the
       crate's private items
 - [ ] Release 0.4.0: the workspace version (0.4.0, set when its branch opens, so that nightly

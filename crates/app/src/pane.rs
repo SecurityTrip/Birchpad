@@ -1231,4 +1231,5 @@ impl Workspace {
 }
 
 #[cfg(test)]
+#[path = "../tests/unit/pane/tests.rs"]
 mod tests;

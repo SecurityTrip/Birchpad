@@ -285,4 +285,5 @@ mod native {
 }
 
 #[cfg(test)]
+#[path = "../tests/unit/window_modes/tests.rs"]
 mod tests;

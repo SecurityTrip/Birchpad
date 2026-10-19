@@ -371,4 +371,5 @@ pub fn system_language() -> Option<String> {
 }
 
 #[cfg(test)]
+#[path = "../tests/unit/tests.rs"]
 mod tests;

@@ -36,4 +36,5 @@ pub(crate) fn native_texts(path: &str) -> Option<std::collections::HashMap<Strin
 }
 
 #[cfg(test)]
+#[path = "../tests/unit/i18n/tests.rs"]
 mod tests;

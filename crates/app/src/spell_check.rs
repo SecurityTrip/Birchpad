@@ -406,4 +406,5 @@ fn go_to_misspelled(
 }
 
 #[cfg(test)]
+#[path = "../tests/unit/spell_check/tests.rs"]
 mod tests;

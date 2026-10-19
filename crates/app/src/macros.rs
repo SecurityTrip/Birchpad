@@ -516,4 +516,5 @@ impl Render for RunMultiple {
 }
 
 #[cfg(test)]
+#[path = "../tests/unit/macros/tests.rs"]
 mod tests;

@@ -289,4 +289,5 @@ impl Render for RangeDialog {
 }
 
 #[cfg(test)]
+#[path = "../tests/unit/search_extras/tests.rs"]
 mod tests;

@@ -558,4 +558,5 @@ impl RenderOnce for ErrorLine {
 }
 
 #[cfg(test)]
+#[path = "../tests/unit/file_commands/tests.rs"]
 mod tests;

@@ -279,5 +279,5 @@ impl Render for DocumentMap {
 }
 
 #[cfg(test)]
-#[path = "document_map_tests.rs"]
+#[path = "../../tests/unit/panels/document_map_tests.rs"]
 mod tests;

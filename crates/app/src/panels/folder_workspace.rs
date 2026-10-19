@@ -731,5 +731,5 @@ impl Render for FolderWorkspace {
 }
 
 #[cfg(test)]
-#[path = "folder_workspace_tests.rs"]
+#[path = "../../tests/unit/panels/folder_workspace_tests.rs"]
 mod tests;

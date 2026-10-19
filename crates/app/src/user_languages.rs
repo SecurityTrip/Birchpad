@@ -294,4 +294,5 @@ impl Workspace {
 }
 
 #[cfg(test)]
+#[path = "../tests/unit/user_languages/tests.rs"]
 mod tests;

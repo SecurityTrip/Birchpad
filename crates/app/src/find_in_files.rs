@@ -604,5 +604,5 @@ impl Workspace {
 }
 
 #[cfg(test)]
-#[path = "find_in_files_tests.rs"]
+#[path = "../tests/unit/find_in_files_tests.rs"]
 mod tests;
