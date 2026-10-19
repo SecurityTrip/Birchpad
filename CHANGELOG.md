@@ -27,6 +27,10 @@ version's release notes from its section here.
 - A call tip shows one overload at a time with "1 of 3"; Up and Down go through them.
 - The API file of a language embedded in the document applies inside it: JavaScript's in an
   HTML `<script>`, CSS's in `<style>`.
+- API files of Birchpad's own for 15 languages (Bash, C, C++, C#, CSS, Go, HTML, Java,
+  JavaScript, PHP, PowerShell, Python, Rust, SQL, TypeScript): keywords and common functions
+  with their parameters, in the completion list and call tips. A file of the same name in
+  `autoCompletion` takes the place of Birchpad's.
 
 ### Changed
 

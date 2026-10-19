@@ -555,7 +555,7 @@ floors in `.github/coverage-floors.toml` with its tests.
 
 - [x] 6.30 Code pages: EBCDIC 875 (Greek), whose standard table maps two bytes to one
       character; NEL as a line break in EBCDIC documents
-- [ ] 6.31 Auto-completion: closing HTML and XML tags; API files for languages embedded in a
+- [x] 6.31 Auto-completion: closing HTML and XML tags; API files for languages embedded in a
       document (scripts in HTML); cycling through a function's overloads in the call tip;
       Notepad++'s auto-completion options (ignore numbers, ignore case, completion from a number
       of characters per source); bundled API files for common languages, written for Birchpad

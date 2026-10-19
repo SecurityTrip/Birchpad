@@ -94,24 +94,54 @@ thread_local! {
     static API_FILES: RefCell<HashMap<&'static str, Option<Rc<ApiFile>>>> = RefCell::default();
 }
 
-/// The API file of `language`: `autoCompletion/<id>.xml` next to the settings.
+/// Birchpad's own API files, written for it (Notepad++'s are under the GPL), by language id.
+const BUNDLED: &[(&str, &str)] = &[
+    ("bash", include_str!("../api/bash.xml")),
+    ("c", include_str!("../api/c.xml")),
+    ("cpp", include_str!("../api/cpp.xml")),
+    ("cs", include_str!("../api/cs.xml")),
+    ("css", include_str!("../api/css.xml")),
+    ("go", include_str!("../api/go.xml")),
+    ("html", include_str!("../api/html.xml")),
+    ("java", include_str!("../api/java.xml")),
+    ("javascript", include_str!("../api/javascript.xml")),
+    ("php", include_str!("../api/php.xml")),
+    ("powershell", include_str!("../api/powershell.xml")),
+    ("python", include_str!("../api/python.xml")),
+    ("rust", include_str!("../api/rust.xml")),
+    ("sql", include_str!("../api/sql.xml")),
+    ("typescript", include_str!("../api/typescript.xml")),
+    ("tsx", include_str!("../api/typescript.xml")),
+];
+
+/// The bundled API file of `language`, if Birchpad has one.
+pub(crate) fn bundled_api(language: &str) -> Option<ApiFile> {
+    let (_, xml) = BUNDLED.iter().find(|(id, _)| *id == language)?;
+    ApiFile::parse(xml).ok()
+}
+
+/// The API file of `language`: `autoCompletion/<id>.xml` next to the settings, or else
+/// Birchpad's own.
 pub(crate) fn api_file(language: Option<&'static str>, cx: &App) -> Option<Rc<ApiFile>> {
     let language = language?;
     if let Some(found) = API_FILES.with(|files| files.borrow().get(language).cloned()) {
         return found;
     }
-    let file = AppState::global(cx)
+    let user = AppState::global(cx)
         .paths
         .user_config_dir()
         .map(|dir| dir.join("autoCompletion").join(format!("{language}.xml")))
-        .and_then(|path| std::fs::read_to_string(&path).ok().map(|text| (path, text)))
-        .and_then(|(path, text)| match ApiFile::parse(&text) {
+        .and_then(|path| std::fs::read_to_string(&path).ok().map(|text| (path, text)));
+    let file = match user {
+        Some((path, text)) => match ApiFile::parse(&text) {
             Ok(api) => Some(Rc::new(api)),
             Err(error) => {
                 eprintln!("{}: {error}", path.display());
                 None
             }
-        });
+        },
+        None => bundled_api(language).map(Rc::new),
+    };
     API_FILES.with(|files| files.borrow_mut().insert(language, file.clone()));
     file
 }

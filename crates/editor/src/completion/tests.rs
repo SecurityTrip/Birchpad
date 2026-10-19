@@ -381,3 +381,51 @@ fn up_and_down_go_through_overloads(cx: &mut TestAppContext) {
     );
     forget_api_files();
 }
+
+#[test]
+fn every_bundled_api_file_reads() {
+    for (language, _) in BUNDLED {
+        let api = bundled_api(language).unwrap_or_else(|| panic!("{language}.xml reads"));
+        assert!(
+            api.keywords.len() >= 20,
+            "{language}: {}",
+            api.keywords.len()
+        );
+        assert_eq!((api.start_func, api.stop_func), ('(', ')'), "{language}");
+        assert!(
+            birchpad_syntax::by_id(language).is_some(),
+            "{language} is a language"
+        );
+    }
+    let python = bundled_api("python").unwrap();
+    let print = python.function("print").expect("print is a function");
+    assert!(
+        print.overloads[0]
+            .params
+            .iter()
+            .any(|param| param == "*values")
+    );
+    assert!(bundled_api("lua").is_none());
+    assert!(bundled_api("").is_none());
+}
+
+#[gpui_kit::test]
+fn a_users_api_file_takes_the_place_of_birchpads(cx: &mut TestAppContext) {
+    let (_, cx) = open_workspace(cx);
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::create_dir(dir.path().join("autoCompletion")).unwrap();
+    std::fs::write(
+        dir.path().join("autoCompletion").join("python.xml"),
+        r#"<NotepadPlus><AutoComplete><KeyWord name="only"/></AutoComplete></NotepadPlus>"#,
+    )
+    .unwrap();
+    forget_api_files();
+    cx.update(|_, cx| {
+        cx.global_mut::<AppState>().paths.user_settings = Some(dir.path().join("settings.toml"));
+        let python = api_file(Some("python"), cx).unwrap();
+        assert_eq!(python.keywords.len(), 1, "the user's own");
+        let rust = api_file(Some("rust"), cx).expect("Birchpad's");
+        assert!(rust.function("println!").is_some());
+    });
+    forget_api_files();
+}

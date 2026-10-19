@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Birchpad's API file for this language (ADR 0031), written for Birchpad and
+     licensed as Birchpad is. A file of the same name in the autoCompletion folder next to
+     the settings takes its place. -->
+<NotepadPlus>
+  <AutoComplete language="bash">
+    <Environment ignoreCase="no" startFunc="(" stopFunc=")" paramSeparator="," />
+    <KeyWord name="alias" />
+    <KeyWord name="break" />
+    <KeyWord name="case" />
+    <KeyWord name="cd" />
+    <KeyWord name="continue" />
+    <KeyWord name="declare" />
+    <KeyWord name="do" />
+    <KeyWord name="done" />
+    <KeyWord name="echo" />
+    <KeyWord name="elif" />
+    <KeyWord name="else" />
+    <KeyWord name="esac" />
+    <KeyWord name="eval" />
+    <KeyWord name="exec" />
+    <KeyWord name="exit" />
+    <KeyWord name="export" />
+    <KeyWord name="false" />
+    <KeyWord name="fi" />
+    <KeyWord name="for" />
+    <KeyWord name="function" />
+    <KeyWord name="if" />
+    <KeyWord name="in" />
+    <KeyWord name="local" />
+    <KeyWord name="printf" />
+    <KeyWord name="pwd" />
+    <KeyWord name="read" />
+    <KeyWord name="readonly" />
+    <KeyWord name="return" />
+    <KeyWord name="select" />
+    <KeyWord name="set" />
+    <KeyWord name="shift" />
+    <KeyWord name="source" />
+    <KeyWord name="test" />
+    <KeyWord name="then" />
+    <KeyWord name="time" />
+    <KeyWord name="trap" />
+    <KeyWord name="true" />
+    <KeyWord name="typeset" />
+    <KeyWord name="unset" />
+    <KeyWord name="until" />
+    <KeyWord name="while" />
+  </AutoComplete>
+</NotepadPlus>

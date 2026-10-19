@@ -1,0 +1,208 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Birchpad's API file for this language (ADR 0031), written for Birchpad and
+     licensed as Birchpad is. A file of the same name in the autoCompletion folder next to
+     the settings takes its place. -->
+<NotepadPlus>
+  <AutoComplete language="java">
+    <Environment ignoreCase="no" startFunc="(" stopFunc=")" paramSeparator="," />
+    <KeyWord name="abstract" />
+    <KeyWord name="add" func="yes">
+      <Overload retVal="boolean">
+        <Param name="E element" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="ArrayList" />
+    <KeyWord name="assert" />
+    <KeyWord name="Boolean" />
+    <KeyWord name="boolean" />
+    <KeyWord name="break" />
+    <KeyWord name="byte" />
+    <KeyWord name="case" />
+    <KeyWord name="catch" />
+    <KeyWord name="char" />
+    <KeyWord name="charAt" func="yes">
+      <Overload retVal="char">
+        <Param name="int index" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="class" />
+    <KeyWord name="const" />
+    <KeyWord name="contains" func="yes">
+      <Overload retVal="boolean">
+        <Param name="Object o" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="continue" />
+    <KeyWord name="currentTimeMillis" func="yes">
+      <Overload retVal="long" descr="System.currentTimeMillis" />
+    </KeyWord>
+    <KeyWord name="default" />
+    <KeyWord name="do" />
+    <KeyWord name="Double" />
+    <KeyWord name="double" />
+    <KeyWord name="else" />
+    <KeyWord name="enum" />
+    <KeyWord name="equals" func="yes">
+      <Overload retVal="boolean">
+        <Param name="Object other" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="Exception" />
+    <KeyWord name="extends" />
+    <KeyWord name="false" />
+    <KeyWord name="final" />
+    <KeyWord name="finally" />
+    <KeyWord name="float" />
+    <KeyWord name="for" />
+    <KeyWord name="format" func="yes">
+      <Overload retVal="String" descr="String.format">
+        <Param name="String format" />
+        <Param name="Object... args" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="get" func="yes">
+      <Overload retVal="E">
+        <Param name="int index" />
+      </Overload>
+      <Overload retVal="V">
+        <Param name="Object key" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="goto" />
+    <KeyWord name="hashCode" func="yes">
+      <Overload retVal="int" />
+    </KeyWord>
+    <KeyWord name="HashMap" />
+    <KeyWord name="HashSet" />
+    <KeyWord name="if" />
+    <KeyWord name="implements" />
+    <KeyWord name="import" />
+    <KeyWord name="instanceof" />
+    <KeyWord name="int" />
+    <KeyWord name="Integer" />
+    <KeyWord name="interface" />
+    <KeyWord name="isEmpty" func="yes">
+      <Overload retVal="boolean" />
+    </KeyWord>
+    <KeyWord name="length" func="yes">
+      <Overload retVal="int" />
+    </KeyWord>
+    <KeyWord name="List" />
+    <KeyWord name="Long" />
+    <KeyWord name="long" />
+    <KeyWord name="Map" />
+    <KeyWord name="Math" />
+    <KeyWord name="max" func="yes">
+      <Overload retVal="int" descr="Math.max">
+        <Param name="int a" />
+        <Param name="int b" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="min" func="yes">
+      <Overload retVal="int" descr="Math.min">
+        <Param name="int a" />
+        <Param name="int b" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="native" />
+    <KeyWord name="new" />
+    <KeyWord name="null" />
+    <KeyWord name="Object" />
+    <KeyWord name="of" func="yes">
+      <Overload retVal="List&lt;E&gt;">
+        <Param name="E... elements" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="ofNullable" func="yes">
+      <Overload retVal="&lt;T&gt; Optional&lt;T&gt;" descr="Optional.ofNullable">
+        <Param name="T value" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="Optional" />
+    <KeyWord name="Override" />
+    <KeyWord name="package" />
+    <KeyWord name="parseInt" func="yes">
+      <Overload retVal="int" descr="Integer.parseInt">
+        <Param name="String s" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="permits" />
+    <KeyWord name="print" func="yes">
+      <Overload retVal="void">
+        <Param name="Object x" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="printf" func="yes">
+      <Overload retVal="PrintStream">
+        <Param name="String format" />
+        <Param name="Object... args" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="println" func="yes">
+      <Overload retVal="void" descr="System.out.println">
+        <Param name="Object x" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="private" />
+    <KeyWord name="protected" />
+    <KeyWord name="public" />
+    <KeyWord name="put" func="yes">
+      <Overload retVal="V">
+        <Param name="K key" />
+        <Param name="V value" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="record" />
+    <KeyWord name="return" />
+    <KeyWord name="RuntimeException" />
+    <KeyWord name="sealed" />
+    <KeyWord name="Set" />
+    <KeyWord name="short" />
+    <KeyWord name="size" func="yes">
+      <Overload retVal="int" />
+    </KeyWord>
+    <KeyWord name="sqrt" func="yes">
+      <Overload retVal="double" descr="Math.sqrt">
+        <Param name="double a" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="static" />
+    <KeyWord name="stream" func="yes">
+      <Overload retVal="Stream&lt;E&gt;" />
+    </KeyWord>
+    <KeyWord name="strictfp" />
+    <KeyWord name="String" />
+    <KeyWord name="substring" func="yes">
+      <Overload retVal="String">
+        <Param name="int beginIndex" />
+      </Overload>
+      <Overload retVal="String">
+        <Param name="int beginIndex" />
+        <Param name="int endIndex" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="super" />
+    <KeyWord name="switch" />
+    <KeyWord name="synchronized" />
+    <KeyWord name="System" />
+    <KeyWord name="this" />
+    <KeyWord name="throw" />
+    <KeyWord name="throws" />
+    <KeyWord name="toString" func="yes">
+      <Overload retVal="String" />
+    </KeyWord>
+    <KeyWord name="transient" />
+    <KeyWord name="true" />
+    <KeyWord name="try" />
+    <KeyWord name="valueOf" func="yes">
+      <Overload retVal="String">
+        <Param name="Object obj" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="var" />
+    <KeyWord name="void" />
+    <KeyWord name="volatile" />
+    <KeyWord name="while" />
+    <KeyWord name="yield" />
+  </AutoComplete>
+</NotepadPlus>

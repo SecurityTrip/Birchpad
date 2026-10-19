@@ -1,0 +1,296 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Birchpad's API file for this language (ADR 0031), written for Birchpad and
+     licensed as Birchpad is. A file of the same name in the autoCompletion folder next to
+     the settings takes its place. -->
+<NotepadPlus>
+  <AutoComplete language="python">
+    <Environment ignoreCase="no" startFunc="(" stopFunc=")" paramSeparator="," />
+    <KeyWord name="__init__" />
+    <KeyWord name="__main__" />
+    <KeyWord name="__name__" />
+    <KeyWord name="abs" func="yes">
+      <Overload retVal="number">
+        <Param name="x" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="all" func="yes">
+      <Overload retVal="bool">
+        <Param name="iterable" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="and" />
+    <KeyWord name="any" func="yes">
+      <Overload retVal="bool">
+        <Param name="iterable" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="as" />
+    <KeyWord name="assert" />
+    <KeyWord name="async" />
+    <KeyWord name="await" />
+    <KeyWord name="bool" func="yes">
+      <Overload retVal="bool">
+        <Param name="x=False" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="break" />
+    <KeyWord name="case" />
+    <KeyWord name="chr" func="yes">
+      <Overload retVal="str">
+        <Param name="i" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="class" />
+    <KeyWord name="cls" />
+    <KeyWord name="continue" />
+    <KeyWord name="def" />
+    <KeyWord name="del" />
+    <KeyWord name="dict" func="yes">
+      <Overload retVal="dict">
+        <Param name="**kwargs" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="dir" func="yes">
+      <Overload retVal="list">
+        <Param name="object" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="elif" />
+    <KeyWord name="else" />
+    <KeyWord name="enumerate" func="yes">
+      <Overload retVal="enumerate">
+        <Param name="iterable" />
+        <Param name="start=0" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="except" />
+    <KeyWord name="False" />
+    <KeyWord name="filter" func="yes">
+      <Overload retVal="filter">
+        <Param name="function" />
+        <Param name="iterable" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="finally" />
+    <KeyWord name="float" func="yes">
+      <Overload retVal="float">
+        <Param name="x=0" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="for" />
+    <KeyWord name="format" func="yes">
+      <Overload retVal="str">
+        <Param name="value" />
+        <Param name="format_spec=''" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="from" />
+    <KeyWord name="getattr" func="yes">
+      <Overload retVal="object">
+        <Param name="obj" />
+        <Param name="name" />
+        <Param name="default" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="global" />
+    <KeyWord name="hasattr" func="yes">
+      <Overload retVal="bool">
+        <Param name="obj" />
+        <Param name="name" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="hash" func="yes">
+      <Overload retVal="int">
+        <Param name="object" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="hex" func="yes">
+      <Overload retVal="str">
+        <Param name="number" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="id" func="yes">
+      <Overload retVal="int">
+        <Param name="object" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="if" />
+    <KeyWord name="import" />
+    <KeyWord name="in" />
+    <KeyWord name="input" func="yes">
+      <Overload retVal="str">
+        <Param name="prompt=''" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="int" func="yes">
+      <Overload retVal="int">
+        <Param name="x=0" />
+      </Overload>
+      <Overload retVal="int">
+        <Param name="x" />
+        <Param name="base=10" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="is" />
+    <KeyWord name="isinstance" func="yes">
+      <Overload retVal="bool">
+        <Param name="obj" />
+        <Param name="classinfo" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="iter" func="yes">
+      <Overload retVal="iterator">
+        <Param name="object" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="lambda" />
+    <KeyWord name="len" func="yes">
+      <Overload retVal="int" descr="The number of items of a container.">
+        <Param name="obj" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="list" func="yes">
+      <Overload retVal="list">
+        <Param name="iterable=()" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="map" func="yes">
+      <Overload retVal="map">
+        <Param name="function" />
+        <Param name="iterable" />
+        <Param name="*iterables" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="match" />
+    <KeyWord name="max" func="yes">
+      <Overload retVal="object">
+        <Param name="iterable" />
+        <Param name="key=None" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="min" func="yes">
+      <Overload retVal="object">
+        <Param name="iterable" />
+        <Param name="key=None" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="next" func="yes">
+      <Overload retVal="object">
+        <Param name="iterator" />
+        <Param name="default" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="None" />
+    <KeyWord name="nonlocal" />
+    <KeyWord name="not" />
+    <KeyWord name="open" func="yes">
+      <Overload retVal="file">
+        <Param name="file" />
+        <Param name="mode='r'" />
+        <Param name="buffering=-1" />
+        <Param name="encoding=None" />
+        <Param name="errors=None" />
+        <Param name="newline=None" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="or" />
+    <KeyWord name="ord" func="yes">
+      <Overload retVal="int">
+        <Param name="c" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="pass" />
+    <KeyWord name="print" func="yes">
+      <Overload retVal="None" descr="Prints the values to a stream, or to sys.stdout.">
+        <Param name="*values" />
+        <Param name="sep=' '" />
+        <Param name="end='\n'" />
+        <Param name="file=None" />
+        <Param name="flush=False" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="raise" />
+    <KeyWord name="range" func="yes">
+      <Overload retVal="range">
+        <Param name="stop" />
+      </Overload>
+      <Overload retVal="range">
+        <Param name="start" />
+        <Param name="stop" />
+        <Param name="step=1" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="repr" func="yes">
+      <Overload retVal="str">
+        <Param name="object" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="return" />
+    <KeyWord name="reversed" func="yes">
+      <Overload retVal="reversed">
+        <Param name="sequence" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="round" func="yes">
+      <Overload retVal="number">
+        <Param name="number" />
+        <Param name="ndigits=None" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="self" />
+    <KeyWord name="set" func="yes">
+      <Overload retVal="set">
+        <Param name="iterable=()" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="setattr" func="yes">
+      <Overload retVal="None">
+        <Param name="obj" />
+        <Param name="name" />
+        <Param name="value" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="sorted" func="yes">
+      <Overload retVal="list">
+        <Param name="iterable" />
+        <Param name="key=None" />
+        <Param name="reverse=False" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="str" func="yes">
+      <Overload retVal="str">
+        <Param name="object=''" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="sum" func="yes">
+      <Overload retVal="number">
+        <Param name="iterable" />
+        <Param name="start=0" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="super" func="yes">
+      <Overload retVal="object" />
+    </KeyWord>
+    <KeyWord name="True" />
+    <KeyWord name="try" />
+    <KeyWord name="tuple" func="yes">
+      <Overload retVal="tuple">
+        <Param name="iterable=()" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="type" func="yes">
+      <Overload retVal="type">
+        <Param name="object" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="while" />
+    <KeyWord name="with" />
+    <KeyWord name="yield" />
+    <KeyWord name="zip" func="yes">
+      <Overload retVal="zip">
+        <Param name="*iterables" />
+        <Param name="strict=False" />
+      </Overload>
+    </KeyWord>
+  </AutoComplete>
+</NotepadPlus>

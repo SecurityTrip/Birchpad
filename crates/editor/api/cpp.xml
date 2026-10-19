@@ -1,0 +1,445 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Birchpad's API file for this language (ADR 0031), written for Birchpad and
+     licensed as Birchpad is. A file of the same name in the autoCompletion folder next to
+     the settings takes its place. -->
+<NotepadPlus>
+  <AutoComplete language="cpp">
+    <Environment ignoreCase="no" startFunc="(" stopFunc=")" paramSeparator="," />
+    <KeyWord name="_Alignas" />
+    <KeyWord name="_Alignof" />
+    <KeyWord name="_Bool" />
+    <KeyWord name="_Complex" />
+    <KeyWord name="_Noreturn" />
+    <KeyWord name="_Static_assert" />
+    <KeyWord name="_Thread_local" />
+    <KeyWord name="abs" func="yes">
+      <Overload retVal="int">
+        <Param name="int n" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="alignas" />
+    <KeyWord name="alignof" />
+    <KeyWord name="and" />
+    <KeyWord name="asm" />
+    <KeyWord name="atoi" func="yes">
+      <Overload retVal="int">
+        <Param name="const char *s" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="auto" />
+    <KeyWord name="bool" />
+    <KeyWord name="break" />
+    <KeyWord name="calloc" func="yes">
+      <Overload retVal="void *" descr="Allocates zeroed memory.">
+        <Param name="size_t count" />
+        <Param name="size_t size" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="case" />
+    <KeyWord name="catch" />
+    <KeyWord name="ceil" func="yes">
+      <Overload retVal="double">
+        <Param name="double x" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="char" />
+    <KeyWord name="char16_t" />
+    <KeyWord name="char32_t" />
+    <KeyWord name="char8_t" />
+    <KeyWord name="class" />
+    <KeyWord name="co_await" />
+    <KeyWord name="co_return" />
+    <KeyWord name="co_yield" />
+    <KeyWord name="concept" />
+    <KeyWord name="const" />
+    <KeyWord name="const_cast" />
+    <KeyWord name="consteval" />
+    <KeyWord name="constexpr" />
+    <KeyWord name="constinit" />
+    <KeyWord name="continue" />
+    <KeyWord name="decltype" />
+    <KeyWord name="default" />
+    <KeyWord name="delete" />
+    <KeyWord name="do" />
+    <KeyWord name="double" />
+    <KeyWord name="dynamic_cast" />
+    <KeyWord name="else" />
+    <KeyWord name="enum" />
+    <KeyWord name="exit" func="yes">
+      <Overload retVal="void">
+        <Param name="int status" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="explicit" />
+    <KeyWord name="export" />
+    <KeyWord name="extern" />
+    <KeyWord name="false" />
+    <KeyWord name="fclose" func="yes">
+      <Overload retVal="int">
+        <Param name="FILE *stream" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="fgets" func="yes">
+      <Overload retVal="char *">
+        <Param name="char *s" />
+        <Param name="int n" />
+        <Param name="FILE *stream" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="FILE" />
+    <KeyWord name="final" />
+    <KeyWord name="find" func="yes">
+      <Overload retVal="InputIt">
+        <Param name="InputIt first" />
+        <Param name="InputIt last" />
+        <Param name="const T&amp; value" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="float" />
+    <KeyWord name="floor" func="yes">
+      <Overload retVal="double">
+        <Param name="double x" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="fopen" func="yes">
+      <Overload retVal="FILE *" descr="Opens a file; NULL on failure.">
+        <Param name="const char *path" />
+        <Param name="const char *mode" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="for" />
+    <KeyWord name="forward" func="yes">
+      <Overload retVal="T&amp;&amp;">
+        <Param name="T&amp; value" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="fprintf" func="yes">
+      <Overload retVal="int" descr="Writes formatted output to a stream.">
+        <Param name="FILE *stream" />
+        <Param name="const char *format" />
+        <Param name="..." />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="fputs" func="yes">
+      <Overload retVal="int">
+        <Param name="const char *s" />
+        <Param name="FILE *stream" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="fread" func="yes">
+      <Overload retVal="size_t">
+        <Param name="void *ptr" />
+        <Param name="size_t size" />
+        <Param name="size_t count" />
+        <Param name="FILE *stream" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="free" func="yes">
+      <Overload retVal="void">
+        <Param name="void *ptr" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="friend" />
+    <KeyWord name="fwrite" func="yes">
+      <Overload retVal="size_t">
+        <Param name="const void *ptr" />
+        <Param name="size_t size" />
+        <Param name="size_t count" />
+        <Param name="FILE *stream" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="getchar" func="yes">
+      <Overload retVal="int" />
+    </KeyWord>
+    <KeyWord name="goto" />
+    <KeyWord name="if" />
+    <KeyWord name="inline" />
+    <KeyWord name="int" />
+    <KeyWord name="long" />
+    <KeyWord name="make_shared" func="yes">
+      <Overload retVal="std::shared_ptr&lt;T&gt;">
+        <Param name="Args&amp;&amp;... args" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="make_unique" func="yes">
+      <Overload retVal="std::unique_ptr&lt;T&gt;" descr="Constructs an object owned by a unique_ptr.">
+        <Param name="Args&amp;&amp;... args" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="malloc" func="yes">
+      <Overload retVal="void *" descr="Allocates size bytes; NULL on failure.">
+        <Param name="size_t size" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="map" />
+    <KeyWord name="max" func="yes">
+      <Overload retVal="const T&amp;">
+        <Param name="const T&amp; a" />
+        <Param name="const T&amp; b" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="memcmp" func="yes">
+      <Overload retVal="int">
+        <Param name="const void *a" />
+        <Param name="const void *b" />
+        <Param name="size_t n" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="memcpy" func="yes">
+      <Overload retVal="void *">
+        <Param name="void *dest" />
+        <Param name="const void *src" />
+        <Param name="size_t n" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="memmove" func="yes">
+      <Overload retVal="void *">
+        <Param name="void *dest" />
+        <Param name="const void *src" />
+        <Param name="size_t n" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="memset" func="yes">
+      <Overload retVal="void *">
+        <Param name="void *s" />
+        <Param name="int c" />
+        <Param name="size_t n" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="min" func="yes">
+      <Overload retVal="const T&amp;">
+        <Param name="const T&amp; a" />
+        <Param name="const T&amp; b" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="move" func="yes">
+      <Overload retVal="T&amp;&amp;">
+        <Param name="T&amp;&amp; value" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="mutable" />
+    <KeyWord name="namespace" />
+    <KeyWord name="new" />
+    <KeyWord name="noexcept" />
+    <KeyWord name="NULL" />
+    <KeyWord name="nullptr" />
+    <KeyWord name="operator" />
+    <KeyWord name="optional" />
+    <KeyWord name="override" />
+    <KeyWord name="pow" func="yes">
+      <Overload retVal="double">
+        <Param name="double x" />
+        <Param name="double y" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="printf" func="yes">
+      <Overload retVal="int" descr="Writes formatted output to stdout.">
+        <Param name="const char *format" />
+        <Param name="..." />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="private" />
+    <KeyWord name="protected" />
+    <KeyWord name="public" />
+    <KeyWord name="putchar" func="yes">
+      <Overload retVal="int">
+        <Param name="int c" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="puts" func="yes">
+      <Overload retVal="int">
+        <Param name="const char *s" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="qsort" func="yes">
+      <Overload retVal="void">
+        <Param name="void *base" />
+        <Param name="size_t count" />
+        <Param name="size_t size" />
+        <Param name="int (*compare)(const void *, const void *)" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="rand" func="yes">
+      <Overload retVal="int" />
+    </KeyWord>
+    <KeyWord name="realloc" func="yes">
+      <Overload retVal="void *">
+        <Param name="void *ptr" />
+        <Param name="size_t size" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="register" />
+    <KeyWord name="reinterpret_cast" />
+    <KeyWord name="requires" />
+    <KeyWord name="restrict" />
+    <KeyWord name="return" />
+    <KeyWord name="scanf" func="yes">
+      <Overload retVal="int">
+        <Param name="const char *format" />
+        <Param name="..." />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="set" />
+    <KeyWord name="shared_ptr" />
+    <KeyWord name="short" />
+    <KeyWord name="signed" />
+    <KeyWord name="size_t" />
+    <KeyWord name="sizeof" />
+    <KeyWord name="snprintf" func="yes">
+      <Overload retVal="int" descr="Writes at most n bytes, the terminating null included.">
+        <Param name="char *s" />
+        <Param name="size_t n" />
+        <Param name="const char *format" />
+        <Param name="..." />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="sort" func="yes">
+      <Overload retVal="void">
+        <Param name="RandomIt first" />
+        <Param name="RandomIt last" />
+      </Overload>
+      <Overload retVal="void">
+        <Param name="RandomIt first" />
+        <Param name="RandomIt last" />
+        <Param name="Compare compare" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="sprintf" func="yes">
+      <Overload retVal="int">
+        <Param name="char *s" />
+        <Param name="const char *format" />
+        <Param name="..." />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="sqrt" func="yes">
+      <Overload retVal="double">
+        <Param name="double x" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="srand" func="yes">
+      <Overload retVal="void">
+        <Param name="unsigned seed" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="sscanf" func="yes">
+      <Overload retVal="int">
+        <Param name="const char *s" />
+        <Param name="const char *format" />
+        <Param name="..." />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="static" />
+    <KeyWord name="static_assert" />
+    <KeyWord name="static_cast" />
+    <KeyWord name="std" />
+    <KeyWord name="stoi" func="yes">
+      <Overload retVal="int">
+        <Param name="const std::string&amp; s" />
+        <Param name="size_t* pos = nullptr" />
+        <Param name="int base = 10" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="strcat" func="yes">
+      <Overload retVal="char *">
+        <Param name="char *dest" />
+        <Param name="const char *src" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="strchr" func="yes">
+      <Overload retVal="char *">
+        <Param name="const char *s" />
+        <Param name="int c" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="strcmp" func="yes">
+      <Overload retVal="int">
+        <Param name="const char *a" />
+        <Param name="const char *b" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="strcpy" func="yes">
+      <Overload retVal="char *">
+        <Param name="char *dest" />
+        <Param name="const char *src" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="string" />
+    <KeyWord name="strlen" func="yes">
+      <Overload retVal="size_t">
+        <Param name="const char *s" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="strncmp" func="yes">
+      <Overload retVal="int">
+        <Param name="const char *a" />
+        <Param name="const char *b" />
+        <Param name="size_t n" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="strncpy" func="yes">
+      <Overload retVal="char *">
+        <Param name="char *dest" />
+        <Param name="const char *src" />
+        <Param name="size_t n" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="strstr" func="yes">
+      <Overload retVal="char *">
+        <Param name="const char *haystack" />
+        <Param name="const char *needle" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="strtod" func="yes">
+      <Overload retVal="double">
+        <Param name="const char *s" />
+        <Param name="char **end" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="strtol" func="yes">
+      <Overload retVal="long">
+        <Param name="const char *s" />
+        <Param name="char **end" />
+        <Param name="int base" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="struct" />
+    <KeyWord name="swap" func="yes">
+      <Overload retVal="void">
+        <Param name="T&amp; a" />
+        <Param name="T&amp; b" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="switch" />
+    <KeyWord name="template" />
+    <KeyWord name="this" />
+    <KeyWord name="thread_local" />
+    <KeyWord name="throw" />
+    <KeyWord name="time" func="yes">
+      <Overload retVal="time_t">
+        <Param name="time_t *t" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="to_string" func="yes">
+      <Overload retVal="std::string">
+        <Param name="int value" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="true" />
+    <KeyWord name="try" />
+    <KeyWord name="typedef" />
+    <KeyWord name="typeid" />
+    <KeyWord name="typename" />
+    <KeyWord name="union" />
+    <KeyWord name="unique_ptr" />
+    <KeyWord name="unordered_map" />
+    <KeyWord name="unsigned" />
+    <KeyWord name="using" />
+    <KeyWord name="variant" />
+    <KeyWord name="vector" />
+    <KeyWord name="virtual" />
+    <KeyWord name="void" />
+    <KeyWord name="volatile" />
+    <KeyWord name="wchar_t" />
+    <KeyWord name="while" />
+  </AutoComplete>
+</NotepadPlus>

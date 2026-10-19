@@ -31,7 +31,11 @@ that users share.
   the editor's own, so they win. A call tip makes it `Editor CallTip`, where Escape closes it.
   The keys stay in the keymap, so the Shortcut Mapper can change them.
 - **API files are Notepad++'s, read as they are,** from `autoCompletion/<language id>.xml` next
-  to the settings, once per run; Birchpad does not ship any. Their `Environment` gives the
+  to the settings, once per run. Birchpad ships its own for Bash, C, C++, C#, CSS, Go, HTML,
+  Java, JavaScript, PHP, PowerShell, Python, Rust, SQL and TypeScript (`crates/editor/api`),
+  written for Birchpad since Notepad++'s are under the GPL: each language's keywords and its
+  common built-in functions with their parameters. A user's file of the same name takes the
+  place of Birchpad's. Their `Environment` gives the
   characters that open and close a call. A call tip shows one overload with its description and
   `▲ 1 of 3 ▼` when there are several; Up and Down go through them (`completion.next-overload`,
   `completion.previous-overload`, in the `CallTip` context). Ctrl+Shift+Space shows it again

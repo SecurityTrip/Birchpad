@@ -1,0 +1,223 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Birchpad's API file for this language (ADR 0031), written for Birchpad and
+     licensed as Birchpad is. A file of the same name in the autoCompletion folder next to
+     the settings takes its place. -->
+<NotepadPlus>
+  <AutoComplete language="cs">
+    <Environment ignoreCase="no" startFunc="(" stopFunc=")" paramSeparator="," />
+    <KeyWord name="abstract" />
+    <KeyWord name="Add" func="yes">
+      <Overload retVal="void">
+        <Param name="T item" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="Any" func="yes">
+      <Overload retVal="bool" />
+    </KeyWord>
+    <KeyWord name="as" />
+    <KeyWord name="async" />
+    <KeyWord name="await" />
+    <KeyWord name="base" />
+    <KeyWord name="bool" />
+    <KeyWord name="break" />
+    <KeyWord name="byte" />
+    <KeyWord name="case" />
+    <KeyWord name="catch" />
+    <KeyWord name="char" />
+    <KeyWord name="checked" />
+    <KeyWord name="class" />
+    <KeyWord name="Console" />
+    <KeyWord name="const" />
+    <KeyWord name="Contains" func="yes">
+      <Overload retVal="bool">
+        <Param name="T item" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="ContainsKey" func="yes">
+      <Overload retVal="bool">
+        <Param name="TKey key" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="continue" />
+    <KeyWord name="Count" func="yes">
+      <Overload retVal="int" />
+    </KeyWord>
+    <KeyWord name="decimal" />
+    <KeyWord name="default" />
+    <KeyWord name="Delay" func="yes">
+      <Overload retVal="Task" descr="Task.Delay">
+        <Param name="int millisecondsDelay" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="delegate" />
+    <KeyWord name="Dictionary" />
+    <KeyWord name="do" />
+    <KeyWord name="double" />
+    <KeyWord name="dynamic" />
+    <KeyWord name="else" />
+    <KeyWord name="enum" />
+    <KeyWord name="Equals" func="yes">
+      <Overload retVal="bool">
+        <Param name="object obj" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="event" />
+    <KeyWord name="Exception" />
+    <KeyWord name="explicit" />
+    <KeyWord name="extern" />
+    <KeyWord name="false" />
+    <KeyWord name="finally" />
+    <KeyWord name="First" func="yes">
+      <Overload retVal="T" />
+    </KeyWord>
+    <KeyWord name="FirstOrDefault" func="yes">
+      <Overload retVal="T" />
+    </KeyWord>
+    <KeyWord name="fixed" />
+    <KeyWord name="float" />
+    <KeyWord name="for" />
+    <KeyWord name="foreach" />
+    <KeyWord name="Format" func="yes">
+      <Overload retVal="string" descr="string.Format">
+        <Param name="string format" />
+        <Param name="params object[] args" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="get" />
+    <KeyWord name="goto" />
+    <KeyWord name="if" />
+    <KeyWord name="implicit" />
+    <KeyWord name="in" />
+    <KeyWord name="init" />
+    <KeyWord name="int" />
+    <KeyWord name="interface" />
+    <KeyWord name="internal" />
+    <KeyWord name="is" />
+    <KeyWord name="IsNullOrEmpty" func="yes">
+      <Overload retVal="bool" descr="string.IsNullOrEmpty">
+        <Param name="string value" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="List" />
+    <KeyWord name="lock" />
+    <KeyWord name="long" />
+    <KeyWord name="Math" />
+    <KeyWord name="Max" func="yes">
+      <Overload retVal="int" descr="Math.Max">
+        <Param name="int a" />
+        <Param name="int b" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="nameof" />
+    <KeyWord name="namespace" />
+    <KeyWord name="new" />
+    <KeyWord name="null" />
+    <KeyWord name="object" />
+    <KeyWord name="operator" />
+    <KeyWord name="out" />
+    <KeyWord name="override" />
+    <KeyWord name="params" />
+    <KeyWord name="Parse" func="yes">
+      <Overload retVal="int" descr="int.Parse">
+        <Param name="string s" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="private" />
+    <KeyWord name="protected" />
+    <KeyWord name="public" />
+    <KeyWord name="ReadLine" func="yes">
+      <Overload retVal="string" descr="Console.ReadLine" />
+    </KeyWord>
+    <KeyWord name="readonly" />
+    <KeyWord name="record" />
+    <KeyWord name="ref" />
+    <KeyWord name="Remove" func="yes">
+      <Overload retVal="bool">
+        <Param name="T item" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="required" />
+    <KeyWord name="return" />
+    <KeyWord name="Run" func="yes">
+      <Overload retVal="Task&lt;TResult&gt;" descr="Task.Run">
+        <Param name="Func&lt;TResult&gt; function" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="sbyte" />
+    <KeyWord name="sealed" />
+    <KeyWord name="Select" func="yes">
+      <Overload retVal="IEnumerable&lt;TResult&gt;">
+        <Param name="Func&lt;T, TResult&gt; selector" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="set" />
+    <KeyWord name="short" />
+    <KeyWord name="sizeof" />
+    <KeyWord name="stackalloc" />
+    <KeyWord name="static" />
+    <KeyWord name="String" />
+    <KeyWord name="string" />
+    <KeyWord name="struct" />
+    <KeyWord name="switch" />
+    <KeyWord name="Task" />
+    <KeyWord name="this" />
+    <KeyWord name="throw" />
+    <KeyWord name="ToArray" func="yes">
+      <Overload retVal="T[]" />
+    </KeyWord>
+    <KeyWord name="ToList" func="yes">
+      <Overload retVal="List&lt;T&gt;" />
+    </KeyWord>
+    <KeyWord name="ToString" func="yes">
+      <Overload retVal="string" />
+    </KeyWord>
+    <KeyWord name="true" />
+    <KeyWord name="try" />
+    <KeyWord name="TryGetValue" func="yes">
+      <Overload retVal="bool">
+        <Param name="TKey key" />
+        <Param name="out TValue value" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="TryParse" func="yes">
+      <Overload retVal="bool" descr="int.TryParse">
+        <Param name="string s" />
+        <Param name="out int result" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="typeof" />
+    <KeyWord name="uint" />
+    <KeyWord name="ulong" />
+    <KeyWord name="unchecked" />
+    <KeyWord name="unsafe" />
+    <KeyWord name="ushort" />
+    <KeyWord name="using" />
+    <KeyWord name="value" />
+    <KeyWord name="var" />
+    <KeyWord name="virtual" />
+    <KeyWord name="void" />
+    <KeyWord name="volatile" />
+    <KeyWord name="Where" func="yes">
+      <Overload retVal="IEnumerable&lt;T&gt;">
+        <Param name="Func&lt;T, bool&gt; predicate" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="where" />
+    <KeyWord name="while" />
+    <KeyWord name="Write" func="yes">
+      <Overload retVal="void" descr="Console.Write">
+        <Param name="string value" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="WriteLine" func="yes">
+      <Overload retVal="void" descr="Console.WriteLine">
+        <Param name="string value" />
+      </Overload>
+      <Overload retVal="void">
+        <Param name="string format" />
+        <Param name="params object[] args" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="yield" />
+  </AutoComplete>
+</NotepadPlus>

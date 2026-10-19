@@ -1,0 +1,333 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Birchpad's API file for this language (ADR 0031), written for Birchpad and
+     licensed as Birchpad is. A file of the same name in the autoCompletion folder next to
+     the settings takes its place. -->
+<NotepadPlus>
+  <AutoComplete language="typescript">
+    <Environment ignoreCase="no" startFunc="(" stopFunc=")" paramSeparator="," />
+    <KeyWord name="abstract" />
+    <KeyWord name="addEventListener" func="yes">
+      <Overload retVal="void">
+        <Param name="type" />
+        <Param name="listener" />
+        <Param name="options?" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="all" func="yes">
+      <Overload retVal="Promise" descr="Promise.all">
+        <Param name="promises" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="any" />
+    <KeyWord name="Array" />
+    <KeyWord name="as" />
+    <KeyWord name="asserts" />
+    <KeyWord name="assign" func="yes">
+      <Overload retVal="object" descr="Object.assign">
+        <Param name="target" />
+        <Param name="...sources" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="async" />
+    <KeyWord name="await" />
+    <KeyWord name="bigint" />
+    <KeyWord name="Boolean" />
+    <KeyWord name="boolean" />
+    <KeyWord name="break" />
+    <KeyWord name="case" />
+    <KeyWord name="catch" />
+    <KeyWord name="class" />
+    <KeyWord name="clearInterval" func="yes">
+      <Overload retVal="void">
+        <Param name="id" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="clearTimeout" func="yes">
+      <Overload retVal="void">
+        <Param name="id" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="console" />
+    <KeyWord name="const" />
+    <KeyWord name="continue" />
+    <KeyWord name="createElement" func="yes">
+      <Overload retVal="Element">
+        <Param name="tagName" />
+        <Param name="options?" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="Date" />
+    <KeyWord name="debugger" />
+    <KeyWord name="declare" />
+    <KeyWord name="default" />
+    <KeyWord name="delete" />
+    <KeyWord name="do" />
+    <KeyWord name="document" />
+    <KeyWord name="else" />
+    <KeyWord name="entries" func="yes">
+      <Overload retVal="any[]" descr="Object.entries">
+        <Param name="object" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="enum" />
+    <KeyWord name="Error" />
+    <KeyWord name="export" />
+    <KeyWord name="extends" />
+    <KeyWord name="false" />
+    <KeyWord name="fetch" func="yes">
+      <Overload retVal="Promise&lt;Response&gt;">
+        <Param name="input" />
+        <Param name="init?" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="filter" func="yes">
+      <Overload retVal="any[]">
+        <Param name="callback" />
+        <Param name="thisArg?" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="finally" />
+    <KeyWord name="find" func="yes">
+      <Overload retVal="any">
+        <Param name="callback" />
+        <Param name="thisArg?" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="floor" func="yes">
+      <Overload retVal="number" descr="Math.floor">
+        <Param name="x" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="for" />
+    <KeyWord name="forEach" func="yes">
+      <Overload retVal="void">
+        <Param name="callback" />
+        <Param name="thisArg?" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="function" />
+    <KeyWord name="getElementById" func="yes">
+      <Overload retVal="Element">
+        <Param name="id" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="globalThis" />
+    <KeyWord name="if" />
+    <KeyWord name="implements" />
+    <KeyWord name="import" />
+    <KeyWord name="in" />
+    <KeyWord name="includes" func="yes">
+      <Overload retVal="boolean">
+        <Param name="searchElement" />
+        <Param name="fromIndex?" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="indexOf" func="yes">
+      <Overload retVal="number">
+        <Param name="searchElement" />
+        <Param name="fromIndex?" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="infer" />
+    <KeyWord name="instanceof" />
+    <KeyWord name="interface" />
+    <KeyWord name="is" />
+    <KeyWord name="isNaN" func="yes">
+      <Overload retVal="boolean">
+        <Param name="value" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="join" func="yes">
+      <Overload retVal="string">
+        <Param name="separator?" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="JSON" />
+    <KeyWord name="keyof" />
+    <KeyWord name="keys" func="yes">
+      <Overload retVal="string[]" descr="Object.keys">
+        <Param name="object" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="let" />
+    <KeyWord name="log" func="yes">
+      <Overload retVal="void" descr="console.log: writes to the console.">
+        <Param name="...data" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="Map" />
+    <KeyWord name="map" func="yes">
+      <Overload retVal="any[]">
+        <Param name="callback" />
+        <Param name="thisArg?" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="Math" />
+    <KeyWord name="max" func="yes">
+      <Overload retVal="number" descr="Math.max">
+        <Param name="...values" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="min" func="yes">
+      <Overload retVal="number" descr="Math.min">
+        <Param name="...values" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="module" />
+    <KeyWord name="namespace" />
+    <KeyWord name="never" />
+    <KeyWord name="new" />
+    <KeyWord name="null" />
+    <KeyWord name="Number" />
+    <KeyWord name="number" />
+    <KeyWord name="Object" />
+    <KeyWord name="object" />
+    <KeyWord name="of" />
+    <KeyWord name="Omit" />
+    <KeyWord name="override" />
+    <KeyWord name="parse" func="yes">
+      <Overload retVal="any" descr="JSON.parse">
+        <Param name="text" />
+        <Param name="reviver?" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="parseFloat" func="yes">
+      <Overload retVal="number">
+        <Param name="string" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="parseInt" func="yes">
+      <Overload retVal="number">
+        <Param name="string" />
+        <Param name="radix?" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="Partial" />
+    <KeyWord name="Pick" />
+    <KeyWord name="private" />
+    <KeyWord name="Promise" />
+    <KeyWord name="protected" />
+    <KeyWord name="public" />
+    <KeyWord name="push" func="yes">
+      <Overload retVal="number">
+        <Param name="...items" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="querySelector" func="yes">
+      <Overload retVal="Element">
+        <Param name="selectors" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="querySelectorAll" func="yes">
+      <Overload retVal="NodeList">
+        <Param name="selectors" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="random" func="yes">
+      <Overload retVal="number" descr="Math.random: a number from 0 up to 1." />
+    </KeyWord>
+    <KeyWord name="Readonly" />
+    <KeyWord name="readonly" />
+    <KeyWord name="Record" />
+    <KeyWord name="reduce" func="yes">
+      <Overload retVal="any">
+        <Param name="callback" />
+        <Param name="initialValue?" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="RegExp" />
+    <KeyWord name="removeEventListener" func="yes">
+      <Overload retVal="void">
+        <Param name="type" />
+        <Param name="listener" />
+        <Param name="options?" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="replace" func="yes">
+      <Overload retVal="string">
+        <Param name="pattern" />
+        <Param name="replacement" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="Required" />
+    <KeyWord name="resolve" func="yes">
+      <Overload retVal="Promise" descr="Promise.resolve">
+        <Param name="value?" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="return" />
+    <KeyWord name="ReturnType" />
+    <KeyWord name="round" func="yes">
+      <Overload retVal="number" descr="Math.round">
+        <Param name="x" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="satisfies" />
+    <KeyWord name="Set" />
+    <KeyWord name="setInterval" func="yes">
+      <Overload retVal="number">
+        <Param name="handler" />
+        <Param name="timeout?" />
+        <Param name="...arguments" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="setTimeout" func="yes">
+      <Overload retVal="number">
+        <Param name="handler" />
+        <Param name="timeout?" />
+        <Param name="...arguments" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="slice" func="yes">
+      <Overload retVal="any[]">
+        <Param name="start?" />
+        <Param name="end?" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="splice" func="yes">
+      <Overload retVal="any[]">
+        <Param name="start" />
+        <Param name="deleteCount?" />
+        <Param name="...items" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="split" func="yes">
+      <Overload retVal="string[]">
+        <Param name="separator" />
+        <Param name="limit?" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="static" />
+    <KeyWord name="String" />
+    <KeyWord name="string" />
+    <KeyWord name="stringify" func="yes">
+      <Overload retVal="string" descr="JSON.stringify">
+        <Param name="value" />
+        <Param name="replacer?" />
+        <Param name="space?" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="super" />
+    <KeyWord name="switch" />
+    <KeyWord name="Symbol" />
+    <KeyWord name="symbol" />
+    <KeyWord name="this" />
+    <KeyWord name="throw" />
+    <KeyWord name="trim" func="yes">
+      <Overload retVal="string" />
+    </KeyWord>
+    <KeyWord name="true" />
+    <KeyWord name="try" />
+    <KeyWord name="type" />
+    <KeyWord name="typeof" />
+    <KeyWord name="undefined" />
+    <KeyWord name="unique" />
+    <KeyWord name="unknown" />
+    <KeyWord name="var" />
+    <KeyWord name="void" />
+    <KeyWord name="while" />
+    <KeyWord name="window" />
+    <KeyWord name="with" />
+    <KeyWord name="yield" />
+  </AutoComplete>
+</NotepadPlus>

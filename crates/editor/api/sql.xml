@@ -1,0 +1,196 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Birchpad's API file for this language (ADR 0031), written for Birchpad and
+     licensed as Birchpad is. A file of the same name in the autoCompletion folder next to
+     the settings takes its place. -->
+<NotepadPlus>
+  <AutoComplete language="sql">
+    <Environment ignoreCase="yes" startFunc="(" stopFunc=")" paramSeparator="," />
+    <KeyWord name="ABS" func="yes">
+      <Overload retVal="numeric">
+        <Param name="number" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="ADD" />
+    <KeyWord name="ALL" />
+    <KeyWord name="ALTER" />
+    <KeyWord name="AND" />
+    <KeyWord name="AS" />
+    <KeyWord name="ASC" />
+    <KeyWord name="AVG" func="yes">
+      <Overload retVal="numeric">
+        <Param name="expression" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="BEGIN" />
+    <KeyWord name="BETWEEN" />
+    <KeyWord name="BIGINT" />
+    <KeyWord name="BOOLEAN" />
+    <KeyWord name="BY" />
+    <KeyWord name="CASE" />
+    <KeyWord name="CAST" func="yes">
+      <Overload retVal="value">
+        <Param name="expression AS type" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="CHAR" />
+    <KeyWord name="CHECK" />
+    <KeyWord name="COALESCE" func="yes">
+      <Overload retVal="value" descr="The first argument that is not NULL.">
+        <Param name="value" />
+        <Param name="..." />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="COLUMN" />
+    <KeyWord name="COMMIT" />
+    <KeyWord name="CONCAT" func="yes">
+      <Overload retVal="text">
+        <Param name="string" />
+        <Param name="..." />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="CONSTRAINT" />
+    <KeyWord name="COUNT" func="yes">
+      <Overload retVal="integer" descr="The number of rows, or of values that are not NULL.">
+        <Param name="expression" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="CREATE" />
+    <KeyWord name="CROSS" />
+    <KeyWord name="CURRENT_TIMESTAMP" func="yes">
+      <Overload retVal="timestamp" />
+    </KeyWord>
+    <KeyWord name="DATE" />
+    <KeyWord name="DECIMAL" />
+    <KeyWord name="DEFAULT" />
+    <KeyWord name="DELETE" />
+    <KeyWord name="DESC" />
+    <KeyWord name="DISTINCT" />
+    <KeyWord name="DROP" />
+    <KeyWord name="ELSE" />
+    <KeyWord name="END" />
+    <KeyWord name="EXISTS" />
+    <KeyWord name="FALSE" />
+    <KeyWord name="FLOAT" />
+    <KeyWord name="FOREIGN" />
+    <KeyWord name="FROM" />
+    <KeyWord name="FULL" />
+    <KeyWord name="GRANT" />
+    <KeyWord name="GROUP" />
+    <KeyWord name="HAVING" />
+    <KeyWord name="IN" />
+    <KeyWord name="INDEX" />
+    <KeyWord name="INNER" />
+    <KeyWord name="INSERT" />
+    <KeyWord name="INT" />
+    <KeyWord name="INTEGER" />
+    <KeyWord name="INTO" />
+    <KeyWord name="IS" />
+    <KeyWord name="JOIN" />
+    <KeyWord name="KEY" />
+    <KeyWord name="LEFT" />
+    <KeyWord name="LENGTH" func="yes">
+      <Overload retVal="integer">
+        <Param name="string" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="LIKE" />
+    <KeyWord name="LIMIT" />
+    <KeyWord name="LOWER" func="yes">
+      <Overload retVal="text">
+        <Param name="string" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="MAX" func="yes">
+      <Overload retVal="value">
+        <Param name="expression" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="MIN" func="yes">
+      <Overload retVal="value">
+        <Param name="expression" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="NOT" />
+    <KeyWord name="NULL" />
+    <KeyWord name="NULLIF" func="yes">
+      <Overload retVal="value">
+        <Param name="value1" />
+        <Param name="value2" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="NUMERIC" />
+    <KeyWord name="OFFSET" />
+    <KeyWord name="ON" />
+    <KeyWord name="OR" />
+    <KeyWord name="ORDER" />
+    <KeyWord name="OUTER" />
+    <KeyWord name="PRIMARY" />
+    <KeyWord name="RANK" func="yes">
+      <Overload retVal="integer" descr="RANK() OVER (...)" />
+    </KeyWord>
+    <KeyWord name="REAL" />
+    <KeyWord name="RECURSIVE" />
+    <KeyWord name="REFERENCES" />
+    <KeyWord name="REPLACE" func="yes">
+      <Overload retVal="text">
+        <Param name="string" />
+        <Param name="from" />
+        <Param name="to" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="REVOKE" />
+    <KeyWord name="RIGHT" />
+    <KeyWord name="ROLLBACK" />
+    <KeyWord name="ROUND" func="yes">
+      <Overload retVal="numeric">
+        <Param name="number" />
+        <Param name="decimals" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="ROW_NUMBER" func="yes">
+      <Overload retVal="integer" descr="ROW_NUMBER() OVER (...)" />
+    </KeyWord>
+    <KeyWord name="SELECT" />
+    <KeyWord name="SET" />
+    <KeyWord name="SMALLINT" />
+    <KeyWord name="SUBSTRING" func="yes">
+      <Overload retVal="text">
+        <Param name="string" />
+        <Param name="start" />
+        <Param name="length" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="SUM" func="yes">
+      <Overload retVal="numeric">
+        <Param name="expression" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="TABLE" />
+    <KeyWord name="TEXT" />
+    <KeyWord name="THEN" />
+    <KeyWord name="TIME" />
+    <KeyWord name="TIMESTAMP" />
+    <KeyWord name="TRANSACTION" />
+    <KeyWord name="TRIM" func="yes">
+      <Overload retVal="text">
+        <Param name="string" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="TRUE" />
+    <KeyWord name="UNION" />
+    <KeyWord name="UNIQUE" />
+    <KeyWord name="UPDATE" />
+    <KeyWord name="UPPER" func="yes">
+      <Overload retVal="text">
+        <Param name="string" />
+      </Overload>
+    </KeyWord>
+    <KeyWord name="USING" />
+    <KeyWord name="VALUES" />
+    <KeyWord name="VARCHAR" />
+    <KeyWord name="VIEW" />
+    <KeyWord name="WHEN" />
+    <KeyWord name="WHERE" />
+    <KeyWord name="WITH" />
+  </AutoComplete>
+</NotepadPlus>
