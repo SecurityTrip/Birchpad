@@ -1,4 +1,3 @@
-
 use birchpad_core::{Range, Selection};
 use gpui_kit::{
     Entity, Modifiers, MouseButton, MouseDownEvent, MouseUpEvent, TestAppContext,

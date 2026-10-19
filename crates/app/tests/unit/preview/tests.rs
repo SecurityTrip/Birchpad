@@ -332,6 +332,7 @@ fn plantuml_says_when_it_is_not_installed(cx: &mut TestAppContext) {
             );
             return;
         }
+        cx.executor().advance_clock(PLANTUML_DELAY);
         std::thread::sleep(std::time::Duration::from_millis(10));
     }
     panic!("PlantUML's absence was not reported");

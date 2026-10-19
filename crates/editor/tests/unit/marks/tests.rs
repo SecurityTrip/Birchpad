@@ -1,4 +1,3 @@
-
 use birchpad_commands::Invocation;
 use birchpad_core::{LineEnding, Range, Selection};
 use gpui_kit::{Entity, TestAppContext, VisualTestContext};

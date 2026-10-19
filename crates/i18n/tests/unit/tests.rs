@@ -33,7 +33,7 @@ fn languages_resolve() {
     assert_eq!(resolve("RU", None), "ru");
     assert_eq!(resolve("auto", Some("ru-RU")), "ru");
     assert_eq!(resolve("Auto", Some("ru_RU.UTF-8")), "ru");
-    assert_eq!(resolve("auto", Some("de-DE")), "en");
+    assert_eq!(resolve("auto", Some("fr-FR")), "en");
     assert_eq!(resolve("auto", None), "en");
     assert_eq!(resolve("", None), "en");
     assert_eq!(resolve("klingon", Some("ru")), "en");

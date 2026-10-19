@@ -1,4 +1,3 @@
-
 use birchpad_commands::Invocation;
 use gpui_kit::{Entity, Modifiers, TestAppContext, VisualTestContext, point};
 use serde_json::json;

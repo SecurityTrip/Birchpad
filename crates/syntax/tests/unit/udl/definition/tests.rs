@@ -82,10 +82,15 @@ fn edits_reach_the_file() {
     assert_eq!(read.comments(), ("--".into(), "{-".into(), "-}".into()));
     assert_eq!(read.delimiter(2), ("'".into(), String::new(), "'".into()));
     assert_eq!(read.line_comment_at, LineCommentAt::LineStart);
+    // Line comments start in the first column only, as written.
     let colors = parse_udl(&written).unwrap().remove(0);
     assert_eq!(
-        colors.highlight("alpha -- c", 0),
+        colors.highlight("alpha\n-- c", 0),
         [(0..5, UdlKind::Keyword(2)), (6..10, UdlKind::LineComment)]
+    );
+    assert_eq!(
+        colors.highlight("alpha -- c", 0),
+        [(0..5, UdlKind::Keyword(2))]
     );
 }
 
@@ -98,9 +103,9 @@ fn emptied_lists_are_left_out() {
         language.set_delimiter(index, "", "", "");
     }
     let written = language.to_xml();
-    assert!(!written.contains("Keywords1"));
-    assert!(!written.contains("Comments"));
-    assert!(!written.contains("Delimiters"));
+    assert!(!written.contains(r#"name="Keywords1""#));
+    assert!(!written.contains(r#"name="Comments""#));
+    assert!(!written.contains(r#"name="Delimiters""#));
     // Out of range: nothing changes.
     let before = language.clone();
     language.set_delimiter(DELIMITERS, "x", "", "x");

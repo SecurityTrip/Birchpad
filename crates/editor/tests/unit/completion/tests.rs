@@ -251,7 +251,7 @@ fn each_source_from_its_own_number_of_characters() {
 #[test]
 fn case_and_numbers_as_the_options_say() {
     let api = ApiFile::parse(
-        r#"<NotepadPlus><AutoComplete ignoreCase="yes"><KeyWord name="Print"/><KeyWord name="1st"/></AutoComplete></NotepadPlus>"#,
+        r#"<NotepadPlus><AutoComplete><Environment ignoreCase="yes"/><KeyWord name="Print"/><KeyWord name="1st"/></AutoComplete></NotepadPlus>"#,
     )
     .unwrap();
     let text = birchpad_core::Rope::from_str("printer 1000 pr 1");
