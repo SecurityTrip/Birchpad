@@ -15,7 +15,9 @@ use birchpad_cli::CommandLine;
 use birchpad_commands::{Keymap, Keystroke, Layer, Platform};
 use birchpad_config::{ProjectWorkspace, Session, Sources, UpdateChannel, UserState, resolve};
 use birchpad_core::Encoding;
-use birchpad_io::{CHARACTER_SETS, FileInfo, LoadOptions, decode_appended, decode_file, encode};
+use birchpad_io::{
+    CHARACTER_SETS, FileInfo, LoadOptions, decode_appended, decode_file, encode_document,
+};
 use birchpad_theme::Theme;
 use birchpad_update::SigningKey;
 use birchpad_update::manifest::{self, Envelope, Signature};
@@ -100,8 +102,9 @@ pub fn open_file(data: &[u8]) -> bool {
 
     match file.problem {
         None => {
-            let saved = encode(&file.text, format.encoding, format.bom)
-                .expect("text that decoded cleanly encodes");
+            // As Birchpad saves it: an EBCDIC file read with NEL gets NEL back.
+            let saved =
+                encode_document(&file.text, format).expect("text that decoded cleanly encodes");
             assert!(
                 saved == bytes,
                 "{format:?} does not save back to the bytes read"
