@@ -13,6 +13,8 @@ version's release notes from its section here.
   the text alone, both, or the preview alone; the choice is remembered. Links open in the
   browser or, for files, in Birchpad; images are read from files next to the document, never
   from the web.
+- PlantUML preview in the same way for `.puml` files, drawn by the PlantUML installed on the
+  computer: the `plantuml` command, or a `plantuml.jar` named in `preview.plantuml`.
 
 ## [0.3.0] - 2026-10-18
 

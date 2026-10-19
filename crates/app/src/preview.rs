@@ -1,15 +1,20 @@
-//! Previews beside the text, as IntelliJ IDEA shows them: a Markdown document is shown as its
-//! text and its rendered preview side by side, and the buttons at the top right of the text (or
-//! View > Preview) show the text alone, both, or the preview alone.
+//! Previews beside the text, as IntelliJ IDEA shows them: a Markdown or PlantUML document is
+//! shown as its text and its rendered preview side by side, and the buttons at the top right of
+//! the text (or View > Preview) show the text alone, both, or the preview alone.
 //!
 //! Each view of a document has its own preview, kept by its pane, which shows the text as it
 //! is being edited. The mode last chosen is remembered in `state.toml` (`preview`) and applies
 //! to documents opened after it.
 //!
-//! Links in the preview open in the browser, or in Birchpad when they name a file; images are
-//! read from files next to the document, never from the network.
+//! Links in the Markdown preview open in the browser, or in Birchpad when they name a file;
+//! images are read from files next to the document, never from the network. PlantUML diagrams
+//! are drawn by PlantUML itself, installed apart from Birchpad (`preview.plantuml`).
 
+use std::io::Write as _;
 use std::path::{Path, PathBuf};
+use std::process::{Command, Stdio};
+use std::sync::Arc;
+use std::time::Duration;
 
 use anyhow::bail;
 use birchpad_config::PreviewMode;
@@ -18,8 +23,9 @@ use gpui_kit::base::text::{TextView, TextViewState};
 use gpui_kit::component::button::{Button, ButtonVariants as _};
 use gpui_kit::component::{IconName, Selectable as _, Sizable};
 use gpui_kit::{
-    AnyElement, App, AppContext as _, Context, Entity, ImageSource, Resource, SharedString,
-    SharedUri, Subscription, WeakEntity, Window, div, prelude::*, px,
+    AnyElement, App, AppContext as _, Context, Entity, Image, ImageFormat, ImageSource, ObjectFit,
+    Resource, SharedString, SharedUri, Subscription, Task, WeakEntity, Window, div, img,
+    prelude::*, px,
 };
 
 use crate::app_state::AppState;
@@ -33,14 +39,29 @@ use crate::workspace::Workspace;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum PreviewKind {
     Markdown,
+    /// Diagrams drawn by PlantUML, installed apart from Birchpad.
+    PlantUml,
 }
 
-/// The preview `buffer` has, from its language.
+/// PlantUML's files: `.puml` and the other extensions its tools know.
+const PLANTUML_EXTENSIONS: [&str; 5] = ["puml", "plantuml", "pu", "iuml", "wsd"];
+
+/// The preview `buffer` has: from its language, or for PlantUML (which has no language of its
+/// own yet) from its file's extension.
 pub(crate) fn kind_of(buffer: &Buffer) -> Option<PreviewKind> {
-    match buffer.language()?.id {
-        "markdown" => Some(PreviewKind::Markdown),
-        _ => None,
+    kind_for(buffer.language().map(|language| language.id), buffer.path())
+}
+
+/// The preview of a document in `language` (by id) kept at `path`.
+pub(crate) fn kind_for(language: Option<&str>, path: Option<&Path>) -> Option<PreviewKind> {
+    if language == Some("markdown") {
+        return Some(PreviewKind::Markdown);
     }
+    let extension = path?.extension()?.to_str()?;
+    PLANTUML_EXTENSIONS
+        .iter()
+        .any(|known| known.eq_ignore_ascii_case(extension))
+        .then_some(PreviewKind::PlantUml)
 }
 
 /// The commands of View > Preview and the mode each one shows.
@@ -173,12 +194,115 @@ fn image_source(uri: &SharedUri, folder: Option<&Path>) -> ImageSource {
     }
 }
 
+/// What PlantUML writes after each diagram, to tell the diagrams of a file apart.
+const DIAGRAM_END: &str = "<!--birchpad-diagram-end-->";
+
+/// How long the text rests before PlantUML draws it again: it starts a Java program each time.
+const PLANTUML_DELAY: Duration = Duration::from_millis(400);
+
+/// The program and arguments that draw PlantUML's diagrams as SVG from the standard input, for
+/// the `preview.plantuml` setting: a `.jar` runs with `java -jar`.
+pub(crate) fn plantuml_command(setting: &str) -> (String, Vec<String>) {
+    let setting = match setting.trim() {
+        "" => "plantuml",
+        setting => setting,
+    };
+    let options = [
+        "-tsvg",
+        "-pipe",
+        "-charset",
+        "UTF-8",
+        "-pipedelimitor",
+        DIAGRAM_END,
+    ]
+    .map(str::to_owned);
+    let is_jar = Path::new(setting)
+        .extension()
+        .is_some_and(|extension| extension.eq_ignore_ascii_case("jar"));
+    if is_jar {
+        let mut args = vec!["-jar".to_owned(), setting.to_owned()];
+        args.extend(options);
+        ("java".to_owned(), args)
+    } else {
+        (setting.to_owned(), options.to_vec())
+    }
+}
+
+/// The SVG images in PlantUML's output, one per diagram.
+pub(crate) fn split_diagrams(output: &[u8]) -> Vec<Vec<u8>> {
+    String::from_utf8_lossy(output)
+        .split(DIAGRAM_END)
+        .map(str::trim)
+        .filter(|part| part.contains("<svg"))
+        .map(|part| part.as_bytes().to_vec())
+        .collect()
+}
+
+/// Runs PlantUML on `text`: the diagrams, or why there are none.
+fn run_plantuml(setting: &str, text: &str) -> Result<Vec<Vec<u8>>, String> {
+    let (program, args) = plantuml_command(setting);
+    let mut command = Command::new(&program);
+    command
+        .args(&args)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt as _;
+        // CREATE_NO_WINDOW: no console flashes up for Java.
+        command.creation_flags(0x0800_0000);
+    }
+    let mut child = command.spawn().map_err(|error| {
+        if error.kind() == std::io::ErrorKind::NotFound {
+            t!("preview.plantuml-not-found", program = program)
+        } else {
+            t!("preview.plantuml-failed", error = error)
+        }
+    })?;
+    let mut stdin = child.stdin.take().expect("piped");
+    let input = text.to_owned();
+    // Written from another thread, so that a large diagram cannot block on a full pipe.
+    let writer = std::thread::spawn(move || stdin.write_all(input.as_bytes()));
+    let output = child
+        .wait_with_output()
+        .map_err(|error| t!("preview.plantuml-failed", error = error))?;
+    let _ = writer.join();
+    // A diagram with mistakes is drawn as a picture of them, with a status that is not 0.
+    let diagrams = split_diagrams(&output.stdout);
+    if diagrams.is_empty() {
+        let message = String::from_utf8_lossy(&output.stderr).trim().to_owned();
+        return Err(if message.is_empty() {
+            t!("preview.plantuml-no-diagram")
+        } else {
+            message
+        });
+    }
+    Ok(diagrams)
+}
+
+/// What a PlantUML preview shows.
+#[derive(Default)]
+struct Diagrams {
+    images: Vec<Arc<Image>>,
+    /// Why PlantUML drew nothing; the diagrams it drew last stay.
+    error: Option<String>,
+    /// PlantUML drawing the text.
+    drawing: Option<Task<()>>,
+}
+
+enum Content {
+    Markdown(Entity<TextViewState>),
+    PlantUml(Diagrams),
+}
+
 /// The preview of one view: the rendered text, kept up to date as the text changes.
 pub(crate) struct Preview {
     view: WeakEntity<EditorView>,
     workspace: WeakEntity<Workspace>,
+    pub(crate) kind: PreviewKind,
     pub(crate) mode: PreviewMode,
-    markdown: Entity<TextViewState>,
+    content: Content,
     /// The state of the text the preview shows.
     shown: Option<(RevisionId, usize)>,
     _subscription: Subscription,
@@ -187,21 +311,26 @@ pub(crate) struct Preview {
 impl Preview {
     pub(crate) fn new(
         view: &Entity<EditorView>,
+        kind: PreviewKind,
         workspace: WeakEntity<Workspace>,
         cx: &mut Context<Self>,
     ) -> Self {
         let buffer = view.read(cx).buffer.clone();
         let subscription = cx.observe(&buffer, |this, buffer, cx| this.update_text(&buffer, cx));
-        let markdown = cx.new(|cx| {
-            TextViewState::markdown("", cx)
-                .scrollable(true)
-                .selectable(true)
-        });
+        let content = match kind {
+            PreviewKind::Markdown => Content::Markdown(cx.new(|cx| {
+                TextViewState::markdown("", cx)
+                    .scrollable(true)
+                    .selectable(true)
+            })),
+            PreviewKind::PlantUml => Content::PlantUml(Diagrams::default()),
+        };
         let mut this = Self {
             view: view.downgrade(),
             workspace,
+            kind,
             mode: AppState::global(cx).state.preview,
-            markdown,
+            content,
             shown: None,
             _subscription: subscription,
         };
@@ -215,17 +344,62 @@ impl Preview {
         if self.shown == Some(state) {
             return;
         }
+        let first = self.shown.is_none();
         self.shown = Some(state);
         let text = doc.text().to_string();
-        self.markdown
-            .update(cx, |markdown, cx| markdown.set_text(&text, cx));
+        match &mut self.content {
+            Content::Markdown(markdown) => {
+                markdown.update(cx, |markdown, cx| markdown.set_text(&text, cx));
+            }
+            Content::PlantUml(diagrams) => {
+                let setting = AppState::global(cx).settings.preview.plantuml.clone();
+                let executor = cx.background_executor().clone();
+                // A new drawing replaces the one under way.
+                diagrams.drawing = Some(cx.spawn(async move |this, cx| {
+                    if !first {
+                        executor.timer(PLANTUML_DELAY).await;
+                    }
+                    let drawn = executor
+                        .spawn(async move { run_plantuml(&setting, &text) })
+                        .await;
+                    this.update(cx, |this, cx| {
+                        this.show_diagrams(drawn);
+                        cx.notify();
+                    })
+                    .ok();
+                }));
+            }
+        }
         cx.notify();
     }
 
-    /// The text the preview shows, without its formatting (for tests).
+    fn show_diagrams(&mut self, drawn: Result<Vec<Vec<u8>>, String>) {
+        let Content::PlantUml(diagrams) = &mut self.content else {
+            return;
+        };
+        diagrams.drawing = None;
+        match drawn {
+            Ok(images) => {
+                diagrams.images = images
+                    .into_iter()
+                    .map(|svg| Arc::new(Image::from_bytes(ImageFormat::Svg, svg)))
+                    .collect();
+                diagrams.error = None;
+            }
+            Err(error) => diagrams.error = Some(error),
+        }
+    }
+
+    /// The text the preview shows, without its formatting, or what PlantUML did (for tests).
     #[cfg(test)]
     pub(crate) fn rendered(&self, cx: &App) -> String {
-        self.markdown.read(cx).rendered_text().as_str().to_owned()
+        match &self.content {
+            Content::Markdown(markdown) => markdown.read(cx).rendered_text().as_str().to_owned(),
+            Content::PlantUml(diagrams) => diagrams
+                .error
+                .clone()
+                .unwrap_or_else(|| format!("{} diagrams", diagrams.images.len())),
+        }
     }
 
     fn folder(&self, cx: &App) -> Option<PathBuf> {
@@ -233,30 +407,66 @@ impl Preview {
         let buffer = view.read(cx).buffer.read(cx);
         buffer.path()?.parent().map(Path::to_path_buf)
     }
+
+    fn render_markdown(&self, markdown: &Entity<TextViewState>, cx: &App) -> AnyElement {
+        let folder = self.folder(cx);
+        let images = folder.clone();
+        let workspace = self.workspace.clone();
+        TextView::new(markdown)
+            .scrollable(true)
+            .selectable(true)
+            .size_full()
+            .px_4()
+            .image_source(move |uri| image_source(uri, images.as_deref()))
+            .on_link_click(move |link, _, window, cx| {
+                follow_link(link, folder.as_deref(), &workspace, window, cx);
+            })
+            .into_any_element()
+    }
+
+    fn render_diagrams(diagrams: &Diagrams) -> AnyElement {
+        let message = match (&diagrams.error, &diagrams.drawing) {
+            (Some(error), _) => Some((error.clone(), ui().error)),
+            (None, Some(_)) if diagrams.images.is_empty() => {
+                Some((t!("preview.plantuml-drawing"), ui().muted))
+            }
+            _ => None,
+        };
+        div()
+            .id("plantuml-diagrams")
+            .size_full()
+            .overflow_scroll()
+            .p_4()
+            .flex()
+            .flex_col()
+            .items_center()
+            .gap_4()
+            .when_some(message, |list, (message, color)| {
+                list.child(div().w_full().text_color(paint(color)).child(message))
+            })
+            .children(diagrams.images.iter().map(|image| {
+                img(ImageSource::Image(image.clone()))
+                    .flex_none()
+                    .max_w_full()
+                    .object_fit(ObjectFit::Contain)
+            }))
+            .into_any_element()
+    }
 }
 
 impl Render for Preview {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let folder = self.folder(cx);
-        let images = folder.clone();
-        let workspace = self.workspace.clone();
         let colors = crate::theme::current().editor;
+        let body = match &self.content {
+            Content::Markdown(markdown) => self.render_markdown(markdown, cx),
+            Content::PlantUml(diagrams) => Self::render_diagrams(diagrams),
+        };
         div()
             .id("preview")
             .size_full()
             .bg(paint(colors.background))
             .text_color(paint(colors.text))
-            .child(
-                TextView::new(&self.markdown)
-                    .scrollable(true)
-                    .selectable(true)
-                    .size_full()
-                    .px_4()
-                    .image_source(move |uri| image_source(uri, images.as_deref()))
-                    .on_link_click(move |link, _, window, cx| {
-                        follow_link(link, folder.as_deref(), &workspace, window, cx);
-                    }),
-            )
+            .child(body)
     }
 }
 

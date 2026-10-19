@@ -248,3 +248,91 @@ fn an_empty_folder_path_is_not_a_folder() {
         Some(PathBuf::from("a.md"))
     );
 }
+
+#[test]
+fn plantuml_files_are_known_by_their_extension() {
+    for name in ["a.puml", "a.plantuml", "a.pu", "a.iuml", "a.wsd", "A.PUML"] {
+        assert_eq!(
+            kind_for(None, Some(Path::new(name))),
+            Some(PreviewKind::PlantUml),
+            "{name}"
+        );
+    }
+    assert_eq!(
+        kind_for(Some("markdown"), Some(Path::new("a.puml"))),
+        Some(PreviewKind::Markdown),
+        "the language chosen comes first"
+    );
+    assert_eq!(kind_for(None, Some(Path::new("a.txt"))), None);
+    assert_eq!(
+        kind_for(None, Some(Path::new("puml"))),
+        None,
+        "no extension"
+    );
+    assert_eq!(
+        kind_for(None, Some(Path::new(".puml"))),
+        None,
+        "a hidden file"
+    );
+    assert_eq!(kind_for(None, None), None, "an untitled document");
+}
+
+#[test]
+fn plantuml_runs_as_a_command_or_a_jar() {
+    let (program, args) = plantuml_command("plantuml");
+    assert_eq!(program, "plantuml");
+    assert_eq!(args[..4], ["-tsvg", "-pipe", "-charset", "UTF-8"]);
+    let (program, args) = plantuml_command(" /opt/PlantUML.JAR ");
+    assert_eq!(program, "java");
+    assert_eq!(args[..2], ["-jar", "/opt/PlantUML.JAR"]);
+    assert_eq!(
+        plantuml_command("   ").0,
+        "plantuml",
+        "an empty setting is the default"
+    );
+}
+
+#[test]
+fn plantuml_output_is_split_into_diagrams() {
+    let svg = |n: u8| format!("<svg id=\"{n}\"></svg>");
+    let output = format!("{}\n{DIAGRAM_END}\n{}\n{DIAGRAM_END}\n", svg(1), svg(2));
+    assert_eq!(
+        split_diagrams(output.as_bytes()),
+        [svg(1).into_bytes(), svg(2).into_bytes()]
+    );
+    assert_eq!(split_diagrams(svg(3).as_bytes()), [svg(3).into_bytes()]);
+    assert!(split_diagrams(b"").is_empty());
+    assert!(split_diagrams(format!("Error\n{DIAGRAM_END}").as_bytes()).is_empty());
+}
+
+#[gpui_kit::test]
+fn plantuml_says_when_it_is_not_installed(cx: &mut TestAppContext) {
+    let (workspace, cx) = open_workspace(cx);
+    cx.update(|_, cx| {
+        cx.global_mut::<AppState>().settings.preview.plantuml =
+            "birchpad-test-no-such-plantuml".into();
+    });
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("flow.puml");
+    std::fs::write(&path, "@startuml\nA -> B\n@enduml\n").unwrap();
+    workspace.update_in(cx, |workspace, window, cx| {
+        workspace.open_path(&path, window, cx);
+    });
+    cx.run_until_parked();
+    assert_eq!(mode(&workspace, cx), Some(PreviewMode::Split));
+    let shown = preview(&workspace, cx).unwrap();
+    // The drawing runs a program outside the test executor.
+    for _ in 0..200 {
+        cx.run_until_parked();
+        let rendered = shown.read_with(cx, |preview, cx| preview.rendered(cx));
+        if rendered.contains("not found") {
+            assert!(
+                rendered.contains("birchpad-test-no-such-plantuml"),
+                "{rendered}"
+            );
+            return;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(10));
+    }
+    panic!("PlantUML's absence was not reported");
+}

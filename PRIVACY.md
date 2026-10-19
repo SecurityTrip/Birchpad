@@ -19,7 +19,8 @@ Birchpad connects to the network only for updates:
   manifest lists (GitHub's release downloads).
 
 The Markdown preview loads no images from the web, and a link in it opens in your browser
-only when you click it.
+only when you click it. PlantUML diagrams are drawn by the PlantUML installed on your computer,
+not by a server.
 
 GitHub serves these files and, like any web server, sees the requests: the address of your
 computer or network and the time. Its

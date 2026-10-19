@@ -956,7 +956,11 @@ preferences:
 preview:
   editor-and-preview: "Редактор и просмотр"
   editor-only: "Только редактор"
-  no-preview: "у документа нет предпросмотра: это не Markdown"
+  no-preview: "у документа нет предпросмотра: это не Markdown и не PlantUML"
+  plantuml-drawing: "PlantUML рисует диаграмму..."
+  plantuml-failed: "PlantUML не запустился: {error}"
+  plantuml-no-diagram: "PlantUML не нарисовал диаграмму: в тексте нужны @startuml и @enduml"
+  plantuml-not-found: "PlantUML не найден ({program}). Установите его или укажите в настройках preview.plantuml команду plantuml или путь к plantuml.jar (нужна Java)."
   preview-only: "Только просмотр"
 print:
   cannot-write: "не удалось записать {path}: {error}"

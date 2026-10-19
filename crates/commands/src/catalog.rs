@@ -264,7 +264,8 @@ pub const COMMANDS: &[CommandSpec] = &[
     workspace("panel.function-list", "Function List"),
     workspace("panel.clipboard-history", "Clipboard History"),
     workspace("panel.character-panel", "Character Panel"),
-    // View > Preview: a Markdown document's text, its preview beside it, or the preview alone
+    // View > Preview: a Markdown or PlantUML document's text, its preview beside it, or the
+    // preview alone
     workspace("view.preview-editor", "Editor Only"),
     workspace("view.preview-split", "Editor and Preview"),
     workspace("view.preview-only", "Preview Only"),

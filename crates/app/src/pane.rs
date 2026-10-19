@@ -289,13 +289,23 @@ impl Pane {
         item: &Entity<EditorView>,
         cx: &mut Context<Self>,
     ) -> Option<Entity<Preview>> {
-        crate::preview::kind_of(item.read(cx).buffer.read(cx))?;
+        let kind = crate::preview::kind_of(item.read(cx).buffer.read(cx))?;
+        let id = item.entity_id();
+        if let Some(preview) = self.previews.get(&id)
+            && preview.read(cx).kind == kind
+        {
+            return Some(preview.clone());
+        }
+        // A new preview, or one of another kind: a document saved as `.puml` from Markdown.
+        let mode = self.previews.get(&id).map(|preview| preview.read(cx).mode);
         let workspace = self.workspace.clone();
-        let preview = self
-            .previews
-            .entry(item.entity_id())
-            .or_insert_with(|| cx.new(|cx| Preview::new(item, workspace, cx)));
-        Some(preview.clone())
+        let preview = cx.new(|cx| {
+            let mut preview = Preview::new(item, kind, workspace, cx);
+            preview.mode = mode.unwrap_or(preview.mode);
+            preview
+        });
+        self.previews.insert(id, preview.clone());
+        Some(preview)
     }
 
     /// How the active document is shown, if it has a preview.

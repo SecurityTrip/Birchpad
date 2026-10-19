@@ -944,7 +944,11 @@ preferences:
 preview:
   editor-and-preview: "Editor and Preview"
   editor-only: "Editor Only"
-  no-preview: "the document has no preview: it is not Markdown"
+  no-preview: "the document has no preview: it is neither Markdown nor PlantUML"
+  plantuml-drawing: "PlantUML is drawing the diagram..."
+  plantuml-failed: "PlantUML did not run: {error}"
+  plantuml-no-diagram: "PlantUML drew no diagram: the text needs @startuml and @enduml"
+  plantuml-not-found: "PlantUML was not found ({program}). Install it, or set preview.plantuml in the settings to the plantuml command or to plantuml.jar (Java is needed)."
   preview-only: "Preview Only"
 print:
   cannot-write: "cannot write {path}: {error}"

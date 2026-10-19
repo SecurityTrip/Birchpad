@@ -28,6 +28,7 @@ pub struct Settings {
     pub plugins: PluginSettings,
     pub network: NetworkSettings,
     pub diagnostics: DiagnosticsSettings,
+    pub preview: PreviewSettings,
 }
 
 /// How Birchpad looks.
@@ -793,6 +794,23 @@ impl Default for NetworkSettings {
     fn default() -> Self {
         Self {
             online_features: true,
+        }
+    }
+}
+
+/// The previews beside the text (View > Preview).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, rename_all = "kebab-case")]
+pub struct PreviewSettings {
+    /// What draws PlantUML diagrams: the `plantuml` command (found on `PATH` by its name, or
+    /// a path to it), or a path to `plantuml.jar`, run with `java -jar`.
+    pub plantuml: String,
+}
+
+impl Default for PreviewSettings {
+    fn default() -> Self {
+        Self {
+            plantuml: "plantuml".to_owned(),
         }
     }
 }
