@@ -268,6 +268,36 @@ fn wildcards_expand_in_their_folder_and_below_with_r() {
 }
 
 #[test]
+fn parsing_unexpanded_leaves_the_file_system_alone() {
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::write(dir.path().join("a.txt"), "").unwrap();
+    let args = || ["*.txt", "-r", "/*", "b?.md", "plain.txt"].map(OsString::from);
+    let line = CommandLine::parse_unexpanded(args(), dir.path());
+    // The wildcards stay as written, even `/*` with `-r`, which would walk the whole disk.
+    assert_eq!(
+        line.files,
+        [
+            dir.path().join("*.txt"),
+            dir.path().join("/*"),
+            dir.path().join("b?.md"),
+            dir.path().join("plain.txt"),
+        ]
+    );
+    assert!(line.recursive);
+    assert!(line.warnings.is_empty(), "nothing was matched to warn of");
+    // Otherwise the same as parsing; nothing given, nothing parsed.
+    let plain = ["-n3", "-ro", "a.txt"].map(OsString::from);
+    assert_eq!(
+        CommandLine::parse_unexpanded(plain.clone(), dir.path()),
+        CommandLine::parse(plain, dir.path())
+    );
+    assert_eq!(
+        CommandLine::parse_unexpanded([], dir.path()),
+        CommandLine::default()
+    );
+}
+
+#[test]
 fn older_command_lines_read_with_the_new_options_off() {
     let line: CommandLine =
         serde_json::from_str(r#"{"files":["/a.txt"],"line":3,"read_only":true}"#).unwrap();

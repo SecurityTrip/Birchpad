@@ -269,6 +269,14 @@ impl CommandLine {
     /// Parses arguments (without the program name). Relative file names are resolved against
     /// `cwd`, and wildcards in them are matched there.
     pub fn parse(args: impl IntoIterator<Item = OsString>, cwd: &Path) -> Self {
+        let mut line = Self::parse_unexpanded(args, cwd);
+        line.expand_wildcards();
+        line
+    }
+
+    /// Parses arguments as [`parse`](Self::parse) does without looking at the file system:
+    /// wildcards stay in the file names as written.
+    pub fn parse_unexpanded(args: impl IntoIterator<Item = OsString>, cwd: &Path) -> Self {
         let mut line = Self::default();
         let mut args = args.into_iter().peekable();
         let mut files_only = false;
@@ -292,7 +300,6 @@ impl CommandLine {
             }
             line.option(&text, cwd);
         }
-        line.expand_wildcards();
         line
     }
 
