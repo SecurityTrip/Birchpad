@@ -52,6 +52,48 @@ pub enum CaretTarget {
     Position(usize),
 }
 
+/// An option of the command line, as Help > Command Line Arguments... lists it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CliOption {
+    /// How it is written: `-n<line>`.
+    pub syntax: &'static str,
+    /// What it does, in English; the interface's language has it under `cli.<slug>`.
+    pub description: &'static str,
+}
+
+const fn option(syntax: &'static str, description: &'static str) -> CliOption {
+    CliOption {
+        syntax,
+        description,
+    }
+}
+
+/// The options Birchpad takes, in the order Help > Command Line Arguments... lists them.
+pub const OPTIONS: &[CliOption] = &[
+    option("-n<line>", "Go to the line (from 1)"),
+    option("-c<column>", "Go to the column (from 1)"),
+    option(
+        "-p<position>",
+        "Go to the position (a byte offset from 0); wins over -n and -c",
+    ),
+    option(
+        "-l<language>",
+        "Highlight as the language (-lcpp, -lpython, -lnormal)",
+    ),
+    option("-ro", "Open the files read-only"),
+    option(
+        "-multiInst",
+        "Start a window of its own instead of handing the files to the running one",
+    ),
+    option("-nosession", "Neither restore nor save the session"),
+    option("-openSession", "The files are sessions to open"),
+    option(
+        "--",
+        "Everything after it is a file, even if it starts with a dash",
+    ),
+    option("file...", "The files to open"),
+];
+
 /// Options that Notepad++ accepts and Birchpad ignores (window placement, printing, ...).
 const IGNORED_FLAGS: &[&str] = &[
     "-notabbar",

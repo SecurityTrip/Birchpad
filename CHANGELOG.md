@@ -20,6 +20,9 @@ version's release notes from its section here.
   default printer at once. On macOS and Linux the same pages print from the browser.
 - Tools > MD5, SHA-1, SHA-256, SHA-512 > Generate from Files... shows the hashes in a window,
   as Notepad++ does, with Copy and Open in New Document.
+- The Help menu of Notepad++: Command Line Arguments..., Birchpad Home, Online Manual,
+  Community (Forum), Set Updater Proxy... (`updates.proxy`, the proxy updates go through) and
+  Debug Info... (what a bug report needs, with Copy).
 
 ### Changed
 

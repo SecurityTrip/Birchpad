@@ -920,7 +920,19 @@ pub fn main_menu() -> Vec<Menu> {
 
     let help = Menu::new(
         "Help",
-        vec![cmd("help.check-updates"), Separator, cmd("help.about")],
+        vec![
+            cmd("help.command-line"),
+            Separator,
+            cmd("help.home-page"),
+            cmd("help.manual"),
+            cmd("help.forum"),
+            Separator,
+            cmd("help.check-updates"),
+            cmd("help.updater-proxy"),
+            Separator,
+            cmd("help.debug-info"),
+            cmd("help.about"),
+        ],
     );
 
     vec![

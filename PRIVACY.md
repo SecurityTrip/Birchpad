@@ -18,6 +18,9 @@ Birchpad connects to the network only for updates:
   per-user Windows installer downloads the package of a newer version, from the address the
   manifest lists (GitHub's release downloads).
 
+Both go through the proxy of Help > Set Updater Proxy... (`updates.proxy`) when one is set, else
+through the one of `HTTPS_PROXY` or `ALL_PROXY` or, on Windows, the system's.
+
 The Markdown preview loads no images from the web, and a link in it opens in your browser
 only when you click it. PlantUML diagrams are drawn by the PlantUML installed on your computer,
 not by a server.
@@ -34,5 +37,5 @@ covers them.
 - Administrators can set the same with the `UpdateMode` policy (the Windows registry), which
   users cannot override.
 
-A link you choose to open (Open Download Page in an update notice, for example) goes to your
-browser.
+A link you choose to open (Open Download Page in an update notice, or Birchpad's home page,
+manual and forum in the Help menu) goes to your browser.

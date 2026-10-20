@@ -218,10 +218,28 @@ pub struct HttpTransport {
     stall: Duration,
 }
 
+/// The proxy `setting` names (`updates.proxy`: `http://host:port`, `socks5://host:port`,
+/// `host:port`), or when it is empty the one of `HTTPS_PROXY` or `ALL_PROXY` (on Windows, the
+/// system's too); `None` for none.
+pub fn proxy(setting: &str) -> Result<Option<ureq::Proxy>, String> {
+    let setting = setting.trim();
+    if setting.is_empty() {
+        return Ok(ureq::Proxy::try_from_env());
+    }
+    ureq::Proxy::new(setting)
+        .map(Some)
+        .map_err(|_| birchpad_i18n::t!("update.not-a-proxy", proxy = setting))
+}
+
 impl HttpTransport {
     /// Creating the transport does not touch the network.
     pub fn new(user_agent: &str) -> Self {
         Self::build(user_agent, ureq::Proxy::try_from_env(), STALL)
+    }
+
+    /// A transport through the proxy `setting` names (see [`proxy`]).
+    pub fn with_proxy(user_agent: &str, setting: &str) -> Result<Self, String> {
+        Ok(Self::build(user_agent, proxy(setting)?, STALL))
     }
 
     /// A transport through `proxy` (`None`: direct) whose bodies fail as stalled when nothing

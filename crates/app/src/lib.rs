@@ -157,8 +157,9 @@ pub fn run() {
             macros::init(cx);
             run_menu::init(cx);
             user_languages::init(cx);
+            let proxy = AppState::global(cx).settings.updates.proxy.clone();
             updates::Updates::install(
-                updates::Updates::http(),
+                updates::Updates::http(&proxy),
                 updates::trusted_keys(),
                 birchpad_update::install::detect(),
                 cx,

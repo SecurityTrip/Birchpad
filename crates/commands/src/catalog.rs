@@ -455,6 +455,12 @@ pub const COMMANDS: &[CommandSpec] = &[
     // From the update dialogs and notifications.
     workspace("help.update-now", "Update and Restart"),
     workspace("help.restart-to-update", "Restart to Update"),
+    workspace("help.command-line", "Command Line Arguments..."),
+    workspace("help.home-page", "Birchpad Home"),
+    workspace("help.manual", "Online Manual"),
+    workspace("help.forum", "Community (Forum)"),
+    workspace("help.updater-proxy", "Set Updater Proxy..."),
+    workspace("help.debug-info", "Debug Info..."),
     workspace("help.about", "About Birchpad"),
 ];
 

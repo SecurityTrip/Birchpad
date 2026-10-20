@@ -750,6 +750,10 @@ pub struct UpdateSettings {
     /// The signed update manifest to read instead of the official one, e.g. on an internal
     /// mirror; it must still be signed with a key Birchpad trusts.
     pub url: Option<String>,
+    /// The proxy updates go through (Help > Set Updater Proxy...): `http://host:port`,
+    /// `socks5://host:port` or `host:port`; empty for the one of `HTTPS_PROXY` or
+    /// `ALL_PROXY`, or the system's on Windows.
+    pub proxy: String,
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]

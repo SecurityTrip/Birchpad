@@ -76,6 +76,7 @@ fn settings(mode: UpdateMode, channel: UpdateChannel) -> UpdateSettings {
         mode,
         channel,
         url: None,
+        proxy: String::new(),
     }
 }
 
@@ -446,4 +447,28 @@ fn the_default_download_keeps_to_the_limit() {
     // A folder that does not exist cannot be written to.
     let nowhere = dir.path().join("missing").join("p");
     assert!(transport.download("u", &nowhere, 5, &|_| {}).is_err());
+}
+
+#[test]
+fn proxies_as_written_or_from_the_environment() {
+    for proxy in [
+        "http://proxy.example.com:8080",
+        "proxy.example.com:8080",
+        "socks5://127.0.0.1:1080",
+        "https://user:secret@proxy:443",
+    ] {
+        assert!(
+            matches!(birchpad_update::proxy(proxy), Ok(Some(_))),
+            "{proxy}"
+        );
+        assert!(HttpTransport::with_proxy("Birchpad/0.1.0 (test)", proxy).is_ok());
+    }
+    // Empty is the environment's (or nothing), never an error.
+    assert!(birchpad_update::proxy("").is_ok());
+    assert!(birchpad_update::proxy("   ").is_ok());
+    for wrong in ["ftp://proxy:21", "not a proxy", "http://", "://x"] {
+        let error = birchpad_update::proxy(wrong).unwrap_err();
+        assert!(error.contains(wrong.trim()), "{wrong}: {error}");
+        assert!(HttpTransport::with_proxy("Birchpad/0.1.0 (test)", wrong).is_err());
+    }
 }

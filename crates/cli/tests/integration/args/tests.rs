@@ -100,3 +100,27 @@ fn round_trips_through_json() {
     let json = serde_json::to_string(&line).unwrap();
     assert_eq!(serde_json::from_str::<CommandLine>(&json).unwrap(), line);
 }
+
+#[test]
+fn every_listed_option_is_understood() {
+    let cwd = std::path::Path::new("/work");
+    let mut seen = std::collections::HashSet::new();
+    for option in OPTIONS {
+        assert!(seen.insert(option.syntax), "{} twice", option.syntax);
+        assert!(!option.description.is_empty());
+        // The syntax with its placeholder filled in parses without a warning.
+        let written = option
+            .syntax
+            .replace("<line>", "3")
+            .replace("<column>", "4")
+            .replace("<position>", "5")
+            .replace("<language>", "cpp")
+            .replace("file...", "a.txt");
+        let parsed = CommandLine::parse([std::ffi::OsString::from(written.clone())], cwd);
+        assert!(
+            parsed.warnings.is_empty(),
+            "{written}: {:?}",
+            parsed.warnings
+        );
+    }
+}

@@ -1,12 +1,17 @@
-//! The Help menu: About, and the dialogs of Check for Updates (`updates.rs`).
+//! The Help menu, as Notepad++'s: Command Line Arguments..., Birchpad's home page, manual and
+//! forum, Set Updater Proxy..., Debug Info... (to copy into a bug report) and About, and the
+//! dialogs of Check for Updates (`updates.rs`).
 
 use std::fmt::Write as _;
 
 use birchpad_config::UpdateChannel;
-use gpui_kit::component::WindowExt as _;
 use gpui_kit::component::button::{Button, ButtonVariants as _};
 use gpui_kit::component::dialog::DialogFooter;
-use gpui_kit::{App, ClipboardItem, SharedString, Window, div, prelude::*, px};
+use gpui_kit::component::input::{Input, InputState};
+use gpui_kit::component::{Disableable as _, WindowExt as _};
+use gpui_kit::{
+    App, AppContext as _, ClipboardItem, Context, Entity, SharedString, Window, div, prelude::*, px,
+};
 
 use crate::app_state::AppState;
 use crate::commands::{CommandRegistry, Register as _};
@@ -17,12 +22,264 @@ pub const VERSION: &str = env!("BIRCHPAD_VERSION");
 pub const BUILD_CHANNEL: &str = env!("BIRCHPAD_CHANNEL");
 pub const COMMIT: Option<&str> = option_env!("BIRCHPAD_COMMIT");
 
+/// Birchpad's home page: its repository.
+pub const HOME_PAGE: &str = "https://github.com/SecurityTrip/Birchpad";
+/// The manual: the README, which says how to install and use Birchpad.
+pub const MANUAL: &str = "https://github.com/SecurityTrip/Birchpad#readme";
+/// Where users talk: the repository's discussions.
+pub const FORUM: &str = "https://github.com/SecurityTrip/Birchpad/discussions";
+
 pub fn register_commands(registry: &mut CommandRegistry) {
     registry.workspace("help.about", |_, (), window, cx| {
         show_about(window, cx);
         Ok(())
     });
+    registry.workspace("help.command-line", |_, (), window, cx| {
+        show_command_line(window, cx);
+        Ok(())
+    });
+    for (id, page) in [
+        ("help.home-page", HOME_PAGE),
+        ("help.manual", MANUAL),
+        ("help.forum", FORUM),
+    ] {
+        registry.workspace(id, move |_, (), _, cx| {
+            cx.open_url(page);
+            Ok(())
+        });
+    }
+    registry.workspace("help.debug-info", |_, (), window, cx| {
+        show_debug_info(window, cx);
+        Ok(())
+    });
+    registry.workspace("help.updater-proxy", |_, (), window, cx| {
+        open_proxy(window, cx);
+        Ok(())
+    });
     crate::updates::register_commands(registry);
+}
+
+/// Help > Command Line Arguments...: the options, each with what it does.
+pub fn command_line_rows() -> Vec<(&'static str, String)> {
+    birchpad_cli::OPTIONS
+        .iter()
+        .map(|option| {
+            let key = format!("cli.{}", crate::i18n::slug(option.description));
+            (option.syntax, crate::i18n::get_or(&key, option.description))
+        })
+        .collect()
+}
+
+fn show_command_line(window: &mut Window, cx: &mut App) {
+    let rows = command_line_rows();
+    window.open_dialog(cx, move |dialog, _, _| {
+        let table = div()
+            .flex()
+            .flex_col()
+            .gap_1()
+            .child(div().pb_2().child(t!("help.usage")))
+            .children(rows.iter().map(|(syntax, description)| {
+                div()
+                    .flex()
+                    .flex_row()
+                    .gap_3()
+                    .child(
+                        div()
+                            .w(px(120.))
+                            .flex_none()
+                            .font_family(crate::MONOSPACE)
+                            .child(*syntax),
+                    )
+                    .child(div().flex_1().min_w_0().child(description.clone()))
+            }))
+            .child(
+                div()
+                    .pt_2()
+                    .text_color(crate::theme::paint(crate::theme::ui().muted))
+                    .child(t!("help.other-options-are-ignored")),
+            );
+        dialog
+            .title(t!("help.command-line-arguments"))
+            .w(px(640.))
+            .child(table)
+            .footer(DialogFooter::new().child(crate::workspace::dialog_action(
+                Button::new("ok").primary().label(t!("common.ok")),
+            )))
+            .on_ok(|_, _, _| true)
+    });
+}
+
+/// Help > Debug Info...: what a bug report needs to know of this Birchpad, as text: the About
+/// box's, and the system, the program, its arguments, the language, the theme, the proxy and
+/// the plugins.
+pub fn debug_info(cx: &App) -> String {
+    let settings = &AppState::global(cx).settings;
+    let mut text = about_text(cx);
+    let exe = std::env::current_exe()
+        .map(|path| path.display().to_string())
+        .unwrap_or_default();
+    let arguments: Vec<String> = std::env::args().skip(1).collect();
+    let plugins: Vec<String> = cx
+        .try_global::<crate::extensions::plugins::Plugins>()
+        .map(|plugins| {
+            plugins
+                .entries
+                .iter()
+                .map(|entry| entry.id().to_owned())
+                .collect()
+        })
+        .unwrap_or_default();
+    let proxy = settings.updates.proxy.trim();
+    let rows = [
+        (
+            "OS",
+            format!("{} {}", std::env::consts::OS, std::env::consts::ARCH),
+        ),
+        ("Program", exe),
+        ("Arguments", arguments.join(" ")),
+        ("Language", birchpad_i18n::language()),
+        ("Theme", crate::editor::theme::current().name.clone()),
+        (
+            "Proxy",
+            if proxy.is_empty() {
+                t!("help.proxy-of-the-system")
+            } else {
+                proxy.to_owned()
+            },
+        ),
+        (
+            "Plugins",
+            if plugins.is_empty() {
+                t!("help.none")
+            } else {
+                plugins.join(", ")
+            },
+        ),
+    ];
+    for (label, value) in rows {
+        let _ = write!(text, "\n{:<10}{value}", format!("{label}:"));
+    }
+    text
+}
+
+fn show_debug_info(window: &mut Window, cx: &mut App) {
+    let text = debug_info(cx);
+    window.open_dialog(cx, move |dialog, _, _| {
+        let copied = text.clone();
+        dialog
+            .title(t!("help.debug-info"))
+            .w(px(640.))
+            .child(
+                div()
+                    .id("debug-info")
+                    .font_family(crate::MONOSPACE)
+                    .text_sm()
+                    .children(
+                        text.lines()
+                            .map(|line| div().whitespace_nowrap().child(line.to_owned())),
+                    ),
+            )
+            .footer(
+                DialogFooter::new()
+                    .child(
+                        Button::new("copy-debug-info")
+                            .label(t!("help.copy"))
+                            .on_click(move |_, _, cx| {
+                                cx.write_to_clipboard(ClipboardItem::new_string(copied.clone()));
+                            }),
+                    )
+                    .child(crate::workspace::dialog_action(
+                        Button::new("ok").primary().label(t!("common.ok")),
+                    )),
+            )
+            .on_ok(|_, _, _| true)
+    });
+}
+
+#[cfg(feature = "test-support")]
+thread_local! {
+    /// The proxy dialog opened last, for tests to drive.
+    pub static PROXY: std::cell::RefCell<Option<gpui_kit::WeakEntity<ProxyDialog>>> =
+        std::cell::RefCell::default();
+}
+
+/// Help > Set Updater Proxy...: the proxy updates go through.
+pub struct ProxyDialog {
+    pub input: Entity<InputState>,
+    pub error: Option<String>,
+}
+
+fn open_proxy(window: &mut Window, cx: &mut App) {
+    let state = AppState::global(cx);
+    let current = state.settings.updates.proxy.clone();
+    let locked = state.is_locked("updates.proxy");
+    let dialog = cx.new(|cx| ProxyDialog {
+        input: cx.new(|cx| {
+            InputState::new(window, cx)
+                .default_value(current)
+                .placeholder("http://proxy.example.com:8080")
+        }),
+        error: locked.then(|| t!("help.set-by-policy")),
+    });
+    #[cfg(feature = "test-support")]
+    PROXY.with(|proxy| *proxy.borrow_mut() = Some(dialog.downgrade()));
+    window.open_dialog(cx, move |modal, _, _| {
+        let confirm = dialog.clone();
+        modal
+            .title(t!("help.set-updater-proxy"))
+            .w(px(480.))
+            .child(dialog.clone())
+            .footer(
+                DialogFooter::new()
+                    .child(crate::workspace::dialog_close("common.cancel"))
+                    .child(crate::workspace::dialog_action(
+                        Button::new("proxy-ok")
+                            .primary()
+                            .label(t!("common.ok"))
+                            .disabled(locked),
+                    )),
+            )
+            .on_ok(move |_, _, cx| confirm.update(cx, |dialog, cx| dialog.apply(cx)))
+    });
+}
+
+impl ProxyDialog {
+    /// OK: the proxy written to the settings and used from now on; `false` (the dialog stays,
+    /// saying why) when it is no proxy or cannot be written.
+    pub fn apply(&mut self, cx: &mut Context<Self>) -> bool {
+        let text = self.input.read(cx).value().trim().to_owned();
+        let result = birchpad_update::proxy(&text)
+            .map_err(|error| anyhow::anyhow!(error))
+            .and_then(|_| {
+                let value = (!text.is_empty()).then(|| toml::Value::String(text.clone()));
+                crate::preferences::set("updates.proxy", value, cx)
+            })
+            .and_then(|()| crate::updates::Updates::use_proxy(&text, cx));
+        match result {
+            Ok(()) => true,
+            Err(error) => {
+                self.error = Some(format!("{error:#}"));
+                cx.notify();
+                false
+            }
+        }
+    }
+}
+
+impl Render for ProxyDialog {
+    fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+        div()
+            .flex()
+            .flex_col()
+            .gap_2()
+            .child(t!("help.proxy-explained"))
+            .child(Input::new(&self.input).id("proxy-input"))
+            .children(self.error.clone().map(|error| {
+                div()
+                    .text_color(crate::theme::paint(crate::theme::ui().error))
+                    .child(error)
+            }))
+    }
 }
 
 pub fn channel_name(channel: UpdateChannel) -> &'static str {

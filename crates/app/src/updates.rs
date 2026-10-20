@@ -220,10 +220,29 @@ impl Updates {
         });
     }
 
-    /// The real transport. Creating it does not touch the network.
-    pub fn http() -> Arc<dyn Transport> {
+    /// The real transport, through the proxy `updates.proxy` names (the environment's or the
+    /// system's when it is empty or names none). Creating it does not touch the network.
+    pub fn http(proxy: &str) -> Arc<dyn Transport> {
         let user_agent = format!("Birchpad/{VERSION} ({})", std::env::consts::OS);
-        Arc::new(HttpTransport::new(&user_agent))
+        match HttpTransport::with_proxy(&user_agent, proxy) {
+            Ok(transport) => Arc::new(transport),
+            Err(error) => {
+                eprintln!("updates.proxy: {error}");
+                Arc::new(HttpTransport::new(&user_agent))
+            }
+        }
+    }
+
+    /// Updates go through the proxy `setting` names from now on (Help > Set Updater Proxy...).
+    pub fn use_proxy(setting: &str, cx: &mut App) -> anyhow::Result<()> {
+        let user_agent = format!("Birchpad/{VERSION} ({})", std::env::consts::OS);
+        let transport = HttpTransport::with_proxy(&user_agent, setting)
+            .map_err(|error| anyhow::anyhow!(error))?;
+        // Tests keep the transport they installed.
+        if cfg!(not(feature = "test-support")) && cx.has_global::<Self>() {
+            cx.global_mut::<Self>().transport = Arc::new(transport);
+        }
+        Ok(())
     }
 
     pub fn installed(cx: &App) -> bool {

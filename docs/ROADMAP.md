@@ -594,7 +594,7 @@ floors in `.github/coverage-floors.toml` with its tests.
       ([ADR 0044](adr/0044-print-preview-and-native-printing.md))
 - [x] 6.38 Tools: hashes of files in a dialog with Copy, as Notepad++ shows them, besides the
       listing in a new document
-- [ ] 6.39 Help menu: Command Line Arguments, home page, online manual and forum, Debug Info
+- [x] 6.39 Help menu: Command Line Arguments, home page, online manual and forum, Debug Info
       (copyable), Set Updater Proxy
 - [ ] 6.40 The command line options Birchpad accepts but ignores: -notabbar, -systemtray,
       -alwaysOnTop, -loadingTime, -r (recursive wildcards), -quickPrint, -monitor,
