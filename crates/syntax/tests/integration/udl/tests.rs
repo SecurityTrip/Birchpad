@@ -122,12 +122,15 @@ fn lists_and_codes() {
     );
     assert_eq!(language("&quot;&quot; x", "").extensions, ["\"\"", "x"]);
     assert!(language("  ", "").extensions.is_empty());
-    // Coded: `00//` is a line comment's start, `03/*` a block comment's; a code alone, a word
-    // without a code and a number of one digit are nothing.
-    let coded = language("t", "00// 01 03/* x 4");
+    // Coded: `00//` is a line comment's start, `03/*` and `04*/` a block comment's; a code
+    // alone, a word without a code and a number of one digit are nothing.
+    let coded = language("t", "00// 01 03/* x 4 04*/");
     assert_eq!(coded.highlight("a // b", 0), [(2..6, UdlKind::LineComment)]);
     assert_eq!(coded.highlight("/* b", 0), [(0..4, UdlKind::Comment)]);
-    assert!(coded.highlight("x 4", 0).is_empty());
+    assert!(
+        coded.highlight("x", 0).is_empty(),
+        "no word of the list is a comment"
+    );
 }
 
 #[test]
