@@ -11,7 +11,10 @@ fn resolved(toml: &str) -> ResolvedSettings {
 fn printing_starts_with_line_numbers_on_a4() {
     let print = PrintSettings::default();
     assert!(print.line_numbers && !print.landscape);
-    assert_eq!((print.paper, print.colors), (Paper::A4, PrintColors::Wysiwyg));
+    assert_eq!(
+        (print.paper, print.colors),
+        (Paper::A4, PrintColors::Wysiwyg)
+    );
     assert_eq!(
         (
             print.margin_top,
@@ -32,7 +35,11 @@ fn print_settings_read_from_the_file() {
          landscape = true\nmargin-left = 0\nfont-size = 72\n\
          footer-center = \"$(CURRENT_PRINTING_PAGE)\"",
     );
-    assert!(settings.diagnostics.is_empty(), "{:?}", settings.diagnostics);
+    assert!(
+        settings.diagnostics.is_empty(),
+        "{:?}",
+        settings.diagnostics
+    );
     let print = settings.settings.print;
     assert!(!print.line_numbers && print.landscape);
     assert_eq!(print.colors, PrintColors::BlackOnWhite);
