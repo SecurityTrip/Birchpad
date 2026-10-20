@@ -611,7 +611,7 @@ floors in `.github/coverage-floors.toml` with its tests.
 - [x] [#45](https://github.com/SecurityTrip/Birchpad/issues/45) Links open with Ctrl+click
       only; a double click selects a word of them as anywhere, and opens them only with
       Preferences > Cloud & Link > Open them with a double click too (`links.double-click`)
-- [ ] Release 0.5.0: the workspace version (0.5.0, set when its branch opens, so that nightly
+- [x] Release 0.5.0: the workspace version (0.5.0, set when its branch opens, so that nightly
       builds are its pre-releases), `CHANGELOG.md` and this roadmap updated; the
       [release checklist](release-checklist.md) gone through
 

@@ -6,6 +6,8 @@ version's release notes from its section here.
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-10-21
+
 ### Added
 
 - File > Print... shows a print preview of Birchpad's own: the pages one at a time, as they
@@ -40,6 +42,11 @@ version's release notes from its section here.
   click too (`links.double-click`) brings back Notepad++'s double click.
 - Every crate is tested through its public interface: the tests in `tests/integration`, one
   test binary per crate, and `birchpad` is a library and a program that runs it (ADR 0043).
+
+### Fixed
+
+- In a very long line whose start has combining marks, a click or a move to a column landed
+  after the marks rather than before them.
 
 ## [0.4.0] - 2026-10-19
 
@@ -554,7 +561,8 @@ The first release: a Notepad++-like editor for Windows, Linux and macOS.
   entirely (`updates.mode = "off"`).
 - Nightly builds of `main` on the nightly channel.
 
-[Unreleased]: https://github.com/SecurityTrip/Birchpad/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/SecurityTrip/Birchpad/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/SecurityTrip/Birchpad/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/SecurityTrip/Birchpad/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/SecurityTrip/Birchpad/compare/v0.2.5...v0.3.0
 [0.2.5]: https://github.com/SecurityTrip/Birchpad/compare/v0.2.0...v0.2.5
