@@ -607,6 +607,7 @@ dependencies = [
  "trash",
  "windows-sys 0.61.2",
  "x11rb",
+ "zip",
 ]
 
 [[package]]
@@ -897,6 +898,7 @@ dependencies = [
  "thiserror 2.0.21",
  "ureq",
  "velopack",
+ "zip",
 ]
 
 [[package]]

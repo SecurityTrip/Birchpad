@@ -580,7 +580,7 @@ floors in `.github/coverage-floors.toml` with its tests.
       builds are its pre-releases), `CHANGELOG.md` and this roadmap updated; the
       [release checklist](release-checklist.md) gone through
 
-### Release 0.5.0: printing, tools and help
+### Release 0.5.0: printing, tools, help and PlantUML
 
 - [x] 6.36 Integration tests: each crate's tests in its `tests` folder test it through its
       public interface, the application split into a library and the program so that they
@@ -603,7 +603,11 @@ floors in `.github/coverage-floors.toml` with its tests.
       Notepad++ does: -systemtray starts minimized, since GPUI has no tray icon (7.4);
       -openFoldersAsWorkspace is what Birchpad does with every folder; -qn names Notepad++'s
       easter eggs, its own texts, which Birchpad does not bundle (it says so); -pluginMessage
-      is accepted but reaches no plugin until the plugin API has an event for it (6.41)
+      is accepted but reaches no plugin until the plugin API has an event for it (6.42)
+- [x] 6.41 PlantUML without installing it: the preview of a PlantUML document without a
+      PlantUML offers to install one, and one click downloads PlantUML's MIT build with a Java
+      runtime made for it, built for each platform by Birchpad's release workflow and pinned
+      by size and SHA-256 ([ADR 0045](adr/0045-plantuml-installed-on-request.md))
 - [ ] Release 0.5.0: the workspace version (0.5.0, set when its branch opens, so that nightly
       builds are its pre-releases), `CHANGELOG.md` and this roadmap updated; the
       [release checklist](release-checklist.md) gone through
@@ -612,28 +616,28 @@ floors in `.github/coverage-floors.toml` with its tests.
 
 Closing Phase 6.
 
-- [ ] 6.41 A wider plugin API: settings of their own, files opened with the user's permission,
+- [ ] 6.42 A wider plugin API: settings of their own, files opened with the user's permission,
       a panel of their own controls, items in the text's context menu, events while typing and
       when the selection changes, the command line's -pluginMessage, work in the background; scripts' own commands and keys;
       Settings > Import plugin(s)
-- [ ] 6.42 Compare as ComparePlus: lines padded to stay aligned side by side, differences
+- [ ] 6.43 Compare as ComparePlus: lines padded to stay aligned side by side, differences
       within a line, comparing with the last save, the clipboard or Git; a navigation bar of the
       differences
-- [ ] 6.43 JSON Viewer's tree panel (find a path, copy a value), sorting keys; XML Tools'
+- [ ] 6.44 JSON Viewer's tree panel (find a path, copy a value), sorting keys; XML Tools'
       XPath, XSD and DTD validation, escaping and unescaping, closing tags as typed
-- [ ] 6.44 Hex Editor in place: the bytes edited in a hex view of the document itself
+- [ ] 6.45 Hex Editor in place: the bytes edited in a hex view of the document itself
       (overwrite, insert, the caret shared with the text), columns and grouping, Find in hex
-- [ ] 6.45 DSpellCheck's options (several languages at once, ignore rules, words in code by
+- [ ] 6.46 DSpellCheck's options (several languages at once, ignore rules, words in code by
       style); a dictionary bundled for English under a license compatible with Birchpad's
-- [ ] 6.46 Online features under the `OnlineFeatures` policy: Plugins Admin's online list of
+- [ ] 6.47 Online features under the `OnlineFeatures` policy: Plugins Admin's online list of
       plugins (available, updates, installed) with checksums; DSpellCheck's dictionary download
 
-- [ ] 6.47 Documentation in Russian: the user's and the contributor's documents (README,
+- [ ] 6.48 Documentation in Russian: the user's and the contributor's documents (README,
       CONTRIBUTING, SECURITY, PRIVACY, the code of conduct, writing plugins and scripts, the
       release checklist and this roadmap) as `*.ru.md` next to the English ones, linked from
       each other; from then on a change to one updates the other. ADRs and the changelog stay
       in English
-- [ ] 6.48 A last comparison with Notepad++ 8's menus, Preferences and command line, with what
+- [ ] 6.49 A last comparison with Notepad++ 8's menus, Preferences and command line, with what
       is still missing moved to Phase 7 or written down
 - [ ] Release 0.6.0: the workspace version (0.6.0, set when its branch opens, so that nightly
       builds are its pre-releases), `CHANGELOG.md` and this roadmap updated; the

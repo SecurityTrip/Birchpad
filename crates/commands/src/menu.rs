@@ -671,6 +671,8 @@ pub fn main_menu() -> Vec<Menu> {
                     cmd("view.preview-editor"),
                     cmd("view.preview-split"),
                     cmd("view.preview-only"),
+                    Separator,
+                    cmd("preview.install-plantuml"),
                 ],
             )),
             Separator,

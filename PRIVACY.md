@@ -6,7 +6,7 @@ portable mode, the `data` folder next to it).
 
 ## Network requests
 
-Birchpad connects to the network only for updates:
+Birchpad connects to the network only for updates, and to install PlantUML when you ask:
 
 - **Checking for updates**: once a day while Birchpad runs, and when you pick Help > Check for
   Updates, it downloads the update manifest from
@@ -18,12 +18,17 @@ Birchpad connects to the network only for updates:
   per-user Windows installer downloads the package of a newer version, from the address the
   manifest lists (GitHub's release downloads).
 
-Both go through the proxy of Help > Set Updater Proxy... (`updates.proxy`) when one is set, else
+- **Installing PlantUML**: when you click Install PlantUML in the preview of a PlantUML
+  document (or View > Preview > Install PlantUML), Birchpad downloads PlantUML and the Java that
+  runs it from a release of its repository on GitHub (`plantuml-*`), once. With
+  `network.online-features = false` it does not.
+
+These go through the proxy of Help > Set Updater Proxy... (`updates.proxy`) when one is set, else
 through the one of `HTTPS_PROXY` or `ALL_PROXY` or, on Windows, the system's.
 
 The Markdown preview loads no images from the web, and a link in it opens in your browser
-only when you click it. PlantUML diagrams are drawn by the PlantUML installed on your computer,
-not by a server.
+only when you click it. PlantUML diagrams are drawn by PlantUML on your computer (yours, or the
+one Birchpad installed), not by a server.
 
 GitHub serves these files and, like any web server, sees the requests: the address of your
 computer or network and the time. Its

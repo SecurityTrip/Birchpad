@@ -1,0 +1,138 @@
+# PlantUML for the preview (ADR 0045): PlantUML's MIT build and a Java runtime made for it with
+# jlink (Eclipse Temurin), a ZIP for each platform Birchpad runs on, published as the release of
+# the tag pushed, `plantuml-<PlantUML's version>-<revision>`. Birchpad pins each package's URL,
+# size and SHA-256 (`crates/update/src/component.rs`) and downloads one only when the user
+# installs PlantUML from a preview.
+
+name: PlantUML
+
+on:
+  push:
+    tags: ["plantuml-*"]
+
+permissions:
+  contents: read
+
+env:
+  PLANTUML_VERSION: "1.2026.9"
+  # Of plantuml-mit-1.2026.9.jar on Maven Central.
+  PLANTUML_SHA256: "e84e45b37ad3030cf802e7be18a687d209eca55733a5679b1f1f1a515f7f70dd"
+  JAVA_VERSION: "21"
+
+jobs:
+  package:
+    name: package (${{ matrix.platform }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows-x64
+            os: windows-latest
+            arch: x64
+          - platform: windows-arm64
+            os: windows-11-arm
+            arch: aarch64
+          - platform: linux-x64
+            os: ubuntu-22.04
+            arch: x64
+          - platform: macos-arm64
+            os: macos-latest
+            arch: aarch64
+          # An x64 Java on an Apple Silicon runner, which runs it through Rosetta.
+          - platform: macos-x64
+            os: macos-latest
+            arch: x64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+          architecture: ${{ matrix.arch }}
+      - name: Download PlantUML
+        shell: bash
+        run: |
+          curl -sSfL -o plantuml.jar \
+            "https://repo1.maven.org/maven2/net/sourceforge/plantuml/plantuml-mit/$PLANTUML_VERSION/plantuml-mit-$PLANTUML_VERSION.jar"
+          actual=$(openssl dgst -sha256 -r plantuml.jar | cut -d' ' -f1)
+          if [ "$actual" != "$PLANTUML_SHA256" ]; then
+            echo "::error::plantuml-mit-$PLANTUML_VERSION.jar has SHA-256 $actual, not $PLANTUML_SHA256"
+            exit 1
+          fi
+      - name: Make the Java runtime
+        shell: bash
+        run: |
+          modules=$(jdeps --ignore-missing-deps --print-module-deps --multi-release "$JAVA_VERSION" plantuml.jar)
+          echo "Modules: $modules"
+          jlink --add-modules "$modules" --strip-debug --no-man-pages --no-header-files \
+            --compress=zip-6 --output package/jre
+          cp plantuml.jar package/plantuml.jar
+          cat > package/README.txt <<EOF
+          PlantUML $PLANTUML_VERSION for Birchpad's previews.
+
+          plantuml.jar: PlantUML's MIT build (https://plantuml.com), under the MIT license.
+          jre: a Java $JAVA_VERSION runtime made with jlink from Eclipse Temurin
+          (https://adoptium.net), under the GNU General Public License version 2 with the
+          Classpath Exception; its notices are in jre/legal.
+          EOF
+      - name: Check that it draws without Graphviz
+        shell: bash
+        run: |
+          java=package/jre/bin/java
+          printf '@startuml\nclass A\nA --> B\n@enduml\n' |
+            "$java" -Djava.awt.headless=true -jar package/plantuml.jar -tsvg -pipe -Playout=smetana > drawn.svg
+          grep -q "<svg" drawn.svg
+      - name: Pack
+        shell: bash
+        run: |
+          name="birchpad-${GITHUB_REF_NAME}-${{ matrix.platform }}.zip"
+          mkdir dist
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            (cd package && 7z a -tzip -mx=9 "../dist/$name" .)
+          else
+            (cd package && zip -r -9 -X "../dist/$name" .)
+          fi
+          ls -l dist
+      - uses: actions/upload-artifact@v7
+        with:
+          name: plantuml-${{ matrix.platform }}
+          path: dist/*.zip
+          if-no-files-found: error
+
+  release:
+    needs: package
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: plantuml-*
+          path: dist
+          merge-multiple: true
+      - uses: actions/attest-build-provenance@v4
+        with:
+          subject-path: dist/*.zip
+      - name: Publish
+        shell: bash
+        run: |
+          cd dist
+          {
+            echo "PlantUML $PLANTUML_VERSION with a Java $JAVA_VERSION runtime, for Birchpad's"
+            echo "PlantUML previews, which install it when asked. Not a release of Birchpad."
+            echo
+            echo '| Package | Bytes | SHA-256 |'
+            echo '|---|---|---|'
+            for file in *.zip; do
+              echo "| $file | $(stat -c %s "$file") | $(sha256sum "$file" | cut -d' ' -f1) |"
+            done
+          } > ../notes.md
+          sha256sum *.zip > checksums.txt
+          cat ../notes.md
+          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --prerelease \
+            --title "PlantUML $PLANTUML_VERSION for Birchpad" --notes-file ../notes.md \
+            *.zip checksums.txt

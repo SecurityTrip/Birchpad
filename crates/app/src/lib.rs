@@ -39,6 +39,7 @@ pub mod navigation;
 pub mod pane;
 pub mod panels;
 pub mod path_dialog;
+pub mod plantuml;
 pub mod preferences;
 pub mod preview;
 pub mod print;

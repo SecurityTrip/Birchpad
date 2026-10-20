@@ -110,6 +110,9 @@ mod panels;
 #[path = "path_dialog/tests.rs"]
 mod path_dialog;
 
+#[path = "plantuml_tests.rs"]
+mod plantuml_tests;
+
 #[path = "preferences/dialog_tests.rs"]
 mod preferences_dialog_tests;
 

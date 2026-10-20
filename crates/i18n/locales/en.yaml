@@ -239,6 +239,8 @@ command:
     reload: "Reload Plugins"
     run: "Run Plugin Command"
     uninstall: "Remove Plugin"
+  preview:
+    install-plantuml: "Install PlantUML"
   run:
     builtin: "Run Built-in Command"
     run: "Run..."
@@ -813,6 +815,13 @@ panels:
     no-workspace: "No workspace"
     open-workspace: "Open Workspace..."
   there-is-no-project-panel-they-are-numbered-1-to: "there is no project panel {panel}; they are numbered 1 to {PROJECT_PANELS}"
+plantuml:
+  install: "Install PlantUML ({size} MB)"
+  installing: "Installing PlantUML: {received} of {size} MB..."
+  no-data-folder: "There is no data folder to install PlantUML in."
+  no-package: "Birchpad has no PlantUML for this system: install PlantUML and Java, or set preview.plantuml"
+  online-features-off: "Installing PlantUML downloads it, and downloads are off (network.online-features). Install PlantUML yourself, or set preview.plantuml."
+  what-is-installed: "PlantUML and the Java that runs it are downloaded from Birchpad's releases on GitHub, checked, and kept in Birchpad's data folder."
 plural:
   binary-files:
     one: "{count} binary file"
@@ -1397,9 +1406,11 @@ plugin:
 update:
   bad-signature: "the update manifest's signature is not valid"
   cannot-download: "cannot download {url}: {reason}"
+  component-not-as-built: "{url} is not the package Birchpad's release built: its size or SHA-256 differs"
   expired: "the update manifest expired on {date}: the update server may be serving an old one to hide newer releases"
   manifest-does-not-read: "the update manifest cannot be read: {reason}"
   newer-format: "the update manifest has format {format} and this Birchpad reads format {known}: update it from the download page"
+  no-component-package: "there is no {component} for {platform}"
   no-keys: "this build of Birchpad has no key to check update manifests with"
   not-a-proxy: "{proxy} is not a proxy: write http://host:port, socks5://host:port or host:port"
   other-product: "the update manifest is for {product}, not Birchpad"

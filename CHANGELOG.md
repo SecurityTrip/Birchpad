@@ -28,6 +28,10 @@ version's release notes from its section here.
   `-settingsDir`, `-loadingTime`, `-quickPrint`, `-monitor`, `-udl`, `-r` with wildcards (which
   now open every file they match), ghost typing with `-qt`, `-qf` and `-qSpeed`, and
   `-nopluginsupport`.
+- PlantUML previews work without installing anything: when no PlantUML is found, the preview
+  offers Install PlantUML, which downloads PlantUML and the Java that runs it (about 50 MB),
+  checks them and keeps them in Birchpad's data folder. Diagrams are laid out without Graphviz.
+  `preview.plantuml` still names a PlantUML of your own.
 
 ### Changed
 

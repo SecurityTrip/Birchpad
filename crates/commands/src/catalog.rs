@@ -271,6 +271,7 @@ pub const COMMANDS: &[CommandSpec] = &[
     workspace("view.preview-editor", "Editor Only"),
     workspace("view.preview-split", "Editor and Preview"),
     workspace("view.preview-only", "Preview Only"),
+    workspace("preview.install-plantuml", "Install PlantUML"),
     editor("search.go-to-matching-brace", "Go to Matching Brace"),
     editor(
         "search.select-to-matching-brace",

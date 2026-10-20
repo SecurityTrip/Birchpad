@@ -238,6 +238,8 @@ command:
     reload: "Перезагрузить плагины"
     run: "Выполнить команду плагина"
     uninstall: "Удалить плагин"
+  preview:
+    install-plantuml: "Установить PlantUML"
   run:
     builtin: "Встроенная команда"
     run: "Запустить..."
@@ -812,6 +814,13 @@ panels:
     no-workspace: "Нет рабочего пространства"
     open-workspace: "Открыть рабочее пространство..."
   there-is-no-project-panel-they-are-numbered-1-to: "нет панели проекта {panel}; они нумеруются от 1 до {PROJECT_PANELS}"
+plantuml:
+  install: "Установить PlantUML ({size} МБ)"
+  installing: "Установка PlantUML: {received} из {size} МБ..."
+  no-data-folder: "Нет папки данных, куда можно установить PlantUML."
+  no-package: "Для этой системы у Birchpad нет PlantUML: установите PlantUML и Java или задайте preview.plantuml"
+  online-features-off: "Установка PlantUML скачивает его, а скачивание выключено (network.online-features). Установите PlantUML сами или задайте preview.plantuml."
+  what-is-installed: "PlantUML и Java для него скачиваются из релизов Birchpad на GitHub, проверяются и хранятся в папке данных Birchpad."
 plural:
   binary-files:
     one: "{count} двоичный файл"
@@ -1409,9 +1418,11 @@ plugin:
 update:
   bad-signature: "подпись манифеста обновлений неверна"
   cannot-download: "не удалось загрузить {url}: {reason}"
+  component-not-as-built: "{url} — не тот пакет, что собрал релиз Birchpad: не совпадает размер или SHA-256"
   expired: "срок манифеста обновлений истёк {date}: сервер обновлений может выдавать старый манифест, скрывая новые выпуски"
   manifest-does-not-read: "манифест обновлений не читается: {reason}"
   newer-format: "у манифеста обновлений формат {format}, а этот Birchpad читает формат {known}: обновите его со страницы загрузки"
+  no-component-package: "нет {component} для {platform}"
   no-keys: "в этой сборке Birchpad нет ключа для проверки манифестов обновлений"
   not-a-proxy: "{proxy} — не прокси: укажите http://host:port, socks5://host:port или host:port"
   other-product: "манифест обновлений предназначен для {product}, а не для Birchpad"

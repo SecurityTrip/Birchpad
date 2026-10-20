@@ -827,7 +827,9 @@ impl Default for NetworkSettings {
 #[serde(default, rename_all = "kebab-case")]
 pub struct PreviewSettings {
     /// What draws PlantUML diagrams: the `plantuml` command (found on `PATH` by its name, or
-    /// a path to it), or a path to `plantuml.jar`, run with `java -jar`.
+    /// a path to it), or a path to `plantuml.jar`, run with `java -jar`. With `plantuml`, the
+    /// default, the PlantUML Birchpad installed (View > Preview > Install PlantUML) runs when
+    /// there is one.
     pub plantuml: String,
 }
 

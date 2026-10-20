@@ -169,6 +169,7 @@ pub fn register_commands(registry: &mut CommandRegistry) {
     crate::print::register_commands(registry);
     crate::pane::register_commands(registry);
     crate::preview::register_commands(registry);
+    crate::plantuml::register_commands(registry);
     crate::window_menu::register_commands(registry);
     crate::file_commands::register_commands(registry);
     crate::window_modes::register_commands(registry);
@@ -604,7 +605,7 @@ impl Workspace {
             self.ghost_type(ghost, window, cx);
         }
         if let Some(message) = &command_line.plugin_message {
-            // Plugins have no event for it yet (roadmap 6.41).
+            // Plugins have no event for it yet (roadmap 6.42).
             eprintln!("-pluginMessage={message}: plugins hear no command line messages yet");
         }
         if command_line.quick_print {

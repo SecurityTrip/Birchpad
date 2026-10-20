@@ -279,14 +279,14 @@ fn plantuml_files_are_known_by_their_extension() {
 
 #[test]
 fn plantuml_runs_as_a_command_or_a_jar() {
-    let (program, args) = plantuml_command("plantuml");
+    let (program, args) = plantuml_command("plantuml", None);
     assert_eq!(program, "plantuml");
     assert_eq!(args[..4], ["-tsvg", "-pipe", "-charset", "UTF-8"]);
-    let (program, args) = plantuml_command(" /opt/PlantUML.JAR ");
+    let (program, args) = plantuml_command(" /opt/PlantUML.JAR ", None);
     assert_eq!(program, "java");
     assert_eq!(args[..2], ["-jar", "/opt/PlantUML.JAR"]);
     assert_eq!(
-        plantuml_command("   ").0,
+        plantuml_command("   ", None).0,
         "plantuml",
         "an empty setting is the default"
     );

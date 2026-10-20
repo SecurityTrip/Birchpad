@@ -237,6 +237,8 @@ command:
     reload: "Plugins neu laden"
     run: "Plugin-Befehl ausführen"
     uninstall: "Plugin entfernen"
+  preview:
+    install-plantuml: "PlantUML installieren"
   run:
     builtin: "Eingebauten Befehl ausführen"
     run: "Ausführen..."
@@ -811,6 +813,13 @@ panels:
     no-workspace: "Kein Arbeitsbereich"
     open-workspace: "Arbeitsbereich öffnen..."
   there-is-no-project-panel-they-are-numbered-1-to: "es gibt keinen Projektbereich {panel}; sie sind von 1 bis {PROJECT_PANELS} nummeriert"
+plantuml:
+  install: "PlantUML installieren ({size} MB)"
+  installing: "PlantUML wird installiert: {received} von {size} MB..."
+  no-data-folder: "Es gibt keinen Datenordner, in den PlantUML installiert werden kann."
+  no-package: "Birchpad hat kein PlantUML für dieses System: PlantUML und Java installieren oder preview.plantuml festlegen"
+  online-features-off: "PlantUML zu installieren lädt es herunter, und Downloads sind aus (network.online-features). Installieren Sie PlantUML selbst oder legen Sie preview.plantuml fest."
+  what-is-installed: "PlantUML und das Java, das es ausführt, werden aus den Releases von Birchpad auf GitHub heruntergeladen, geprüft und im Datenordner von Birchpad abgelegt."
 plural:
   binary-files:
     one: "{count} Binärdatei"
@@ -1395,9 +1404,11 @@ plugin:
 update:
   bad-signature: "die Signatur des Aktualisierungsmanifests ist ungültig"
   cannot-download: "{url} kann nicht heruntergeladen werden: {reason}"
+  component-not-as-built: "{url} ist nicht das Paket, das das Release von Birchpad gebaut hat: Größe oder SHA-256 weichen ab"
   expired: "das Aktualisierungsmanifest ist am {date} abgelaufen: Der Server liefert vielleicht ein altes, um neuere Versionen zu verbergen"
   manifest-does-not-read: "das Aktualisierungsmanifest ist nicht lesbar: {reason}"
   newer-format: "das Aktualisierungsmanifest hat das Format {format}, dieses Birchpad liest Format {known}: Aktualisieren Sie es von der Download-Seite"
+  no-component-package: "es gibt kein {component} für {platform}"
   no-keys: "diese Version von Birchpad hat keinen Schlüssel, um Aktualisierungsmanifeste zu prüfen"
   not-a-proxy: "{proxy} ist kein Proxy: http://host:port, socks5://host:port oder host:port angeben"
   other-product: "das Aktualisierungsmanifest ist für {product}, nicht für Birchpad"

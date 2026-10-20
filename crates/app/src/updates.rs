@@ -245,6 +245,12 @@ impl Updates {
         Ok(())
     }
 
+    /// The transport of updates, which components are downloaded through too.
+    pub fn transport(cx: &App) -> Option<Arc<dyn Transport>> {
+        cx.try_global::<Self>()
+            .map(|updates| updates.transport.clone())
+    }
+
     pub fn installed(cx: &App) -> bool {
         cx.try_global::<Self>()
             .is_some_and(|updates| updates.installer.is_some())
