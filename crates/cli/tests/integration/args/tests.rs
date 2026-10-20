@@ -260,6 +260,10 @@ fn wildcards_expand_in_their_folder_and_below_with_r() {
         "-r anywhere on the line"
     );
     assert_eq!(names(&parse_in(&["sub/*"])), ["sub/d.txt"]);
+    // A folder that is not there matches nothing either.
+    let missing = parse_in(&["missing/*.txt", "-r"]);
+    assert!(missing.files.is_empty());
+    assert_eq!(missing.warnings.len(), 1, "{:?}", missing.warnings);
     let none = parse_in(&["*.rs"]);
     assert!(none.files.is_empty());
     assert_eq!(none.warnings.len(), 1, "nothing matches");

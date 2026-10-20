@@ -79,4 +79,12 @@ fn elsewhere_there_is_no_such_menu() {
     assert!(add(Path::new("/usr/bin/birchpad")).is_err());
     remove().unwrap();
     assert!(!is_added());
+    // Nor anywhere to add it, or to remember it was taken away.
+    assert!(add_at("Software/Test", Path::new("/usr/bin/birchpad")).is_err());
+    remove_at("Software/Test").unwrap();
+    assert!(!is_added_at("Software/Test"));
+    remember_removed("Software/Test", true).unwrap();
+    assert!(!was_removed("Software/Test"));
+    remember_removed("Software/Test", false).unwrap();
+    assert!(!was_removed(""));
 }
