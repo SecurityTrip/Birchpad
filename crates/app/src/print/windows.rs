@@ -41,13 +41,12 @@ impl Drop for Printer {
     }
 }
 
-/// Asks for a printer (or takes the default one without asking) and returns its context and
-/// the pages chosen, from 1, if the user chose a range.
-fn choose(
-    owner: HWND,
-    ask: bool,
-    pages: usize,
-) -> anyhow::Result<Option<(Printer, Option<(usize, usize)>)>> {
+/// A printer chosen, and the pages chosen (from 1) if the user chose a range.
+type Chosen = (Printer, Option<(usize, usize)>);
+
+/// Asks for a printer (or takes the default one without asking); `None` if the user did not
+/// choose one.
+fn choose(owner: HWND, ask: bool, pages: usize) -> anyhow::Result<Option<Chosen>> {
     let last = u16::try_from(pages).unwrap_or(u16::MAX);
     let mut dialog = PRINTDLGW {
         lStructSize: u32::try_from(size_of::<PRINTDLGW>()).expect("a small structure"),
