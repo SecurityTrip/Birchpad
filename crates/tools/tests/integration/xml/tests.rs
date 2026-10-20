@@ -79,13 +79,16 @@ fn says_where_a_document_is_not_well_formed() {
 fn positions_count_characters() {
     // The parser's line and column are in characters; the problem's offset is in bytes.
     let at = |text: &str| check(text).unwrap_err().offset;
+    assert_eq!(at("<a>мир</b>"), "<a>мир".len(), "the wrong closing tag");
     assert_eq!(
-        at("<мир>\n<ab"),
-        "<мир>\n<ab".len(),
-        "the unclosed tag, at the end"
+        at("<a>\nмир &bad; x</a>"),
+        "<a>\nмир ".len(),
+        "an unknown entity on the second line"
     );
-    assert_eq!(at("<a>мир</b>"), "<a>мир</".len(), "the wrong closing tag");
-    assert_eq!(at(""), 0, "nothing at all");
+    assert_eq!(at("<a>\n  мир<b></a>"), "<a>\n  мир<b>".len());
+    // A root never closed, and nothing at all: the start.
+    assert_eq!(at("<мир>\n<ab"), 0);
+    assert_eq!(at(""), 0);
 }
 
 #[test]
