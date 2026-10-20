@@ -5,6 +5,7 @@
 use birchpad_core::{Encoding, Rope};
 use encoding_rs::{DecoderResult, EncoderResult};
 
+use crate::codec::Codec;
 use crate::encode::encode;
 use crate::encoding::to_codec;
 
@@ -105,18 +106,21 @@ pub fn byte_changes(bytes: &[u8], skip: usize, encoding: Encoding) -> ByteChange
 /// ISO-2022-JP switches modes with escape sequences that carry over lines, so it is decoded
 /// byte by byte throughout.
 fn multi_byte(bytes: &[u8], skip: usize, encoding: Encoding, changes: &mut ByteChanges) {
-    let target = to_codec(encoding);
-    if target.is_iso_2022_jp() {
-        by_character(bytes, skip, encoding, changes);
-        return;
-    }
+    // Birchpad's own code pages are single-byte: the encodings here are encoding_rs's.
+    let target = match to_codec(encoding) {
+        Codec::Rs(target) if target != encoding_rs::ISO_2022_JP => target,
+        _ => {
+            by_character(bytes, skip, encoding, changes);
+            return;
+        }
+    };
     let mut offset = 0;
     // A line break is never part of a multi-byte character in these encodings.
     for line in bytes.split_inclusive(|&byte| byte == b'\n') {
         let same = target
             .decode_without_bom_handling_and_without_replacement(line)
             .is_some_and(|text| {
-                let (again, unmappable) = target.encode(&text);
+                let (again, _, unmappable) = target.encode(&text);
                 !unmappable && again == line
             });
         if !same {
