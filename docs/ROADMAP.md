@@ -592,7 +592,7 @@ floors in `.github/coverage-floors.toml` with its tests.
       macOS and Linux the pages print through the browser, since printing there needs an
       `NSView` or GTK, which GPUI and Birchpad do not have
       ([ADR 0044](adr/0044-print-preview-and-native-printing.md))
-- [ ] 6.38 Tools: hashes of files in a dialog with Copy, as Notepad++ shows them, besides the
+- [x] 6.38 Tools: hashes of files in a dialog with Copy, as Notepad++ shows them, besides the
       listing in a new document
 - [ ] 6.39 Help menu: Command Line Arguments, home page, online manual and forum, Debug Info
       (copyable), Set Updater Proxy

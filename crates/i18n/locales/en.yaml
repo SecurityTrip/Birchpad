@@ -1222,6 +1222,8 @@ theme:
   not-a-notepad-theme: "not a Notepad++ theme: {reason}"
   not-a-theme: "not a theme: {reason}"
 tools:
+  copied: "Copied"
+  copy: "Copy"
   date-time:
     month-1: "January"
     month-10: "October"
@@ -1242,6 +1244,9 @@ tools:
     weekday-4: "Friday"
     weekday-5: "Saturday"
     weekday-6: "Sunday"
+  hashes-of-files: "{hash} of Files"
+  no-files: "No files"
+  open-in-new-document: "Open in New Document"
   select-the-text-to-hash: "select the text to hash"
   hex:
     line: "line {line}: {message}"

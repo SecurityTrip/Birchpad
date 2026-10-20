@@ -1234,6 +1234,8 @@ theme:
   not-a-notepad-theme: "не тема Notepad++: {reason}"
   not-a-theme: "не тема: {reason}"
 tools:
+  copied: "Скопировано"
+  copy: "Копировать"
   date-time:
     month-1: "января"
     month-10: "октября"
@@ -1254,6 +1256,9 @@ tools:
     weekday-4: "пятница"
     weekday-5: "суббота"
     weekday-6: "воскресенье"
+  hashes-of-files: "{hash} файлов"
+  no-files: "Нет файлов"
+  open-in-new-document: "Открыть в новом документе"
   select-the-text-to-hash: "выделите текст, хеш которого нужен"
   hex:
     line: "строка {line}: {message}"

@@ -7,6 +7,7 @@ use anyhow::Result;
 use birchpad::tools::*;
 use birchpad::workspace::Workspace;
 use birchpad_core::hash::HashKind;
+use gpui_kit::component::WindowExt as _;
 
 fn run(
     workspace: &Entity<Workspace>,
@@ -164,8 +165,19 @@ fn every_hash_of_the_selection(cx: &mut TestAppContext) {
     }
 }
 
+/// The window of hashes opened last.
+fn hashes_window() -> Entity<HashesDialog> {
+    OPENED
+        .with(|opened| opened.borrow().clone().and_then(|weak| weak.upgrade()))
+        .expect("the hashes are shown")
+}
+
+fn has_dialog(cx: &mut VisualTestContext) -> bool {
+    cx.update(|window, cx| window.has_active_dialog(cx))
+}
+
 #[gpui_kit::test]
-fn hashes_of_chosen_files_open_in_a_new_document(cx: &mut TestAppContext) {
+fn hashes_of_chosen_files_show_in_a_window_with_copy(cx: &mut TestAppContext) {
     let (workspace, cx) = open_workspace(cx);
     let dir = tempfile::tempdir().unwrap();
     let file = dir.path().join("a.txt");
@@ -181,8 +193,11 @@ fn hashes_of_chosen_files_open_in_a_new_document(cx: &mut TestAppContext) {
     let chosen = vec![file.clone(), gone.clone()];
     cx.simulate_path_prompt_response(move |_| Some(chosen));
     cx.run_until_parked();
-    assert_eq!(tab_names(&workspace, cx).len(), tabs + 1);
-    let listing = active_text(&workspace, cx);
+    assert!(has_dialog(cx));
+    assert_eq!(tab_names(&workspace, cx).len(), tabs, "no new document yet");
+    let window = hashes_window();
+    let (kind, listing) = window.read_with(cx, |window, _| (window.kind, window.listing.clone()));
+    assert_eq!(kind, HashKind::Sha256);
     assert!(
         listing.starts_with(&format!(
             "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad  {}",
@@ -194,8 +209,23 @@ fn hashes_of_chosen_files_open_in_a_new_document(cx: &mut TestAppContext) {
         listing.contains(&format!("# {}: ", gone.display())),
         "{listing}"
     );
+    // Copy puts the listing on the clipboard.
+    window.update(cx, |window, cx| window.copy(cx));
+    assert!(window.read_with(cx, |window, _| window.copied));
+    let copied = cx.update(|_, cx| cx.read_from_clipboard().and_then(|item| item.text()));
+    assert_eq!(copied.as_deref(), Some(listing.as_str()));
+    // Open in New Document: the listing in a new tab, and the window closes.
+    cx.update(|window_, cx| window.update(cx, |window, cx| window.open_in_document(window_, cx)));
+    cx.run_until_parked();
+    assert!(!has_dialog(cx));
+    assert_eq!(tab_names(&workspace, cx).len(), tabs + 1);
+    assert_eq!(active_text(&workspace, cx), listing);
+}
 
-    // Cancelled: no new document.
+#[gpui_kit::test]
+fn no_files_or_a_cancelled_choice(cx: &mut TestAppContext) {
+    let (workspace, cx) = open_workspace(cx);
+    // Cancelled: no window.
     run(
         &workspace,
         Invocation::with_args("tools.hash-files", json!({ "hash": "md5" })),
@@ -204,5 +234,20 @@ fn hashes_of_chosen_files_open_in_a_new_document(cx: &mut TestAppContext) {
     .unwrap();
     cx.simulate_path_prompt_response(|_| None);
     cx.run_until_parked();
-    assert_eq!(tab_names(&workspace, cx).len(), tabs + 1);
+    assert!(!has_dialog(cx));
+    // No file chosen: an empty listing.
+    run(
+        &workspace,
+        Invocation::with_args("tools.hash-files", json!({ "hash": "sha512" })),
+        cx,
+    )
+    .unwrap();
+    cx.simulate_path_prompt_response(|_| Some(Vec::new()));
+    cx.run_until_parked();
+    assert!(has_dialog(cx));
+    let window = hashes_window();
+    assert_eq!(
+        window.read_with(cx, |window, _| (window.kind, window.listing.clone())),
+        (HashKind::Sha512, String::new())
+    );
 }

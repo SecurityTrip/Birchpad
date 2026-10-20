@@ -1220,6 +1220,8 @@ theme:
   not-a-notepad-theme: "kein Notepad++-Thema: {reason}"
   not-a-theme: "kein Thema: {reason}"
 tools:
+  copied: "Kopiert"
+  copy: "Kopieren"
   date-time:
     month-1: "Januar"
     month-10: "Oktober"
@@ -1240,6 +1242,9 @@ tools:
     weekday-4: "Freitag"
     weekday-5: "Samstag"
     weekday-6: "Sonntag"
+  hashes-of-files: "{hash} der Dateien"
+  no-files: "Keine Dateien"
+  open-in-new-document: "In neuem Dokument öffnen"
   select-the-text-to-hash: "wählen Sie den Text aus, dessen Hash erzeugt werden soll"
   hex:
     line: "Zeile {line}: {message}"

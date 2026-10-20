@@ -1,15 +1,22 @@
 //! The Tools menu: hashes of the selection or of files (Notepad++'s MD5, SHA-1, SHA-256 and
 //! SHA-512), and conversions of the selected text (Base64, URL encoding, ASCII and hexadecimal,
-//! as Notepad++'s MIME Tools and Converter plugins do).
+//! as Notepad++'s MIME Tools and Converter plugins do). The hashes of files show in a window,
+//! as Notepad++'s, with Copy, and open in a new document from there.
 
 use anyhow::{Result, anyhow, bail};
 use birchpad_core::hash::{HashKind, hash_hex};
 use birchpad_core::ops::{Conversion, encode_selections};
-use gpui_kit::{ClipboardItem, Context, Window};
+use gpui_kit::component::button::{Button, ButtonVariants as _};
+use gpui_kit::component::dialog::DialogFooter;
+use gpui_kit::component::{Disableable as _, WindowExt as _};
+use gpui_kit::{
+    App, AppContext as _, ClipboardItem, Context, WeakEntity, Window, div, prelude::*, px,
+};
 use serde::Deserialize;
 
 use crate::commands::{CommandRegistry, Register as _};
 use crate::editor::EditorView;
+use crate::theme::{paint, ui};
 use crate::workspace::{Workspace, report_error};
 
 #[derive(Deserialize, Clone, Copy)]
@@ -109,8 +116,130 @@ fn convert(
     })
 }
 
+#[cfg(feature = "test-support")]
+thread_local! {
+    /// The window of hashes opened last, for tests to drive.
+    pub static OPENED: std::cell::RefCell<Option<WeakEntity<HashesDialog>>> =
+        std::cell::RefCell::default();
+}
+
+/// Tools > MD5 (SHA-1, ...) > Generate from Files...: the hashes of the files chosen, as
+/// `sha256sum` writes them, to copy or to open in a new document.
+pub struct HashesDialog {
+    workspace: WeakEntity<Workspace>,
+    pub kind: HashKind,
+    pub listing: String,
+    /// Copy was clicked: the button says so.
+    pub copied: bool,
+}
+
+/// Shows `listing`, the `kind` hashes of files.
+pub fn open_hashes(
+    workspace: WeakEntity<Workspace>,
+    kind: HashKind,
+    listing: String,
+    window: &mut Window,
+    cx: &mut App,
+) {
+    let dialog = cx.new(|_| HashesDialog {
+        workspace,
+        kind,
+        listing,
+        copied: false,
+    });
+    #[cfg(feature = "test-support")]
+    OPENED.with(|opened| *opened.borrow_mut() = Some(dialog.downgrade()));
+    let title = t!("tools.hashes-of-files", hash = kind.name());
+    window.open_dialog(cx, move |modal, _, _| {
+        modal
+            .title(title.clone())
+            .w(px(720.))
+            .child(dialog.clone())
+            .footer(DialogFooter::new().child(crate::workspace::dialog_close("common.close")))
+    });
+}
+
+impl HashesDialog {
+    /// Copy: the listing goes to the clipboard.
+    pub fn copy(&mut self, cx: &mut Context<Self>) {
+        cx.write_to_clipboard(ClipboardItem::new_string(self.listing.clone()));
+        self.copied = true;
+        cx.notify();
+    }
+
+    /// Open in New Document: the listing in a new untitled document, and the window closes.
+    pub fn open_in_document(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let listing = self.listing.clone();
+        let opened = self.workspace.update(cx, |workspace, cx| {
+            workspace.open_text_in_new_document(&listing, window, cx)
+        });
+        match opened {
+            Ok(Ok(())) => window.close_dialog(cx),
+            Ok(Err(error)) => report_error(&error, window, cx),
+            Err(_) => window.close_dialog(cx),
+        }
+    }
+}
+
+impl Render for HashesDialog {
+    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let lines: Vec<String> = self.listing.lines().map(str::to_owned).collect();
+        let empty = lines.is_empty();
+        div()
+            .flex()
+            .flex_col()
+            .gap_2()
+            .child(
+                div()
+                    .id("hashes-listing")
+                    .h(px(240.))
+                    .overflow_scroll()
+                    .p_2()
+                    .border_1()
+                    .border_color(paint(ui().border))
+                    .font_family(crate::MONOSPACE)
+                    .text_sm()
+                    .children(lines.into_iter().map(|line| {
+                        let error = line.starts_with("# ");
+                        div()
+                            .whitespace_nowrap()
+                            .when(error, |line| line.text_color(paint(ui().error)))
+                            .child(line)
+                    }))
+                    .when(empty, |listing| listing.child(t!("tools.no-files"))),
+            )
+            .child(
+                div()
+                    .flex()
+                    .flex_row()
+                    .gap_2()
+                    .child(
+                        Button::new("hashes-copy")
+                            .primary()
+                            .label(if self.copied {
+                                t!("tools.copied")
+                            } else {
+                                t!("tools.copy")
+                            })
+                            .disabled(empty)
+                            .on_click(cx.listener(|this, _, _, cx| this.copy(cx))),
+                    )
+                    .child(
+                        Button::new("hashes-document")
+                            .label(t!("tools.open-in-new-document"))
+                            .disabled(empty)
+                            .on_click(
+                                cx.listener(|this, _, window, cx| {
+                                    this.open_in_document(window, cx)
+                                }),
+                            ),
+                    ),
+            )
+    }
+}
+
 impl Workspace {
-    /// Asks for files, and opens their hashes in a new document.
+    /// Asks for files, and shows their hashes.
     fn hash_files(&mut self, kind: HashKind, window: &mut Window, cx: &mut Context<Self>) {
         let start = self.default_directory(cx);
         cx.spawn_in(window, async move |this, cx| {
@@ -130,10 +259,8 @@ impl Workspace {
                 })
                 .await;
             let listing = hash_listing(kind, &files);
-            this.update_in(cx, |this, window, cx| {
-                if let Err(error) = this.open_text_in_new_document(&listing, window, cx) {
-                    report_error(&error, window, cx);
-                }
+            this.update_in(cx, |_, window, cx| {
+                open_hashes(cx.entity().downgrade(), kind, listing, window, cx);
             })
             .ok();
         })
