@@ -23,6 +23,11 @@ version's release notes from its section here.
 - The Help menu of Notepad++: Command Line Arguments..., Birchpad Home, Online Manual,
   Community (Forum), Set Updater Proxy... (`updates.proxy`, the proxy updates go through) and
   Debug Info... (what a bug report needs, with Copy).
+- The command line options of Notepad++ that Birchpad ignored now work: `-notabbar`,
+  `-alwaysOnTop`, `-systemtray` (starts minimized), `-x` and `-y`, `-titleAdd`,
+  `-settingsDir`, `-loadingTime`, `-quickPrint`, `-monitor`, `-udl`, `-r` with wildcards (which
+  now open every file they match), ghost typing with `-qt`, `-qf` and `-qSpeed`, and
+  `-nopluginsupport`.
 
 ### Changed
 

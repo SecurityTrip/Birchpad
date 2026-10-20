@@ -211,7 +211,7 @@ impl Workspace {
     }
 
     /// View > Monitoring (tail -f) for the active document.
-    fn toggle_monitoring(&mut self, window: &mut Window, cx: &mut Context<Self>) -> Result<()> {
+    pub fn toggle_monitoring(&mut self, window: &mut Window, cx: &mut Context<Self>) -> Result<()> {
         let Some(view) = self.active_view(cx) else {
             return Ok(());
         };

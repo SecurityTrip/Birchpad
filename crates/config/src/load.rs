@@ -94,6 +94,17 @@ impl ConfigPaths {
         }
     }
 
+    /// The user's settings, keymap and data in `dir` instead (`-settingsDir`). Machine defaults
+    /// and administrator policies still come from the system.
+    pub fn in_folder(self, dir: &Path) -> Self {
+        Self {
+            user_settings: Some(dir.join("settings.toml")),
+            user_data: Some(dir.to_owned()),
+            local_settings: None,
+            ..self
+        }
+    }
+
     /// Portable mode for an executable in `dir`: the user's settings, keymap, recent files and
     /// recovery copies go to `dir/data`. Machine defaults and administrator policies still come
     /// from the system, so a portable copy cannot escape the policies of the machine it runs on.

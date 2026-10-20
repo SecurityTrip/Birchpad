@@ -1,20 +1,37 @@
-//! Command-line arguments, compatible with Notepad++ where that makes sense.
+//! Command-line arguments, compatible with Notepad++.
 //!
 //! ```text
 //! birchpad [options] [file]...
 //!   -n<line>      go to line (1-based)
 //!   -c<column>    go to column (1-based)
 //!   -p<position>  go to position (0-based byte offset); wins over -n/-c
+//!   -l<language>  language for syntax highlighting (`-lcpp`, `-lpython`, `-lnormal`)
+//!   -udl="name"   the user defined language of that name
+//!   -ro           open the files read-only
+//!   -monitor      open the files with Monitoring (tail -f) on
+//!   -r            wildcards in file names match in the folders below too
 //!   -multiInst    start a separate instance instead of handing files to a running one
 //!   -nosession    do not restore or save a session
 //!   -openSession  the files are sessions to open
-//!   -ro           open the files read-only
-//!   -l<language>  language for syntax highlighting (`-lcpp`, `-lpython`, `-lnormal`)
+//!   -openFoldersAsWorkspace  folders go to Folder as Workspace (as they always do)
+//!   -notabbar     no tab bar
+//!   -alwaysOnTop  the window stays above the others
+//!   -systemtray   start minimized
+//!   -x<left> -y<top>  where the window opens, in pixels
+//!   -titleAdd="text"  text after the window's title
+//!   -settingsDir="folder"  settings and data in that folder
+//!   -loadingTime  say how long the files took to open
+//!   -quickPrint   print the files on the default printer and quit
+//!   -qt="text" -qf="file" -qSpeed<1-3>  type the text (or the file's) into a new document
+//!   -qn="name"    Notepad++'s easter eggs, which Birchpad does not have
+//!   -nopluginsupport  start without plugins
+//!   -pluginMessage="text"  a message for plugins (not delivered yet)
 //!   --            everything after is a file name, even if it starts with "-"
 //! ```
 //!
-//! Options are case-insensitive. Unknown options produce a warning and are ignored, so
-//! Notepad++ shortcuts and scripts that pass extra options keep working.
+//! Options are case-insensitive. File names with `*` and `?` are wildcards, matched in their
+//! folder (and below it, with `-r`). Unknown options produce a warning and are ignored, so
+//! scripts that pass other options keep working.
 
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
@@ -23,6 +40,7 @@ use serde::{Deserialize, Serialize};
 
 /// A parsed command line. Files are absolute, so the line can be handed to another process.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default)]
 pub struct CommandLine {
     pub files: Vec<PathBuf>,
     pub line: Option<usize>,
@@ -31,16 +49,60 @@ pub struct CommandLine {
     pub multi_instance: bool,
     pub no_session: bool,
     /// `-openSession`: the files are session files (Birchpad's or Notepad++'s) to open.
-    #[serde(default)]
     pub open_session: bool,
     pub read_only: bool,
     pub language: Option<String>,
     /// `--generate N`: open N lines of generated text (for development and benchmarks).
-    #[serde(default)]
     pub generate: Option<usize>,
+    /// `-udl="name"`: the user defined language of the files.
+    pub udl: Option<String>,
+    /// `-monitor`: the files open with Monitoring (tail -f) on.
+    pub monitor: bool,
+    /// `-r`: wildcards match in the folders below too (applied while parsing).
+    pub recursive: bool,
+    /// `-openFoldersAsWorkspace`: folders go to Folder as Workspace, which Birchpad does with
+    /// every folder anyway.
+    pub open_folders_as_workspace: bool,
+    /// `-notabbar`.
+    pub no_tab_bar: bool,
+    /// `-alwaysOnTop`.
+    pub always_on_top: bool,
+    /// `-systemtray`: the window starts minimized (GPUI has no tray icon to go to).
+    pub minimized: bool,
+    /// `-x<left>` and `-y<top>`: where the window opens.
+    pub x: Option<i32>,
+    pub y: Option<i32>,
+    /// `-titleAdd="text"`: text after the window's title.
+    pub title_add: Option<String>,
+    /// `-settingsDir="folder"`: the folder of the settings and data instead of the usual one.
+    pub settings_dir: Option<PathBuf>,
+    /// `-loadingTime`: say how long the files took to open.
+    pub loading_time: bool,
+    /// `-quickPrint`: print the files on the default printer, and quit if started for that.
+    pub quick_print: bool,
+    /// Ghost typing (`-qt`, `-qf`, `-qn`, `-qSpeed`): text typed into a new document.
+    pub ghost: Option<Ghost>,
+    /// `-nopluginsupport`: no plugins this time.
+    pub no_plugins: bool,
+    /// `-pluginMessage="text"`: a message for the plugins.
+    pub plugin_message: Option<String>,
     /// Problems with the arguments; they are reported, not fatal.
     #[serde(skip)]
     pub warnings: Vec<String>,
+}
+
+/// What ghost typing types, and how fast.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct Ghost {
+    /// `-qt="text"`.
+    pub text: Option<String>,
+    /// `-qf="file"`: the file's text.
+    pub file: Option<PathBuf>,
+    /// `-qn="name"`: one of Notepad++'s easter eggs, which are its own and not Birchpad's.
+    pub name: Option<String>,
+    /// `-qSpeed1` (slow) to `-qSpeed3` (at once); 2 by default.
+    pub speed: u8,
 }
 
 /// Where to put the caret in the files opened from the command line.
@@ -80,7 +142,16 @@ pub const OPTIONS: &[CliOption] = &[
         "-l<language>",
         "Highlight as the language (-lcpp, -lpython, -lnormal)",
     ),
+    option(
+        "-udl=<name>",
+        "Highlight as the user defined language of that name",
+    ),
     option("-ro", "Open the files read-only"),
+    option("-monitor", "Open the files with Monitoring (tail -f) on"),
+    option(
+        "-r",
+        "Wildcards (*, ?) in file names match in the folders below too",
+    ),
     option(
         "-multiInst",
         "Start a window of its own instead of handing the files to the running one",
@@ -88,41 +159,115 @@ pub const OPTIONS: &[CliOption] = &[
     option("-nosession", "Neither restore nor save the session"),
     option("-openSession", "The files are sessions to open"),
     option(
+        "-openFoldersAsWorkspace",
+        "Folders go to Folder as Workspace, as they always do",
+    ),
+    option("-notabbar", "Hide the tab bar"),
+    option("-alwaysOnTop", "Keep the window above the others"),
+    option("-systemtray", "Start minimized"),
+    option("-x<left>", "Open the window this many pixels from the left"),
+    option("-y<top>", "Open the window this many pixels from the top"),
+    option("-titleAdd=<text>", "Add the text to the window's title"),
+    option(
+        "-settingsDir=<folder>",
+        "Keep the settings and the data in that folder",
+    ),
+    option("-loadingTime", "Say how long the files took to open"),
+    option(
+        "-quickPrint",
+        "Print the files on the default printer, and quit if started for that",
+    ),
+    option("-qt=<text>", "Type the text into a new document"),
+    option("-qf=<file>", "Type the file's text into a new document"),
+    option(
+        "-qSpeed<1-3>",
+        "How fast -qt and -qf type: 1 slow, 2 fast, 3 at once",
+    ),
+    option("-nopluginsupport", "Start without plugins"),
+    option(
         "--",
         "Everything after it is a file, even if it starts with a dash",
     ),
     option("file...", "The files to open"),
 ];
 
-/// Options that Notepad++ accepts and Birchpad ignores (window placement, printing, ...).
-const IGNORED_FLAGS: &[&str] = &[
-    "-notabbar",
-    "-systemtray",
-    "-alwaysontop",
-    "-loadingtime",
-    "-r",
-    "-quickprint",
-    "-monitor",
-    "-nopluginsupport",
-    "-openfoldersasworkspace",
-];
+/// The value of an option written `-name=value` (or `-name="value"`, quotes kept by the
+/// shell), `None` if `arg` is not that option.
+fn value_of<'a>(arg: &'a str, lower: &str, name: &str) -> Option<&'a str> {
+    if !lower.starts_with(name) {
+        return None;
+    }
+    let value = &arg[name.len()..];
+    Some(
+        value
+            .strip_prefix('"')
+            .and_then(|value| value.strip_suffix('"'))
+            .unwrap_or(value),
+    )
+}
 
-const IGNORED_PREFIXES: &[&str] = &[
-    "-x",
-    "-y",
-    "-qn",
-    "-qt",
-    "-qf",
-    "-qspeed",
-    "-settingsdir=",
-    "-titleadd=",
-    "-udl=",
-    "-pluginmessage=",
-];
+/// Whether `name` (a file's name) matches `pattern`, with `*` for any run of characters and
+/// `?` for one; without regard to case on Windows, whose file names have none.
+pub fn wildcard_match(pattern: &str, name: &str) -> bool {
+    let fold = |text: &str| -> Vec<char> {
+        if cfg!(windows) {
+            text.chars().flat_map(char::to_lowercase).collect()
+        } else {
+            text.chars().collect()
+        }
+    };
+    let (pattern, name) = (fold(pattern), fold(name));
+    // Matching with backtracking to the last `*`.
+    let (mut p, mut n) = (0, 0);
+    let mut star: Option<(usize, usize)> = None;
+    while n < name.len() {
+        match pattern.get(p) {
+            Some('*') => {
+                star = Some((p, n));
+                p += 1;
+            }
+            Some(&ch) if ch == '?' || ch == name[n] => {
+                p += 1;
+                n += 1;
+            }
+            _ => match star {
+                Some((star_p, star_n)) => {
+                    p = star_p + 1;
+                    n = star_n + 1;
+                    star = Some((star_p, star_n + 1));
+                }
+                None => return false,
+            },
+        }
+    }
+    pattern[p..].iter().all(|ch| *ch == '*')
+}
+
+/// The files in `dir` (and below it, if `recursive`) whose names match `pattern`, sorted.
+fn matching_files(dir: &Path, pattern: &str, recursive: bool, out: &mut Vec<PathBuf>) {
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return;
+    };
+    let mut entries: Vec<_> = entries.flatten().collect();
+    entries.sort_by_key(std::fs::DirEntry::file_name);
+    for entry in entries {
+        let Ok(kind) = entry.file_type() else {
+            continue;
+        };
+        let path = entry.path();
+        if kind.is_dir() {
+            if recursive {
+                matching_files(&path, pattern, true, out);
+            }
+        } else if wildcard_match(pattern, &entry.file_name().to_string_lossy()) {
+            out.push(path);
+        }
+    }
+}
 
 impl CommandLine {
     /// Parses arguments (without the program name). Relative file names are resolved against
-    /// `cwd`.
+    /// `cwd`, and wildcards in them are matched there.
     pub fn parse(args: impl IntoIterator<Item = OsString>, cwd: &Path) -> Self {
         let mut line = Self::default();
         let mut args = args.into_iter().peekable();
@@ -145,20 +290,90 @@ impl CommandLine {
                 line.generate = Some(count);
                 continue;
             }
-            line.option(&text);
+            line.option(&text, cwd);
         }
+        line.expand_wildcards();
         line
     }
 
-    fn option(&mut self, arg: &str) {
+    /// File names with `*` or `?` in their last part become the files they match.
+    fn expand_wildcards(&mut self) {
+        let files = std::mem::take(&mut self.files);
+        for path in files {
+            let pattern = path
+                .file_name()
+                .map(|name| name.to_string_lossy().into_owned())
+                .filter(|name| name.contains(['*', '?']));
+            let Some(pattern) = pattern else {
+                self.files.push(path);
+                continue;
+            };
+            let dir = path.parent().unwrap_or(Path::new("."));
+            let before = self.files.len();
+            matching_files(dir, &pattern, self.recursive, &mut self.files);
+            if self.files.len() == before {
+                self.warnings
+                    .push(format!("no file matches {}", path.display()));
+            }
+        }
+    }
+
+    fn option(&mut self, arg: &str, cwd: &Path) {
         let lower = arg.to_ascii_lowercase();
         match lower.as_str() {
             "-multiinst" => self.multi_instance = true,
             "-nosession" => self.no_session = true,
             "-opensession" => self.open_session = true,
             "-ro" => self.read_only = true,
-            flag if IGNORED_FLAGS.contains(&flag) => {}
-            _ => self.prefixed_option(arg, &lower),
+            "-r" => self.recursive = true,
+            "-monitor" => self.monitor = true,
+            "-notabbar" => self.no_tab_bar = true,
+            "-alwaysontop" => self.always_on_top = true,
+            "-systemtray" => self.minimized = true,
+            "-loadingtime" => self.loading_time = true,
+            "-quickprint" => self.quick_print = true,
+            "-openfoldersasworkspace" => self.open_folders_as_workspace = true,
+            "-nopluginsupport" => self.no_plugins = true,
+            _ => self.valued_option(arg, &lower, cwd),
+        }
+    }
+
+    fn ghost(&mut self) -> &mut Ghost {
+        self.ghost.get_or_insert_with(|| Ghost {
+            speed: 2,
+            ..Ghost::default()
+        })
+    }
+
+    fn valued_option(&mut self, arg: &str, lower: &str, cwd: &Path) {
+        if let Some(value) = value_of(arg, lower, "-udl=") {
+            self.udl = Some(value.to_owned());
+        } else if let Some(value) = value_of(arg, lower, "-titleadd=") {
+            self.title_add = Some(value.to_owned());
+        } else if let Some(value) = value_of(arg, lower, "-settingsdir=") {
+            if value.is_empty() {
+                self.warnings
+                    .push(format!("{arg}: expected a folder after -settingsDir="));
+            } else {
+                self.settings_dir = Some(cwd.join(value));
+            }
+        } else if let Some(value) = value_of(arg, lower, "-pluginmessage=") {
+            self.plugin_message = Some(value.to_owned());
+        } else if let Some(value) = value_of(arg, lower, "-qt=") {
+            self.ghost().text = Some(value.to_owned());
+        } else if let Some(value) = value_of(arg, lower, "-qf=") {
+            self.ghost().file = Some(cwd.join(value));
+        } else if let Some(value) = value_of(arg, lower, "-qn=") {
+            self.ghost().name = Some(value.to_owned());
+        } else if let Some(speed) = lower.strip_prefix("-qspeed") {
+            match speed.parse::<u8>() {
+                Ok(speed @ 1..=3) => self.ghost().speed = speed,
+                _ => self
+                    .warnings
+                    .push(format!("{arg}: expected 1, 2 or 3 after -qSpeed")),
+            }
+        } else {
+            self.prefixed_option(arg, lower);
         }
     }
 
@@ -171,19 +386,26 @@ impl CommandLine {
                 Ok(value) => *slot = Some(value),
                 Err(_) => warnings.push(format!("{arg}: expected a number after {prefix}")),
             };
+        let pixels = |prefix: &str, slot: &mut Option<i32>, warnings: &mut Vec<String>| match lower
+            [prefix.len()..]
+            .parse::<i32>()
+        {
+            Ok(value) => *slot = Some(value),
+            Err(_) => warnings.push(format!("{arg}: expected a number after {prefix}")),
+        };
         if lower.starts_with("-n") {
             number("-n", &mut self.line, &mut self.warnings);
         } else if lower.starts_with("-c") {
             number("-c", &mut self.column, &mut self.warnings);
-        } else if lower.starts_with("-p") && !lower.starts_with("-pluginmessage=") {
+        } else if lower.starts_with("-p") {
             number("-p", &mut self.position, &mut self.warnings);
-        } else if lower.starts_with("-l") && !lower.starts_with("-loadingtime") {
+        } else if lower.starts_with("-x") {
+            pixels("-x", &mut self.x, &mut self.warnings);
+        } else if lower.starts_with("-y") {
+            pixels("-y", &mut self.y, &mut self.warnings);
+        } else if lower.starts_with("-l") {
             // The language for syntax highlighting.
             self.language = Some(arg[2..].to_owned());
-        } else if IGNORED_PREFIXES
-            .iter()
-            .any(|prefix| lower.starts_with(prefix))
-        {
         } else {
             self.warnings.push(format!("unknown option {arg} ignored"));
         }

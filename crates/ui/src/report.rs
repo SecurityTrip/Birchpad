@@ -28,13 +28,24 @@ pub fn report_info(message: impl Into<String>, window: &mut Window, cx: &mut App
 
 /// Shows a warning to the user without interrupting them.
 pub fn report_warning(message: impl Into<String>, window: &mut Window, cx: &mut App) {
-    window.push_notification(Notification::warning(message.into()), cx);
+    let message = message.into();
+    #[cfg(feature = "test-support")]
+    WARNINGS.with(|warnings| warnings.borrow_mut().push(message.clone()));
+    window.push_notification(Notification::warning(message), cx);
 }
 
 #[cfg(feature = "test-support")]
 thread_local! {
     /// The messages shown with `report_info`, for tests to read.
     static INFO: std::cell::RefCell<Vec<String>> = std::cell::RefCell::default();
+    /// The messages shown with `report_warning`.
+    static WARNINGS: std::cell::RefCell<Vec<String>> = std::cell::RefCell::default();
+}
+
+/// The warnings shown with [`report_warning`] on this thread since the last call.
+#[cfg(feature = "test-support")]
+pub fn take_warnings() -> Vec<String> {
+    WARNINGS.with(|warnings| std::mem::take(&mut *warnings.borrow_mut()))
 }
 
 /// The messages shown with [`report_info`] on this thread since the last call.

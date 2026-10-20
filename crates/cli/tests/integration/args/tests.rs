@@ -124,3 +124,145 @@ fn every_listed_option_is_understood() {
         );
     }
 }
+
+#[test]
+fn notepad_plus_plus_window_and_file_options() {
+    let line = parse(&[
+        "-notabbar",
+        "-alwaysOnTop",
+        "-systemtray",
+        "-loadingTime",
+        "-quickPrint",
+        "-monitor",
+        "-openFoldersAsWorkspace",
+        "-nopluginsupport",
+        "-x100",
+        "-y-20",
+        "-titleAdd=\"My work\"",
+        "-settingsDir=cfg",
+        "-udl=Markdown (preinstalled)",
+        "-pluginMessage=hello=world",
+    ]);
+    assert!(line.warnings.is_empty(), "{:?}", line.warnings);
+    assert!(line.no_tab_bar && line.always_on_top && line.minimized && line.loading_time);
+    assert!(line.quick_print && line.monitor && line.open_folders_as_workspace);
+    assert!(line.no_plugins);
+    assert_eq!((line.x, line.y), (Some(100), Some(-20)));
+    assert_eq!(line.title_add.as_deref(), Some("My work"));
+    assert_eq!(line.settings_dir, Some(PathBuf::from("/work/cfg")));
+    assert_eq!(line.udl.as_deref(), Some("Markdown (preinstalled)"));
+    assert_eq!(line.plugin_message.as_deref(), Some("hello=world"));
+    // Names in any case, values as written.
+    let upper = parse(&["-NOTABBAR", "-TITLEADD=Mixed Case"]);
+    assert!(upper.no_tab_bar);
+    assert_eq!(upper.title_add.as_deref(), Some("Mixed Case"));
+}
+
+#[test]
+fn ghost_typing_options() {
+    let line = parse(&["-qt=\"Hello\"", "-qSpeed3"]);
+    let ghost = line.ghost.unwrap();
+    assert_eq!(ghost.text.as_deref(), Some("Hello"));
+    assert_eq!(ghost.speed, 3);
+    let file = parse(&["-qf=quote.txt"]).ghost.unwrap();
+    assert_eq!(file.file, Some(PathBuf::from("/work/quote.txt")));
+    assert_eq!(file.speed, 2, "fast by default");
+    assert_eq!(
+        parse(&["-qn=Joel"]).ghost.unwrap().name.as_deref(),
+        Some("Joel")
+    );
+    assert_eq!(parse(&["-qSpeed1"]).ghost.unwrap().speed, 1);
+    assert!(parse(&["a.txt"]).ghost.is_none());
+}
+
+#[test]
+fn wrong_values_warn() {
+    for args in [
+        &["-qSpeed0"][..],
+        &["-qSpeed4"],
+        &["-qSpeed"],
+        &["-xleft"],
+        &["-y"],
+        &["-settingsDir="],
+    ] {
+        let line = parse(args);
+        assert_eq!(line.warnings.len(), 1, "{args:?}: {:?}", line.warnings);
+    }
+    // Empty values elsewhere are values.
+    assert_eq!(parse(&["-titleAdd="]).title_add.as_deref(), Some(""));
+    assert_eq!(parse(&["-udl=\"\""]).udl.as_deref(), Some(""));
+}
+
+#[test]
+fn wildcards_match_names() {
+    for (pattern, name) in [
+        ("*", ""),
+        ("*", "a.txt"),
+        ("*.txt", "a.txt"),
+        ("*.txt", ".txt"),
+        ("a?c", "abc"),
+        ("*b*", "abc"),
+        ("a*c*e", "abcde"),
+        ("**", "x"),
+        ("", ""),
+    ] {
+        assert!(wildcard_match(pattern, name), "{pattern} {name}");
+    }
+    for (pattern, name) in [
+        ("*.txt", "a.md"),
+        ("a?c", "ac"),
+        ("a?c", "abbc"),
+        ("", "a"),
+        ("a", ""),
+        ("*.txt", "a.txt.bak"),
+    ] {
+        assert!(!wildcard_match(pattern, name), "{pattern} {name}");
+    }
+    // Windows' file names have no case.
+    assert_eq!(wildcard_match("*.TXT", "a.txt"), cfg!(windows));
+}
+
+#[test]
+fn wildcards_expand_in_their_folder_and_below_with_r() {
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::write(dir.path().join("b.txt"), "").unwrap();
+    std::fs::write(dir.path().join("a.txt"), "").unwrap();
+    std::fs::write(dir.path().join("c.md"), "").unwrap();
+    std::fs::create_dir(dir.path().join("sub")).unwrap();
+    std::fs::write(dir.path().join("sub").join("d.txt"), "").unwrap();
+    let parse_in = |args: &[&str]| CommandLine::parse(args.iter().map(OsString::from), dir.path());
+    let names = |line: &CommandLine| -> Vec<String> {
+        line.files
+            .iter()
+            .map(|path| {
+                path.strip_prefix(dir.path())
+                    .unwrap()
+                    .to_string_lossy()
+                    .replace('\\', "/")
+            })
+            .collect()
+    };
+    assert_eq!(names(&parse_in(&["*.txt"])), ["a.txt", "b.txt"], "sorted");
+    assert_eq!(
+        names(&parse_in(&["*.txt", "-r"])),
+        ["a.txt", "b.txt", "sub/d.txt"],
+        "-r anywhere on the line"
+    );
+    assert_eq!(names(&parse_in(&["sub/*"])), ["sub/d.txt"]);
+    let none = parse_in(&["*.rs"]);
+    assert!(none.files.is_empty());
+    assert_eq!(none.warnings.len(), 1, "nothing matches");
+    // A name without wildcards stays, whether or not it exists.
+    assert_eq!(names(&parse_in(&["new.txt"])), ["new.txt"]);
+}
+
+#[test]
+fn older_command_lines_read_with_the_new_options_off() {
+    let line: CommandLine =
+        serde_json::from_str(r#"{"files":["/a.txt"],"line":3,"read_only":true}"#).unwrap();
+    assert_eq!(line.line, Some(3));
+    assert!(line.read_only && !line.quick_print && line.ghost.is_none());
+    let full = parse(&["-qt=x", "-x5", "-udl=U", "a.txt"]);
+    let json = serde_json::to_string(&full).unwrap();
+    assert_eq!(serde_json::from_str::<CommandLine>(&json).unwrap(), full);
+}

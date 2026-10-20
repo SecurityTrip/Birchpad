@@ -115,7 +115,12 @@ pub fn run() {
     for warning in &command_line.warnings {
         eprintln!("birchpad: {warning}");
     }
-    let paths = birchpad_config::ConfigPaths::current().following_cloud();
+    let paths = match &command_line.settings_dir {
+        // `-settingsDir`: the settings and data in that folder.
+        Some(dir) => birchpad_config::ConfigPaths::current().in_folder(dir),
+        None => birchpad_config::ConfigPaths::current(),
+    }
+    .following_cloud();
     let settings = birchpad_config::resolve(birchpad_config::load(&paths));
 
     // A second launch hands its files to the running instance and exits, unless it asks for
@@ -150,7 +155,8 @@ pub fn run() {
                 .user_config_dir()
                 .and_then(|dir| std::fs::read_to_string(dir.join("keymap.toml")).ok());
             let mut app_state = AppState::new(settings, paths);
-            app_state.no_session = command_line.no_session;
+            // Printing files at once (`-quickPrint`) leaves the session as it was.
+            app_state.no_session = command_line.no_session || command_line.quick_print;
             cx.set_global(app_state);
             themes::init(cx);
             i18n::apply(cx);
@@ -172,7 +178,14 @@ pub fn run() {
             })
             .detach();
 
-            let bounds = Bounds::centered(None, size(px(1100.), px(760.)), cx);
+            let mut bounds = Bounds::centered(None, size(px(1100.), px(760.)), cx);
+            // `-x` and `-y`: where the window opens.
+            if let Some(x) = command_line.x {
+                bounds.origin.x = px(x as f32);
+            }
+            if let Some(y) = command_line.y {
+                bounds.origin.y = px(y as f32);
+            }
             let options = WindowOptions {
                 window_bounds: Some(WindowBounds::Windowed(bounds)),
                 // Linux desktops match it to io.github.securitytrip.birchpad.desktop and its icon.
@@ -182,9 +195,14 @@ pub fn run() {
             let opened = gpui_kit::open_window(options, cx, |window, cx| {
                 cx.new(|cx| {
                     let mut workspace = Workspace::new(window, cx);
+                    workspace.title_add = command_line.title_add.clone();
+                    workspace.modes.no_tab_bar = command_line.no_tab_bar;
                     workspace.restore_last_session(window, cx);
                     workspace.restore_panels(window, cx);
-                    workspace.load_plugins(window, cx);
+                    workspace.show_tabs(cx);
+                    if !command_line.no_plugins {
+                        workspace.load_plugins(window, cx);
+                    }
                     workspace.open_command_line(&command_line, window, cx);
                     workspace.report_pending_recoveries(window, cx);
                     workspace.start_backups(cx);
@@ -214,6 +232,36 @@ pub fn run() {
             window
                 .update(cx, |_, window, cx| default_app::offer(window, cx))
                 .ok();
+            window
+                .update(cx, |_, window, cx| {
+                    if command_line.always_on_top {
+                        let invocation = birchpad_commands::Invocation::new("view.always-on-top");
+                        let result = workspace.update(cx, |workspace, cx| {
+                            workspace.dispatch(&invocation, window, cx)
+                        });
+                        if let Err(error) = result {
+                            workspace::report_error(&error, window, cx);
+                        }
+                    }
+                    // `-systemtray`: GPUI has no tray icon; the window starts minimized.
+                    if command_line.minimized {
+                        window.minimize_window();
+                    }
+                })
+                .ok();
+            // `-quickPrint`: Birchpad quits once the files are printed.
+            if command_line.quick_print {
+                let printing = workspace.update(cx, |workspace, _| {
+                    std::mem::take(&mut workspace.quick_prints)
+                });
+                cx.spawn(async move |cx| {
+                    for print in printing {
+                        print.await;
+                    }
+                    cx.update(|cx| cx.quit());
+                })
+                .detach();
+            }
             #[cfg(feature = "e2e")]
             e2e::run_script(window, workspace.clone(), cx);
             if let Some(server) = server {
@@ -239,6 +287,9 @@ fn serve_later_launches(
             let opened = cx.update_window(window, |_, window, cx| {
                 workspace.update(cx, |workspace, cx| {
                     workspace.open_command_line(&request, window, cx);
+                    for print in std::mem::take(&mut workspace.quick_prints) {
+                        print.detach();
+                    }
                 });
                 window.activate_window();
             });

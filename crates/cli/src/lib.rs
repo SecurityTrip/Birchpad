@@ -7,7 +7,7 @@ pub mod associations;
 pub mod explorer;
 mod instance;
 
-pub use args::{CaretTarget, CliOption, CommandLine, OPTIONS};
+pub use args::{CaretTarget, CliOption, CommandLine, Ghost, OPTIONS, wildcard_match};
 pub use instance::{
     Address, Instance, MAX_MESSAGE, MAX_SOCKET_PATH, Server, hand_off, socket_path, start,
 };

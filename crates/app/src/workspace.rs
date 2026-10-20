@@ -227,6 +227,10 @@ pub struct Workspace {
     pub incremental: Entity<IncrementalBar>,
     pub search_results: Entity<SearchResults>,
     title: String,
+    /// `-titleAdd`: text after the window's title.
+    pub title_add: Option<String>,
+    /// `-quickPrint`: the printings of the files, for a launch that quits after them.
+    pub quick_prints: Vec<gpui_kit::Task<()>>,
     buffer_subscriptions: HashMap<EntityId, Subscription>,
     /// Focus and scroll events of each view, and its changes for the navigation history.
     view_subscriptions: HashMap<EntityId, [Subscription; 3]>,
@@ -275,6 +279,8 @@ impl Workspace {
             incremental,
             search_results,
             title: String::new(),
+            title_add: None,
+            quick_prints: Vec::new(),
             buffer_subscriptions: HashMap::new(),
             view_subscriptions: HashMap::new(),
             session_state: SessionState::default(),
@@ -579,13 +585,61 @@ impl Workspace {
         self.open_path_with(path, false, window, cx);
     }
 
-    /// Opens files and places carets as a command line asks (also from a second launch).
+    /// Opens files and places carets as a command line asks (also from a second launch), and
+    /// does what it asks of them: Monitoring, a user defined language, printing, saying how
+    /// long they took; and ghost typing. Returns the views of the files opened.
     pub fn open_command_line(
         &mut self,
         command_line: &CommandLine,
         window: &mut Window,
         cx: &mut Context<Self>,
-    ) {
+    ) -> Vec<Entity<EditorView>> {
+        let started = std::time::Instant::now();
+        let views = self.open_command_line_files(command_line, window, cx);
+        if command_line.loading_time && !views.is_empty() {
+            let time = format!("{:.3}", started.elapsed().as_secs_f64());
+            report_info(t!("workspace.loading-time", seconds = time), window, cx);
+        }
+        if let Some(ghost) = &command_line.ghost {
+            self.ghost_type(ghost, window, cx);
+        }
+        if let Some(message) = &command_line.plugin_message {
+            // Plugins have no event for it yet (roadmap 6.41).
+            eprintln!("-pluginMessage={message}: plugins hear no command line messages yet");
+        }
+        if command_line.quick_print {
+            for view in &views {
+                self.activate_view(view, window, cx);
+                let source = match crate::print::PrintSource::active(self, cx) {
+                    Ok(source) => source,
+                    Err(error) => {
+                        report_error(&error, window, cx);
+                        continue;
+                    }
+                };
+                let setup = crate::print::page_setup(cx);
+                let pages = source.paginate(&setup);
+                let printing =
+                    crate::print::print_task(&source.title, &pages, &setup, false, window, cx);
+                self.quick_prints
+                    .push(cx.spawn_in(window, async move |_, cx| {
+                        if let Err(error) = printing.await {
+                            cx.update(|window, cx| report_error(&error, window, cx))
+                                .ok();
+                        }
+                    }));
+            }
+        }
+        views
+    }
+
+    fn open_command_line_files(
+        &mut self,
+        command_line: &CommandLine,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Vec<Entity<EditorView>> {
+        let mut views = Vec::new();
         if let Some(lines) = command_line.generate {
             let doc = Document::from_text(birchpad_core::Rope::from_str(&crate::generate(lines)));
             self.open_document(doc, window, cx);
@@ -596,8 +650,16 @@ impl Workspace {
                     report_error(&error, window, cx);
                 }
             }
-            return;
+            return views;
         }
+        // `-udl="name"`: a user defined language the user has.
+        let user_language = command_line.udl.as_deref().and_then(|name| {
+            let found = crate::user_languages::find(name, cx);
+            if found.is_none() {
+                report_warning(t!("workspace.unknown-udl-option", name = name), window, cx);
+            }
+            found
+        });
         let target = command_line.caret_target();
         // `-l<language>`, with Notepad++'s names; `-lnormal` is plain text.
         let language = command_line.language.as_deref().and_then(|id| match id {
@@ -626,7 +688,83 @@ impl Workspace {
                 let buffer = view.read(cx).buffer.clone();
                 buffer.update(cx, |buffer, cx| buffer.set_language(language, cx));
             }
+            if let Some(found) = &user_language {
+                let buffer = view.read(cx).buffer.clone();
+                let found = found.clone();
+                buffer.update(cx, |buffer, cx| buffer.set_user_language(Some(found), cx));
+            }
+            if command_line.monitor {
+                let monitoring = view.read(cx).buffer.read(cx).is_monitoring();
+                self.activate_view(&view, window, cx);
+                if !monitoring && let Err(error) = self.toggle_monitoring(window, cx) {
+                    report_error(&error, window, cx);
+                }
+            }
+            views.push(view);
         }
+        views
+    }
+
+    /// Ghost typing (`-qt`, `-qf`): the text typed into a new document, a few characters at a
+    /// time as `-qSpeed` says (3: at once). `-qn` names Notepad++'s easter eggs, which are its
+    /// own: Birchpad says it has none.
+    fn ghost_type(
+        &mut self,
+        ghost: &birchpad_cli::Ghost,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let text = match (&ghost.text, &ghost.file, &ghost.name) {
+            (Some(text), _, _) => text.clone(),
+            (None, Some(file), _) => match std::fs::read_to_string(file) {
+                Ok(text) => text,
+                Err(error) => {
+                    let error = anyhow::anyhow!(
+                        "{}",
+                        t!(
+                            "workspace.cannot-read",
+                            path = file.display(),
+                            error = error
+                        )
+                    );
+                    report_error(&error, window, cx);
+                    return;
+                }
+            },
+            (None, None, Some(name)) => {
+                report_warning(t!("workspace.no-easter-egg", name = name), window, cx);
+                return;
+            }
+            (None, None, None) => return,
+        };
+        self.new_file(window, cx);
+        let Some(view) = self.active_view(cx) else {
+            return;
+        };
+        let chars: Vec<char> = text.chars().collect();
+        let (chunk, delay) = match ghost.speed {
+            1 => (1, 60),
+            3 => (chars.len().max(1), 0),
+            _ => (2, 15),
+        };
+        let view = view.downgrade();
+        cx.spawn_in(window, async move |_, cx| {
+            for piece in chars.chunks(chunk) {
+                let piece: String = piece.iter().collect();
+                let typed = view.update(cx, |view, cx| {
+                    view.insert(&piece, crate::editor::LastEdit::None, cx);
+                });
+                if typed.is_err() {
+                    return;
+                }
+                if delay > 0 {
+                    cx.background_executor()
+                        .timer(std::time::Duration::from_millis(delay))
+                        .await;
+                }
+            }
+        })
+        .detach();
     }
 
     /// Opens `path` (read-only if asked) or switches to its tab; returns the view.
@@ -1033,7 +1171,7 @@ impl Workspace {
     /// The window's title: `*` for unsaved changes, the active file's path (or only its name,
     /// Preferences > Appearance), and Birchpad.
     pub fn window_title(&self, cx: &App) -> String {
-        match self.active_view(cx) {
+        let title = match self.active_view(cx) {
             Some(view) => {
                 let buffer = view.read(cx).buffer.read(cx);
                 let name_only = AppState::global(cx)
@@ -1049,6 +1187,10 @@ impl Workspace {
                 format!("{modified}{name} - Birchpad")
             }
             None => "Birchpad".to_owned(),
+        };
+        match &self.title_add {
+            Some(text) if !text.is_empty() => format!("{title} - {text}"),
+            _ => title,
         }
     }
 }

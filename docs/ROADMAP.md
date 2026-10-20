@@ -596,10 +596,14 @@ floors in `.github/coverage-floors.toml` with its tests.
       listing in a new document
 - [x] 6.39 Help menu: Command Line Arguments, home page, online manual and forum, Debug Info
       (copyable), Set Updater Proxy
-- [ ] 6.40 The command line options Birchpad accepts but ignores: -notabbar, -systemtray,
+- [x] 6.40 The command line options Birchpad accepts but ignores: -notabbar, -systemtray,
       -alwaysOnTop, -loadingTime, -r (recursive wildcards), -quickPrint, -monitor,
       -openFoldersAsWorkspace, -x and -y (window position), -qn, -qt, -qf, -qSpeed (ghost
-      typing), -settingsDir, -titleAdd, -udl, -pluginMessage
+      typing), -settingsDir, -titleAdd, -udl, -pluginMessage; -nopluginsupport too. Not as
+      Notepad++ does: -systemtray starts minimized, since GPUI has no tray icon (7.4);
+      -openFoldersAsWorkspace is what Birchpad does with every folder; -qn names Notepad++'s
+      easter eggs, its own texts, which Birchpad does not bundle (it says so); -pluginMessage
+      is accepted but reaches no plugin until the plugin API has an event for it (6.41)
 - [ ] Release 0.5.0: the workspace version (0.5.0, set when its branch opens, so that nightly
       builds are its pre-releases), `CHANGELOG.md` and this roadmap updated; the
       [release checklist](release-checklist.md) gone through
@@ -610,7 +614,7 @@ Closing Phase 6.
 
 - [ ] 6.41 A wider plugin API: settings of their own, files opened with the user's permission,
       a panel of their own controls, items in the text's context menu, events while typing and
-      when the selection changes, work in the background; scripts' own commands and keys;
+      when the selection changes, the command line's -pluginMessage, work in the background; scripts' own commands and keys;
       Settings > Import plugin(s)
 - [ ] 6.42 Compare as ComparePlus: lines padded to stay aligned side by side, differences
       within a line, comparing with the last save, the clipboard or Git; a navigation bar of the

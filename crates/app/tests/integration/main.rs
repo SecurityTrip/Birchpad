@@ -1,6 +1,9 @@
 //! The crate's tests through its public interface, one module per part of `src`, in one
 //! test binary.
 
+#[path = "command_line_tests.rs"]
+mod command_line_tests;
+
 #[path = "commands/tests.rs"]
 mod commands;
 

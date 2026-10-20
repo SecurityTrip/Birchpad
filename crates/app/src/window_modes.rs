@@ -18,6 +18,8 @@ pub struct WindowModes {
     pub full_screen: bool,
     pub post_it: bool,
     pub distraction_free: bool,
+    /// `-notabbar`: the tab bar stays hidden.
+    pub no_tab_bar: bool,
 }
 
 impl WindowModes {
@@ -83,12 +85,17 @@ impl Workspace {
         if window.is_fullscreen() != on {
             window.toggle_fullscreen();
         }
-        let hidden = self.modes.text_only();
+        self.show_tabs(cx);
+        self.refresh_menus(cx);
+        cx.notify();
+    }
+
+    /// Shows or hides the panes' tabs as the modes say.
+    pub fn show_tabs(&mut self, cx: &mut Context<Self>) {
+        let hidden = self.modes.text_only() || self.modes.no_tab_bar;
         for pane in self.panes().clone() {
             pane.update(cx, |pane, cx| pane.set_tabs_hidden(hidden, cx));
         }
-        self.refresh_menus(cx);
-        cx.notify();
     }
 
     /// Ends Post-It and Distraction Free (the button shown in them, and Escape).

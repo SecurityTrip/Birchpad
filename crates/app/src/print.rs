@@ -21,7 +21,9 @@ use birchpad_tools::print::{self as layout, Document, PageSetup, Pages, Variable
 use gpui_kit::component::button::{Button, ButtonVariants as _};
 use gpui_kit::component::dialog::DialogFooter;
 use gpui_kit::component::{Disableable as _, WindowExt as _};
-use gpui_kit::{App, AppContext as _, Context, WeakEntity, Window, div, prelude::*, px, relative};
+use gpui_kit::{
+    App, AppContext as _, Context, Task, WeakEntity, Window, div, prelude::*, px, relative,
+};
 
 use crate::commands::{CommandRegistry, Register as _};
 use crate::editor::theme;
@@ -248,7 +250,7 @@ thread_local! {
 }
 
 /// Prints `pages`: on Windows on the printer the user chooses (`ask`) or on the default one;
-/// elsewhere through the browser's print dialog.
+/// elsewhere through the browser's print dialog. A failure is said when it comes.
 pub fn print_pages(
     title: &str,
     pages: &Pages,
@@ -257,15 +259,37 @@ pub fn print_pages(
     window: &mut Window,
     cx: &mut App,
 ) -> Result<()> {
+    let printing = print_task(title, pages, setup, ask, window, cx);
+    window
+        .spawn(cx, async move |cx| {
+            if let Err(error) = printing.await {
+                cx.update(|window, cx| report_error(&error, window, cx))
+                    .ok();
+            }
+        })
+        .detach();
+    Ok(())
+}
+
+/// Prints `pages` as [`print_pages`] does; the task ends when they went to the printer (or to
+/// the browser).
+pub fn print_task(
+    title: &str,
+    pages: &Pages,
+    setup: &PageSetup,
+    ask: bool,
+    window: &mut Window,
+    cx: &mut App,
+) -> Task<Result<()>> {
     #[cfg(feature = "test-support")]
     {
-        let _ = (setup, window, cx);
+        let _ = (setup, window, &cx);
         PRINTED.with(|printed| {
             printed
                 .borrow_mut()
                 .push((title.to_owned(), pages.pages.len(), ask))
         });
-        Ok(())
+        Task::ready(Ok(()))
     }
     #[cfg(all(windows, not(feature = "test-support")))]
     {
@@ -276,27 +300,25 @@ pub fn print_pages(
         };
         let (title, pages, setup) = (title.to_owned(), pages.clone(), setup.clone());
         // The print dialog and the printing wait on their own thread, not on the window's.
-        let printing =
-            cx.background_spawn(async move { windows::print(&title, &pages, &setup, owner, ask) });
-        window
-            .spawn(cx, async move |cx| {
-                if let Err(error) = printing.await {
-                    let error =
-                        anyhow!("{}", t!("print.cannot-print", error = format!("{error:#}")));
-                    cx.update(|window, cx| report_error(&error, window, cx))
-                        .ok();
-                }
-            })
-            .detach();
-        Ok(())
+        cx.background_spawn(async move {
+            windows::print(&title, &pages, &setup, owner, ask)
+                .map(|_| ())
+                .map_err(|error| {
+                    anyhow!("{}", t!("print.cannot-print", error = format!("{error:#}")))
+                })
+        })
     }
     #[cfg(all(not(windows), not(feature = "test-support")))]
     {
-        use anyhow::Context as _;
         let _ = (ask, window);
         let html = layout::to_html(title, pages, setup, true);
         let path = print_path(title);
-        std::fs::write(&path, html).with_context(|| format!("cannot write {}", path.display()))?;
+        if let Err(error) = std::fs::write(&path, html) {
+            return Task::ready(Err(anyhow!(
+                "{}",
+                t!("print.cannot-write", path = path.display(), error = error)
+            )));
+        }
         cx.open_url(&format!(
             "file:///{}",
             path.display()
@@ -304,7 +326,7 @@ pub fn print_pages(
                 .replace('\\', "/")
                 .trim_start_matches('/')
         ));
-        Ok(())
+        Task::ready(Ok(()))
     }
 }
 
