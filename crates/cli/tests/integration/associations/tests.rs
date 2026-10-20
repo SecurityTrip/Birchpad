@@ -84,7 +84,7 @@ fn registered_and_taken_away() {
 #[cfg(target_os = "macos")]
 #[test]
 fn finder_chooses_on_macos() {
-    assert!(register(Path::new("/Applications/Birchpad.app")).is_err());
+    assert!(register(std::path::Path::new("/Applications/Birchpad.app")).is_err());
     unregister().unwrap();
     assert!(!is_default("txt"));
 }
