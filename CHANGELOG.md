@@ -35,6 +35,9 @@ version's release notes from its section here.
 
 ### Changed
 
+- Links in the text open with Ctrl+click (Cmd+click on macOS); a double click selects a word
+  of them, as anywhere in the text (#45). Preferences > Cloud & Link > Open them with a double
+  click too (`links.double-click`) brings back Notepad++'s double click.
 - Every crate is tested through its public interface: the tests in `tests/integration`, one
   test binary per crate, and `birchpad` is a library and a program that runs it (ADR 0043).
 

@@ -988,6 +988,7 @@ preferences:
   open: "Открывающий"
   open-and-save-as-start-in: "Открытие и сохранение начинаются в"
   open-session-in-a-new-instance: "Открывать сессию в новом экземпляре"
+  open-them-with-a-double-click-too: "Открывать и двойным щелчком"
   paper: "Бумага"
   preferences: "Настройки"
   print: "Печать"

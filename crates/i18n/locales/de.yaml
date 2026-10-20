@@ -974,6 +974,7 @@ preferences:
   open: "Öffnen"
   open-and-save-as-start-in: "Öffnen und Speichern unter beginnen in"
   open-session-in-a-new-instance: "Sitzung in neuer Instanz öffnen"
+  open-them-with-a-double-click-too: "Auch mit einem Doppelklick öffnen"
   paper: "Papier"
   preferences: "Einstellungen"
   print: "Drucken"

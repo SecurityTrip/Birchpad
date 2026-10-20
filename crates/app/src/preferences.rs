@@ -242,6 +242,12 @@ pub const ENTRIES: &[Entry] = &[
     ),
     entry(
         "Cloud & Link",
+        "links.double-click",
+        "Open them with a double click too",
+        Kind::Bool,
+    ),
+    entry(
+        "Cloud & Link",
         "links.underline",
         "Underline them",
         Kind::Bool,

@@ -976,6 +976,7 @@ preferences:
   open: "Open"
   open-and-save-as-start-in: "Open and Save As start in"
   open-session-in-a-new-instance: "Open session in a new instance"
+  open-them-with-a-double-click-too: "Open them with a double click too"
   paper: "Paper"
   preferences: "Preferences"
   print: "Print"

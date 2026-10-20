@@ -1,4 +1,4 @@
-//! Tests of clickable links (a double click or Ctrl+click opens them) and Ctrl+double click
+//! Tests of clickable links (Ctrl+click opens them, a double click too if asked) and Ctrl+double click
 //! selection between delimiters.
 
 use gpui_kit::{
@@ -72,13 +72,18 @@ fn ctrl() -> Modifiers {
 }
 
 #[gpui_kit::test]
-fn links_open_with_a_double_click_or_ctrl_click(cx: &mut TestAppContext) {
+fn links_open_with_ctrl_click_and_a_double_click_selects(cx: &mut TestAppContext) {
     let (workspace, cx) = open_workspace(cx);
     cx.simulate_input("go https://a.b/c. now");
     opened();
     let link = point_of(&workspace, 8, cx);
+    // A double click on a link selects a word of it, as anywhere (issue #45).
     click(link, 2, Modifiers::none(), cx);
-    assert_eq!(opened(), [Shell::Browse("https://a.b/c".into())]);
+    assert!(opened().is_empty());
+    assert_eq!(selection(&workspace, cx), (3, 8), "the word https");
+    // A single click on it places the caret.
+    click(link, 1, Modifiers::none(), cx);
+    assert!(opened().is_empty());
     click(link, 1, ctrl(), cx);
     assert_eq!(opened(), [Shell::Browse("https://a.b/c".into())]);
     assert_eq!(
@@ -92,11 +97,16 @@ fn links_open_with_a_double_click_or_ctrl_click(cx: &mut TestAppContext) {
     assert!(opened().is_empty());
     assert_eq!(selection(&workspace, cx), (0, 2));
 
-    // Turned off: a double click on the link selects a word.
+    // As in Notepad++: a double click opens it too.
+    cx.update(|_, cx| cx.global_mut::<AppState>().settings.links.double_click = true);
+    click(point_of(&workspace, 8, cx), 2, Modifiers::none(), cx);
+    assert_eq!(opened(), [Shell::Browse("https://a.b/c".into())]);
+
+    // Links turned off: neither opens it.
     cx.update(|_, cx| cx.global_mut::<AppState>().settings.links.enabled = false);
     click(point_of(&workspace, 8, cx), 2, Modifiers::none(), cx);
+    click(point_of(&workspace, 8, cx), 1, ctrl(), cx);
     assert!(opened().is_empty());
-    assert_ne!(selection(&workspace, cx), (0, 2));
 }
 
 #[gpui_kit::test]

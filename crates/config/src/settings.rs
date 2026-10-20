@@ -611,8 +611,11 @@ fn encode_query(text: &str) -> String {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default, rename_all = "kebab-case")]
 pub struct LinkSettings {
-    /// Addresses can be opened with a double click or Ctrl+click.
+    /// Addresses can be opened with Ctrl+click (Cmd+click on macOS).
     pub enabled: bool,
+    /// A double click opens them too, as in Notepad++; off, it selects a word of them, as
+    /// elsewhere (issue #45).
+    pub double_click: bool,
     /// They are underlined.
     pub underline: bool,
     /// Schemes besides http, https, ftp, ftps, file and mailto, separated by spaces
@@ -624,6 +627,7 @@ impl Default for LinkSettings {
     fn default() -> Self {
         Self {
             enabled: true,
+            double_click: false,
             underline: true,
             schemes: "svn:// git:// ssh:// sftp://".to_owned(),
         }

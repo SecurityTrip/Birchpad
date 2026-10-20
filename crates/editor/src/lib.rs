@@ -1470,8 +1470,9 @@ impl EditorView {
         }
     }
 
-    /// A double click or Ctrl+click on a link opens it; Ctrl+double click selects between the
-    /// delimiters around the click. Whether the click was taken.
+    /// A Ctrl+click on a link opens it, and a double click too with `links.double-click`;
+    /// Ctrl+double click selects between the delimiters around the click. Whether the click was
+    /// taken.
     fn link_or_delimiters(
         &mut self,
         event: &MouseDownEvent,
@@ -1481,7 +1482,8 @@ impl EditorView {
         let settings = AppState::global(cx).settings.clone();
         let secondary = event.modifiers.secondary();
         let text = self.text(cx).clone();
-        let opens = (event.click_count == 2 && !secondary) || (event.click_count == 1 && secondary);
+        let opens = (event.click_count == 1 && secondary)
+            || (event.click_count == 2 && !secondary && settings.links.double_click);
         if settings.links.enabled
             && opens
             && let Some(link) =
