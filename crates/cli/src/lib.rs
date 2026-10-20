@@ -8,4 +8,6 @@ pub mod explorer;
 mod instance;
 
 pub use args::{CaretTarget, CommandLine};
-pub use instance::{Address, Instance, Server, hand_off, start};
+pub use instance::{
+    Address, Instance, MAX_MESSAGE, MAX_SOCKET_PATH, Server, hand_off, socket_path, start,
+};

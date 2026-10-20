@@ -53,7 +53,3 @@ pub fn indent_guides(
     }
     (tab_width..extent).step_by(tab_width)
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/guides/tests.rs"]
-mod tests;

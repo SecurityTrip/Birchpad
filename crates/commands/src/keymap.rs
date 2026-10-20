@@ -341,7 +341,3 @@ fn join_keys(keys: &[Keystroke]) -> String {
         .collect::<Vec<_>>()
         .join(" ")
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/keymap/tests.rs"]
-mod tests;

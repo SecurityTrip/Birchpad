@@ -761,7 +761,7 @@ pub(crate) static EMBEDDED: &[Language] = &[
 ];
 
 /// Every language with a grammar: those of the Language menu, then the embedded ones.
-pub(crate) fn all() -> impl Iterator<Item = &'static Language> {
+pub fn all() -> impl Iterator<Item = &'static Language> {
     LANGUAGES.iter().chain(EMBEDDED)
 }
 
@@ -842,7 +842,3 @@ fn detect_first_line(line: &str) -> Option<&'static Language> {
             .any(|signature| line.starts_with(signature))
     })
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/language/tests.rs"]
-mod tests;

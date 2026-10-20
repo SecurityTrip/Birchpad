@@ -894,19 +894,3 @@ pub fn line_hits(text: &Rope, matches: &[Range<usize>]) -> Vec<LineHit> {
     }
     hits
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/search/tests.rs"]
-mod tests;
-
-#[cfg(test)]
-#[path = "../tests/unit/search/range_tests.rs"]
-mod range_tests;
-
-#[cfg(test)]
-#[path = "../tests/unit/search/line_hit_tests.rs"]
-mod line_hit_tests;
-
-#[cfg(test)]
-#[path = "../tests/unit/search/replace_properties.rs"]
-mod replace_properties;

@@ -24,14 +24,14 @@ use crate::editor::theme;
 use crate::workspace::Workspace;
 
 /// Height of a line on the map.
-pub(crate) const LINE_HEIGHT: f32 = 3.;
+pub const LINE_HEIGHT: f32 = 3.;
 /// Height of a line's bars.
 const BAR_HEIGHT: f32 = 2.;
 /// Width of a column.
 const COLUMN_WIDTH: f32 = 1.5;
 /// The first document line the map shows: 0 while the whole document fits, else so that the
 /// frame of the `visible` lines sits as far down the map as they sit in the document.
-pub(crate) fn first_map_line(total: usize, visible: Range<usize>, map_lines: usize) -> usize {
+pub fn first_map_line(total: usize, visible: Range<usize>, map_lines: usize) -> usize {
     if total <= map_lines {
         return 0;
     }
@@ -46,7 +46,7 @@ pub(crate) fn first_map_line(total: usize, visible: Range<usize>, map_lines: usi
 
 /// The bars of one line: runs of columns that are not whitespace, each with the color of the
 /// highlight over it (`spans`: byte ranges in the line, sorted), up to `max_columns`.
-pub(crate) fn line_bars(
+pub fn line_bars(
     line: &str,
     spans: &[(Range<usize>, u32)],
     tab_width: usize,
@@ -93,11 +93,11 @@ struct MapPaint {
     frame: Range<f32>,
 }
 
-pub(crate) struct DocumentMap {
+pub struct DocumentMap {
     workspace: WeakEntity<Workspace>,
     follow: FollowView,
     /// Where the map was drawn, and the first line it showed.
-    drawn: Option<(Bounds<Pixels>, usize)>,
+    pub drawn: Option<(Bounds<Pixels>, usize)>,
     dragging: bool,
     focus_handle: FocusHandle,
 }
@@ -109,11 +109,7 @@ impl Focusable for DocumentMap {
 }
 
 impl DocumentMap {
-    pub(crate) fn new(
-        workspace: WeakEntity<Workspace>,
-        _: &mut Window,
-        cx: &mut Context<Self>,
-    ) -> Self {
+    pub fn new(workspace: WeakEntity<Workspace>, _: &mut Window, cx: &mut Context<Self>) -> Self {
         Self {
             workspace,
             follow: FollowView::default(),
@@ -183,7 +179,7 @@ impl DocumentMap {
     }
 
     /// Scrolls the view so that the line under `y` (window coordinates) is in its middle.
-    pub(crate) fn scroll_to(&mut self, y: Pixels, cx: &mut Context<Self>) {
+    pub fn scroll_to(&mut self, y: Pixels, cx: &mut Context<Self>) {
         let (Some((bounds, first)), Some(view)) = (self.drawn, self.active_view(cx)) else {
             return;
         };
@@ -277,7 +273,3 @@ impl Render for DocumentMap {
             .into_any_element()
     }
 }
-
-#[cfg(test)]
-#[path = "../../tests/unit/panels/document_map_tests.rs"]
-mod tests;

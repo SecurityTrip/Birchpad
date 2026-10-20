@@ -22,7 +22,7 @@ use crate::app_state::AppState;
 use crate::buffer::{Buffer, BufferEvent};
 use crate::commands::{CommandRegistry, Register as _, RunCommand};
 use crate::disk::DiskState;
-use crate::editor::{EditorEvent, EditorView, ViewSettings};
+pub use crate::editor::{EditorEvent, EditorView, ViewSettings};
 use crate::find::FindBar;
 use crate::incremental::IncrementalBar;
 use crate::menus::{self, MenuState};
@@ -33,7 +33,7 @@ use crate::search_results::SearchResults;
 use crate::session::SessionState;
 use crate::status_bar::StatusInfo;
 
-pub(crate) fn register_commands(registry: &mut CommandRegistry) {
+pub fn register_commands(registry: &mut CommandRegistry) {
     registry.workspace("file.new", |this, (), window, cx| {
         this.new_file(window, cx);
         Ok(())
@@ -187,7 +187,7 @@ struct LanguageArgs {
 
 /// The format and language of a new document: Preferences > New Document. Names it does not
 /// know give UTF-8, the platform's line ending and plain text.
-pub(crate) fn new_document(
+pub fn new_document(
     cx: &App,
 ) -> (
     birchpad_core::Format,
@@ -210,41 +210,41 @@ pub(crate) fn new_document(
     (format, language)
 }
 
-pub(crate) use birchpad_ui::{
+pub use birchpad_ui::{
     dialog_action, dialog_close, report_error, report_info, report_success, report_warning,
 };
 
-pub(crate) struct Workspace {
+pub struct Workspace {
     focus_handle: FocusHandle,
     /// Notepad++'s main and second views. A pane without tabs is hidden; split view shows both.
-    panes: [Entity<Pane>; 2],
-    active_pane: usize,
+    pub panes: [Entity<Pane>; 2],
+    pub active_pane: usize,
     /// View > Synchronize Vertical / Horizontal Scrolling.
     sync_vertical: bool,
     sync_horizontal: bool,
     menu_bar: Option<Entity<MenuBar>>,
-    pub(crate) find_bar: Entity<FindBar>,
-    pub(crate) incremental: Entity<IncrementalBar>,
-    pub(crate) search_results: Entity<SearchResults>,
+    pub find_bar: Entity<FindBar>,
+    pub incremental: Entity<IncrementalBar>,
+    pub search_results: Entity<SearchResults>,
     title: String,
     buffer_subscriptions: HashMap<EntityId, Subscription>,
     /// Focus and scroll events of each view, and its changes for the navigation history.
     view_subscriptions: HashMap<EntityId, [Subscription; 3]>,
-    pub(crate) session_state: SessionState,
-    pub(crate) disk_state: DiskState,
+    pub session_state: SessionState,
+    pub disk_state: DiskState,
     /// Go Back and Go Forward.
-    pub(crate) navigation: History<Place>,
+    pub navigation: History<Place>,
     /// The side panels.
-    pub(crate) docks: Docks,
+    pub docks: Docks,
     /// Always on Top, Full Screen, Post-It, Distraction Free.
-    pub(crate) modes: crate::window_modes::WindowModes,
+    pub modes: crate::window_modes::WindowModes,
     /// The toolbar's commands whose switch is on, shown pressed.
-    pub(crate) toolbar_checked: Vec<String>,
+    pub toolbar_checked: Vec<String>,
     _subscriptions: Vec<Subscription>,
 }
 
 impl Workspace {
-    pub(crate) fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
+    pub fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
         let panes = [cx.new(|_| Pane::new(0)), cx.new(|_| Pane::new(1))];
         for (pane, other) in [(0, 1), (1, 0)] {
             let other = panes[other].downgrade();
@@ -414,28 +414,28 @@ impl Workspace {
         }
     }
 
-    pub(crate) fn active_pane(&self) -> &Entity<Pane> {
+    pub fn active_pane(&self) -> &Entity<Pane> {
         &self.panes[self.active_pane]
     }
 
     /// The main and the second view.
-    pub(crate) fn panes(&self) -> &[Entity<Pane>; 2] {
+    pub fn panes(&self) -> &[Entity<Pane>; 2] {
         &self.panes
     }
 
-    pub(crate) fn active_pane_index(&self) -> usize {
+    pub fn active_pane_index(&self) -> usize {
         self.active_pane
     }
 
     /// The pane showing `view`: 0 for the main view, 1 for the second.
-    pub(crate) fn pane_of(&self, view: &Entity<EditorView>, cx: &App) -> Option<usize> {
+    pub fn pane_of(&self, view: &Entity<EditorView>, cx: &App) -> Option<usize> {
         self.panes
             .iter()
             .position(|pane| pane.read(cx).index_of(view).is_some())
     }
 
     /// Whether both views are shown.
-    pub(crate) fn is_split(&self, cx: &App) -> bool {
+    pub fn is_split(&self, cx: &App) -> bool {
         self.panes
             .iter()
             .all(|pane| !pane.read(cx).items().is_empty())
@@ -443,7 +443,7 @@ impl Workspace {
 
     /// Follows the focus into a view (a click in the other pane makes it the active one) and its
     /// scrolling.
-    pub(crate) fn track_view(
+    pub fn track_view(
         &mut self,
         view: &Entity<EditorView>,
         window: &mut Window,
@@ -529,11 +529,11 @@ impl Workspace {
         cx.notify();
     }
 
-    pub(crate) fn active_view(&self, cx: &App) -> Option<Entity<EditorView>> {
+    pub fn active_view(&self, cx: &App) -> Option<Entity<EditorView>> {
         self.active_pane().read(cx).active_item().cloned()
     }
 
-    pub(crate) fn all_views(&self, cx: &App) -> Vec<Entity<EditorView>> {
+    pub fn all_views(&self, cx: &App) -> Vec<Entity<EditorView>> {
         self.panes
             .iter()
             .flat_map(|pane| pane.read(cx).items().to_vec())
@@ -552,7 +552,7 @@ impl Workspace {
             .expect("some number is free")
     }
 
-    pub(crate) fn new_file(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+    pub fn new_file(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let number = self.next_untitled_number(cx);
         let (format, language) = new_document(cx);
         let buffer = cx.new(|cx| {
@@ -567,12 +567,7 @@ impl Workspace {
     }
 
     /// Opens a document that was not read from a file (e.g. generated text) as untitled.
-    pub(crate) fn open_document(
-        &mut self,
-        doc: Document,
-        window: &mut Window,
-        cx: &mut Context<Self>,
-    ) {
+    pub fn open_document(&mut self, doc: Document, window: &mut Window, cx: &mut Context<Self>) {
         let number = self.next_untitled_number(cx);
         let buffer = cx.new(|_| Buffer::untitled_with(number, doc));
         self.add_buffer(buffer, window, cx);
@@ -580,12 +575,12 @@ impl Workspace {
 
     /// Opens a file in a new tab, or switches to its tab if it is already open. The file is read
     /// in the background.
-    pub(crate) fn open_path(&mut self, path: &Path, window: &mut Window, cx: &mut Context<Self>) {
+    pub fn open_path(&mut self, path: &Path, window: &mut Window, cx: &mut Context<Self>) {
         self.open_path_with(path, false, window, cx);
     }
 
     /// Opens files and places carets as a command line asks (also from a second launch).
-    pub(crate) fn open_command_line(
+    pub fn open_command_line(
         &mut self,
         command_line: &CommandLine,
         window: &mut Window,
@@ -667,7 +662,7 @@ impl Workspace {
 
     /// Tells the user about recovery copies left by saves that were interrupted (a crash or
     /// power loss while writing).
-    pub(crate) fn report_pending_recoveries(&self, window: &mut Window, cx: &mut App) {
+    pub fn report_pending_recoveries(&self, window: &mut Window, cx: &mut App) {
         let Some(dir) = AppState::global(cx).recovery_dir() else {
             return;
         };
@@ -684,13 +679,13 @@ impl Workspace {
         }
     }
 
-    pub(crate) fn view_for_path(&self, path: &Path, cx: &App) -> Option<Entity<EditorView>> {
+    pub fn view_for_path(&self, path: &Path, cx: &App) -> Option<Entity<EditorView>> {
         self.all_views(cx)
             .into_iter()
             .find(|view| view.read(cx).buffer.read(cx).path() == Some(path))
     }
 
-    pub(crate) fn activate_view(
+    pub fn activate_view(
         &mut self,
         view: &Entity<EditorView>,
         window: &mut Window,
@@ -722,7 +717,7 @@ impl Workspace {
     }
 
     /// Follows a buffer's events: loading failures, state shown in the menus.
-    pub(crate) fn watch_buffer(
+    pub fn watch_buffer(
         &mut self,
         buffer: &Entity<Buffer>,
         window: &mut Window,
@@ -768,7 +763,7 @@ impl Workspace {
         }
     }
 
-    pub(crate) fn close_view(
+    pub fn close_view(
         &mut self,
         view: &Entity<EditorView>,
         window: &mut Window,
@@ -829,7 +824,7 @@ impl Workspace {
 
     /// Runs a command. Editor commands that reach the workspace (focus is in a panel or the menu
     /// bar) go to the active view.
-    pub(crate) fn dispatch(
+    pub fn dispatch(
         &mut self,
         invocation: &Invocation,
         window: &mut Window,
@@ -875,7 +870,7 @@ impl Workspace {
     }
 
     /// Redraws every editor after a view setting (zoom, word wrap, Show Symbol) changed.
-    pub(crate) fn refresh_views(&mut self, cx: &mut Context<Self>) {
+    pub fn refresh_views(&mut self, cx: &mut Context<Self>) {
         for view in self.all_views(cx) {
             view.update(cx, |view, cx| view.settings_changed(cx));
         }
@@ -888,7 +883,7 @@ impl Workspace {
     }
 
     /// Rebuilds the menus from the current state.
-    pub(crate) fn refresh_menus(&mut self, cx: &mut Context<Self>) {
+    pub fn refresh_menus(&mut self, cx: &mut Context<Self>) {
         let format = self
             .active_view(cx)
             .map(|view| view.read(cx).buffer.read(cx).doc().format());
@@ -1037,7 +1032,7 @@ impl Workspace {
 
     /// The window's title: `*` for unsaved changes, the active file's path (or only its name,
     /// Preferences > Appearance), and Birchpad.
-    pub(crate) fn window_title(&self, cx: &App) -> String {
+    pub fn window_title(&self, cx: &App) -> String {
         match self.active_view(cx) {
             Some(view) => {
                 let buffer = view.read(cx).buffer.read(cx);
@@ -1228,7 +1223,3 @@ impl Focusable for Workspace {
         self.focus_handle.clone()
     }
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/workspace/tests.rs"]
-pub(crate) mod tests;

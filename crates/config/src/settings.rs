@@ -840,15 +840,3 @@ pub struct DiagnosticsSettings {
     /// Send crash reports. Off unless the user opts in.
     pub crash_reports: bool,
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/settings/link_tests.rs"]
-mod link_tests;
-
-#[cfg(test)]
-#[path = "../tests/unit/settings/search_engine_tests.rs"]
-mod search_engine_tests;
-
-#[cfg(test)]
-#[path = "../tests/unit/settings/completion_tests.rs"]
-mod completion_tests;

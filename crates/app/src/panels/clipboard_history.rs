@@ -19,17 +19,17 @@ use gpui_kit::{
 use crate::workspace::Workspace;
 
 /// Texts kept.
-pub(crate) const LIMIT: usize = 30;
+pub const LIMIT: usize = 30;
 /// Longer texts are not kept: the history is for snippets.
-pub(crate) const MAX_TEXT: usize = 1 << 20;
-const POLL: Duration = Duration::from_secs(1);
+pub const MAX_TEXT: usize = 1 << 20;
+pub const POLL: Duration = Duration::from_secs(1);
 const ROW_HEIGHT: f32 = 22.;
 /// Characters a row shows of its text.
-const PREVIEW: usize = 120;
+pub const PREVIEW: usize = 120;
 
 /// Puts `text` at the top of `history`: a text already there moves up, an empty or huge one
 /// is not kept, and the oldest go past the limit. Returns whether anything changed.
-pub(crate) fn remember(history: &mut VecDeque<String>, text: &str) -> bool {
+pub fn remember(history: &mut VecDeque<String>, text: &str) -> bool {
     if text.is_empty() || text.len() > MAX_TEXT || history.front().is_some_and(|top| top == text) {
         return false;
     }
@@ -40,7 +40,7 @@ pub(crate) fn remember(history: &mut VecDeque<String>, text: &str) -> bool {
 }
 
 /// A row's text: on one line, line breaks shown as `⏎`, tabs as spaces, cut with `…`.
-pub(crate) fn preview(text: &str) -> String {
+pub fn preview(text: &str) -> String {
     let mut shown: String = text
         .chars()
         .take(PREVIEW)
@@ -59,12 +59,12 @@ pub(crate) fn preview(text: &str) -> String {
     shown
 }
 
-pub(crate) struct ClipboardHistory {
+pub struct ClipboardHistory {
     workspace: WeakEntity<Workspace>,
-    pub(crate) entries: VecDeque<String>,
-    pub(crate) selected: Option<usize>,
+    pub entries: VecDeque<String>,
+    pub selected: Option<usize>,
     scroll: UniformListScrollHandle,
-    focus_handle: FocusHandle,
+    pub focus_handle: FocusHandle,
     _poll: Task<()>,
 }
 
@@ -75,11 +75,7 @@ impl Focusable for ClipboardHistory {
 }
 
 impl ClipboardHistory {
-    pub(crate) fn new(
-        workspace: WeakEntity<Workspace>,
-        _: &mut Window,
-        cx: &mut Context<Self>,
-    ) -> Self {
+    pub fn new(workspace: WeakEntity<Workspace>, _: &mut Window, cx: &mut Context<Self>) -> Self {
         let poll = cx.spawn(async move |this, cx| {
             loop {
                 if this.update(cx, |this, cx| this.read_clipboard(cx)).is_err() {
@@ -99,7 +95,7 @@ impl ClipboardHistory {
     }
 
     /// Takes the clipboard's text into the history.
-    pub(crate) fn read_clipboard(&mut self, cx: &mut Context<Self>) {
+    pub fn read_clipboard(&mut self, cx: &mut Context<Self>) {
         let Some(text) = cx.read_from_clipboard().and_then(|item| item.text()) else {
             return;
         };
@@ -113,7 +109,7 @@ impl ClipboardHistory {
     }
 
     /// Pastes entry `index` into the active document.
-    pub(crate) fn paste(&mut self, index: usize, window: &mut Window, cx: &mut Context<Self>) {
+    pub fn paste(&mut self, index: usize, window: &mut Window, cx: &mut Context<Self>) {
         let Some(text) = self.entries.get(index).cloned() else {
             return;
         };
@@ -232,7 +228,3 @@ impl Render for ClipboardHistory {
             .child(body)
     }
 }
-
-#[cfg(test)]
-#[path = "../../tests/unit/panels/clipboard_history/tests.rs"]
-mod tests;

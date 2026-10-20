@@ -1,7 +1,7 @@
 [package]
 name = "birchpad-editor"
 description = "Birchpad's editor view: a document (the buffer), its text drawn and edited in GPUI, the active theme."
-version = "0.4.0"
+version = "0.5.0"
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
@@ -30,6 +30,8 @@ serde_json.workspace = true
 test-support = ["birchpad-ui/test-support"]
 
 [dev-dependencies]
+# What the tests read of the editor.
+birchpad-editor = { path = ".", features = ["test-support"] }
 birchpad-i18n = { workspace = true, features = ["per-thread"] }
 birchpad-ui = { workspace = true, features = ["test-support"] }
 gpui-kit = { version = "0.7", features = ["test-support"] }

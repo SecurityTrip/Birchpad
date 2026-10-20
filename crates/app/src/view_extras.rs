@@ -16,9 +16,9 @@ use crate::commands::{CommandRegistry, Register as _};
 use crate::file_commands::{Shell, shell};
 
 /// The browsers View > View Current File in offers besides the default one.
-pub(crate) const BROWSERS: [&str; 4] = ["firefox", "chrome", "edge", "safari"];
+pub const BROWSERS: [&str; 4] = ["firefox", "chrome", "edge", "safari"];
 
-pub(crate) fn register_commands(registry: &mut CommandRegistry) {
+pub fn register_commands(registry: &mut CommandRegistry) {
     registry.workspace("view.in-browser", |this, args: BrowserArgs, _, cx| {
         let view = this
             .active_view(cx)
@@ -82,7 +82,7 @@ fn time(time: SystemTime) -> String {
 }
 
 /// The summary's rows: label and value.
-pub(crate) fn summary_rows(
+pub fn summary_rows(
     path: Option<&Path>,
     name: &str,
     counts: TextCounts,
@@ -148,7 +148,3 @@ fn open(rows: Vec<(String, String)>, window: &mut Window, cx: &mut App) {
             .footer(DialogFooter::new().child(crate::workspace::dialog_close("common.close")))
     });
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/view_extras/tests.rs"]
-mod tests;

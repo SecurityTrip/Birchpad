@@ -1201,7 +1201,3 @@ impl Buffer {
         cx.notify();
     }
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/buffer/tests.rs"]
-mod tests;

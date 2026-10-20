@@ -132,11 +132,3 @@ pub fn next(differences: &[Difference], line: usize, forward: bool) -> Option<&D
             .or_else(|| differences.last())
     }
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/compare/tests.rs"]
-mod tests;
-
-#[cfg(test)]
-#[path = "../tests/unit/compare/properties.rs"]
-mod properties;

@@ -236,7 +236,3 @@ impl Encoder {
         }
     }
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/codec/tests.rs"]
-mod tests;

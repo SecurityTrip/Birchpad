@@ -89,12 +89,21 @@ impl Runtime {
         let (commands, _) = plugin.call(Session::empty(), |bindings, store| {
             bindings.call_commands(store)
         })?;
+        let commands = commands
+            .into_iter()
+            .map(|command| PluginCommand {
+                id: command.id,
+                title: command.title,
+            })
+            .collect();
         plugin.commands = check_commands(commands)?;
         Ok(plugin)
     }
 }
 
-fn check_commands(commands: Vec<types::Command>) -> Result<Vec<PluginCommand>> {
+/// The commands a plugin declares, checked: at most [`MAX_COMMANDS`], each with an id of its
+/// own that [`is_valid_id`] accepts and a title of one line, trimmed.
+pub fn check_commands(commands: Vec<PluginCommand>) -> Result<Vec<PluginCommand>> {
     if commands.len() > MAX_COMMANDS {
         anyhow::bail!(
             "{}",
@@ -304,7 +313,3 @@ impl host::Host for State {
         self.session.show_panel(&title, lines);
     }
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/wasm/tests.rs"]
-mod tests;

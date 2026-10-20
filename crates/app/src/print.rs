@@ -15,7 +15,7 @@ use crate::editor::theme;
 use crate::workspace::{Workspace, report_error};
 
 /// The active document as HTML.
-fn active_html(workspace: &Workspace, print: bool, cx: &App) -> Result<(String, String)> {
+pub fn active_html(workspace: &Workspace, print: bool, cx: &App) -> Result<(String, String)> {
     let view = workspace
         .active_view(cx)
         .ok_or_else(|| anyhow!("{}", t!("print.there-is-no-document")))?;
@@ -41,7 +41,7 @@ fn active_html(workspace: &Workspace, print: bool, cx: &App) -> Result<(String, 
     Ok((title, html))
 }
 
-pub(crate) fn register_commands(registry: &mut CommandRegistry) {
+pub fn register_commands(registry: &mut CommandRegistry) {
     registry.workspace("file.print", |this, (), _, cx| {
         let (title, html) = active_html(this, true, cx)?;
         let path = print_path(&title);
@@ -69,7 +69,7 @@ struct ExportArgs {
 }
 
 /// Where the page to print goes: a temporary file named after the document.
-pub(crate) fn print_path(title: &str) -> PathBuf {
+pub fn print_path(title: &str) -> PathBuf {
     let safe: String = title
         .chars()
         .map(|ch| {
@@ -116,7 +116,3 @@ impl Workspace {
         .detach();
     }
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/print/tests.rs"]
-mod tests;

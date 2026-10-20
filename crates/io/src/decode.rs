@@ -153,7 +153,3 @@ fn first_round_trip_difference(text: &str, encoding: Encoding, bytes: &[u8]) -> 
         Err(_) => Some(0),
     }
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/decode/tests.rs"]
-mod tests;

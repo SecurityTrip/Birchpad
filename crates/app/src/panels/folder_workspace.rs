@@ -29,18 +29,18 @@ use crate::workspace::Workspace;
 const ROW_HEIGHT: f32 = 22.;
 const INDENT: f32 = 14.;
 /// How often unfolded folders are read again.
-const POLL: Duration = Duration::from_secs(2);
+pub const POLL: Duration = Duration::from_secs(2);
 
 /// A file or folder in a folder.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct Entry {
-    pub(crate) name: String,
-    pub(crate) is_dir: bool,
+pub struct Entry {
+    pub name: String,
+    pub is_dir: bool,
 }
 
 /// The contents of `folder`: folders first, then files, each in name order without regard to
 /// case. Entries whose kind cannot be read are left out.
-pub(crate) fn list_folder(folder: &Path) -> io::Result<Vec<Entry>> {
+pub fn list_folder(folder: &Path) -> io::Result<Vec<Entry>> {
     let mut entries: Vec<Entry> = std::fs::read_dir(folder)?
         .flatten()
         .filter_map(|entry| {
@@ -64,15 +64,15 @@ pub(crate) fn list_folder(folder: &Path) -> io::Result<Vec<Entry>> {
 }
 
 #[derive(Debug, Clone)]
-struct Node {
+pub struct Node {
     path: PathBuf,
-    name: String,
+    pub name: String,
     is_dir: bool,
-    expanded: bool,
+    pub expanded: bool,
     /// `None` until the folder has been read.
-    children: Option<Vec<Node>>,
+    pub children: Option<Vec<Node>>,
     /// Why the folder could not be read.
-    error: Option<String>,
+    pub error: Option<String>,
 }
 
 impl Node {
@@ -87,7 +87,7 @@ impl Node {
         }
     }
 
-    fn root(path: PathBuf) -> Self {
+    pub fn root(path: PathBuf) -> Self {
         let name = path.file_name().map_or_else(
             || path.display().to_string(),
             |name| name.to_string_lossy().into_owned(),
@@ -96,7 +96,7 @@ impl Node {
     }
 
     /// Takes a new listing, keeping what is known of the folders that are still there.
-    fn set_listing(&mut self, listing: io::Result<Vec<Entry>>) {
+    pub fn set_listing(&mut self, listing: io::Result<Vec<Entry>>) {
         match listing {
             Ok(entries) => {
                 let mut old: Vec<Node> = self.children.take().unwrap_or_default();
@@ -123,7 +123,7 @@ impl Node {
         }
     }
 
-    fn find_mut(&mut self, path: &Path) -> Option<&mut Node> {
+    pub fn find_mut(&mut self, path: &Path) -> Option<&mut Node> {
         if self.path == path {
             return Some(self);
         }
@@ -158,18 +158,18 @@ impl Node {
 
 /// A row of the tree.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct Row {
-    pub(crate) path: PathBuf,
-    pub(crate) name: String,
-    pub(crate) depth: usize,
-    pub(crate) is_dir: bool,
-    pub(crate) expanded: bool,
-    pub(crate) is_root: bool,
+pub struct Row {
+    pub path: PathBuf,
+    pub name: String,
+    pub depth: usize,
+    pub is_dir: bool,
+    pub expanded: bool,
+    pub is_root: bool,
     /// A folder that could not be read says why.
-    pub(crate) error: Option<String>,
+    pub error: Option<String>,
 }
 
-fn push_rows(node: &Node, depth: usize, is_root: bool, rows: &mut Vec<Row>) {
+pub fn push_rows(node: &Node, depth: usize, is_root: bool, rows: &mut Vec<Row>) {
     rows.push(Row {
         path: node.path.clone(),
         name: node.name.clone(),
@@ -186,12 +186,12 @@ fn push_rows(node: &Node, depth: usize, is_root: bool, rows: &mut Vec<Row>) {
     }
 }
 
-pub(crate) struct FolderWorkspace {
+pub struct FolderWorkspace {
     workspace: WeakEntity<Workspace>,
     roots: Vec<Node>,
-    pub(crate) selected: Option<PathBuf>,
+    pub selected: Option<PathBuf>,
     scroll: UniformListScrollHandle,
-    focus_handle: FocusHandle,
+    pub focus_handle: FocusHandle,
     _poll: Task<()>,
 }
 
@@ -202,11 +202,7 @@ impl Focusable for FolderWorkspace {
 }
 
 impl FolderWorkspace {
-    pub(crate) fn new(
-        workspace: WeakEntity<Workspace>,
-        _: &mut Window,
-        cx: &mut Context<Self>,
-    ) -> Self {
+    pub fn new(workspace: WeakEntity<Workspace>, _: &mut Window, cx: &mut Context<Self>) -> Self {
         let roots: Vec<Node> = AppState::global(cx)
             .state
             .panels
@@ -234,7 +230,7 @@ impl FolderWorkspace {
     }
 
     /// The top folders.
-    pub(crate) fn roots(&self) -> Vec<PathBuf> {
+    pub fn roots(&self) -> Vec<PathBuf> {
         self.roots.iter().map(|root| root.path.clone()).collect()
     }
 
@@ -245,7 +241,7 @@ impl FolderWorkspace {
 
     /// Adds `folder` to the workspace, unfolded and selected; a folder already there is only
     /// selected.
-    pub(crate) fn add_root(&mut self, folder: PathBuf, cx: &mut Context<Self>) {
+    pub fn add_root(&mut self, folder: PathBuf, cx: &mut Context<Self>) {
         let folder = std::path::absolute(&folder).unwrap_or(folder);
         if !self.roots.iter().any(|root| root.path == folder) {
             self.roots.push(Node::root(folder.clone()));
@@ -255,7 +251,7 @@ impl FolderWorkspace {
         self.expand(&folder, cx);
     }
 
-    pub(crate) fn remove_root(&mut self, folder: &Path, cx: &mut Context<Self>) {
+    pub fn remove_root(&mut self, folder: &Path, cx: &mut Context<Self>) {
         self.roots.retain(|root| root.path != folder);
         if self
             .selected
@@ -268,7 +264,7 @@ impl FolderWorkspace {
         cx.notify();
     }
 
-    pub(crate) fn remove_all(&mut self, cx: &mut Context<Self>) {
+    pub fn remove_all(&mut self, cx: &mut Context<Self>) {
         self.roots.clear();
         self.selected = None;
         self.remember(cx);
@@ -280,7 +276,7 @@ impl FolderWorkspace {
     }
 
     /// Unfolds the folder at `path`, reading it first if it has not been read.
-    pub(crate) fn expand(&mut self, path: &Path, cx: &mut Context<Self>) {
+    pub fn expand(&mut self, path: &Path, cx: &mut Context<Self>) {
         let Some(node) = self.node_mut(path) else {
             return;
         };
@@ -294,7 +290,7 @@ impl FolderWorkspace {
         cx.notify();
     }
 
-    pub(crate) fn collapse(&mut self, path: &Path, cx: &mut Context<Self>) {
+    pub fn collapse(&mut self, path: &Path, cx: &mut Context<Self>) {
         if let Some(node) = self.node_mut(path) {
             node.expanded = false;
             cx.notify();
@@ -311,7 +307,7 @@ impl FolderWorkspace {
     }
 
     /// Folds every folder, or unfolds those already read.
-    pub(crate) fn set_all(&mut self, expanded: bool, cx: &mut Context<Self>) {
+    pub fn set_all(&mut self, expanded: bool, cx: &mut Context<Self>) {
         for root in &mut self.roots {
             root.set_expanded_all(expanded);
         }
@@ -319,7 +315,7 @@ impl FolderWorkspace {
     }
 
     /// Reads the unfolded folders again, in the background.
-    pub(crate) fn refresh(&mut self, cx: &mut Context<Self>) {
+    pub fn refresh(&mut self, cx: &mut Context<Self>) {
         let mut folders = Vec::new();
         for root in &self.roots {
             root.open_folders(&mut folders);
@@ -370,7 +366,7 @@ impl FolderWorkspace {
     }
 
     /// Unfolds the folders down to `file` and selects it; false if no top folder holds it.
-    pub(crate) fn locate(&mut self, file: &Path, cx: &mut Context<Self>) -> bool {
+    pub fn locate(&mut self, file: &Path, cx: &mut Context<Self>) -> bool {
         let Some(root) = self
             .roots
             .iter()
@@ -396,7 +392,7 @@ impl FolderWorkspace {
     }
 
     /// The rows shown, top to bottom.
-    pub(crate) fn rows(&self) -> Vec<Row> {
+    pub fn rows(&self) -> Vec<Row> {
         let mut rows = Vec::new();
         for root in &self.roots {
             push_rows(root, 0, true, &mut rows);
@@ -621,7 +617,7 @@ impl FolderWorkspace {
 }
 
 /// Opens the system's terminal in `folder`.
-pub(crate) fn open_terminal(folder: &Path) -> anyhow::Result<()> {
+pub fn open_terminal(folder: &Path) -> anyhow::Result<()> {
     use std::process::Command;
     let started = if cfg!(target_os = "windows") {
         Command::new("cmd")
@@ -729,7 +725,3 @@ impl Render for FolderWorkspace {
             .child(div().flex_1().min_h(px(0.)).child(body))
     }
 }
-
-#[cfg(test)]
-#[path = "../../tests/unit/panels/folder_workspace_tests.rs"]
-mod tests;

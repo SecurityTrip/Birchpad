@@ -14,28 +14,16 @@ extern crate birchpad_i18n;
 pub mod banner;
 pub mod buffer;
 mod hooks;
-#[cfg(test)]
-#[path = "../tests/unit/test_support.rs"]
-mod test_support;
 
-#[cfg(test)]
-#[path = "../tests/unit/bidi_tests.rs"]
-mod bidi_tests;
-#[cfg(test)]
-#[path = "../tests/unit/capture_coverage_tests.rs"]
-mod capture_coverage_tests;
-mod column_editor;
-mod completion;
-#[cfg(test)]
-#[path = "../tests/unit/edge_tests.rs"]
-mod edge_tests;
-mod element;
-mod folding;
+pub mod column_editor;
+pub mod completion;
+pub mod element;
+pub mod folding;
 pub mod layout;
-mod marks;
-mod multi;
-mod operations;
-mod smart_highlight;
+pub mod marks;
+pub mod multi;
+pub mod operations;
+pub mod smart_highlight;
 pub mod symbols;
 pub mod theme;
 
@@ -520,7 +508,7 @@ pub struct EditorView {
     pub completion: Option<completion::Popup>,
     /// A function's parameters, while they show.
     pub call_tip: Option<completion::CallTip>,
-    display: DisplayMap,
+    pub display: DisplayMap,
     wrap_job: Option<WrapJob>,
     /// Where to put the caret once the file has been read (`-n`, `-c`, `-p`).
     pending_caret: Option<CaretTarget>,
@@ -532,13 +520,13 @@ pub struct EditorView {
     /// Whether its tab is pinned, and its color.
     pub tab: crate::TabMarks,
     /// First visible row; fractional while scrolling smoothly.
-    scroll_top: f64,
+    pub scroll_top: f64,
     /// Horizontal scroll offset of the text.
-    scroll_left: Pixels,
+    pub scroll_left: Pixels,
     /// Widest content seen, for the horizontal scrollbar (as Scintilla tracks it).
     scroll_width: Pixels,
     /// Bring the primary caret into view on the next layout.
-    autoscroll: bool,
+    pub autoscroll: bool,
     /// Column (in cells from the row start) that vertical movement aims for.
     goal_column: Option<usize>,
     last_edit: LastEdit,
@@ -548,16 +536,16 @@ pub struct EditorView {
     focused: bool,
     blink: Task<()>,
     /// Geometry of the last frame, for mouse and IME hit testing.
-    layout: Option<Layout>,
+    pub layout: Option<Layout>,
     highlight_cache: Option<layout::HighlightCache>,
     /// Occurrences of the selected word around the visible text.
-    smart_highlight: Option<smart_highlight::SmartHighlight>,
+    pub smart_highlight: Option<smart_highlight::SmartHighlight>,
     /// Headers of this view's collapsed folds.
     collapsed: LineMarkers,
     /// View > Hide Lines: the lines hidden, each marked; shown again from the line above them.
-    pub(crate) user_hidden: LineMarkers,
+    pub user_hidden: LineMarkers,
     /// The buffer's folds in lines.
-    fold_cache: Option<folding::FoldCache>,
+    pub fold_cache: Option<folding::FoldCache>,
     /// The rectangular selection, valid while `selection` is still the one it made.
     block: Option<multi::BlockState>,
     /// The order in which Multi-select added ranges, valid while `selection` is still the one
@@ -773,19 +761,19 @@ impl EditorView {
     }
 
     /// The last frame's layout.
-    #[cfg(any(test, feature = "test-support"))]
+    #[cfg(feature = "test-support")]
     pub fn layout(&self) -> Option<&Layout> {
         self.layout.as_ref()
     }
 
     /// Where the text was drawn in the last frame.
-    #[cfg(any(test, feature = "test-support"))]
+    #[cfg(feature = "test-support")]
     pub fn bounds(&self) -> Option<Bounds<Pixels>> {
         self.layout.as_ref().map(|layout| layout.text_bounds)
     }
 
     /// The first visible row and the horizontal scroll offset.
-    #[cfg(any(test, feature = "test-support"))]
+    #[cfg(feature = "test-support")]
     pub fn scroll_position(&self) -> (f64, Pixels) {
         (self.scroll_top, self.scroll_left)
     }
@@ -1662,7 +1650,7 @@ impl EditorView {
         cx.notify();
     }
 
-    fn mouse_move(&mut self, event: &MouseMoveEvent, _: &mut Window, cx: &mut Context<Self>) {
+    pub fn mouse_move(&mut self, event: &MouseMoveEvent, _: &mut Window, cx: &mut Context<Self>) {
         let Some(drag) = self.drag.clone() else {
             return;
         };
@@ -1981,7 +1969,3 @@ fn utf16_to_byte_offset(text: &str, utf16: usize) -> usize {
     }
     text.len()
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/tests.rs"]
-mod tests;

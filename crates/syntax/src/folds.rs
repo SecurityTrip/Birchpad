@@ -123,7 +123,3 @@ pub fn indent_fold_ranges(text: &Rope, tab_width: usize) -> Vec<Range<usize>> {
     folds.sort_by_key(|range| range.start);
     folds
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/folds/tests.rs"]
-mod tests;

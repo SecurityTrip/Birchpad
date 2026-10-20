@@ -582,9 +582,10 @@ floors in `.github/coverage-floors.toml` with its tests.
 
 ### Release 0.5.0: printing, tools and help
 
-- [ ] 6.36 Integration tests: each crate's tests in its `tests` folder test it through its
+- [x] 6.36 Integration tests: each crate's tests in its `tests` folder test it through its
       public interface, the application split into a library and the program so that they
       can; the unit tests 6.35 moved there are rewritten as such tests
+      ([ADR 0043](adr/0043-tests-through-the-public-interface.md))
 - [ ] 6.37 Printing: a print preview and page setup of Birchpad's own (margins, header and
       footer with Notepad++'s variables, colors or black on white, line numbers), printing the
       selection, Print Now; native printing where the platform offers it

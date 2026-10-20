@@ -36,7 +36,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::workspace::Workspace;
 
-pub(crate) const SCRIPT_VARIABLE: &str = "BIRCHPAD_E2E_SCRIPT";
+pub const SCRIPT_VARIABLE: &str = "BIRCHPAD_E2E_SCRIPT";
 
 /// How long a step waits for the application to settle: a frame drawn, a file read.
 const SETTLE: Duration = Duration::from_millis(150);
@@ -96,7 +96,7 @@ struct Tab {
 }
 
 /// Runs the script named by [`SCRIPT_VARIABLE`], if any, in `window`.
-pub(crate) fn run_script(window: AnyWindowHandle, workspace: Entity<Workspace>, cx: &mut App) {
+pub fn run_script(window: AnyWindowHandle, workspace: Entity<Workspace>, cx: &mut App) {
     let Some(path) = std::env::var_os(SCRIPT_VARIABLE).map(PathBuf::from) else {
         return;
     };

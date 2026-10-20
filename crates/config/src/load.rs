@@ -228,7 +228,3 @@ fn env_path(name: &str) -> Option<PathBuf> {
         .filter(|value| !value.is_empty())
         .map(PathBuf::from)
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/load/tests.rs"]
-mod tests;

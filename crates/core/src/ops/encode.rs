@@ -156,7 +156,3 @@ pub fn encode_selections(
         selection.primary_index(),
     ))))
 }
-
-#[cfg(test)]
-#[path = "../../tests/unit/ops/encode/tests.rs"]
-mod tests;

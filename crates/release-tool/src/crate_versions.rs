@@ -17,17 +17,17 @@ use semver::Version;
 
 /// One library crate: its version now and at the release compared with.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct CrateVersion {
-    pub(crate) name: String,
-    pub(crate) version: Version,
+pub struct CrateVersion {
+    pub name: String,
+    pub version: Version,
     /// `None` for a crate the release did not have yet.
-    pub(crate) previous: Option<Version>,
+    pub previous: Option<Version>,
     /// Whether anything in its folder differs from the release.
-    pub(crate) changed: bool,
+    pub changed: bool,
 }
 
 /// What breaks the rule; empty when every version is as it should be.
-pub(crate) fn problems(
+pub fn problems(
     crates: &[CrateVersion],
     dependencies: &BTreeMap<String, String>,
     since: &str,
@@ -65,7 +65,7 @@ pub(crate) fn problems(
 
 /// Runs the check in the repository `repo` against the tag `since`, or the latest stable
 /// release's tag.
-pub(crate) fn check(repo: &Path, since: Option<&str>) -> Result<()> {
+pub fn check(repo: &Path, since: Option<&str>) -> Result<()> {
     let workspace = read_toml(&std::fs::read_to_string(repo.join("Cargo.toml"))?)?;
     let since = match since {
         Some(tag) => tag.to_owned(),
@@ -128,11 +128,13 @@ pub(crate) fn check(repo: &Path, since: Option<&str>) -> Result<()> {
     Ok(())
 }
 
-fn read_toml(text: &str) -> Result<toml::Table> {
+/// A manifest's text as a table.
+pub fn read_toml(text: &str) -> Result<toml::Table> {
     Ok(toml::from_str(text)?)
 }
 
-fn package_name(manifest: &toml::Table) -> Result<String> {
+/// The `[package]`'s name.
+pub fn package_name(manifest: &toml::Table) -> Result<String> {
     manifest
         .get("package")
         .and_then(|package| package.get("name"))
@@ -142,7 +144,7 @@ fn package_name(manifest: &toml::Table) -> Result<String> {
 }
 
 /// The crate's own version, or `None` when it takes the workspace's.
-fn own_version(manifest: &toml::Table) -> Result<Option<Version>> {
+pub fn own_version(manifest: &toml::Table) -> Result<Option<Version>> {
     let version = manifest
         .get("package")
         .and_then(|package| package.get("version"))
@@ -166,7 +168,8 @@ fn without_version(mut manifest: toml::Table) -> toml::Table {
     manifest
 }
 
-fn workspace_version(workspace: &toml::Table) -> Result<Version> {
+/// The `[workspace.package]`'s version: the application's.
+pub fn workspace_version(workspace: &toml::Table) -> Result<Version> {
     let text = workspace
         .get("workspace")
         .and_then(|workspace| workspace.get("package"))
@@ -198,7 +201,7 @@ fn dependency_versions(workspace: &toml::Table) -> BTreeMap<String, String> {
 
 /// The tag of the latest stable release before `version`, the one being made: `v` and a
 /// version without a pre-release part. The release's own tag, once it is there, is not it.
-fn latest_release(repo: &Path, version: &Version) -> Result<String> {
+pub fn latest_release(repo: &Path, version: &Version) -> Result<String> {
     let tags = git(repo, &["tag", "--list", "v*"])?;
     tags.lines()
         .filter_map(|tag| Some((Version::parse(tag.strip_prefix('v')?).ok()?, tag)))
@@ -238,7 +241,3 @@ fn git_quiet(repo: &Path, args: &[&str]) -> Result<bool> {
         _ => bail!("git {} failed", args.join(" ")),
     }
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/crate_versions/tests.rs"]
-mod tests;

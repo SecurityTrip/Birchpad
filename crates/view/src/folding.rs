@@ -122,7 +122,3 @@ pub fn hidden_lines(folds: &[Fold], collapsed: &[usize]) -> Vec<Range<usize>> {
     }
     merged
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/folding/tests.rs"]
-mod tests;

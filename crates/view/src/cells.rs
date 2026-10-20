@@ -193,7 +193,3 @@ impl DisplayText {
             })
     }
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/cells/tests.rs"]
-mod tests;

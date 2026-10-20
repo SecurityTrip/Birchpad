@@ -42,7 +42,7 @@ struct EnableArgs {
     enabled: bool,
 }
 
-pub(crate) fn register_commands(registry: &mut CommandRegistry) {
+pub fn register_commands(registry: &mut CommandRegistry) {
     registry.workspace("plugin.admin", |_, (), window, cx| {
         open(window, cx);
         Ok(())
@@ -113,7 +113,7 @@ impl Workspace {
     }
 
     /// Install...: asks for a plugin's `plugin.toml`.
-    fn ask_plugin_to_install(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+    pub fn ask_plugin_to_install(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let start = self.default_directory(cx);
         cx.spawn_in(window, async move |this, cx| {
             let Some(paths) = crate::path_dialog::ask_open(start, cx).await else {
@@ -135,18 +135,18 @@ impl Workspace {
 
 /// A row of the dialog.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct Row {
-    pub(crate) id: String,
-    pub(crate) name: String,
-    pub(crate) version: String,
-    pub(crate) description: String,
-    pub(crate) status: String,
+pub struct Row {
+    pub id: String,
+    pub name: String,
+    pub version: String,
+    pub description: String,
+    pub status: String,
     /// Whether the plugin is turned off (or would be, were it allowed).
-    pub(crate) disabled: bool,
+    pub disabled: bool,
 }
 
 /// What the dialog lists: the plugins, and the folders that hold none that reads.
-pub(crate) fn rows(cx: &App) -> (Vec<Row>, Vec<String>) {
+pub fn rows(cx: &App) -> (Vec<Row>, Vec<String>) {
     let Some(plugins) = cx.try_global::<Plugins>() else {
         return (Vec::new(), Vec::new());
     };
@@ -175,7 +175,7 @@ pub(crate) fn rows(cx: &App) -> (Vec<Row>, Vec<String>) {
 }
 
 /// What the administrator's policy says, if it limits plugins.
-fn policy_note(cx: &App) -> Option<String> {
+pub fn policy_note(cx: &App) -> Option<String> {
     match AppState::global(cx).settings.plugins.install {
         PluginInstall::Allow => None,
         PluginInstall::Allowlist => Some(t!(
@@ -188,7 +188,7 @@ fn policy_note(cx: &App) -> Option<String> {
 }
 
 /// The dialog's content.
-pub(crate) struct PluginsAdmin {
+pub struct PluginsAdmin {
     workspace: WeakEntity<Workspace>,
 }
 
@@ -329,7 +329,3 @@ impl Render for PluginsAdmin {
             )
     }
 }
-
-#[cfg(test)]
-#[path = "../../tests/unit/extensions/admin/tests.rs"]
-mod tests;

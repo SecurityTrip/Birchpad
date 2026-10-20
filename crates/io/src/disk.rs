@@ -131,7 +131,3 @@ pub fn decode_appended(bytes: &[u8], encoding: Encoding) -> Option<(String, usiz
         }
     }
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/disk/tests.rs"]
-mod tests;

@@ -927,7 +927,3 @@ pub fn main_menu() -> Vec<Menu> {
         window, help,
     ]
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/menu/tests.rs"]
-mod tests;

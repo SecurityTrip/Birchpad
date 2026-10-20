@@ -90,7 +90,3 @@ pub(crate) fn floor_char_boundary(text: &str, mut offset: usize) -> usize {
     }
     offset
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/tests.rs"]
-mod tests;

@@ -183,7 +183,3 @@ pub fn reset(
     }
     Ok(document.to_string())
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/keymap_edit/tests.rs"]
-mod tests;

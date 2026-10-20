@@ -6,6 +6,11 @@ version's release notes from its section here.
 
 ## [Unreleased]
 
+### Changed
+
+- Every crate is tested through its public interface: the tests in `tests/integration`, one
+  test binary per crate, and `birchpad` is a library and a program that runs it (ADR 0043).
+
 ## [0.4.0] - 2026-10-19
 
 ### Added

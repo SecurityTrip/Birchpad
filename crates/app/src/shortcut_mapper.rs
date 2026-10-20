@@ -22,16 +22,16 @@ use crate::workspace::Workspace;
 
 /// A command as the mapper lists it.
 #[derive(Debug, Clone, PartialEq)]
-pub(crate) struct Row {
-    pub(crate) invocation: Invocation,
-    pub(crate) name: String,
+pub struct Row {
+    pub invocation: Invocation,
+    pub name: String,
     /// The group of its id: `file`, `edit`, ...
-    pub(crate) category: String,
+    pub category: String,
 }
 
 /// Every command of the catalog, then the menu items and bindings that run one with arguments
 /// (Convert Case to UPPERCASE), each once.
-pub(crate) fn rows(keymap: &Keymap) -> Vec<Row> {
+pub fn rows(keymap: &Keymap) -> Vec<Row> {
     let category = |id: &str| id.split('.').next().unwrap_or_default().to_owned();
     let mut rows: Vec<Row> = birchpad_commands::COMMANDS
         .iter()
@@ -86,19 +86,19 @@ pub(crate) fn rows(keymap: &Keymap) -> Vec<Row> {
 
 /// The tabs of the mapper.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum MapperTab {
+pub enum MapperTab {
     Commands,
     Macros,
     Run,
 }
 
 impl MapperTab {
-    pub(crate) const ALL: [Self; 3] = [Self::Commands, Self::Macros, Self::Run];
+    pub const ALL: [Self; 3] = [Self::Commands, Self::Macros, Self::Run];
 }
 
 /// The rows of a tab: every command, or the saved macros (`macro.run`) or command lines
 /// (`run.run`).
-pub(crate) fn rows_of(tab: MapperTab, keymap: &Keymap, cx: &App) -> Vec<Row> {
+pub fn rows_of(tab: MapperTab, keymap: &Keymap, cx: &App) -> Vec<Row> {
     let named = |command: &str, names: Vec<String>| {
         names
             .into_iter()
@@ -134,7 +134,7 @@ pub(crate) fn rows_of(tab: MapperTab, keymap: &Keymap, cx: &App) -> Vec<Row> {
 
 /// The shortcuts of `invocation` as the list shows them: those limited to some platforms say
 /// which.
-pub(crate) fn shortcut_labels(keymap: &Keymap, invocation: &Invocation) -> Vec<String> {
+pub fn shortcut_labels(keymap: &Keymap, invocation: &Invocation) -> Vec<String> {
     keymap
         .bindings_for(invocation)
         .map(|binding| match &binding.platforms {
@@ -145,10 +145,10 @@ pub(crate) fn shortcut_labels(keymap: &Keymap, invocation: &Invocation) -> Vec<S
 }
 
 /// The longest key sequence the mapper records.
-pub(crate) const MAX_SEQUENCE: usize = 4;
+pub const MAX_SEQUENCE: usize = 4;
 
 /// The shortcuts of `invocation`, as keymap files write them.
-pub(crate) fn shortcuts(keymap: &Keymap, invocation: &Invocation) -> Vec<String> {
+pub fn shortcuts(keymap: &Keymap, invocation: &Invocation) -> Vec<String> {
     keymap
         .bindings_for(invocation)
         .map(birchpad_commands::Binding::keys_string)
@@ -156,7 +156,7 @@ pub(crate) fn shortcuts(keymap: &Keymap, invocation: &Invocation) -> Vec<String>
 }
 
 /// Whether `row` matches a filter: its name, id or shortcuts contain it, ignoring case.
-pub(crate) fn matches(row: &Row, shortcuts: &[String], filter: &str) -> bool {
+pub fn matches(row: &Row, shortcuts: &[String], filter: &str) -> bool {
     let filter = filter.trim().to_lowercase();
     filter.is_empty()
         || row.name.to_lowercase().contains(&filter)
@@ -173,7 +173,7 @@ fn context_of(invocation: &Invocation) -> Option<&'static str> {
 
 /// What `keys` run now in the context a new shortcut of `invocation` would get, if anything
 /// else.
-pub(crate) fn conflict(
+pub fn conflict(
     keymap: &Keymap,
     keys: &[Keystroke],
     invocation: &Invocation,
@@ -196,7 +196,7 @@ fn keymap_path(cx: &App) -> Option<std::path::PathBuf> {
 }
 
 /// Changes the user's keymap file with `edit` and takes the result at once.
-pub(crate) fn change(
+pub fn change(
     cx: &mut App,
     edit: impl FnOnce(&str) -> Result<String, birchpad_commands::KeymapError>,
 ) -> Result<()> {
@@ -220,41 +220,41 @@ pub(crate) fn change(
     Ok(())
 }
 
-pub(crate) fn register_commands(registry: &mut CommandRegistry) {
+pub fn register_commands(registry: &mut CommandRegistry) {
     registry.workspace("settings.shortcut-mapper", |_, (), window, cx| {
         open(cx.entity().downgrade(), window, cx);
         Ok(())
     });
 }
 
-pub(crate) struct ShortcutMapper {
+pub struct ShortcutMapper {
     workspace: WeakEntity<Workspace>,
-    pub(crate) tab: MapperTab,
+    pub tab: MapperTab,
     /// New shortcuts only on this platform.
-    pub(crate) only_here: bool,
-    rows: Vec<Row>,
-    filter: Entity<InputState>,
+    pub only_here: bool,
+    pub rows: Vec<Row>,
+    pub filter: Entity<InputState>,
     /// Indexes into `rows` of those the filter shows.
-    shown: Vec<usize>,
+    pub shown: Vec<usize>,
     selected: Option<usize>,
     /// Waiting for the keys of a new shortcut; the keys pressed are taken, not run.
-    capture: Option<Subscription>,
+    pub capture: Option<Subscription>,
     /// The keys pressed for a new shortcut.
-    pressed: Option<Vec<Keystroke>>,
-    error: Option<String>,
+    pub pressed: Option<Vec<Keystroke>>,
+    pub error: Option<String>,
 }
 
-#[cfg(test)]
+#[cfg(feature = "test-support")]
 thread_local! {
     /// The mapper last opened, for tests to drive.
-    static OPENED: std::cell::RefCell<Option<WeakEntity<ShortcutMapper>>> =
+    pub static OPENED: std::cell::RefCell<Option<WeakEntity<ShortcutMapper>>> =
         std::cell::RefCell::default();
 }
 
 /// Opens the dialog.
-pub(crate) fn open(workspace: WeakEntity<Workspace>, window: &mut Window, cx: &mut App) {
+pub fn open(workspace: WeakEntity<Workspace>, window: &mut Window, cx: &mut App) {
     let mapper = cx.new(|cx| ShortcutMapper::new(workspace, window, cx));
-    #[cfg(test)]
+    #[cfg(feature = "test-support")]
     OPENED.with(|opened| *opened.borrow_mut() = Some(mapper.downgrade()));
     let focus = mapper.read(cx).filter.clone();
     window.open_dialog(cx, move |dialog, _, _| {
@@ -268,7 +268,11 @@ pub(crate) fn open(workspace: WeakEntity<Workspace>, window: &mut Window, cx: &m
 }
 
 impl ShortcutMapper {
-    fn new(workspace: WeakEntity<Workspace>, window: &mut Window, cx: &mut Context<Self>) -> Self {
+    pub fn new(
+        workspace: WeakEntity<Workspace>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Self {
         let filter =
             cx.new(|cx| InputState::new(window, cx).placeholder(t!("shortcut-mapper.filter")));
         cx.subscribe(&filter, |this, _, event: &InputEvent, cx| {
@@ -298,7 +302,7 @@ impl ShortcutMapper {
         &cx.global::<ActiveKeymap>().0
     }
 
-    fn refilter(&mut self, cx: &mut Context<Self>) {
+    pub fn refilter(&mut self, cx: &mut Context<Self>) {
         let filter = self.filter.read(cx).value().to_string();
         let keymap = self.keymap(cx);
         self.shown = self
@@ -312,7 +316,7 @@ impl ShortcutMapper {
     }
 
     /// Shows another tab.
-    pub(crate) fn select_tab(&mut self, tab: MapperTab, cx: &mut Context<Self>) {
+    pub fn select_tab(&mut self, tab: MapperTab, cx: &mut Context<Self>) {
         self.tab = tab;
         self.rows = rows_of(tab, &cx.global::<ActiveKeymap>().0, cx);
         self.selected = None;
@@ -322,7 +326,7 @@ impl ShortcutMapper {
     }
 
     /// Macros and Run > Delete: the selected macro or command line, and its shortcuts.
-    pub(crate) fn delete_selected(&mut self, cx: &mut Context<Self>) {
+    pub fn delete_selected(&mut self, cx: &mut Context<Self>) {
         let Some(row) = self.selected_row().cloned() else {
             return;
         };
@@ -352,19 +356,19 @@ impl ShortcutMapper {
         self.select_tab(tab, cx);
     }
 
-    fn select(&mut self, index: usize, cx: &mut Context<Self>) {
+    pub fn select(&mut self, index: usize, cx: &mut Context<Self>) {
         self.selected = Some(index);
         self.stop_capture();
         self.error = None;
         cx.notify();
     }
 
-    fn selected_row(&self) -> Option<&Row> {
+    pub fn selected_row(&self) -> Option<&Row> {
         self.selected.map(|index| &self.rows[index])
     }
 
     /// Waits for the keys of a new shortcut.
-    fn start_capture(&mut self, cx: &mut Context<Self>) {
+    pub fn start_capture(&mut self, cx: &mut Context<Self>) {
         let this = cx.entity().downgrade();
         self.pressed = None;
         self.error = None;
@@ -386,7 +390,7 @@ impl ShortcutMapper {
     }
 
     /// A key pressed while waiting for a shortcut: Escape gives up.
-    pub(crate) fn pressed_keys(&mut self, keystroke: &str, cx: &mut Context<Self>) {
+    pub fn pressed_keys(&mut self, keystroke: &str, cx: &mut Context<Self>) {
         if keystroke == "escape" {
             self.stop_capture();
         } else {
@@ -420,7 +424,7 @@ impl ShortcutMapper {
     }
 
     /// Binds the keys pressed to the selected command.
-    pub(crate) fn assign(&mut self, cx: &mut Context<Self>) {
+    pub fn assign(&mut self, cx: &mut Context<Self>) {
         let (Some(row), Some(keys)) = (self.selected_row().cloned(), self.pressed.clone()) else {
             return;
         };
@@ -442,7 +446,7 @@ impl ShortcutMapper {
     }
 
     /// Takes `keys` off the selected command.
-    pub(crate) fn remove(&mut self, keys: &str, cx: &mut Context<Self>) {
+    pub fn remove(&mut self, keys: &str, cx: &mut Context<Self>) {
         let Some(row) = self.selected_row().cloned() else {
             return;
         };
@@ -459,7 +463,7 @@ impl ShortcutMapper {
     }
 
     /// Gives the selected command its default shortcuts back.
-    pub(crate) fn reset(&mut self, cx: &mut Context<Self>) {
+    pub fn reset(&mut self, cx: &mut Context<Self>) {
         let Some(row) = self.selected_row().cloned() else {
             return;
         };
@@ -675,11 +679,3 @@ impl Render for ShortcutMapper {
             )
     }
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/shortcut_mapper/tests.rs"]
-mod tests;
-
-#[cfg(test)]
-#[path = "../tests/unit/shortcut_mapper/dialog_tests.rs"]
-mod dialog_tests;

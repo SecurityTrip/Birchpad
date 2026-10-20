@@ -27,7 +27,7 @@ use crate::language::{self, Language};
 const HIGHLIGHT_BUDGET: Duration = Duration::from_millis(8);
 
 /// How deep embedded languages nest (Markdown > inline > HTML > JavaScript > regex).
-const MAX_DEPTH: u8 = 5;
+pub const MAX_DEPTH: u8 = 5;
 
 /// At most this many layers per document: a huge Markdown file has one per paragraph.
 const MAX_LAYERS: usize = 50_000;
@@ -73,6 +73,11 @@ impl std::fmt::Debug for LanguageConfig {
 }
 
 impl LanguageConfig {
+    /// How many patterns the language's highlight query has.
+    pub fn highlight_pattern_count(&self) -> usize {
+        self.highlights.pattern_count()
+    }
+
     /// The highlights the language's query can give, one per capture that has one (for
     /// checking that a sample shows each).
     pub fn capture_highlights(&self) -> Vec<(String, Highlight)> {
@@ -189,6 +194,11 @@ impl Layer {
 
     pub fn tree(&self) -> &Tree {
         &self.tree
+    }
+
+    /// The parts of the text in the layer's language: sorted, not overlapping.
+    pub fn ranges(&self) -> &[tree_sitter::Range] {
+        &self.ranges
     }
 
     /// Whether the last parse kept its tree, nothing in its text having changed.
@@ -824,7 +834,7 @@ fn shift(byte: usize, edit: &InputEdit) -> usize {
 
 /// Neovim queries match with Lua patterns (`#lua-match? @x "^[%u_]+$"`); tree-sitter has
 /// regular expressions (`#match?`). Rewrites the first into the second.
-pub(crate) fn lua_matches_to_regex(source: &str) -> String {
+pub fn lua_matches_to_regex(source: &str) -> String {
     let mut out = String::with_capacity(source.len());
     let mut rest = source;
     while let Some(at) = rest.find("lua-match?") {
@@ -852,7 +862,7 @@ pub(crate) fn lua_matches_to_regex(source: &str) -> String {
 
 /// A Lua pattern as a regular expression, both as written inside a query's string literal
 /// (where a regex backslash is written `\\`).
-fn lua_pattern_to_regex(pattern: &str) -> String {
+pub fn lua_pattern_to_regex(pattern: &str) -> String {
     let class = |c: char, in_set: bool| -> Option<&'static str> {
         Some(match (c, in_set) {
             ('a', false) => "[A-Za-z]",
@@ -977,11 +987,3 @@ fn advance(point: Point, inserted: &str) -> Point {
         None => Point::new(point.row, point.column + inserted.len()),
     }
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/syntax/tests.rs"]
-mod tests;
-
-#[cfg(test)]
-#[path = "../tests/unit/syntax/reparse_properties.rs"]
-mod reparse_properties;

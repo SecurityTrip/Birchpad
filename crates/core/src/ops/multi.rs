@@ -131,7 +131,3 @@ pub fn select_all(text: &Rope, selection: &Selection, options: MatchOptions) -> 
     );
     Some(Selection::new(ranges, primary_index))
 }
-
-#[cfg(test)]
-#[path = "../../tests/unit/ops/multi/tests.rs"]
-mod tests;

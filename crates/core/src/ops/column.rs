@@ -185,11 +185,3 @@ pub fn insert_rows(
         .expect("targets are sorted, disjoint and on character boundaries")
         .with_selection(selection)
 }
-
-#[cfg(test)]
-#[path = "../../tests/unit/ops/column/tests.rs"]
-mod tests;
-
-#[cfg(test)]
-#[path = "../../tests/unit/ops/column/properties.rs"]
-mod properties;

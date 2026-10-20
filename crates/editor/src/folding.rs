@@ -35,7 +35,7 @@ impl LevelArgs {
     }
 }
 
-pub(crate) fn register_commands(registry: &mut CommandRegistry) {
+pub fn register_commands(registry: &mut CommandRegistry) {
     registry.editor("view.fold-all", |this, (), _, cx| {
         this.fold_all(true, cx);
         Ok(())
@@ -71,16 +71,16 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
 }
 
 /// The buffer's folds in lines, for one version of them.
-pub(crate) struct FoldCache {
-    version: u64,
-    pub(crate) folds: Vec<Fold>,
+pub struct FoldCache {
+    pub version: u64,
+    pub folds: Vec<Fold>,
     /// Lines of the text the folds are for.
     lines: usize,
 }
 
 impl EditorView {
     /// The buffer's folds in lines, recomputed when the buffer's folds change.
-    pub(crate) fn folds(&mut self, cx: &App) -> &[Fold] {
+    pub fn folds(&mut self, cx: &App) -> &[Fold] {
         let buffer = self.buffer.read(cx);
         let (ranges, version, _) = buffer.folds();
         if self
@@ -102,7 +102,7 @@ impl EditorView {
 
     /// Follows an edit by shifting the cached folds when that is exact, which saves converting
     /// every fold of a large file to lines on each keystroke.
-    pub(crate) fn follow_folds(&mut self, changes: &ChangeSet, cx: &App) {
+    pub fn follow_folds(&mut self, changes: &ChangeSet, cx: &App) {
         let buffer = self.buffer.read(cx);
         let (_, version, mapped_from) = buffer.folds();
         let text = buffer.doc().text();
@@ -116,17 +116,17 @@ impl EditorView {
     }
 
     /// Headers of the collapsed folds.
-    #[cfg(any(test, feature = "test-support"))]
+    #[cfg(feature = "test-support")]
     pub fn collapsed_lines(&self, cx: &App) -> Vec<usize> {
         self.collapsed.lines(self.text(cx))
     }
 
-    pub(crate) fn is_collapsed(&self, line: usize, cx: &App) -> bool {
+    pub fn is_collapsed(&self, line: usize, cx: &App) -> bool {
         self.collapsed.contains(self.text(cx), line)
     }
 
     /// Hides the lines of the collapsed folds and of View > Hide Lines in the display map.
-    pub(crate) fn sync_hidden(&mut self, cx: &App) {
+    pub fn sync_hidden(&mut self, cx: &App) {
         let text = self.text(cx).clone();
         let collapsed = self.collapsed.lines(&text);
         let mut hidden = hidden_lines(self.folds(cx), &collapsed);
@@ -143,7 +143,7 @@ impl EditorView {
     }
 
     /// The blocks of lines View > Hide Lines hid, in order.
-    pub(crate) fn hidden_blocks(&self, text: &birchpad_core::Rope) -> Vec<std::ops::Range<usize>> {
+    pub fn hidden_blocks(&self, text: &birchpad_core::Rope) -> Vec<std::ops::Range<usize>> {
         let mut blocks: Vec<std::ops::Range<usize>> = Vec::new();
         for line in self.user_hidden.lines(text) {
             match blocks.last_mut() {
@@ -155,7 +155,7 @@ impl EditorView {
     }
 
     /// The lines just above hidden blocks, in `lines`: where they are shown again.
-    pub(crate) fn hidden_anchors(
+    pub fn hidden_anchors(
         &self,
         text: &birchpad_core::Rope,
         lines: std::ops::Range<usize>,
@@ -188,7 +188,7 @@ impl EditorView {
     }
 
     /// Shows again the lines hidden below `anchor` (a click on its mark).
-    pub(crate) fn show_hidden_below(&mut self, anchor: usize, cx: &mut Context<Self>) -> bool {
+    pub fn show_hidden_below(&mut self, anchor: usize, cx: &mut Context<Self>) -> bool {
         let text = self.text(cx).clone();
         let Some(block) = self
             .hidden_blocks(&text)
@@ -207,7 +207,7 @@ impl EditorView {
 
     /// Forgets collapsed headers that are no longer fold points (after a reparse). Before the
     /// first parse there are no folds yet: nothing is forgotten then.
-    pub(crate) fn prune_collapsed(&mut self, cx: &App) {
+    pub fn prune_collapsed(&mut self, cx: &App) {
         if self.buffer.read(cx).folds_pending() {
             return;
         }
@@ -279,7 +279,7 @@ impl EditorView {
     }
 
     /// A click on a fold point in the folding margin.
-    pub(crate) fn toggle_fold(&mut self, line: usize, cx: &mut Context<Self>) {
+    pub fn toggle_fold(&mut self, line: usize, cx: &mut Context<Self>) {
         if fold_at(self.folds(cx), line).is_none() {
             return;
         }
@@ -288,7 +288,7 @@ impl EditorView {
     }
 
     /// Expands the folds that hide a caret: edits, search results and Go To land in view.
-    pub(crate) fn reveal_carets(&mut self, cx: &App) {
+    pub fn reveal_carets(&mut self, cx: &App) {
         let text = self.text(cx).clone();
         for range in self.selection.ranges().to_vec() {
             let line = line_of(&text, range.head);
@@ -316,12 +316,7 @@ impl EditorView {
 
     /// Where a horizontal caret movement that landed in hidden lines goes instead: past the
     /// fold when moving forward, to the end of its header when moving back.
-    pub(crate) fn skip_hidden(
-        &self,
-        text: &birchpad_core::Rope,
-        head: usize,
-        forward: bool,
-    ) -> usize {
+    pub fn skip_hidden(&self, text: &birchpad_core::Rope, head: usize, forward: bool) -> usize {
         let line = line_of(text, head);
         if !self.display.is_hidden(line) {
             return head;
@@ -339,11 +334,3 @@ impl EditorView {
         }
     }
 }
-
-#[cfg(test)]
-#[allow(
-    clippy::single_range_in_vec_init,
-    reason = "hidden lines are lists of line ranges, some with one range"
-)]
-#[path = "../tests/unit/folding/tests.rs"]
-mod tests;

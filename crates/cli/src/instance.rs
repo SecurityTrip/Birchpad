@@ -22,7 +22,7 @@ use crate::args::CommandLine;
 /// How long a second launch waits for the running instance to accept its files.
 const HAND_OFF_TIMEOUT: Duration = Duration::from_secs(3);
 /// Upper bound for one message, so a broken client cannot exhaust memory.
-const MAX_MESSAGE: u64 = 1024 * 1024;
+pub const MAX_MESSAGE: u64 = 1024 * 1024;
 
 /// Where instances of one installation meet.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -72,11 +72,11 @@ impl Address {
 
 /// Longest socket path that fits `sockaddr_un` everywhere: 104 bytes on macOS and the BSDs,
 /// 108 on Linux, including the terminating NUL.
-const MAX_SOCKET_PATH: usize = 100;
+pub const MAX_SOCKET_PATH: usize = 100;
 
 /// `name` in the first of `dirs` where the path is short enough, else in the last one (where
 /// listening fails and Birchpad runs without single instance).
-fn socket_path(name: &str, dirs: &[PathBuf]) -> PathBuf {
+pub fn socket_path(name: &str, dirs: &[PathBuf]) -> PathBuf {
     dirs.iter()
         .map(|dir| dir.join(name))
         .find(|path| path.as_os_str().len() <= MAX_SOCKET_PATH)
@@ -222,7 +222,3 @@ fn fnv1a(bytes: &[u8]) -> u64 {
         (hash ^ u64::from(byte)).wrapping_mul(0x0000_0100_0000_01b3)
     })
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/instance/tests.rs"]
-mod tests;

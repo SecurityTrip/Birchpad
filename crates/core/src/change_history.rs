@@ -341,11 +341,3 @@ fn subtract(ranges: Vec<Range<usize>>, holes: &[Range<usize>]) -> Vec<Range<usiz
     }
     result
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/change_history/tests.rs"]
-mod tests;
-
-#[cfg(test)]
-#[path = "../tests/unit/change_history/next_change_tests.rs"]
-mod next_change_tests;

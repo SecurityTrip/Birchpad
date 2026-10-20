@@ -299,7 +299,3 @@ fn escape(text: &str) -> String {
         .replace('>', "&gt;")
         .replace('"', "&quot;")
 }
-
-#[cfg(test)]
-#[path = "../../tests/unit/udl/definition/tests.rs"]
-mod tests;

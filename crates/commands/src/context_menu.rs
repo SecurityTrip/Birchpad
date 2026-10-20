@@ -264,7 +264,3 @@ pub fn write(nodes: &[Node]) -> String {
     items(nodes, None, &mut file.item);
     toml::to_string(&file).expect("a menu serializes")
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/context_menu/tests.rs"]
-mod tests;

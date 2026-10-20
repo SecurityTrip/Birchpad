@@ -454,7 +454,3 @@ impl PosMapper<'_> {
 fn remainder(op: fn(usize) -> Operation, n: usize) -> Option<Operation> {
     (n > 0).then(|| op(n))
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/change/tests.rs"]
-mod tests;

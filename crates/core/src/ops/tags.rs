@@ -42,7 +42,3 @@ pub fn close_tags(text: &Rope, selection: &Selection, html: bool) -> Option<Tran
     // The carets stay before the inserted tags.
     Some(transaction.with_selection(Selection::new(carets, selection.primary_index())))
 }
-
-#[cfg(test)]
-#[path = "../../tests/unit/ops/tags/tests.rs"]
-mod tests;

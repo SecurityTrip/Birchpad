@@ -14,7 +14,3 @@ pub fn within(what: &str, took: Duration, limit: Duration) {
         "{what} took {took:?}, more than its limit of {limit:?}"
     );
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/timing/tests.rs"]
-mod tests;

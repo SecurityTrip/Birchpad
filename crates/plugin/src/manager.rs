@@ -16,7 +16,7 @@ use crate::manifest::Manifest;
 /// The file that describes a plugin.
 pub const MANIFEST: &str = "plugin.toml";
 /// The file listing the plugins turned off, in the plugins folder.
-const DISABLED: &str = "disabled.toml";
+pub const DISABLED: &str = "disabled.toml";
 /// The most bytes a plugin's folder may hold when installed.
 pub const MAX_PLUGIN_BYTES: u64 = 64 << 20;
 
@@ -243,7 +243,3 @@ pub fn set_enabled(plugins_dir: &Path, id: &str, enabled: bool) -> Result<()> {
     let text = toml::to_string(&DisabledFile { disabled }).unwrap_or_default();
     std::fs::write(&path, text).with_context(|| t!("plugin.cannot-write", path = path.display()))
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/manager/tests.rs"]
-mod tests;

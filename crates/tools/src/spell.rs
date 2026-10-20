@@ -202,7 +202,3 @@ pub fn system_folders() -> Vec<PathBuf> {
     }
     folders
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/spell/tests.rs"]
-mod tests;

@@ -266,7 +266,3 @@ pub fn date(seconds: u64) -> String {
     let year = year_of_era + era * 400 + i64::from(month <= 2);
     format!("{year:04}-{month:02}-{day:02}")
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/manifest/tests.rs"]
-mod tests;

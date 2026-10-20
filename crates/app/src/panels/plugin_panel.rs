@@ -9,11 +9,11 @@ use gpui_kit::{
 use crate::extensions::PanelOwner;
 use crate::workspace::{Workspace, report_error};
 
-pub(crate) struct PluginPanel {
+pub struct PluginPanel {
     workspace: WeakEntity<Workspace>,
-    pub(crate) owner: Option<PanelOwner>,
-    pub(crate) title: String,
-    pub(crate) lines: Vec<String>,
+    pub owner: Option<PanelOwner>,
+    pub title: String,
+    pub lines: Vec<String>,
     focus_handle: FocusHandle,
 }
 
@@ -24,11 +24,7 @@ impl Focusable for PluginPanel {
 }
 
 impl PluginPanel {
-    pub(crate) fn new(
-        workspace: WeakEntity<Workspace>,
-        _: &mut Window,
-        cx: &mut Context<Self>,
-    ) -> Self {
+    pub fn new(workspace: WeakEntity<Workspace>, _: &mut Window, cx: &mut Context<Self>) -> Self {
         Self {
             workspace,
             owner: None,
@@ -38,7 +34,7 @@ impl PluginPanel {
         }
     }
 
-    pub(crate) fn fill(
+    pub fn fill(
         &mut self,
         owner: PanelOwner,
         title: String,

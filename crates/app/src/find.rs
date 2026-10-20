@@ -36,7 +36,7 @@ use crate::search_results::{
 };
 use crate::workspace::Workspace;
 
-pub(crate) fn register_commands(registry: &mut CommandRegistry) {
+pub fn register_commands(registry: &mut CommandRegistry) {
     registry.workspace("search.find", |this, (), window, cx| {
         this.open_find(FindTab::Find, window, cx);
         Ok(())
@@ -131,21 +131,21 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
 /// A search as macros record it: the text and the options of the find panel at the time.
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(default, rename_all = "kebab-case")]
-pub(crate) struct SearchArgs {
-    pub(crate) text: String,
-    pub(crate) match_case: bool,
-    pub(crate) whole_word: bool,
+pub struct SearchArgs {
+    pub text: String,
+    pub match_case: bool,
+    pub whole_word: bool,
     /// `normal`, `extended` or `regex`.
-    pub(crate) mode: String,
-    pub(crate) dot_all: bool,
-    pub(crate) backward: bool,
-    pub(crate) wrap: bool,
+    pub mode: String,
+    pub dot_all: bool,
+    pub backward: bool,
+    pub wrap: bool,
     /// Replace: the replacement.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub(crate) with: Option<String>,
+    pub with: Option<String>,
     /// Replace: all of them.
     #[serde(skip_serializing_if = "std::ops::Not::not")]
-    pub(crate) all: bool,
+    pub all: bool,
 }
 
 impl Default for SearchArgs {
@@ -174,7 +174,7 @@ fn mode_name(mode: SearchMode) -> &'static str {
 
 /// The tabs of the find panel.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum FindTab {
+pub enum FindTab {
     Find,
     Replace,
     FindInFiles,
@@ -195,31 +195,31 @@ impl FindTab {
 
 /// The folder options of the Find in Files tab.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) struct FolderSearch {
+pub struct FolderSearch {
     /// In all sub-folders.
-    pub(crate) subfolders: bool,
+    pub subfolders: bool,
     /// In hidden folders.
-    pub(crate) hidden: bool,
+    pub hidden: bool,
     /// Follow current doc.: the folder of the active document.
-    pub(crate) follow_current_document: bool,
+    pub follow_current_document: bool,
 }
 
 /// Options of the find panel, as in Notepad++'s Find dialog.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) struct FindOptions {
-    pub(crate) match_case: bool,
-    pub(crate) whole_word: bool,
-    pub(crate) wrap_around: bool,
-    pub(crate) backward: bool,
+pub struct FindOptions {
+    pub match_case: bool,
+    pub whole_word: bool,
+    pub wrap_around: bool,
+    pub backward: bool,
     /// Count, Replace All and Mark All work in the selection.
-    pub(crate) in_selection: bool,
-    pub(crate) mode: SearchMode,
+    pub in_selection: bool,
+    pub mode: SearchMode,
     /// Regular expressions: `.` matches line breaks.
-    pub(crate) dot_matches_newline: bool,
+    pub dot_matches_newline: bool,
     /// Mark All also bookmarks the lines of its matches.
-    pub(crate) bookmark_line: bool,
+    pub bookmark_line: bool,
     /// Mark All first clears the marks of earlier searches.
-    pub(crate) purge: bool,
+    pub purge: bool,
 }
 
 impl Default for FindOptions {
@@ -239,7 +239,7 @@ impl Default for FindOptions {
     }
 }
 
-pub(crate) enum FindBarEvent {
+pub enum FindBarEvent {
     Find(Direction),
     /// Find in Projects: Find All in the files of the chosen project panels.
     FindInProjects,
@@ -266,21 +266,21 @@ pub(crate) enum FindBarEvent {
     Close,
 }
 
-pub(crate) struct FindBar {
-    pub(crate) visible: bool,
-    pub(crate) tab: FindTab,
-    pub(crate) find_input: Entity<InputState>,
-    replace_input: Entity<InputState>,
+pub struct FindBar {
+    pub visible: bool,
+    pub tab: FindTab,
+    pub find_input: Entity<InputState>,
+    pub replace_input: Entity<InputState>,
     filters_input: Entity<InputState>,
     directory_input: Entity<InputState>,
-    pub(crate) options: FindOptions,
-    pub(crate) folder: FolderSearch,
+    pub options: FindOptions,
+    pub folder: FolderSearch,
     /// Find in Projects: the project panels whose files are searched.
-    pub(crate) project_panels: [bool; 3],
+    pub project_panels: [bool; 3],
     /// Set while Find in Files or Replace in Files runs; setting the flag stops it.
-    pub(crate) files_running: Option<Arc<AtomicBool>>,
+    pub files_running: Option<Arc<AtomicBool>>,
     /// A message from the last search, and whether it is a failure.
-    status: Option<(String, bool)>,
+    pub status: Option<(String, bool)>,
     focus_handle: FocusHandle,
     _subscriptions: Vec<Subscription>,
 }
@@ -294,7 +294,7 @@ impl Focusable for FindBar {
 }
 
 impl FindBar {
-    pub(crate) fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
+    pub fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
         let remembered = cx
             .try_global::<AppState>()
             .map(|app| app.state.find_in_files.clone())
@@ -379,53 +379,48 @@ impl FindBar {
     }
 
     /// The Filters field of Find in Files.
-    pub(crate) fn filters(&self, cx: &App) -> String {
+    pub fn filters(&self, cx: &App) -> String {
         self.filters_input.read(cx).value().to_string()
     }
 
     /// The Directory field of Find in Files.
-    pub(crate) fn directory(&self, cx: &App) -> String {
+    pub fn directory(&self, cx: &App) -> String {
         self.directory_input.read(cx).value().to_string()
     }
 
-    pub(crate) fn set_directory(&mut self, directory: &Path, window: &mut Window, cx: &mut App) {
+    pub fn set_directory(&mut self, directory: &Path, window: &mut Window, cx: &mut App) {
         let directory = directory.display().to_string();
         self.directory_input
             .update(cx, |input, cx| input.set_value(directory, window, cx));
     }
 
-    #[cfg(any(test, feature = "e2e"))]
-    pub(crate) fn set_filters(&mut self, filters: &str, window: &mut Window, cx: &mut App) {
+    #[cfg(any(feature = "test-support", feature = "e2e"))]
+    pub fn set_filters(&mut self, filters: &str, window: &mut Window, cx: &mut App) {
         self.filters_input
             .update(cx, |input, cx| input.set_value(filters, window, cx));
     }
 
-    #[cfg(any(test, feature = "e2e"))]
-    pub(crate) fn replace_input_for_tests(
-        &mut self,
-        text: &str,
-        window: &mut Window,
-        cx: &mut App,
-    ) {
+    #[cfg(any(feature = "test-support", feature = "e2e"))]
+    pub fn replace_input_for_tests(&mut self, text: &str, window: &mut Window, cx: &mut App) {
         self.replace_input
             .update(cx, |input, cx| input.set_value(text, window, cx));
     }
 
     /// The panel's message, for tests.
-    #[cfg(any(test, feature = "e2e"))]
-    pub(crate) fn status_text(&self) -> Option<String> {
+    #[cfg(any(feature = "test-support", feature = "e2e"))]
+    pub fn status_text(&self) -> Option<String> {
         self.status.as_ref().map(|(message, _)| message.clone())
     }
 
     /// Stops Find in Files or Replace in Files, if one runs.
-    pub(crate) fn stop_files(&mut self, cx: &mut Context<Self>) {
+    pub fn stop_files(&mut self, cx: &mut Context<Self>) {
         if let Some(cancel) = &self.files_running {
             cancel.store(true, Ordering::Relaxed);
         }
         cx.notify();
     }
 
-    pub(crate) fn query(&self, cx: &App) -> Query {
+    pub fn query(&self, cx: &App) -> Query {
         Query {
             pattern: self.find_input.read(cx).value().to_string(),
             match_case: self.options.match_case,
@@ -435,18 +430,18 @@ impl FindBar {
         }
     }
 
-    pub(crate) fn replacement(&self, cx: &App) -> String {
+    pub fn replacement(&self, cx: &App) -> String {
         self.replace_input.read(cx).value().to_string()
     }
 
-    pub(crate) fn set_status(&mut self, status: Option<(String, bool)>, cx: &mut Context<Self>) {
+    pub fn set_status(&mut self, status: Option<(String, bool)>, cx: &mut Context<Self>) {
         self.status = status;
         cx.notify();
     }
 
     /// Shows the panel on `tab`, optionally with a new search text and the In selection
     /// option, and focuses the find field.
-    pub(crate) fn show(
+    pub fn show(
         &mut self,
         tab: FindTab,
         text: Option<String>,
@@ -903,7 +898,7 @@ impl Scope {
     }
 }
 
-pub(crate) fn plural(count: usize, one: &str, many: &str) -> String {
+pub fn plural(count: usize, one: &str, many: &str) -> String {
     crate::i18n::count(count, one, many)
 }
 
@@ -933,7 +928,7 @@ impl Workspace {
         cx.notify();
     }
 
-    fn close_find(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+    pub fn close_find(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         self.find_bar.update(cx, |bar, cx| {
             bar.visible = false;
             cx.notify();
@@ -945,7 +940,7 @@ impl Workspace {
         cx.notify();
     }
 
-    pub(crate) fn on_find_bar_event(
+    pub fn on_find_bar_event(
         &mut self,
         _: &Entity<FindBar>,
         event: &FindBarEvent,
@@ -972,13 +967,13 @@ impl Workspace {
         }
     }
 
-    pub(crate) fn report(&mut self, message: Option<String>, failed: bool, cx: &mut Context<Self>) {
+    pub fn report(&mut self, message: Option<String>, failed: bool, cx: &mut Context<Self>) {
         self.find_bar.update(cx, |bar, cx| {
             bar.set_status(message.map(|message| (message, failed)), cx);
         });
     }
 
-    pub(crate) fn searcher(&mut self, cx: &mut Context<Self>) -> Option<(Searcher, Query)> {
+    pub fn searcher(&mut self, cx: &mut Context<Self>) -> Option<(Searcher, Query)> {
         let query = self.find_bar.read(cx).query(cx);
         match Searcher::new(&query) {
             Ok(searcher) => Some((searcher, query)),
@@ -991,7 +986,7 @@ impl Workspace {
     }
 
     /// Reports a regular expression that failed to match; true if it did.
-    pub(crate) fn report_failure(&mut self, searcher: &Searcher, cx: &mut Context<Self>) -> bool {
+    pub fn report_failure(&mut self, searcher: &Searcher, cx: &mut Context<Self>) -> bool {
         match searcher.failure() {
             Some(error) => {
                 let error = error.to_string();
@@ -1020,7 +1015,7 @@ impl Workspace {
     }
 
     /// Find Next / Find Previous (F3 / Shift+F3), from the current selection.
-    pub(crate) fn find(&mut self, direction: Direction, _: &mut Window, cx: &mut Context<Self>) {
+    pub fn find(&mut self, direction: Direction, _: &mut Window, cx: &mut Context<Self>) {
         let Some(view) = self.active_view(cx) else {
             return;
         };
@@ -1210,7 +1205,7 @@ impl Workspace {
 
     /// One view per open document: views of one buffer share its text. The active document
     /// comes first.
-    pub(crate) fn document_views(&self, cx: &App) -> Vec<Entity<EditorView>> {
+    pub fn document_views(&self, cx: &App) -> Vec<Entity<EditorView>> {
         let mut views = self.all_views(cx);
         if let Some(active) = self.active_view(cx) {
             views.retain(|view| *view != active);
@@ -1292,7 +1287,7 @@ impl Workspace {
         cx.notify();
     }
 
-    pub(crate) fn on_search_results_event(
+    pub fn on_search_results_event(
         &mut self,
         _: &Entity<SearchResults>,
         event: &SearchResultsEvent,
@@ -1480,7 +1475,7 @@ impl Workspace {
     }
 
     /// The edits of Replace All in `view` (in its scope), and how many there are.
-    pub(crate) fn replace_all_edits(
+    pub fn replace_all_edits(
         &self,
         searcher: &Searcher,
         template: &str,
@@ -1502,7 +1497,7 @@ impl Workspace {
     }
 
     /// Replace All: every match in the document or the selection, as one undo step.
-    pub(crate) fn replace_all(&mut self, _: &mut Window, cx: &mut Context<Self>) {
+    pub fn replace_all(&mut self, _: &mut Window, cx: &mut Context<Self>) {
         let Some(view) = self.active_view(cx) else {
             return;
         };
@@ -1820,11 +1815,3 @@ impl Render for GoTo {
             }))
     }
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/find_mouse_tests.rs"]
-mod mouse_tests;
-
-#[cfg(test)]
-#[path = "../tests/unit/find/tests.rs"]
-mod tests;

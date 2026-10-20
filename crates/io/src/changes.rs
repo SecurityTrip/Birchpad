@@ -181,7 +181,3 @@ fn by_character(bytes: &[u8], base: usize, encoding: Encoding, changes: &mut Byt
     // Escape sequences after the last character, and the encoder's closing one.
     compare(changes, start, bytes.len(), "", true);
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/changes/tests.rs"]
-mod tests;

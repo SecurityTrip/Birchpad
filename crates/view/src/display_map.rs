@@ -20,18 +20,23 @@ use birchpad_core::{ChangeSet, LINE_TYPE, Operation, Rope};
 use crate::cells::{cells_at, column_after, pos_at_column};
 use crate::wrap::{count_rows, line_rows, rewrap, row_count};
 
-/// Lines longer than this (in bytes) get a column index, so that horizontal positions deep in a
-/// multi-megabyte line are found without scanning it from the start every frame, and keep
-/// their layout through edits.
-#[cfg(not(test))]
-const LONG_LINE: usize = 8 * 1024;
-#[cfg(not(test))]
-const CHECKPOINT: usize = 4 * 1024;
-// Small in tests, so that short texts have long lines.
-#[cfg(test)]
-const LONG_LINE: usize = 12;
-#[cfg(test)]
-const CHECKPOINT: usize = 5;
+/// Which lines are long: those longer than `length` bytes get a column index, a point every
+/// `checkpoint` bytes, so that horizontal positions deep in a multi-megabyte line are found
+/// without scanning it from the start every frame, and keep their layout through edits.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct LongLines {
+    pub length: usize,
+    pub checkpoint: usize,
+}
+
+impl Default for LongLines {
+    fn default() -> Self {
+        Self {
+            length: 8 * 1024,
+            checkpoint: 4 * 1024,
+        }
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct LayoutConfig {
@@ -79,7 +84,7 @@ struct ColumnIndex {
 }
 
 impl ColumnIndex {
-    fn build(text: &Rope, line: Range<usize>, tab_width: usize) -> Self {
+    fn build(text: &Rope, line: Range<usize>, tab_width: usize, checkpoint: usize) -> Self {
         let mut index = Self {
             points: vec![Checkpoint {
                 offset: 0,
@@ -87,17 +92,24 @@ impl ColumnIndex {
                 tab: false,
             }],
         };
-        index.scan(text, line.start, line.len(), tab_width);
+        index.scan(text, line.start, line.len(), tab_width, checkpoint);
         index
     }
 
     /// Adds checkpoints from the last one up to offset `until`; returns the column there.
-    fn scan(&mut self, text: &Rope, line_start: usize, until: usize, tab_width: usize) -> usize {
+    fn scan(
+        &mut self,
+        text: &Rope,
+        line_start: usize,
+        until: usize,
+        tab_width: usize,
+        checkpoint: usize,
+    ) -> usize {
         let last = self.points.last_mut().expect("starts non-empty");
         last.tab = false;
         let (mut offset, mut column, mut from) = (last.offset, last.column, last.offset);
         for ch in text.slice(line_start + offset..line_start + until).chars() {
-            if offset - from >= CHECKPOINT {
+            if offset - from >= checkpoint {
                 self.points.push(Checkpoint {
                     offset,
                     column,
@@ -128,6 +140,7 @@ impl ColumnIndex {
         old: Range<usize>,
         new_end: usize,
         tab_width: usize,
+        checkpoint: usize,
     ) {
         let delta = new_end as isize - old.end as isize;
         let keep = self
@@ -140,7 +153,7 @@ impl ColumnIndex {
         let later = self.points.split_off(after);
         self.points.truncate(keep);
         let Some(first) = later.first() else {
-            self.scan(text, line.start, line.len(), tab_width);
+            self.scan(text, line.start, line.len(), tab_width, checkpoint);
             return;
         };
         let column = self.scan(
@@ -148,6 +161,7 @@ impl ColumnIndex {
             line.start,
             first.offset.strict_add_signed(delta),
             tab_width,
+            checkpoint,
         );
         let stop = tab_width.max(1) as isize;
         let mut shift = column as isize - first.column as isize;
@@ -263,6 +277,7 @@ fn replacements(changes: &ChangeSet) -> Vec<Replacement> {
 #[derive(Debug, Default)]
 pub struct DisplayMap {
     config: LayoutConfig,
+    long_lines: LongLines,
     /// Rows of each line while wrapping; empty otherwise.
     rows_per_line: Vec<u32>,
     /// `rows_before[i]` is the number of rows in lines `0..i`; valid up to `valid_prefix`.
@@ -288,6 +303,13 @@ impl DisplayMap {
 
     pub fn config(&self) -> LayoutConfig {
         self.config
+    }
+
+    /// Which lines are long, 8 KiB by default; with a smaller length, short lines are laid
+    /// out as long ones are.
+    pub fn set_long_lines(&mut self, long_lines: LongLines) {
+        self.long_lines = long_lines;
+        self.lines.clear();
     }
 
     /// Changes tab width or wrap width, relaying out if needed.
@@ -357,7 +379,7 @@ impl DisplayMap {
         let rows: Vec<u32> = (first..=last)
             .map(|line| {
                 let range = line_range(text, line);
-                if range.len() > LONG_LINE {
+                if range.len() > self.long_lines.length {
                     self.row_starts(text, line).1.len() as u32
                 } else {
                     row_count(text, range, width, self.config.tab_width) as u32
@@ -375,9 +397,10 @@ impl DisplayMap {
     fn carry_over(&mut self, text: &Rope, changes: &ChangeSet) {
         let replacements = replacements(changes);
         let config = self.config;
+        let long_lines = self.long_lines;
         for (_, mut layout) in std::mem::take(&mut self.lines) {
             let old = layout.range.clone();
-            if old.len() <= LONG_LINE {
+            if old.len() <= long_lines.length {
                 continue;
             }
             let first = replacements.partition_point(|r| r.old.end < old.start);
@@ -417,6 +440,7 @@ impl DisplayMap {
                         changed.clone(),
                         new_end,
                         config.tab_width,
+                        long_lines.checkpoint,
                     );
                 }
                 if let (Some(rows), Some(width)) = (&layout.rows, config.wrap_width) {
@@ -657,7 +681,7 @@ impl DisplayMap {
         let line = line_of(text, pos);
         let range = line_range(text, line);
         let pos = pos.min(range.end);
-        let (from, column) = if range.len() > LONG_LINE {
+        let (from, column) = if range.len() > self.long_lines.length {
             let (offset, column) = self
                 .column_index(text, line)
                 .before_offset(pos - range.start);
@@ -670,7 +694,7 @@ impl DisplayMap {
 
     /// The position in `row` closest to `column` (counted from the start of the line).
     pub fn pos_at_column(&mut self, text: &Rope, row: &Row, column: usize) -> usize {
-        let (from, from_column) = if row.range.len() > LONG_LINE {
+        let (from, from_column) = if row.range.len() > self.long_lines.length {
             let line_start = line_range(text, row.line).start;
             let (offset, at) = self.column_index(text, row.line).before_column(column);
             let pos = line_start + offset;
@@ -707,7 +731,7 @@ impl DisplayMap {
         column: usize,
     ) -> (usize, usize) {
         let range = line_range(text, line);
-        let (from, from_column) = if range.len() > LONG_LINE {
+        let (from, from_column) = if range.len() > self.long_lines.length {
             let (offset, at) = self.column_index(text, line).before_column(column);
             (range.start + offset, at)
         } else {
@@ -730,11 +754,12 @@ impl DisplayMap {
 
     fn column_index(&mut self, text: &Rope, line: usize) -> &ColumnIndex {
         let tab_width = self.config.tab_width;
+        let checkpoint = self.long_lines.checkpoint;
         let layout = self.line_layout(text, line);
         let range = layout.range.clone();
         layout
             .columns
-            .get_or_insert_with(|| ColumnIndex::build(text, range, tab_width))
+            .get_or_insert_with(|| ColumnIndex::build(text, range, tab_width, checkpoint))
     }
 
     /// Moves `pos` by `rows` visual rows, aiming for `goal` columns from the start of the row
@@ -778,7 +803,3 @@ pub(crate) fn changed_range(changes: &ChangeSet) -> Option<Range<usize>> {
     }
     range
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/display_map/tests.rs"]
-mod tests;

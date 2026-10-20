@@ -61,8 +61,10 @@ pub fn is_added() -> bool {
     is_added_at(VERB_KEY)
 }
 
+/// Adds the verb at `path` of the user's registry ([`VERB_KEY`] is the Explorer's), running
+/// `exe`.
 #[cfg(windows)]
-fn add_at(path: &str, exe: &Path) -> io::Result<()> {
+pub fn add_at(path: &str, exe: &Path) -> io::Result<()> {
     use windows_registry::CURRENT_USER;
     let key = CURRENT_USER.create(path).map_err(io::Error::other)?;
     key.set_string("", LABEL).map_err(io::Error::other)?;
@@ -74,8 +76,9 @@ fn add_at(path: &str, exe: &Path) -> io::Result<()> {
         .map_err(io::Error::other)
 }
 
+/// Takes the verb at `path` away; nothing there is no error.
 #[cfg(windows)]
-fn remove_at(path: &str) -> io::Result<()> {
+pub fn remove_at(path: &str) -> io::Result<()> {
     use windows_registry::CURRENT_USER;
     if CURRENT_USER.open(path).is_err() {
         return Ok(());
@@ -83,20 +86,21 @@ fn remove_at(path: &str) -> io::Result<()> {
     CURRENT_USER.remove_tree(path).map_err(io::Error::other)
 }
 
+/// Whether the verb at `path` is there, with a command.
 #[cfg(windows)]
-fn is_added_at(path: &str) -> bool {
+pub fn is_added_at(path: &str) -> bool {
     windows_registry::CURRENT_USER
         .open(format!(r"{path}\command"))
         .and_then(|key| key.get_string(""))
         .is_ok_and(|command| !command.is_empty())
 }
 
-/// The value under [`STATE_KEY`].
-#[cfg(windows)]
-const REMOVED: &str = "ExplorerMenu";
+/// The value under [`STATE_KEY`] that remembers the user took the verb away.
+pub const REMOVED: &str = "ExplorerMenu";
 
+/// Remembers under `state` ([`STATE_KEY`] is Birchpad's) whether the user took the verb away.
 #[cfg(windows)]
-fn remember_removed(state: &str, removed: bool) -> io::Result<()> {
+pub fn remember_removed(state: &str, removed: bool) -> io::Result<()> {
     use windows_registry::CURRENT_USER;
     if removed {
         return CURRENT_USER
@@ -113,8 +117,9 @@ fn remember_removed(state: &str, removed: bool) -> io::Result<()> {
     }
 }
 
+/// Whether `state` remembers that the user took the verb away.
 #[cfg(windows)]
-fn was_removed(state: &str) -> bool {
+pub fn was_removed(state: &str) -> bool {
     windows_registry::CURRENT_USER
         .open(state)
         .and_then(|key| key.get_string(REMOVED))
@@ -122,17 +127,17 @@ fn was_removed(state: &str) -> bool {
 }
 
 #[cfg(not(windows))]
-fn remember_removed(_: &str, _: bool) -> io::Result<()> {
+pub fn remember_removed(_: &str, _: bool) -> io::Result<()> {
     Ok(())
 }
 
 #[cfg(not(windows))]
-fn was_removed(_: &str) -> bool {
+pub fn was_removed(_: &str) -> bool {
     false
 }
 
 #[cfg(not(windows))]
-fn add_at(_: &str, _: &Path) -> io::Result<()> {
+pub fn add_at(_: &str, _: &Path) -> io::Result<()> {
     Err(io::Error::new(
         io::ErrorKind::Unsupported,
         "the Explorer's menu is Windows'",
@@ -140,15 +145,11 @@ fn add_at(_: &str, _: &Path) -> io::Result<()> {
 }
 
 #[cfg(not(windows))]
-fn remove_at(_: &str) -> io::Result<()> {
+pub fn remove_at(_: &str) -> io::Result<()> {
     Ok(())
 }
 
 #[cfg(not(windows))]
-fn is_added_at(_: &str) -> bool {
+pub fn is_added_at(_: &str) -> bool {
     false
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/explorer/tests.rs"]
-mod tests;

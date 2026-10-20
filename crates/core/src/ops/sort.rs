@@ -255,7 +255,3 @@ pub fn remove_empty_lines(
     }
     replace_block(text, selection, lines, &kept, eol)
 }
-
-#[cfg(test)]
-#[path = "../../tests/unit/ops/sort/tests.rs"]
-mod tests;

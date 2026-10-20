@@ -24,14 +24,14 @@ use crate::workspace::Workspace;
 /// `{ "name": "..." }`: the language to edit; a new one without it, unless the active document
 /// has one.
 #[derive(Deserialize, Default)]
-pub(crate) struct DefineArgs {
+pub struct DefineArgs {
     #[serde(default)]
-    pub(crate) name: Option<String>,
+    pub name: Option<String>,
 }
 
 /// The file name a new language is written to: its name without the characters file systems
 /// refuse.
-pub(crate) fn file_name(name: &str) -> String {
+pub fn file_name(name: &str) -> String {
     let safe: String = name
         .trim()
         .chars()
@@ -76,7 +76,7 @@ fn read_definitions(dir: &Path) -> Vec<(PathBuf, Vec<UdlDefinition>)> {
 }
 
 /// The language named `name` in the UDL files of `dir`, as written.
-pub(crate) fn find_definition(dir: &Path, name: &str) -> Option<UdlDefinition> {
+pub fn find_definition(dir: &Path, name: &str) -> Option<UdlDefinition> {
     read_definitions(dir)
         .into_iter()
         .flat_map(|(_, languages)| languages)
@@ -86,7 +86,7 @@ pub(crate) fn find_definition(dir: &Path, name: &str) -> Option<UdlDefinition> {
 /// Writes `language` into `dir`, in place of the language named `replacing` (or of one of the
 /// same name): in its file if it was alone there, else in a file of its own, the others of its
 /// old file written back without it. The path written to.
-pub(crate) fn save_definition(
+pub fn save_definition(
     dir: &Path,
     replacing: Option<&str>,
     language: &UdlDefinition,
@@ -138,7 +138,7 @@ pub(crate) fn save_definition(
 }
 
 /// The Define your language dialog.
-pub(crate) struct DefineDialog {
+pub struct DefineDialog {
     workspace: WeakEntity<Workspace>,
     /// The language as it was, with what the dialog does not edit.
     base: UdlDefinition,
@@ -154,11 +154,11 @@ pub(crate) struct DefineDialog {
     block_open: Entity<InputState>,
     block_close: Entity<InputState>,
     delimiters: Vec<[Entity<InputState>; 3]>,
-    pub(crate) error: Option<String>,
+    pub error: Option<String>,
 }
 
 impl DefineDialog {
-    pub(crate) fn new(
+    pub fn new(
         workspace: WeakEntity<Workspace>,
         base: Option<UdlDefinition>,
         window: &mut Window,
@@ -205,7 +205,7 @@ impl DefineDialog {
     }
 
     /// The language as the dialog shows it.
-    pub(crate) fn definition(&self, cx: &App) -> UdlDefinition {
+    pub fn definition(&self, cx: &App) -> UdlDefinition {
         let value = |input: &Entity<InputState>| input.read(cx).value().to_string();
         let mut language = self.base.clone();
         language.name = value(&self.name).trim().to_owned();
@@ -229,8 +229,8 @@ impl DefineDialog {
 
     /// Sets a field by its list name, or `name`, `extensions`, `line-comment`, `block-open`,
     /// `block-close`, `delimiter-N-open|escape|close` (for tests and scripts).
-    #[cfg(test)]
-    pub(crate) fn set_field(
+    #[cfg(feature = "test-support")]
+    pub fn set_field(
         &mut self,
         field: &str,
         value: &str,
@@ -265,7 +265,7 @@ impl DefineDialog {
     }
 
     /// Writes the language and loads it; false keeps the dialog open to show what went wrong.
-    pub(crate) fn save(&mut self, window: &mut Window, cx: &mut Context<Self>) -> bool {
+    pub fn save(&mut self, window: &mut Window, cx: &mut Context<Self>) -> bool {
         let language = self.definition(cx);
         let result = super::folder(cx)
             .ok_or_else(|| {
@@ -530,7 +530,7 @@ impl Render for DefineDialog {
 }
 
 /// Opens the dialog on `base`, or on a new language.
-pub(crate) fn open(
+pub fn open(
     workspace: WeakEntity<Workspace>,
     base: Option<UdlDefinition>,
     window: &mut Window,
@@ -557,7 +557,3 @@ pub(crate) fn open(
     focus.update(cx, |input, cx| input.focus(window, cx));
     dialog
 }
-
-#[cfg(test)]
-#[path = "../../tests/unit/user_languages/define_tests.rs"]
-mod tests;

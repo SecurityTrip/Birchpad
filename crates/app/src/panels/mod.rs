@@ -7,17 +7,17 @@
 //! and close each panel, with a check mark on those open. The open panels are remembered in
 //! `state.toml` and come back on the next start.
 
-mod character_panel;
-mod clipboard_history;
-mod document_list;
-mod document_map;
-mod folder_workspace;
+pub mod character_panel;
+pub mod clipboard_history;
+pub mod document_list;
+pub mod document_map;
+pub mod folder_workspace;
 // Open Containing Folder > Terminal; tests only note it (`file_commands::Shell`).
-#[cfg_attr(test, allow(unused_imports))]
-pub(crate) use folder_workspace::open_terminal;
-mod function_list;
-mod plugin_panel;
-mod project;
+#[cfg_attr(feature = "test-support", allow(unused_imports))]
+pub use folder_workspace::open_terminal;
+pub mod function_list;
+pub mod plugin_panel;
+pub mod project;
 
 use std::collections::HashMap;
 
@@ -34,28 +34,28 @@ use crate::app_state::AppState;
 use crate::commands::{CommandRegistry, Register as _};
 use crate::workspace::Workspace;
 
-pub(crate) use character_panel::CharacterPanel;
-pub(crate) use clipboard_history::ClipboardHistory;
-pub(crate) use document_list::DocumentList;
-pub(crate) use document_map::DocumentMap;
-pub(crate) use folder_workspace::FolderWorkspace;
-pub(crate) use function_list::FunctionList;
-pub(crate) use plugin_panel::PluginPanel;
-pub(crate) use project::ProjectPanel;
+pub use character_panel::CharacterPanel;
+pub use clipboard_history::ClipboardHistory;
+pub use document_list::DocumentList;
+pub use document_map::DocumentMap;
+pub use folder_workspace::FolderWorkspace;
+pub use function_list::FunctionList;
+pub use plugin_panel::PluginPanel;
+pub use project::ProjectPanel;
 
 /// The project panels, as Notepad++'s Project Panel 1 to 3.
-pub(crate) const PROJECT_PANELS: u8 = 3;
+pub const PROJECT_PANELS: u8 = 3;
 
 /// A side of the documents.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum Side {
+pub enum Side {
     Left,
     Right,
 }
 
 /// A panel that docks beside the documents.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub(crate) enum PanelKind {
+pub enum PanelKind {
     FolderWorkspace,
     /// Project Panel 1, 2 or 3.
     Project(u8),
@@ -69,7 +69,7 @@ pub(crate) enum PanelKind {
 }
 
 impl PanelKind {
-    pub(crate) const ALL: [Self; 10] = [
+    pub const ALL: [Self; 10] = [
         Self::FolderWorkspace,
         Self::Project(1),
         Self::Project(2),
@@ -83,7 +83,7 @@ impl PanelKind {
     ];
 
     /// The name kept in `state.toml`.
-    pub(crate) fn id(self) -> &'static str {
+    pub fn id(self) -> &'static str {
         match self {
             Self::FolderWorkspace => "folder-as-workspace",
             Self::Project(1) => "project-1",
@@ -98,11 +98,11 @@ impl PanelKind {
         }
     }
 
-    pub(crate) fn from_id(id: &str) -> Option<Self> {
+    pub fn from_id(id: &str) -> Option<Self> {
         Self::ALL.into_iter().find(|kind| kind.id() == id)
     }
 
-    pub(crate) fn title(self) -> &'static str {
+    pub fn title(self) -> &'static str {
         match self {
             Self::FolderWorkspace => "Folder as Workspace",
             Self::Project(1) => "Project Panel 1",
@@ -117,7 +117,7 @@ impl PanelKind {
         }
     }
 
-    pub(crate) fn side(self) -> Side {
+    pub fn side(self) -> Side {
         match self {
             Self::FunctionList | Self::DocumentMap | Self::PluginPanel => Side::Right,
             _ => Side::Left,
@@ -125,7 +125,7 @@ impl PanelKind {
     }
 
     /// The title in the interface's language: `panel.<id>`.
-    pub(crate) fn translated_title(self) -> String {
+    pub fn translated_title(self) -> String {
         crate::i18n::get_or(&format!("panel.{}", self.id()), self.title())
     }
 
@@ -144,7 +144,7 @@ impl PanelKind {
     }
 
     /// The command that opens and closes the panel.
-    pub(crate) fn invocation(self) -> Invocation {
+    pub fn invocation(self) -> Invocation {
         match self {
             Self::Project(panel) => {
                 Invocation::with_args(self.command(), serde_json::json!({ "panel": panel }))
@@ -154,7 +154,7 @@ impl PanelKind {
     }
 
     /// The panel `invocation` opens and closes, if it is one of their commands.
-    pub(crate) fn of_invocation(invocation: &Invocation) -> Option<Self> {
+    pub fn of_invocation(invocation: &Invocation) -> Option<Self> {
         Self::ALL
             .into_iter()
             .find(|kind| kind.invocation() == *invocation)
@@ -167,7 +167,7 @@ struct ProjectArgs {
     panel: u8,
 }
 
-pub(crate) fn register_commands(registry: &mut CommandRegistry) {
+pub fn register_commands(registry: &mut CommandRegistry) {
     for kind in PanelKind::ALL {
         if let PanelKind::Project(_) = kind {
             continue;
@@ -188,7 +188,7 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
     });
 }
 
-fn project_panel(panel: u8) -> Result<PanelKind> {
+pub fn project_panel(panel: u8) -> Result<PanelKind> {
     if !(1..=PROJECT_PANELS).contains(&panel) {
         bail!(
             "{}",
@@ -204,9 +204,9 @@ fn project_panel(panel: u8) -> Result<PanelKind> {
 
 /// The open panels and the dock each is shown in.
 #[derive(Default)]
-pub(crate) struct Docks {
+pub struct Docks {
     /// Open panels, in the order they were opened.
-    open: Vec<PanelKind>,
+    pub open: Vec<PanelKind>,
     /// The panel each side shows (left, right).
     shown: [Option<PanelKind>; 2],
     views: HashMap<PanelKind, AnyView>,
@@ -220,12 +220,12 @@ fn side_index(side: Side) -> usize {
 }
 
 impl Docks {
-    pub(crate) fn is_open(&self, kind: PanelKind) -> bool {
+    pub fn is_open(&self, kind: PanelKind) -> bool {
         self.open.contains(&kind)
     }
 
     /// The open panels of `side`, in the order they were opened.
-    pub(crate) fn on_side(&self, side: Side) -> Vec<PanelKind> {
+    pub fn on_side(&self, side: Side) -> Vec<PanelKind> {
         self.open
             .iter()
             .copied()
@@ -233,23 +233,18 @@ impl Docks {
             .collect()
     }
 
-    pub(crate) fn shown(&self, side: Side) -> Option<PanelKind> {
+    pub fn shown(&self, side: Side) -> Option<PanelKind> {
         self.shown[side_index(side)]
     }
 
-    pub(crate) fn view(&self, kind: PanelKind) -> Option<&AnyView> {
+    pub fn view(&self, kind: PanelKind) -> Option<&AnyView> {
         self.views.get(&kind)
     }
 }
 
 impl Workspace {
     /// The View and Edit menu commands: opens the panel, or closes it if it is open.
-    pub(crate) fn toggle_panel(
-        &mut self,
-        kind: PanelKind,
-        window: &mut Window,
-        cx: &mut Context<Self>,
-    ) {
+    pub fn toggle_panel(&mut self, kind: PanelKind, window: &mut Window, cx: &mut Context<Self>) {
         if self.docks.is_open(kind) {
             self.close_panel(kind, cx);
         } else {
@@ -258,12 +253,7 @@ impl Workspace {
     }
 
     /// Opens `kind`, or brings it forward in its dock.
-    pub(crate) fn open_panel(
-        &mut self,
-        kind: PanelKind,
-        window: &mut Window,
-        cx: &mut Context<Self>,
-    ) {
+    pub fn open_panel(&mut self, kind: PanelKind, window: &mut Window, cx: &mut Context<Self>) {
         if !self.docks.views.contains_key(&kind) {
             let view = self.new_panel(kind, window, cx);
             self.docks.views.insert(kind, view);
@@ -275,7 +265,7 @@ impl Workspace {
         self.panels_changed(cx);
     }
 
-    pub(crate) fn close_panel(&mut self, kind: PanelKind, cx: &mut Context<Self>) {
+    pub fn close_panel(&mut self, kind: PanelKind, cx: &mut Context<Self>) {
         if !self.docks.is_open(kind) {
             return;
         }
@@ -289,7 +279,7 @@ impl Workspace {
     }
 
     /// Shows `kind` in its dock: a click on its tab.
-    fn show_panel(&mut self, kind: PanelKind, cx: &mut Context<Self>) {
+    pub fn show_panel(&mut self, kind: PanelKind, cx: &mut Context<Self>) {
         if self.docks.is_open(kind) {
             self.docks.shown[side_index(kind.side())] = Some(kind);
             cx.notify();
@@ -309,7 +299,7 @@ impl Workspace {
     }
 
     /// Opens the panels that were open when Birchpad last quit.
-    pub(crate) fn restore_panels(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+    pub fn restore_panels(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let ids = AppState::global(cx).state.panels.open.clone();
         for kind in ids.iter().filter_map(|id| PanelKind::from_id(id)) {
             self.open_panel(kind, window, cx);
@@ -344,11 +334,7 @@ impl Workspace {
     }
 
     /// The documents and search results, with the docks on either side.
-    pub(crate) fn render_with_docks(
-        &self,
-        center: AnyElement,
-        cx: &mut Context<Self>,
-    ) -> AnyElement {
+    pub fn render_with_docks(&self, center: AnyElement, cx: &mut Context<Self>) -> AnyElement {
         let left = self.render_dock(Side::Left, cx);
         let right = self.render_dock(Side::Right, cx);
         if left.is_none() && right.is_none() {
@@ -443,7 +429,7 @@ impl Workspace {
 
 impl Workspace {
     /// Adds `folder` to Folder as Workspace, opening the panel.
-    pub(crate) fn add_workspace_folder(
+    pub fn add_workspace_folder(
         &mut self,
         folder: &std::path::Path,
         window: &mut Window,
@@ -461,7 +447,7 @@ impl Workspace {
 
     /// Puts `text` into the active document as a paste would, and goes back to the text
     /// (Clipboard History, Character Panel).
-    pub(crate) fn insert_text(&mut self, text: &str, window: &mut Window, cx: &mut Context<Self>) {
+    pub fn insert_text(&mut self, text: &str, window: &mut Window, cx: &mut Context<Self>) {
         let invocation =
             Invocation::with_args("edit.insert-text", serde_json::json!({ "text": text }));
         if let Err(error) = self.dispatch(&invocation, window, cx) {
@@ -492,12 +478,12 @@ impl Workspace {
 /// Redraws a panel whenever the active document's view changes: its caret, its scroll, its
 /// text. Panels call [`FollowView::follow`] with the active view each time they draw.
 #[derive(Default)]
-pub(crate) struct FollowView {
+pub struct FollowView {
     followed: Option<(gpui_kit::EntityId, gpui_kit::Subscription)>,
 }
 
 impl FollowView {
-    pub(crate) fn follow<T: 'static>(
+    pub fn follow<T: 'static>(
         &mut self,
         view: Option<&gpui_kit::Entity<crate::editor::EditorView>>,
         cx: &mut Context<T>,
@@ -512,10 +498,6 @@ impl FollowView {
 }
 
 /// Whether a panel's menu item shows a check mark.
-pub(crate) fn is_checked(docks: &Docks, invocation: &Invocation) -> Option<bool> {
+pub fn is_checked(docks: &Docks, invocation: &Invocation) -> Option<bool> {
     PanelKind::of_invocation(invocation).map(|kind| docks.is_open(kind))
 }
-
-#[cfg(test)]
-#[path = "../../tests/unit/panels/tests.rs"]
-mod tests;

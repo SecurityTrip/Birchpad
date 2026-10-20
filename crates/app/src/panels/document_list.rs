@@ -14,26 +14,26 @@ use crate::workspace::Workspace;
 
 /// The columns.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum Column {
+pub enum Column {
     Name,
     Path,
 }
 
 /// One open document's row.
 #[derive(Clone)]
-pub(crate) struct Entry {
-    pub(crate) view: Entity<EditorView>,
-    pub(crate) name: String,
+pub struct Entry {
+    pub view: Entity<EditorView>,
+    pub name: String,
     /// The full path; empty for an untitled document.
-    pub(crate) path: String,
-    pub(crate) modified: bool,
-    pub(crate) second_view: bool,
-    pub(crate) active: bool,
+    pub path: String,
+    pub modified: bool,
+    pub second_view: bool,
+    pub active: bool,
 }
 
 impl Entry {
     /// The row as text: for tests, and the order of the name column.
-    pub(crate) fn label(&self) -> String {
+    pub fn label(&self) -> String {
         format!(
             "{}{}{}",
             self.name,
@@ -43,10 +43,10 @@ impl Entry {
     }
 }
 
-pub(crate) struct DocumentList {
+pub struct DocumentList {
     workspace: WeakEntity<Workspace>,
     /// The column sorted by, and whether in reverse; none for the order of the tabs.
-    pub(crate) sort: Option<(Column, bool)>,
+    pub sort: Option<(Column, bool)>,
     focus_handle: FocusHandle,
 }
 
@@ -57,11 +57,7 @@ impl Focusable for DocumentList {
 }
 
 impl DocumentList {
-    pub(crate) fn new(
-        workspace: WeakEntity<Workspace>,
-        _: &mut Window,
-        cx: &mut Context<Self>,
-    ) -> Self {
+    pub fn new(workspace: WeakEntity<Workspace>, _: &mut Window, cx: &mut Context<Self>) -> Self {
         Self {
             workspace,
             sort: None,
@@ -70,7 +66,7 @@ impl DocumentList {
     }
 
     /// The rows, in the order shown.
-    pub(crate) fn entries(&self, cx: &App) -> Vec<Entry> {
+    pub fn entries(&self, cx: &App) -> Vec<Entry> {
         let Some(workspace) = self.workspace.upgrade() else {
             return Vec::new();
         };
@@ -110,7 +106,7 @@ impl DocumentList {
     }
 
     /// A click on a column's heading: by it, in reverse, then the order of the tabs.
-    pub(crate) fn sort_by(&mut self, column: Column, cx: &mut Context<Self>) {
+    pub fn sort_by(&mut self, column: Column, cx: &mut Context<Self>) {
         self.sort = match self.sort {
             Some((sorted, false)) if sorted == column => Some((column, true)),
             Some((sorted, true)) if sorted == column => None,

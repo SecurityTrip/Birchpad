@@ -156,7 +156,3 @@ fn encode_legacy(text: &Rope, encoding: Encoding, out: &mut Vec<u8>) -> Result<(
         Ok(())
     }
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/encode/tests.rs"]
-mod tests;

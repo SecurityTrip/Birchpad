@@ -41,12 +41,16 @@ trash = "5"
 # Runs the script named by BIRCHPAD_E2E_SCRIPT once started, for the end-to-end tests
 # (`cargo test -p birchpad --features e2e --test e2e`). Release builds leave it out.
 e2e = []
+# What the tests drive and read of the application, and the system calls they fake: the
+# integration tests (`tests/integration`) turn it on.
+test-support = ["birchpad-editor/test-support", "birchpad-ui/test-support"]
 
 # The Windows icon and version resources (build.rs); the version GPUI uses.
 [build-dependencies]
 embed-resource = "3"
 
 [dev-dependencies]
+birchpad = { path = ".", features = ["test-support"] }
 birchpad-editor = { workspace = true, features = ["test-support"] }
 birchpad-ui = { workspace = true, features = ["test-support"] }
 # Tests switch the language each in its own thread.

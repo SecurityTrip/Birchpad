@@ -233,11 +233,3 @@ fn escape(text: &str) -> String {
     }
     out
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/project/tests.rs"]
-mod tests;
-
-#[cfg(test)]
-#[path = "../tests/unit/project/files_tests.rs"]
-mod files_tests;

@@ -275,7 +275,3 @@ impl Session {
         }
     }
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/session/tests.rs"]
-mod tests;

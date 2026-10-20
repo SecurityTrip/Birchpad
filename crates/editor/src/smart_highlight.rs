@@ -22,19 +22,19 @@ use birchpad_ui::AppState;
 /// How long one frame may search.
 const BUDGET: Duration = Duration::from_millis(2);
 /// Bytes searched beyond the visible text on each side.
-const MARGIN: usize = 16 * 1024;
+pub const MARGIN: usize = 16 * 1024;
 /// Longer selections are not highlighted.
-const MAX_TOKEN: usize = 64 * 1024;
+pub const MAX_TOKEN: usize = 64 * 1024;
 
 /// The occurrences of the selected token around the visible text.
-pub(crate) struct SmartHighlight {
+pub struct SmartHighlight {
     revision: RevisionId,
     query: Query,
     searcher: Searcher,
     /// One scan per searched range; sorted and disjoint.
-    scans: Vec<Scan>,
+    pub scans: Vec<Scan>,
     /// What the scans found so far.
-    pub(crate) matches: RangeSet<()>,
+    pub matches: RangeSet<()>,
 }
 
 impl SmartHighlight {
@@ -59,7 +59,7 @@ impl SmartHighlight {
 impl EditorView {
     /// Brings the smart highlights up to date for `shown`, the sorted ranges of text shown in
     /// this frame. Returns true if searching is not finished and needs another frame.
-    pub(crate) fn update_smart_highlight(
+    pub fn update_smart_highlight(
         &mut self,
         shown: &[ByteRange<usize>],
         text: &Rope,
@@ -114,7 +114,7 @@ impl EditorView {
 
     /// What to highlight for the primary selection, if smart highlighting is on, the file is
     /// within the large file limit and the selection qualifies.
-    fn smart_highlight_query(&self, text: &Rope, cx: &App) -> Option<Query> {
+    pub fn smart_highlight_query(&self, text: &Rope, cx: &App) -> Option<Query> {
         let settings = &AppState::global(cx).settings;
         let smart = &settings.highlighting.smart;
         let limit = u64::from(settings.files.large_file_limit_mb) << 20;
@@ -146,7 +146,7 @@ impl EditorView {
 
 /// The ranges to search for `shown`: each extended by [`MARGIN`] on both sides (on character
 /// boundaries), merged where they meet.
-fn search_ranges(shown: &[ByteRange<usize>], text: &Rope) -> Vec<ByteRange<usize>> {
+pub fn search_ranges(shown: &[ByteRange<usize>], text: &Rope) -> Vec<ByteRange<usize>> {
     let mut ranges: Vec<ByteRange<usize>> = Vec::new();
     for range in shown {
         let start = text.floor_char_boundary(range.start.saturating_sub(MARGIN));
@@ -158,11 +158,3 @@ fn search_ranges(shown: &[ByteRange<usize>], text: &Rope) -> Vec<ByteRange<usize
     }
     ranges
 }
-
-#[cfg(test)]
-#[allow(
-    clippy::single_range_in_vec_init,
-    reason = "decorations are lists of byte ranges, some with one range"
-)]
-#[path = "../tests/unit/smart_highlight/tests.rs"]
-mod tests;

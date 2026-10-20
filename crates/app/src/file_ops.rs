@@ -24,7 +24,7 @@ struct RecentArgs {
     path: PathBuf,
 }
 
-pub(crate) fn register_commands(registry: &mut CommandRegistry) {
+pub fn register_commands(registry: &mut CommandRegistry) {
     registry.workspace("file.open", |this, (), window, cx| {
         this.open_with_dialog(window, cx);
         Ok(())
@@ -125,7 +125,7 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
 }
 
 /// The folder of a file chosen in a dialog, for Default Directory > Remember.
-pub(crate) fn remember_directory(path: &Path, cx: &mut App) {
+pub fn remember_directory(path: &Path, cx: &mut App) {
     if let Some(folder) = path
         .parent()
         .filter(|folder| !folder.as_os_str().is_empty())
@@ -138,7 +138,7 @@ pub(crate) fn remember_directory(path: &Path, cx: &mut App) {
 /// Where the copy of the file goes before a save overwrites it (Preferences > Backup > Backup
 /// on save): next to it (`simple`), or in `folder` (a `nppBackup` folder next to the file if
 /// empty) with the time in its name (`verbose`).
-pub(crate) fn backup_path(
+pub fn backup_path(
     target: &Path,
     mode: birchpad_config::BackupOnSave,
     folder: &str,
@@ -160,7 +160,7 @@ pub(crate) fn backup_path(
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum SaveMode {
+pub enum SaveMode {
     /// Save to the buffer's file; untitled buffers ask for a path.
     Save,
     /// Always ask for a path.
@@ -197,7 +197,7 @@ impl Workspace {
 
     /// The folder dialogs start in (Preferences > Default Directory): the active file's, the one
     /// last used, or one of one's own; else the home folder.
-    pub(crate) fn default_directory(&self, cx: &App) -> PathBuf {
+    pub fn default_directory(&self, cx: &App) -> PathBuf {
         let app = AppState::global(cx);
         let files = &app.settings.files;
         let chosen = match files.default_directory {
@@ -221,7 +221,7 @@ impl Workspace {
 
     /// Saves the buffer shown in `view`. Resolves to `true` if it was written, `false` if the
     /// user cancelled; errors are shown to the user and resolve to `false` too.
-    pub(crate) fn save(
+    pub fn save(
         &mut self,
         view: Entity<EditorView>,
         mode: SaveMode,
@@ -317,7 +317,7 @@ impl Workspace {
 
     /// Closes `views`, asking to save modified buffers first. Resolves to `false` if the user
     /// cancelled (the remaining views stay open).
-    pub(crate) fn close_with_confirmation(
+    pub fn close_with_confirmation(
         &mut self,
         views: Vec<Entity<EditorView>>,
         window: &mut Window,
@@ -341,11 +341,7 @@ impl Workspace {
 
     /// Asks about every modified document, saving those the user wants saved. Resolves to
     /// `false` if the user cancelled.
-    pub(crate) fn ask_to_save_all(
-        &mut self,
-        window: &mut Window,
-        cx: &mut Context<Self>,
-    ) -> Task<bool> {
+    pub fn ask_to_save_all(&mut self, window: &mut Window, cx: &mut Context<Self>) -> Task<bool> {
         let views = self.unique_buffer_views(cx);
         cx.spawn_in(window, async move |this, cx| {
             for view in views {
@@ -359,17 +355,13 @@ impl Workspace {
 
     /// Whether quitting can go ahead without asking anything: unsaved changes are backed up,
     /// or there are none.
-    pub(crate) fn can_quit_now(&self, cx: &App) -> bool {
+    pub fn can_quit_now(&self, cx: &App) -> bool {
         AppState::global(cx).backs_up_unsaved() || !self.has_unsaved_changes(cx)
     }
 
     /// Gets ready to quit: asks about unsaved changes unless they are backed up, then saves
     /// the session. Resolves to `false` if the user cancelled.
-    pub(crate) fn prepare_to_quit(
-        &mut self,
-        window: &mut Window,
-        cx: &mut Context<Self>,
-    ) -> Task<bool> {
+    pub fn prepare_to_quit(&mut self, window: &mut Window, cx: &mut Context<Self>) -> Task<bool> {
         if self.can_quit_now(cx) {
             self.save_session_for_quit(cx);
             return Task::ready(true);
@@ -386,7 +378,7 @@ impl Workspace {
 
     /// File > Exit: asks about unsaved changes (unless they are backed up), saves the session
     /// and quits.
-    pub(crate) fn exit(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+    pub fn exit(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let ready = self.prepare_to_quit(window, cx);
         cx.spawn(async move |_, cx| {
             if ready.await {
@@ -397,14 +389,14 @@ impl Workspace {
     }
 
     /// Whether closing the window needs confirmation; used by the window's close button.
-    pub(crate) fn has_unsaved_changes(&self, cx: &App) -> bool {
+    pub fn has_unsaved_changes(&self, cx: &App) -> bool {
         self.all_views(cx)
             .iter()
             .any(|view| view.read(cx).buffer.read(cx).is_modified())
     }
 
     /// Remembers every open file as recently closed, before the window goes away.
-    pub(crate) fn remember_open_files(&self, cx: &mut App) {
+    pub fn remember_open_files(&self, cx: &mut App) {
         let paths: Vec<PathBuf> = self
             .all_views(cx)
             .iter()
@@ -595,7 +587,3 @@ fn home_dir() -> Option<PathBuf> {
         .filter(|value| !value.is_empty())
         .map(PathBuf::from)
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/file_ops/tests.rs"]
-mod tests;

@@ -13,47 +13,47 @@ use serde_json::json;
 use crate::commands::{CommandRegistry, RunCommand};
 
 /// Live state the menus reflect.
-pub(crate) struct MenuState<'a> {
-    pub(crate) recent_files: &'a [PathBuf],
+pub struct MenuState<'a> {
+    pub recent_files: &'a [PathBuf],
     /// The user defined languages the Language menu lists.
-    pub(crate) user_languages: &'a [String],
+    pub user_languages: &'a [String],
     /// The themes Settings > Theme lists.
-    pub(crate) themes: &'a [String],
+    pub themes: &'a [String],
     /// The saved macros the Macro menu lists.
-    pub(crate) macros: &'a [String],
+    pub macros: &'a [String],
     /// The saved command lines the Run menu lists.
-    pub(crate) run_commands: &'a [String],
+    pub run_commands: &'a [String],
     /// The languages of the spell checker's dictionaries.
-    pub(crate) spell_languages: &'a [String],
+    pub spell_languages: &'a [String],
     /// The scripts of the `scripts` folder.
-    pub(crate) scripts: &'a [String],
+    pub scripts: &'a [String],
     /// The plugins ready to run: id, name and commands.
-    pub(crate) plugins: &'a [(String, String, Vec<birchpad_plugin::PluginCommand>)],
+    pub plugins: &'a [(String, String, Vec<birchpad_plugin::PluginCommand>)],
     /// The documents of the active view, and which one is active (the Window menu).
-    pub(crate) documents: &'a [String],
-    pub(crate) active_document: Option<usize>,
+    pub documents: &'a [String],
+    pub active_document: Option<usize>,
     /// Whether a command item shows a check mark (word wrap, current encoding, ...).
-    pub(crate) checked: &'a dyn Fn(&Invocation) -> bool,
+    pub checked: &'a dyn Fn(&Invocation) -> bool,
 }
 
 /// The key of a menu's or a menu item's own title: `menu.<title>`.
-pub(crate) fn menu_key(title: &str) -> String {
+pub fn menu_key(title: &str) -> String {
     format!("menu.{}", crate::i18n::slug(title))
 }
 
 /// The key of a command's title: `command.<id>`.
-pub(crate) fn command_key(id: &str) -> String {
+pub fn command_key(id: &str) -> String {
     format!("command.{id}")
 }
 
 /// A command's title in the interface's language.
-pub(crate) fn command_title(id: &str) -> String {
+pub fn command_title(id: &str) -> String {
     let english = birchpad_commands::find(id).map_or(id, |spec| spec.title);
     crate::i18n::get_or(&command_key(id), english)
 }
 
 /// The text of a menu item: its own label (`menu.<label>`), or its command's title.
-pub(crate) fn menu_label(item: &MenuItem) -> String {
+pub fn menu_label(item: &MenuItem) -> String {
     match item {
         MenuItem::Command {
             label: Some(label), ..
@@ -254,7 +254,7 @@ fn build_menu(
 }
 
 /// On macOS, About, Check for Updates and Quit live in the application menu.
-fn mac_layout(model: Vec<Menu>) -> Vec<Menu> {
+pub fn mac_layout(model: Vec<Menu>) -> Vec<Menu> {
     const APP_ITEMS: [&str; 3] = ["help.about", "help.check-updates", "file.exit"];
     let is_app_item = |item: &MenuItem| {
         matches!(item, MenuItem::Command { invocation, .. }
@@ -292,7 +292,7 @@ fn mac_layout(model: Vec<Menu>) -> Vec<Menu> {
 }
 
 /// Installs the menus: natively on macOS, for the drawn menu bar elsewhere.
-pub(crate) fn install(state: &MenuState, cx: &mut App) {
+pub fn install(state: &MenuState, cx: &mut App) {
     if cfg!(target_os = "macos") {
         let menus = build(birchpad_commands::main_menu(), state, cx);
         cx.set_menus(menus);
@@ -304,11 +304,3 @@ pub(crate) fn install(state: &MenuState, cx: &mut App) {
         GlobalState::global_mut(cx).set_app_menus(owned);
     }
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/menus/model_tests.rs"]
-mod model_tests;
-
-#[cfg(all(test, not(target_os = "macos")))]
-#[path = "../tests/unit/menus/tests.rs"]
-mod tests;

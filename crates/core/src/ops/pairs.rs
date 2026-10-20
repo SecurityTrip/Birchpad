@@ -140,7 +140,3 @@ pub fn delete_pairs(text: &Rope, selection: &Selection, pairs: &Pairs) -> Option
     let transaction = Transaction::from_edits(text, edits).ok()?;
     Some(transaction.with_selection(Selection::new(ranges, selection.primary_index())))
 }
-
-#[cfg(test)]
-#[path = "../../tests/unit/ops/pairs/tests.rs"]
-mod tests;

@@ -171,7 +171,3 @@ fn leaves(table: Table) -> Vec<(String, Value)> {
     out.sort_by(|a, b| a.0.cmp(&b.0));
     out
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/layers/tests.rs"]
-mod tests;

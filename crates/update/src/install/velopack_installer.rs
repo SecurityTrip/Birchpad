@@ -18,13 +18,14 @@ use crate::manifest::PACKAGE_ID;
 use crate::{Package, Transport};
 
 /// The installer, if Birchpad runs from a Velopack installation.
-pub(super) fn detect() -> Option<Arc<dyn Installer>> {
+pub fn detect() -> Option<Arc<dyn Installer>> {
     UpdateManager::new(velopack::sources::NoneSource {}, None, None).ok()?;
     Some(Arc::new(Velopack::default()))
 }
 
+/// Updates of a Velopack installation, from the signed manifest.
 #[derive(Default)]
-struct Velopack {
+pub struct Velopack {
     /// The manager and the package of a downloaded update.
     downloaded: Mutex<Option<(UpdateManager, VelopackAsset)>>,
 }
@@ -75,12 +76,12 @@ impl Installer for Velopack {
 }
 
 /// A Velopack feed of the one package of a release that the signed manifest lists.
-struct SignedSource {
-    version: String,
-    package: Package,
-    transport: Arc<dyn Transport>,
+pub struct SignedSource {
+    pub version: String,
+    pub package: Package,
+    pub transport: Arc<dyn Transport>,
     /// Told the bytes received, besides Velopack's percentage.
-    progress: Progress,
+    pub progress: Progress,
 }
 
 impl UpdateSource for SignedSource {
@@ -133,7 +134,3 @@ impl UpdateSource for SignedSource {
         })
     }
 }
-
-#[cfg(test)]
-#[path = "../../tests/unit/install/velopack_installer/tests.rs"]
-mod tests;

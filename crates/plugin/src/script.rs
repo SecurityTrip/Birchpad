@@ -167,7 +167,3 @@ pub fn check(source: &str) -> Result<()> {
         .map(|_| ())
         .map_err(|error| anyhow!("{error}"))
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/script/tests.rs"]
-mod tests;

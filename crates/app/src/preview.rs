@@ -37,7 +37,7 @@ use crate::workspace::Workspace;
 
 /// What a document's preview shows.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum PreviewKind {
+pub enum PreviewKind {
     Markdown,
     /// Diagrams drawn by PlantUML, installed apart from Birchpad.
     PlantUml,
@@ -48,12 +48,12 @@ const PLANTUML_EXTENSIONS: [&str; 5] = ["puml", "plantuml", "pu", "iuml", "wsd"]
 
 /// The preview `buffer` has: from its language, or for PlantUML (which has no language of its
 /// own yet) from its file's extension.
-pub(crate) fn kind_of(buffer: &Buffer) -> Option<PreviewKind> {
+pub fn kind_of(buffer: &Buffer) -> Option<PreviewKind> {
     kind_for(buffer.language().map(|language| language.id), buffer.path())
 }
 
 /// The preview of a document in `language` (by id) kept at `path`.
-pub(crate) fn kind_for(language: Option<&str>, path: Option<&Path>) -> Option<PreviewKind> {
+pub fn kind_for(language: Option<&str>, path: Option<&Path>) -> Option<PreviewKind> {
     if language == Some("markdown") {
         return Some(PreviewKind::Markdown);
     }
@@ -65,13 +65,13 @@ pub(crate) fn kind_for(language: Option<&str>, path: Option<&Path>) -> Option<Pr
 }
 
 /// The commands of View > Preview and the mode each one shows.
-pub(crate) const COMMANDS: [(&str, PreviewMode); 3] = [
+pub const COMMANDS: [(&str, PreviewMode); 3] = [
     ("view.preview-editor", PreviewMode::Editor),
     ("view.preview-split", PreviewMode::Split),
     ("view.preview-only", PreviewMode::Preview),
 ];
 
-pub(crate) fn register_commands(registry: &mut CommandRegistry) {
+pub fn register_commands(registry: &mut CommandRegistry) {
     for (id, mode) in COMMANDS {
         registry.workspace(id, move |this, (), _, cx| {
             let pane = this.active_pane().clone();
@@ -85,7 +85,7 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
 }
 
 /// Whether View > Preview's `invocation` is checked, for the active view's `mode`.
-pub(crate) fn is_checked(command: &str, mode: Option<PreviewMode>) -> Option<bool> {
+pub fn is_checked(command: &str, mode: Option<PreviewMode>) -> Option<bool> {
     COMMANDS
         .iter()
         .find(|(id, _)| *id == command)
@@ -94,7 +94,7 @@ pub(crate) fn is_checked(command: &str, mode: Option<PreviewMode>) -> Option<boo
 
 /// What a link in the preview of a document in `folder` leads to.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) enum LinkTarget {
+pub enum LinkTarget {
     /// A web page, a mail address: handed to the system.
     Url(String),
     /// A file, opened in Birchpad.
@@ -116,7 +116,7 @@ fn scheme(link: &str) -> Option<&str> {
 
 /// A path from a link or an image source: `file:` URLs and paths relative to `folder` (the
 /// document's), without a `#fragment` or `?query`, with `%20` and its kin decoded.
-fn local_path(link: &str, folder: Option<&Path>) -> Option<PathBuf> {
+pub fn local_path(link: &str, folder: Option<&Path>) -> Option<PathBuf> {
     let link = link.strip_prefix("file://").unwrap_or(link);
     // `file:///C:/notes` leaves `/C:/notes`.
     let link = match link.as_bytes() {
@@ -136,7 +136,7 @@ fn local_path(link: &str, folder: Option<&Path>) -> Option<PathBuf> {
 }
 
 /// `%XX` escapes decoded; text that is not UTF-8 afterwards, or a broken escape, stays as is.
-fn percent_decode(text: &str) -> String {
+pub fn percent_decode(text: &str) -> String {
     let bytes = text.as_bytes();
     let mut decoded = Vec::with_capacity(bytes.len());
     let mut at = 0;
@@ -160,7 +160,7 @@ fn percent_decode(text: &str) -> String {
 }
 
 /// Where a click on `link` in the preview of a document in `folder` goes.
-pub(crate) fn link_target(link: &str, folder: Option<&Path>) -> LinkTarget {
+pub fn link_target(link: &str, folder: Option<&Path>) -> LinkTarget {
     let link = link.trim();
     match scheme(link) {
         Some(scheme) if scheme.eq_ignore_ascii_case("file") => {
@@ -175,7 +175,7 @@ pub(crate) fn link_target(link: &str, folder: Option<&Path>) -> LinkTarget {
 /// Where an image of the preview of a document in `folder` is read from: a file, or the data
 /// of a `data:` URL. Images on the web are not fetched (Birchpad connects to the network only
 /// for updates): `None`.
-pub(crate) fn image_path(source: &str, folder: Option<&Path>) -> Option<PathBuf> {
+pub fn image_path(source: &str, folder: Option<&Path>) -> Option<PathBuf> {
     match scheme(source) {
         Some(scheme) if scheme.eq_ignore_ascii_case("file") => local_path(source, folder),
         Some(_) => None,
@@ -195,14 +195,14 @@ fn image_source(uri: &SharedUri, folder: Option<&Path>) -> ImageSource {
 }
 
 /// What PlantUML writes after each diagram, to tell the diagrams of a file apart.
-const DIAGRAM_END: &str = "<!--birchpad-diagram-end-->";
+pub const DIAGRAM_END: &str = "<!--birchpad-diagram-end-->";
 
 /// How long the text rests before PlantUML draws it again: it starts a Java program each time.
-const PLANTUML_DELAY: Duration = Duration::from_millis(400);
+pub const PLANTUML_DELAY: Duration = Duration::from_millis(400);
 
 /// The program and arguments that draw PlantUML's diagrams as SVG from the standard input, for
 /// the `preview.plantuml` setting: a `.jar` runs with `java -jar`.
-pub(crate) fn plantuml_command(setting: &str) -> (String, Vec<String>) {
+pub fn plantuml_command(setting: &str) -> (String, Vec<String>) {
     let setting = match setting.trim() {
         "" => "plantuml",
         setting => setting,
@@ -229,7 +229,7 @@ pub(crate) fn plantuml_command(setting: &str) -> (String, Vec<String>) {
 }
 
 /// The SVG images in PlantUML's output, one per diagram.
-pub(crate) fn split_diagrams(output: &[u8]) -> Vec<Vec<u8>> {
+pub fn split_diagrams(output: &[u8]) -> Vec<Vec<u8>> {
     String::from_utf8_lossy(output)
         .split(DIAGRAM_END)
         .map(str::trim)
@@ -297,11 +297,11 @@ enum Content {
 }
 
 /// The preview of one view: the rendered text, kept up to date as the text changes.
-pub(crate) struct Preview {
+pub struct Preview {
     view: WeakEntity<EditorView>,
     workspace: WeakEntity<Workspace>,
-    pub(crate) kind: PreviewKind,
-    pub(crate) mode: PreviewMode,
+    pub kind: PreviewKind,
+    pub mode: PreviewMode,
     content: Content,
     /// The state of the text the preview shows.
     shown: Option<(RevisionId, usize)>,
@@ -309,7 +309,7 @@ pub(crate) struct Preview {
 }
 
 impl Preview {
-    pub(crate) fn new(
+    pub fn new(
         view: &Entity<EditorView>,
         kind: PreviewKind,
         workspace: WeakEntity<Workspace>,
@@ -391,8 +391,8 @@ impl Preview {
     }
 
     /// The text the preview shows, without its formatting, or what PlantUML did (for tests).
-    #[cfg(test)]
-    pub(crate) fn rendered(&self, cx: &App) -> String {
+    #[cfg(feature = "test-support")]
+    pub fn rendered(&self, cx: &App) -> String {
         match &self.content {
             Content::Markdown(markdown) => markdown.read(cx).rendered_text().as_str().to_owned(),
             Content::PlantUml(diagrams) => diagrams
@@ -490,7 +490,7 @@ fn follow_link(
 
 /// The buttons at the top right of a document with a preview: the text alone, both, the
 /// preview alone.
-pub(crate) fn render_switch(
+pub fn render_switch(
     mode: PreviewMode,
     on_choose: impl Fn(PreviewMode, &mut Window, &mut App) + Clone + 'static,
 ) -> AnyElement {
@@ -538,10 +538,6 @@ pub(crate) fn render_switch(
 }
 
 /// Remembers `mode` for documents opened later.
-pub(crate) fn remember(mode: PreviewMode, cx: &mut App) {
+pub fn remember(mode: PreviewMode, cx: &mut App) {
     AppState::update_state(cx, |state, _| state.preview = mode);
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/preview/tests.rs"]
-mod tests;

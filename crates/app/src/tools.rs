@@ -67,7 +67,7 @@ impl From<ConversionName> for Conversion {
 }
 
 /// The lines of a hash listing, as `sha256sum` writes them: `<hash>  <path>`.
-pub(crate) fn hash_listing(
+pub fn hash_listing(
     kind: HashKind,
     files: &[(std::path::PathBuf, std::io::Result<Vec<u8>>)],
 ) -> String {
@@ -81,7 +81,7 @@ pub(crate) fn hash_listing(
     out
 }
 
-pub(crate) fn register_commands(registry: &mut CommandRegistry) {
+pub fn register_commands(registry: &mut CommandRegistry) {
     registry.editor("tools.hash-selection", |this, args: HashArgs, _, cx| {
         let Some(selected) = this.selected_text(cx) else {
             bail!("{}", t!("tools.select-the-text-to-hash"));
@@ -141,7 +141,7 @@ impl Workspace {
     }
 
     /// A new untitled document holding `text`.
-    pub(crate) fn open_text_in_new_document(
+    pub fn open_text_in_new_document(
         &mut self,
         text: &str,
         window: &mut Window,
@@ -157,7 +157,3 @@ impl Workspace {
         self.dispatch(&start, window, cx)
     }
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/tools/tests.rs"]
-mod tests;

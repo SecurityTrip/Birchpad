@@ -25,7 +25,7 @@ use crate::workspace::Workspace;
 
 /// How a setting is edited.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum Kind {
+pub enum Kind {
     Bool,
     /// A whole number from `min` to `max`.
     Number {
@@ -50,15 +50,20 @@ pub(crate) enum Kind {
 
 /// A setting the dialog shows.
 #[derive(Debug, Clone, Copy)]
-pub(crate) struct Entry {
-    pub(crate) section: &'static str,
+pub struct Entry {
+    pub section: &'static str,
     /// The dotted key in `settings.toml`.
-    pub(crate) key: &'static str,
-    pub(crate) label: &'static str,
-    pub(crate) kind: Kind,
+    pub key: &'static str,
+    pub label: &'static str,
+    pub kind: Kind,
 }
 
-const fn entry(section: &'static str, key: &'static str, label: &'static str, kind: Kind) -> Entry {
+pub const fn entry(
+    section: &'static str,
+    key: &'static str,
+    label: &'static str,
+    kind: Kind,
+) -> Entry {
     Entry {
         section,
         key,
@@ -70,11 +75,11 @@ const fn entry(section: &'static str, key: &'static str, label: &'static str, ki
 const OFF_ON: &[(&str, &str)] = &[("off", "Off"), ("margin", "In the margin")];
 
 /// The key of Preferences > Files > Edit with Birchpad, which is no setting.
-const EXPLORER_MENU: &str = "explorer-menu";
+pub const EXPLORER_MENU: &str = "explorer-menu";
 
 /// Every setting the dialog shows, by section. View > Word Wrap and Show Symbol stay in the
 /// View menu, which remembers them.
-pub(crate) const ENTRIES: &[Entry] = &[
+pub const ENTRIES: &[Entry] = &[
     entry(
         "Appearance",
         "appearance.language",
@@ -542,7 +547,7 @@ pub(crate) const ENTRIES: &[Entry] = &[
 ];
 
 /// The sections in the order listed.
-pub(crate) fn sections() -> Vec<&'static str> {
+pub fn sections() -> Vec<&'static str> {
     let mut sections: Vec<&str> = Vec::new();
     for entry in ENTRIES {
         if !sections.contains(&entry.section) {
@@ -553,7 +558,7 @@ pub(crate) fn sections() -> Vec<&'static str> {
 }
 
 /// The value of `key` in `settings`, if set.
-pub(crate) fn current_value(settings: &Settings, key: &str) -> Option<Value> {
+pub fn current_value(settings: &Settings, key: &str) -> Option<Value> {
     let table = toml::Table::try_from(settings).expect("settings serialize to a table");
     let mut parts = key.split('.');
     let first = table.get(parts.next()?)?.clone();
@@ -561,7 +566,7 @@ pub(crate) fn current_value(settings: &Settings, key: &str) -> Option<Value> {
 }
 
 /// The text a field shows for `value`.
-pub(crate) fn display(value: Option<&Value>) -> String {
+pub fn display(value: Option<&Value>) -> String {
     match value {
         None => String::new(),
         Some(Value::String(text)) => text.clone(),
@@ -575,7 +580,7 @@ pub(crate) fn display(value: Option<&Value>) -> String {
 }
 
 /// Reads what was typed into the field of a setting of `kind`. `None`: remove the setting.
-pub(crate) fn parse_field(kind: Kind, text: &str) -> Result<Option<Value>> {
+pub fn parse_field(kind: Kind, text: &str) -> Result<Option<Value>> {
     let number = |text: &str, min: i64, max: i64| -> Result<i64> {
         let value: i64 = text.trim().parse().map_err(|_| {
             anyhow!(
@@ -618,7 +623,7 @@ pub(crate) fn parse_field(kind: Kind, text: &str) -> Result<Option<Value>> {
 
 /// Changes a setting: writes it to the user's settings file, reads the settings again and
 /// redraws.
-pub(crate) fn set(key: &str, value: Option<Value>, cx: &mut App) -> Result<()> {
+pub fn set(key: &str, value: Option<Value>, cx: &mut App) -> Result<()> {
     let state = AppState::global(cx);
     if state.is_locked(key) {
         bail!(
@@ -650,20 +655,20 @@ pub(crate) fn set(key: &str, value: Option<Value>, cx: &mut App) -> Result<()> {
     Ok(())
 }
 
-pub(crate) fn register_commands(registry: &mut CommandRegistry) {
+pub fn register_commands(registry: &mut CommandRegistry) {
     registry.workspace("settings.preferences", |_, (), window, cx| {
         open(cx.entity().downgrade(), window, cx);
         Ok(())
     });
 }
 
-pub(crate) struct Preferences {
+pub struct Preferences {
     workspace: WeakEntity<Workspace>,
-    section: usize,
+    pub section: usize,
     /// The text fields, by key.
-    inputs: HashMap<&'static str, Entity<InputState>>,
+    pub inputs: HashMap<&'static str, Entity<InputState>>,
     /// What went wrong with a setting, by key.
-    errors: HashMap<&'static str, String>,
+    pub errors: HashMap<&'static str, String>,
     /// Preferences > Language: the language and the tab size to set.
     language_input: Entity<InputState>,
     language_width: Entity<InputState>,
@@ -671,9 +676,9 @@ pub(crate) struct Preferences {
 }
 
 /// Opens the dialog.
-pub(crate) fn open(workspace: WeakEntity<Workspace>, window: &mut Window, cx: &mut App) {
+pub fn open(workspace: WeakEntity<Workspace>, window: &mut Window, cx: &mut App) {
     let preferences = cx.new(|cx| Preferences::new(workspace, window, cx));
-    #[cfg(test)]
+    #[cfg(feature = "test-support")]
     OPENED.with(|opened| *opened.borrow_mut() = Some(preferences.downgrade()));
     window.open_dialog(cx, move |dialog, _, _| {
         dialog
@@ -684,15 +689,19 @@ pub(crate) fn open(workspace: WeakEntity<Workspace>, window: &mut Window, cx: &m
     });
 }
 
-#[cfg(test)]
+#[cfg(feature = "test-support")]
 thread_local! {
     /// The dialog last opened, for tests to drive.
-    static OPENED: std::cell::RefCell<Option<WeakEntity<Preferences>>> =
+    pub static OPENED: std::cell::RefCell<Option<WeakEntity<Preferences>>> =
         std::cell::RefCell::default();
 }
 
 impl Preferences {
-    fn new(workspace: WeakEntity<Workspace>, window: &mut Window, cx: &mut Context<Self>) -> Self {
+    pub fn new(
+        workspace: WeakEntity<Workspace>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Self {
         let settings = AppState::global(cx).settings.clone();
         let mut inputs = HashMap::new();
         for entry in ENTRIES {
@@ -726,7 +735,12 @@ impl Preferences {
     }
 
     /// Sets `key`, or shows why not.
-    fn apply(&mut self, key: &'static str, value: Result<Option<Value>>, cx: &mut Context<Self>) {
+    pub fn apply(
+        &mut self,
+        key: &'static str,
+        value: Result<Option<Value>>,
+        cx: &mut Context<Self>,
+    ) {
         match value.and_then(|value| set(key, value, cx)) {
             Ok(()) => {
                 self.errors.remove(key);
@@ -742,14 +756,14 @@ impl Preferences {
     }
 
     /// The text of a field changed.
-    fn field_changed(&mut self, entry: Entry, cx: &mut Context<Self>) {
+    pub fn field_changed(&mut self, entry: Entry, cx: &mut Context<Self>) {
         let text = self.inputs[entry.key].read(cx).value().to_string();
         let result = parse_field(entry.kind, &text);
         self.apply(entry.key, result, cx);
     }
 
     /// Preferences > Files: "Edit with Birchpad" in the Explorer's menu, for this copy.
-    pub(crate) fn switch_explorer_menu(&mut self, on: bool, cx: &mut Context<Self>) {
+    pub fn switch_explorer_menu(&mut self, on: bool, cx: &mut Context<Self>) {
         let result = if on {
             std::env::current_exe().and_then(|exe| birchpad_cli::explorer::add(&exe))
         } else {
@@ -773,7 +787,7 @@ impl Preferences {
     }
 
     /// Preferences > Language > Set: the language's own tab size and spaces.
-    pub(crate) fn set_language_tabs(&mut self, cx: &mut Context<Self>) {
+    pub fn set_language_tabs(&mut self, cx: &mut Context<Self>) {
         let typed = self.language_input.read(cx).value().to_string();
         let width = self.language_width.read(cx).value().to_string();
         let result = language_id(&typed).and_then(|id| {
@@ -789,7 +803,7 @@ impl Preferences {
     }
 
     /// Preferences > Language > Remove: the language takes the editor's tab settings again.
-    pub(crate) fn remove_language_tabs(&mut self, id: &str, cx: &mut Context<Self>) {
+    pub fn remove_language_tabs(&mut self, id: &str, cx: &mut Context<Self>) {
         let result = set(&format!("languages.{id}.tab-width"), None, cx)
             .and_then(|()| set(&format!("languages.{id}.insert-spaces"), None, cx));
         self.after_language_change(result, cx);
@@ -896,14 +910,14 @@ impl Preferences {
             .into_any_element()
     }
 
-    fn select_section(&mut self, index: usize, cx: &mut Context<Self>) {
+    pub fn select_section(&mut self, index: usize, cx: &mut Context<Self>) {
         self.section = index;
         cx.notify();
     }
 }
 
 /// The id of a language as typed: its id or its name, without regard to case.
-pub(crate) fn language_id(typed: &str) -> Result<String> {
+pub fn language_id(typed: &str) -> Result<String> {
     let typed = typed.trim();
     if typed.eq_ignore_ascii_case("text") || typed.eq_ignore_ascii_case("normal text") {
         return Ok("text".to_owned());
@@ -1074,15 +1088,3 @@ impl Render for Preferences {
             )
     }
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/preferences/tests.rs"]
-mod tests;
-
-#[cfg(test)]
-#[path = "../tests/unit/preferences/more_tests.rs"]
-mod more_tests;
-
-#[cfg(test)]
-#[path = "../tests/unit/preferences/dialog_tests.rs"]
-mod dialog_tests;

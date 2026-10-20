@@ -148,11 +148,3 @@ impl BidiRow {
             .collect()
     }
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/bidi/tests.rs"]
-mod tests;
-
-#[cfg(test)]
-#[path = "../tests/unit/bidi/properties.rs"]
-mod properties;

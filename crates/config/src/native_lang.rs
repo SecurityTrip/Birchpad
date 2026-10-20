@@ -126,7 +126,3 @@ pub fn parse_native_lang(xml: &str) -> Result<NativeLang, String> {
         texts,
     })
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/native_lang/tests.rs"]
-mod tests;

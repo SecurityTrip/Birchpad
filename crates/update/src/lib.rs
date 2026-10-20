@@ -31,7 +31,7 @@ pub const DEFAULT_MANIFEST: &str =
     "https://github.com/SecurityTrip/Birchpad/releases/download/updates/birchpad-updates.json";
 
 /// Manifests larger than this are rejected.
-const MAX_MANIFEST_SIZE: u64 = 1024 * 1024;
+pub const MAX_MANIFEST_SIZE: u64 = 1024 * 1024;
 /// Connecting, or waiting for the answer to begin, fails after this long.
 const TIMEOUT: Duration = Duration::from_secs(30);
 /// A body that receives nothing for this long fails as stalled. There is no limit on the time a
@@ -224,7 +224,9 @@ impl HttpTransport {
         Self::build(user_agent, ureq::Proxy::try_from_env(), STALL)
     }
 
-    fn build(user_agent: &str, proxy: Option<ureq::Proxy>, stall: Duration) -> Self {
+    /// A transport through `proxy` (`None`: direct) whose bodies fail as stalled when nothing
+    /// arrives for `stall`. Creating it does not touch the network.
+    pub fn build(user_agent: &str, proxy: Option<ureq::Proxy>, stall: Duration) -> Self {
         use ureq::tls::{RootCerts, TlsConfig, TlsProvider};
         use ureq::unversioned::resolver::DefaultResolver;
         use ureq::unversioned::transport::{Connector as _, DefaultConnector};
@@ -393,7 +395,3 @@ impl Transport for HttpTransport {
         file.sync_all().map_err(|error| error.to_string())
     }
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/tests.rs"]
-mod tests;

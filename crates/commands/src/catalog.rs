@@ -461,7 +461,3 @@ pub const COMMANDS: &[CommandSpec] = &[
 pub fn find(id: &str) -> Option<&'static CommandSpec> {
     COMMANDS.iter().find(|spec| spec.id == id)
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/catalog/tests.rs"]
-mod tests;

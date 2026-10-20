@@ -125,7 +125,3 @@ fn number(attribute: Option<&str>) -> usize {
         .and_then(|value| value.trim().parse::<i64>().ok())
         .map_or(0, |value| usize::try_from(value).unwrap_or(0))
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/notepad_session/tests.rs"]
-mod tests;

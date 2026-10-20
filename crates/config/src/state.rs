@@ -201,7 +201,3 @@ impl UserState {
         self.recent_files.retain(|existing| existing != path);
     }
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/state/tests.rs"]
-mod tests;

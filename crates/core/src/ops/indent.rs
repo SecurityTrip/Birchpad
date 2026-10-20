@@ -87,7 +87,3 @@ fn finish(text: &Rope, selection: &Selection, edits: Vec<Edit>) -> Option<Transa
     let mapped = Selection::new(ranges, selection.primary_index());
     Some(transaction.with_selection(mapped))
 }
-
-#[cfg(test)]
-#[path = "../../tests/unit/ops/indent/tests.rs"]
-mod tests;

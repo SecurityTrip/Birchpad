@@ -95,7 +95,3 @@ pub fn replace_in_file(
     crate::save(path, &bytes, recovery).map_err(|_| Skipped::Failed)?;
     Ok(count)
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/search_files/tests.rs"]
-mod tests;

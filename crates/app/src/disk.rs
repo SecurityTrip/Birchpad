@@ -22,7 +22,7 @@ use crate::buffer::{Buffer, ReadOnly};
 use crate::commands::{CommandRegistry, Register as _};
 use crate::workspace::Workspace;
 
-pub(crate) fn register_commands(registry: &mut CommandRegistry) {
+pub fn register_commands(registry: &mut CommandRegistry) {
     registry.workspace("view.monitoring", |this, (), window, cx| {
         this.toggle_monitoring(window, cx)
     });
@@ -30,7 +30,7 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
 
 /// Watching files of a workspace.
 #[derive(Default)]
-pub(crate) struct DiskState {
+pub struct DiskState {
     watcher: Option<notify::RecommendedWatcher>,
     /// The folders watched.
     watched: HashSet<PathBuf>,
@@ -49,7 +49,7 @@ struct Candidate {
 impl Workspace {
     /// Starts watching the folders of open files, and checking monitored files every second
     /// (watchers miss changes on some network drives).
-    pub(crate) fn start_watching(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+    pub fn start_watching(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let (sender, mut events) = futures::channel::mpsc::unbounded::<()>();
         let watcher = notify::recommended_watcher(move |event: notify::Result<notify::Event>| {
             // Reading a file is no change; reloading one must not set off another check.
@@ -102,7 +102,7 @@ impl Workspace {
     }
 
     /// Watches the folders of the files that are checked for changes, and only those.
-    pub(crate) fn sync_watches(&mut self, cx: &mut Context<Self>) {
+    pub fn sync_watches(&mut self, cx: &mut Context<Self>) {
         if self.disk_state.watcher.is_none() {
             return;
         }
@@ -134,22 +134,22 @@ impl Workspace {
     }
 
     /// The folders watched, sorted.
-    #[cfg(test)]
-    pub(crate) fn watched_folders(&self) -> Vec<PathBuf> {
+    #[cfg(feature = "test-support")]
+    pub fn watched_folders(&self) -> Vec<PathBuf> {
         let mut folders: Vec<PathBuf> = self.disk_state.watched.iter().cloned().collect();
         folders.sort();
         folders
     }
 
     /// Stops the watcher, leaving the checks of monitored files every second.
-    #[cfg(test)]
-    pub(crate) fn drop_watcher(&mut self) {
+    #[cfg(feature = "test-support")]
+    pub fn drop_watcher(&mut self) {
         self.disk_state.watcher = None;
         self.disk_state.watched.clear();
     }
 
     /// Checks whether other programs changed or deleted open files, and deals with each.
-    pub(crate) fn check_files(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+    pub fn check_files(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         if self.disk_state.checking {
             self.disk_state.again = true;
             return;

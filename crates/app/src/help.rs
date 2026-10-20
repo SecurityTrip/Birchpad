@@ -12,12 +12,12 @@ use crate::app_state::AppState;
 use crate::commands::{CommandRegistry, Register as _};
 
 /// The version of this build: the workspace version, or a nightly version (see `build.rs`).
-pub(crate) const VERSION: &str = env!("BIRCHPAD_VERSION");
+pub const VERSION: &str = env!("BIRCHPAD_VERSION");
 /// "stable", "beta", "nightly" for release builds, "development" otherwise (see `build.rs`).
-pub(crate) const BUILD_CHANNEL: &str = env!("BIRCHPAD_CHANNEL");
-pub(crate) const COMMIT: Option<&str> = option_env!("BIRCHPAD_COMMIT");
+pub const BUILD_CHANNEL: &str = env!("BIRCHPAD_CHANNEL");
+pub const COMMIT: Option<&str> = option_env!("BIRCHPAD_COMMIT");
 
-pub(crate) fn register_commands(registry: &mut CommandRegistry) {
+pub fn register_commands(registry: &mut CommandRegistry) {
     registry.workspace("help.about", |_, (), window, cx| {
         show_about(window, cx);
         Ok(())
@@ -25,7 +25,7 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
     crate::updates::register_commands(registry);
 }
 
-pub(crate) fn channel_name(channel: UpdateChannel) -> &'static str {
+pub fn channel_name(channel: UpdateChannel) -> &'static str {
     match channel {
         UpdateChannel::Stable => "stable",
         UpdateChannel::Beta => "beta",
@@ -33,7 +33,7 @@ pub(crate) fn channel_name(channel: UpdateChannel) -> &'static str {
     }
 }
 
-pub(crate) fn about_rows(cx: &App) -> Vec<(&'static str, String)> {
+pub fn about_rows(cx: &App) -> Vec<(&'static str, String)> {
     let state = AppState::global(cx);
     let commit = COMMIT.map_or("unknown", |commit| &commit[..commit.len().min(12)]);
     let location = |path: Option<&std::path::Path>| {
@@ -81,7 +81,7 @@ pub(crate) fn about_rows(cx: &App) -> Vec<(&'static str, String)> {
 }
 
 /// The About box as plain text, for the clipboard.
-pub(crate) fn about_text(cx: &App) -> String {
+pub fn about_text(cx: &App) -> String {
     let mut text = "Birchpad".to_owned();
     for (label, value) in about_rows(cx) {
         let label = if label.is_empty() {
@@ -146,10 +146,10 @@ fn show_about(window: &mut Window, cx: &mut App) {
 }
 
 /// What a message's button does when clicked.
-pub(crate) type OnClick = Box<dyn Fn(&mut Window, &mut App)>;
+pub type OnClick = Box<dyn Fn(&mut Window, &mut App)>;
 
 /// What the button of a message does, besides closing it.
-pub(crate) enum MessageAction {
+pub enum MessageAction {
     /// Opens a web page; the button's text is the key given.
     Open(&'static str, String),
     /// Runs a function; the button's text is the key given.
@@ -157,7 +157,7 @@ pub(crate) enum MessageAction {
 }
 
 /// A dialog with wrapped text and OK.
-pub(crate) fn show_message(
+pub fn show_message(
     title: impl Into<SharedString>,
     lines: Vec<String>,
     page: Option<String>,
@@ -169,7 +169,7 @@ pub(crate) fn show_message(
 }
 
 /// A dialog with wrapped text and OK, or an action and Not Now.
-pub(crate) fn show_message_with(
+pub fn show_message_with(
     title: impl Into<SharedString>,
     lines: Vec<String>,
     action: Option<MessageAction>,
@@ -214,7 +214,3 @@ pub(crate) fn show_message_with(
             })
     });
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/help/tests.rs"]
-mod tests;

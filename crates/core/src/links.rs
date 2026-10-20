@@ -108,7 +108,3 @@ pub fn between_delimiters(
     let end = pos + after.find(close)?;
     Some(start..end)
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/links/tests.rs"]
-mod tests;

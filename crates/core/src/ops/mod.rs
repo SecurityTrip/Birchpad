@@ -120,7 +120,3 @@ pub(crate) fn replace_block(
         .ok()
         .map(|transaction| transaction.with_selection(new_selection))
 }
-
-#[cfg(test)]
-#[path = "../../tests/unit/ops/test_support.rs"]
-pub(crate) mod test_support;

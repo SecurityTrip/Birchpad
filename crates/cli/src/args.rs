@@ -159,7 +159,3 @@ impl CommandLine {
         }
     }
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/args/tests.rs"]
-mod tests;

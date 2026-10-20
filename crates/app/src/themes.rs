@@ -12,7 +12,7 @@ use crate::commands::{CommandRegistry, Register as _};
 use crate::workspace::{Workspace, report_error};
 
 /// The folder of theme files, next to the settings.
-pub(crate) fn themes_dir(cx: &App) -> Option<PathBuf> {
+pub fn themes_dir(cx: &App) -> Option<PathBuf> {
     AppState::global(cx)
         .paths
         .user_config_dir()
@@ -31,7 +31,7 @@ fn theme_name(path: &Path) -> Option<String> {
 
 /// The themes to choose from: the built-in ones, then those of `dir` by name. A file named like
 /// a built-in theme replaces it.
-pub(crate) fn names(dir: Option<&Path>) -> Vec<String> {
+pub fn names(dir: Option<&Path>) -> Vec<String> {
     let mut names: Vec<String> = Theme::builtins()
         .iter()
         .map(|theme| theme.name.clone())
@@ -54,7 +54,7 @@ pub(crate) fn names(dir: Option<&Path>) -> Vec<String> {
 }
 
 /// Reads the theme `name`: a file of `dir` (`.toml` before `.xml`), else a built-in theme.
-pub(crate) fn load(dir: Option<&Path>, name: &str) -> Result<Theme> {
+pub fn load(dir: Option<&Path>, name: &str) -> Result<Theme> {
     if let Some(dir) = dir {
         for extension in ["toml", "xml"] {
             let path = dir.join(format!("{name}.{extension}"));
@@ -85,7 +85,7 @@ fn read(path: &Path, name: &str) -> Result<Theme> {
 }
 
 /// The theme chosen last, or the one the settings name.
-pub(crate) fn chosen(cx: &App) -> String {
+pub fn chosen(cx: &App) -> String {
     let state = AppState::global(cx);
     state
         .state
@@ -96,7 +96,7 @@ pub(crate) fn chosen(cx: &App) -> String {
 
 /// Starts with the chosen theme; one that does not read leaves the default theme, with a
 /// message.
-pub(crate) fn init(cx: &mut App) {
+pub fn init(cx: &mut App) {
     let name = chosen(cx);
     match load(themes_dir(cx).as_deref(), &name) {
         Ok(theme) => apply(theme, cx),
@@ -109,7 +109,7 @@ pub(crate) fn init(cx: &mut App) {
 
 /// Whether the interface is dark, and its colors when they are not the theme's, for the theme
 /// `dark` and the system `system_dark` (Preferences > Appearance > Interface).
-pub(crate) fn interface(
+pub fn interface(
     mode: birchpad_config::InterfaceMode,
     dark: bool,
     system_dark: bool,
@@ -140,7 +140,7 @@ fn system_dark(cx: &App) -> bool {
 }
 
 /// Draws everything with `theme` from now on, the interface as Preferences say.
-pub(crate) fn apply(theme: Theme, cx: &mut App) {
+pub fn apply(theme: Theme, cx: &mut App) {
     let mode = AppState::global(cx).settings.appearance.interface;
     let (dark, interface) = interface(mode, theme.dark, system_dark(cx));
     let ui = interface.unwrap_or(theme.ui);
@@ -169,11 +169,11 @@ struct ThemeArgs {
 }
 
 /// The theme again, after the interface setting or the system's appearance changed.
-pub(crate) fn reapply(cx: &mut App) {
+pub fn reapply(cx: &mut App) {
     apply((*crate::theme::current()).clone(), cx);
 }
 
-pub(crate) fn register_commands(registry: &mut CommandRegistry) {
+pub fn register_commands(registry: &mut CommandRegistry) {
     registry.workspace("settings.theme", |this, args: ThemeArgs, _, cx| {
         let theme = load(themes_dir(cx).as_deref(), &args.name)?;
         choose(this, theme, cx);
@@ -190,7 +190,7 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
 }
 
 /// Uses `theme` and remembers it.
-pub(crate) fn choose(workspace: &mut Workspace, theme: Theme, cx: &mut Context<Workspace>) {
+pub fn choose(workspace: &mut Workspace, theme: Theme, cx: &mut Context<Workspace>) {
     let name = theme.name.clone();
     apply(theme, cx);
     AppState::update_state(cx, |state, _| state.theme = Some(name));
@@ -199,7 +199,7 @@ pub(crate) fn choose(workspace: &mut Workspace, theme: Theme, cx: &mut Context<W
 
 /// Copies theme files into `dir`, each checked first. Returns the themes imported and a message
 /// for each file that is not one.
-pub(crate) fn import(paths: &[PathBuf], dir: &Path) -> (Vec<Theme>, Vec<String>) {
+pub fn import(paths: &[PathBuf], dir: &Path) -> (Vec<Theme>, Vec<String>) {
     let mut imported = Vec::new();
     let mut errors = Vec::new();
     for path in paths {
@@ -274,11 +274,3 @@ impl Workspace {
         .detach();
     }
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/themes/tests.rs"]
-mod tests;
-
-#[cfg(test)]
-#[path = "../tests/unit/themes/interface_tests.rs"]
-mod interface_tests;

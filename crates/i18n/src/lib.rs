@@ -169,11 +169,11 @@ fn english() -> Current {
     }
 }
 
-#[cfg(not(any(test, feature = "per-thread")))]
+#[cfg(not(feature = "per-thread"))]
 static CURRENT: LazyLock<std::sync::RwLock<Arc<Current>>> =
     LazyLock::new(|| std::sync::RwLock::new(Arc::new(english())));
 
-#[cfg(not(any(test, feature = "per-thread")))]
+#[cfg(not(feature = "per-thread"))]
 fn current() -> Arc<Current> {
     CURRENT
         .read()
@@ -181,25 +181,25 @@ fn current() -> Arc<Current> {
         .clone()
 }
 
-#[cfg(not(any(test, feature = "per-thread")))]
+#[cfg(not(feature = "per-thread"))]
 fn set_current(new: Current) {
     *CURRENT
         .write()
         .unwrap_or_else(std::sync::PoisonError::into_inner) = Arc::new(new);
 }
 
-#[cfg(any(test, feature = "per-thread"))]
+#[cfg(feature = "per-thread")]
 thread_local! {
     static CURRENT: std::cell::RefCell<Arc<Current>> =
         std::cell::RefCell::new(Arc::new(english()));
 }
 
-#[cfg(any(test, feature = "per-thread"))]
+#[cfg(feature = "per-thread")]
 fn current() -> Arc<Current> {
     CURRENT.with(|current| current.borrow().clone())
 }
 
-#[cfg(any(test, feature = "per-thread"))]
+#[cfg(feature = "per-thread")]
 fn set_current(new: Current) {
     CURRENT.with(|current| *current.borrow_mut() = Arc::new(new));
 }
@@ -369,7 +369,3 @@ pub fn slug(text: &str) -> String {
 pub fn system_language() -> Option<String> {
     sys_locale::get_locale()
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/tests.rs"]
-mod tests;

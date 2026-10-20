@@ -3,10 +3,10 @@
 //! system); `appearance.native-lang` puts the menu names and command titles of the user's own
 //! Notepad++ translation before it.
 
-pub(crate) use birchpad_i18n::{count, get_or, set_language, slug, system_language};
+pub use birchpad_i18n::{count, get_or, set_language, slug, system_language};
 
 /// Takes `appearance.language` and `appearance.native-lang` from the settings.
-pub(crate) fn apply(cx: &gpui_kit::App) {
+pub fn apply(cx: &gpui_kit::App) {
     let appearance = &crate::app_state::AppState::global(cx).settings.appearance;
     set_language(birchpad_i18n::resolve(
         &appearance.language,
@@ -18,7 +18,7 @@ pub(crate) fn apply(cx: &gpui_kit::App) {
 
 /// The texts of the Notepad++ translation at `path`; none for an empty path, or a file that
 /// does not read (said on the standard error).
-pub(crate) fn native_texts(path: &str) -> Option<std::collections::HashMap<String, String>> {
+pub fn native_texts(path: &str) -> Option<std::collections::HashMap<String, String>> {
     let path = path.trim();
     if path.is_empty() {
         return None;
@@ -34,7 +34,3 @@ pub(crate) fn native_texts(path: &str) -> Option<std::collections::HashMap<Strin
         }
     }
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/i18n/tests.rs"]
-mod tests;

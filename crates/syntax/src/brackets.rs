@@ -121,7 +121,3 @@ fn scan(text: &Rope, at: usize) -> Option<Range<usize>> {
     }
     None
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/brackets/tests.rs"]
-mod tests;

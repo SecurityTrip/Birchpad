@@ -175,7 +175,3 @@ pub fn is_url(line: &str) -> bool {
     let lower = line.trim_start().to_ascii_lowercase();
     lower.starts_with("http://") || lower.starts_with("https://")
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/run/tests.rs"]
-mod tests;

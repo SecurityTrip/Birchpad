@@ -20,7 +20,7 @@ use crate::workspace::Workspace;
 
 /// What a list entry on the left styles.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum Group {
+pub enum Group {
     /// The text area: Notepad++'s Global Styles.
     Editor,
     /// Everything around the text.
@@ -30,7 +30,7 @@ pub(crate) enum Group {
 }
 
 /// The groups in the order listed, with their labels.
-pub(crate) fn groups() -> Vec<(String, Group)> {
+pub fn groups() -> Vec<(String, Group)> {
     let mut groups = vec![
         ("Global Styles".to_owned(), Group::Editor),
         ("Interface".to_owned(), Group::Interface),
@@ -45,7 +45,7 @@ pub(crate) fn groups() -> Vec<(String, Group)> {
 }
 
 /// The styles of a group.
-pub(crate) fn items(group: Group) -> &'static [&'static str] {
+pub fn items(group: Group) -> &'static [&'static str] {
     match group {
         Group::Editor => EditorColors::KEYS,
         Group::Interface => UiColors::KEYS,
@@ -56,17 +56,17 @@ pub(crate) fn items(group: Group) -> &'static [&'static str] {
 /// What the fields on the right show for one style: colors as `#rrggbb` text, empty when
 /// unset.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
-pub(crate) struct Fields {
-    pub(crate) color: String,
-    pub(crate) background: String,
-    pub(crate) bold: bool,
-    pub(crate) italic: bool,
-    pub(crate) underline: bool,
+pub struct Fields {
+    pub color: String,
+    pub background: String,
+    pub bold: bool,
+    pub italic: bool,
+    pub underline: bool,
 }
 
 /// The fields of `item` in `group`. A highlighting style shows what this group sets itself;
 /// empty fields take the style of the name's prefix, or of all languages.
-pub(crate) fn read_fields(theme: &Theme, group: Group, item: &str) -> Fields {
+pub fn read_fields(theme: &Theme, group: Group, item: &str) -> Fields {
     let color = |color: Option<Color>| color.map(|color| color.to_string()).unwrap_or_default();
     match group {
         Group::Editor => Fields {
@@ -98,7 +98,7 @@ pub(crate) fn read_fields(theme: &Theme, group: Group, item: &str) -> Fields {
 }
 
 /// Reads the font size field: empty is unset; else pixels from 4 to 72.
-pub(crate) fn parse_font_size(text: &str) -> Result<Option<f32>> {
+pub fn parse_font_size(text: &str) -> Result<Option<f32>> {
     if text.trim().is_empty() {
         return Ok(None);
     }
@@ -136,12 +136,7 @@ fn parse(text: &str, what: &str) -> Result<Option<Color>> {
 
 /// Sets `item` of `group` from `fields`. A highlighting style with nothing set is removed, so
 /// that the name takes its prefix's style again.
-pub(crate) fn write_fields(
-    theme: &mut Theme,
-    group: Group,
-    item: &str,
-    fields: &Fields,
-) -> Result<()> {
+pub fn write_fields(theme: &mut Theme, group: Group, item: &str, fields: &Fields) -> Result<()> {
     let color = parse(&fields.color, "Color")?;
     match group {
         Group::Editor | Group::Interface => {
@@ -201,7 +196,7 @@ pub(crate) fn write_fields(
 /// Saves `theme` in `dir`: into the Notepad++ file `<name>.xml` it was read from, if it was
 /// read from one (Birchpad's own `<name>.toml` would come before it); else as `<name>.toml`,
 /// which replaces a built-in theme of that name.
-pub(crate) fn save(theme: &Theme, dir: &std::path::Path) -> Result<()> {
+pub fn save(theme: &Theme, dir: &std::path::Path) -> Result<()> {
     std::fs::create_dir_all(dir).with_context(|| format!("cannot create {}", dir.display()))?;
     let xml = dir.join(format!("{}.xml", theme.name));
     let toml = dir.join(format!("{}.toml", theme.name));
@@ -219,28 +214,28 @@ pub(crate) fn save(theme: &Theme, dir: &std::path::Path) -> Result<()> {
         .with_context(|| format!("cannot save the theme as {}", path.display()))
 }
 
-pub(crate) struct StyleConfigurator {
+pub struct StyleConfigurator {
     workspace: WeakEntity<Workspace>,
-    names: Vec<String>,
+    pub names: Vec<String>,
     /// The theme in use when the dialog opened, for Cancel.
     original: Theme,
     theme: Theme,
     groups: Vec<(String, Group)>,
     group: usize,
     item: usize,
-    fields: Fields,
-    color: Entity<InputState>,
+    pub fields: Fields,
+    pub color: Entity<InputState>,
     background: Entity<InputState>,
     /// The theme's font: family and size in pixels.
     font_family: Entity<InputState>,
     font_size: Entity<InputState>,
     /// Set while the fields are filled in, so that it is not taken as an edit.
     filling: bool,
-    error: Option<String>,
+    pub error: Option<String>,
 }
 
 /// Opens the Style Configurator.
-pub(crate) fn open(workspace: WeakEntity<Workspace>, window: &mut Window, cx: &mut App) {
+pub fn open(workspace: WeakEntity<Workspace>, window: &mut Window, cx: &mut App) {
     let configurator = cx.new(|cx| StyleConfigurator::new(workspace, window, cx));
     let save = configurator.clone();
     let cancel = configurator.clone();
@@ -267,7 +262,11 @@ pub(crate) fn open(workspace: WeakEntity<Workspace>, window: &mut Window, cx: &m
 }
 
 impl StyleConfigurator {
-    fn new(workspace: WeakEntity<Workspace>, window: &mut Window, cx: &mut Context<Self>) -> Self {
+    pub fn new(
+        workspace: WeakEntity<Workspace>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Self {
         let original = (*crate::theme::current()).clone();
         let color = cx.new(|cx| InputState::new(window, cx).placeholder("#rrggbb"));
         let background =
@@ -345,7 +344,7 @@ impl StyleConfigurator {
     }
 
     /// The font fields changed: the theme takes them, and shows them.
-    pub(crate) fn edit_font(&mut self, cx: &mut Context<Self>) {
+    pub fn edit_font(&mut self, cx: &mut Context<Self>) {
         let family = self.font_family.read(cx).value().trim().to_owned();
         let size = self.font_size.read(cx).value().trim().to_owned();
         match parse_font_size(&size) {
@@ -364,7 +363,7 @@ impl StyleConfigurator {
     }
 
     /// Takes the fields into the theme, and shows the result.
-    fn edit(&mut self, cx: &mut Context<Self>) {
+    pub fn edit(&mut self, cx: &mut Context<Self>) {
         self.fields.color = self.color.read(cx).value().to_string();
         self.fields.background = self.background.read(cx).value().to_string();
         let (group, item) = (self.current_group(), self.current_item());
@@ -378,7 +377,7 @@ impl StyleConfigurator {
         cx.notify();
     }
 
-    fn select_theme(&mut self, index: usize, window: &mut Window, cx: &mut Context<Self>) {
+    pub fn select_theme(&mut self, index: usize, window: &mut Window, cx: &mut Context<Self>) {
         match themes::load(themes::themes_dir(cx).as_deref(), &self.names[index]) {
             Ok(theme) => {
                 self.theme = theme;
@@ -392,19 +391,19 @@ impl StyleConfigurator {
         }
     }
 
-    fn select_group(&mut self, index: usize, window: &mut Window, cx: &mut Context<Self>) {
+    pub fn select_group(&mut self, index: usize, window: &mut Window, cx: &mut Context<Self>) {
         self.group = index;
         self.item = 0;
         self.fill(window, cx);
     }
 
-    fn select_item(&mut self, index: usize, window: &mut Window, cx: &mut Context<Self>) {
+    pub fn select_item(&mut self, index: usize, window: &mut Window, cx: &mut Context<Self>) {
         self.item = index;
         self.fill(window, cx);
     }
 
     /// Save & Close: false keeps the dialog open to show what went wrong.
-    fn save(&mut self, cx: &mut Context<Self>) -> bool {
+    pub fn save(&mut self, cx: &mut Context<Self>) -> bool {
         if self.error.is_some() {
             return false;
         }
@@ -429,11 +428,11 @@ impl StyleConfigurator {
     }
 
     /// Cancel: the theme in use before.
-    fn revert(&mut self, cx: &mut Context<Self>) {
+    pub fn revert(&mut self, cx: &mut Context<Self>) {
         themes::apply(self.original.clone(), cx);
     }
 
-    fn toggle(&mut self, change: fn(&mut Fields), cx: &mut Context<Self>) {
+    pub fn toggle(&mut self, change: fn(&mut Fields), cx: &mut Context<Self>) {
         change(&mut self.fields);
         self.edit(cx);
     }
@@ -618,7 +617,3 @@ impl Render for StyleConfigurator {
             )
     }
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/style_configurator/tests.rs"]
-mod tests;

@@ -21,6 +21,8 @@ pub use api::{ApiError, ApiFile, ApiKeyword, ApiOverload};
 pub use layers::{Diagnostic, Layer, ResolvedSettings, Sources, resolve};
 pub use load::{ConfigPaths, PORTABLE_DATA_DIR, PORTABLE_MARKER, load, load_platform_settings};
 pub use native_lang::{COMMANDS as NATIVE_LANG_COMMANDS, NativeLang, parse_native_lang};
+#[cfg(windows)]
+pub use policy::registry::user_registry_policies;
 pub use policy::{POLICIES, PolicyDef, PolicyKind, REGISTRY_KEY};
 pub use project::{ProjectError, ProjectFolder, ProjectItem, ProjectWorkspace};
 pub use session::{
@@ -34,11 +36,12 @@ pub use session_names::{
 pub use settings::{
     AppearanceSettings, AutoIndent, BackupOnSave, ChangeDetection, ChangeHistory, CloudSettings,
     CompletionSettings, CurrentLine, DEFAULT_TOOLBAR, DateSettings, DefaultDirectory,
-    DiagnosticsSettings, Edge, EditorSettings, FileSettings, HighlightingSettings, InstanceMode,
-    InstanceSettings, InterfaceMode, LanguageSettings, LinkSettings, NetworkSettings,
-    NewDocumentSettings, PluginInstall, PluginSettings, PreviewSettings, SearchEngine,
-    SearchEngineSettings, SessionSettings, Settings, SmartHighlighting, TabSettings, TokenMatching,
-    ToolbarSettings, ToolbarSize, UpdateChannel, UpdateMode, UpdateSettings,
+    DelimiterSettings, DiagnosticsSettings, Edge, EditorSettings, FileSettings,
+    HighlightingSettings, InstanceMode, InstanceSettings, InterfaceMode, LanguageSettings,
+    LinkSettings, NetworkSettings, NewDocumentSettings, PluginInstall, PluginSettings,
+    PreviewSettings, SearchEngine, SearchEngineSettings, SessionSettings, Settings,
+    SmartHighlighting, TabSettings, TokenMatching, ToolbarSettings, ToolbarSize, UpdateChannel,
+    UpdateMode, UpdateSettings,
 };
 pub use state::{
     FindInFilesState, MAX_RECENT_FILES, PanelsState, PreviewMode, SearchResultsState,
