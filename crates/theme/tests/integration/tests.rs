@@ -269,7 +269,7 @@ fn colors_by_key() {
     assert_eq!(ui.get("accent"), Some(Color::rgb(1)));
     // Every key reads and writes the color the file format names it by.
     let file = Theme {
-        editor: editor.clone(),
+        editor,
         ..Theme::default_theme().clone()
     }
     .to_toml();
