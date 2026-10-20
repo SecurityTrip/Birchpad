@@ -203,9 +203,11 @@ impl ColumnIndex {
         (point.offset, point.column)
     }
 
-    /// The last checkpoint at or before `column`: its offset and column.
+    /// The last checkpoint before `column`, or the first one: its offset and column. Before,
+    /// not at: characters of no width (combining marks) at the column's start come before a
+    /// checkpoint of that column.
     fn before_column(&self, column: usize) -> (usize, usize) {
-        let index = self.points.partition_point(|point| point.column <= column);
+        let index = self.points.partition_point(|point| point.column < column);
         let point = self.points[index.saturating_sub(1)];
         (point.offset, point.column)
     }

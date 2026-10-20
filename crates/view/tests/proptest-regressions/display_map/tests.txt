@@ -1,0 +1,7 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc e74d5275d7cab0ce28ffc8fe848b6b99c12e23491b0c7e5938ac97750cff0a69 # shrinks to doc = "日a\n\u{301}日word  word aa  word \r\nbbaa  \r\n\r\n\r\n\r\n             word word a \r\nword \r\n    word   a\r\n   word      \r\n  a    word  word ", steps = [[(9044806095840398072, 2110871664060469014, "\u{301}")]], width = None, tab_width = 1

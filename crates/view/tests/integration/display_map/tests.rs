@@ -164,6 +164,21 @@ proptest! {
 }
 
 #[test]
+fn a_column_starts_before_the_marks_of_no_width_at_it() {
+    // Three combining marks (two bytes each, no column) start a long line, so that a
+    // checkpoint of its column index falls after them, still at column 0.
+    let line = format!("{}abcdefghijklmnop", "\u{301}".repeat(3));
+    let text = Rope::from_str(&line);
+    for config in [LayoutConfig::default(), wrapped(4)] {
+        let mut map = map_of(&text, config);
+        assert_eq!(map.pos_at_line_column(&text, 0, 0), (0, 0));
+        assert_eq!(map.pos_at_line_column(&text, 0, 1), (7, 0));
+        let row = map.row(&text, 0);
+        assert_eq!(map.pos_at_column(&text, &row, 0), 0);
+    }
+}
+
+#[test]
 fn unwrapped_rows_are_lines() {
     let text = Rope::from_str("one\ntwo\r\nthree");
     let mut map = DisplayMap::new(&text, LayoutConfig::default());
