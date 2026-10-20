@@ -235,11 +235,11 @@ pub mod native {
 }
 
 #[cfg(target_os = "macos")]
-mod native {
+pub mod native {
     use objc2_app_kit::{NSFloatingWindowLevel, NSNormalWindowLevel, NSView};
     use raw_window_handle::RawWindowHandle;
 
-    pub(super) fn set_always_on_top(handle: RawWindowHandle, on: bool) -> anyhow::Result<()> {
+    pub fn set_always_on_top(handle: RawWindowHandle, on: bool) -> anyhow::Result<()> {
         let RawWindowHandle::AppKit(handle) = handle else {
             anyhow::bail!("not an AppKit window");
         };
@@ -260,14 +260,14 @@ mod native {
 }
 
 #[cfg(all(unix, not(target_os = "macos")))]
-mod native {
+pub mod native {
     use raw_window_handle::RawWindowHandle;
     use x11rb::connection::Connection as _;
     use x11rb::protocol::xproto::{ClientMessageEvent, ConnectionExt as _, EventMask};
 
     /// Asks the window manager through EWMH's `_NET_WM_STATE_ABOVE`; Wayland has no way for an
     /// application to do it.
-    pub(super) fn set_always_on_top(handle: RawWindowHandle, on: bool) -> anyhow::Result<()> {
+    pub fn set_always_on_top(handle: RawWindowHandle, on: bool) -> anyhow::Result<()> {
         let window = match handle {
             RawWindowHandle::Xlib(handle) => handle.window as u32,
             RawWindowHandle::Xcb(handle) => handle.window.get(),
