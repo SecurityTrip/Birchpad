@@ -70,7 +70,9 @@ jobs:
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
           exit "${failed:-0}"
+      # Under a floor too: the report tells which lines no test runs.
       - uses: actions/upload-artifact@v7
+        if: always()
         with:
           name: coverage-lcov
           path: lcov.info
