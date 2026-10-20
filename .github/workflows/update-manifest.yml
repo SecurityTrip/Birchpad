@@ -46,6 +46,8 @@ env:
 
 jobs:
   manifest:
+    # Releases of Birchpad only: not the PlantUML packages (`plantuml-*`).
+    if: github.event_name != 'release' || startsWith(github.event.release.tag_name, 'v')
     runs-on: ubuntu-latest
     environment: update-signing
     permissions:
