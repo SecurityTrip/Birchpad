@@ -4,7 +4,7 @@ use birchpad_theme::{Color, EditorColors, Style, Theme};
 use birchpad_tools::print::*;
 
 fn editor() -> EditorColors {
-    Theme::default_theme().editor.clone()
+    Theme::default_theme().editor
 }
 
 fn variables() -> Variables {
