@@ -203,6 +203,41 @@ fn names_that_leave_the_folder_are_refused() {
 }
 
 #[test]
+fn a_component_installs_the_package_of_the_platform_asked_for() {
+    let mut zip = zip::ZipWriter::new(std::io::Cursor::new(Vec::new()));
+    let options = zip::write::SimpleFileOptions::default();
+    // Folders of their own in the package, empty or not.
+    zip.add_directory("empty/", options).unwrap();
+    zip.add_directory("bin/", options).unwrap();
+    zip.start_file("bin/run", options).unwrap();
+    zip.write_all(b"run").unwrap();
+    let body = zip.finish().unwrap().into_inner();
+    let package: &'static ComponentPackage = Box::leak(Box::new(package_of(&body)));
+    let component = Component {
+        packages: std::slice::from_ref(package),
+        ..COMPONENT
+    };
+    let data = tempfile::tempdir().unwrap();
+    let transport = Serve::new(body);
+    let folder = component
+        .install(&transport, data.path(), "test-x64", &|_| {})
+        .unwrap();
+    assert!(folder.join("empty").is_dir());
+    assert_eq!(
+        std::fs::read(folder.join("bin").join("run")).unwrap(),
+        b"run"
+    );
+    assert_eq!(component.installed(data.path()), Some(folder));
+    // Another platform has no package, and nothing is downloaded for it.
+    assert!(
+        component
+            .install(&transport, data.path(), "other", &|_| {})
+            .is_err()
+    );
+    assert_eq!(transport.asked.lock().unwrap().len(), 1);
+}
+
+#[test]
 fn only_published_packages_are_offered() {
     let unpublished = Component {
         packages: &[ComponentPackage {
