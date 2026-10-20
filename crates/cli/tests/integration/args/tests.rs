@@ -115,7 +115,18 @@ fn every_listed_option_is_understood() {
             .replace("<column>", "4")
             .replace("<position>", "5")
             .replace("<language>", "cpp")
+            .replace("<name>", "Markdown")
+            .replace("<left>", "10")
+            .replace("<top>", "20")
+            .replace("<text>", "hello")
+            .replace("<file>", "quote.txt")
+            .replace("<folder>", "cfg")
+            .replace("<1-3>", "2")
             .replace("file...", "a.txt");
+        assert!(
+            !written.contains('<'),
+            "{written} has its placeholder filled in"
+        );
         let parsed = CommandLine::parse([std::ffi::OsString::from(written.clone())], cwd);
         assert!(
             parsed.warnings.is_empty(),
