@@ -273,12 +273,14 @@ fn parsing_unexpanded_leaves_the_file_system_alone() {
     std::fs::write(dir.path().join("a.txt"), "").unwrap();
     let args = || ["*.txt", "-r", "/*", "b?.md", "plain.txt"].map(OsString::from);
     let line = CommandLine::parse_unexpanded(args(), dir.path());
+    // Joined as the parser joins it: on Windows, to the drive of the folder.
+    let root = Path::new("/*");
     // The wildcards stay as written, even `/*` with `-r`, which would walk the whole disk.
     assert_eq!(
         line.files,
         [
             dir.path().join("*.txt"),
-            dir.path().join("/*"),
+            dir.path().join(root),
             dir.path().join("b?.md"),
             dir.path().join("plain.txt"),
         ]
