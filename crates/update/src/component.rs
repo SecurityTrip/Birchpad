@@ -169,6 +169,9 @@ pub fn install_package(
     cleanup();
     let result = transport
         .download(package.url, &archive, package.size, progress)
+        .map_err(|reason| {
+            birchpad_i18n::t!("update.cannot-download", url = package.url, reason = reason)
+        })
         .and_then(|()| verify(&archive, package))
         .and_then(|()| unpack(&archive, &unpacking));
     if let Err(error) = result {
