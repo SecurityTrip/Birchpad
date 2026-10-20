@@ -6,6 +6,19 @@ version's release notes from its section here.
 
 ## [Unreleased]
 
+### Added
+
+- File > Print... shows a print preview of Birchpad's own: the pages one at a time, as they
+  will be printed, with Page Setup... and Print.... A selection is printed alone, with its
+  line numbers.
+- Preferences > Print: paper and orientation, margins, the font's size, line numbers, the
+  colors (WYSIWYG, Invert, Black on white, No background color), and a header and a footer
+  of three parts each with Notepad++'s variables (`$(FULL_CURRENT_PATH)`, `$(FILE_NAME)`,
+  `$(CURRENT_DIRECTORY)`, `$(CURRENT_PRINTING_PAGE)`, `$(SHORT_DATE)`, `$(LONG_DATE)`,
+  `$(TIME)`).
+- On Windows, printing goes through Windows' print dialog, and File > Print Now prints on the
+  default printer at once. On macOS and Linux the same pages print from the browser.
+
 ### Changed
 
 - Every crate is tested through its public interface: the tests in `tests/integration`, one

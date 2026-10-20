@@ -211,6 +211,7 @@ pub fn main_menu() -> Vec<Menu> {
             Separator,
             cmd("file.export-html"),
             cmd("file.print"),
+            cmd("file.print-now"),
             Separator,
             cmd("file.exit"),
         ],

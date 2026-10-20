@@ -586,9 +586,12 @@ floors in `.github/coverage-floors.toml` with its tests.
       public interface, the application split into a library and the program so that they
       can; the unit tests 6.35 moved there are rewritten as such tests
       ([ADR 0043](adr/0043-tests-through-the-public-interface.md))
-- [ ] 6.37 Printing: a print preview and page setup of Birchpad's own (margins, header and
+- [x] 6.37 Printing: a print preview and page setup of Birchpad's own (margins, header and
       footer with Notepad++'s variables, colors or black on white, line numbers), printing the
-      selection, Print Now; native printing where the platform offers it
+      selection, Print Now; native printing where the platform offers it: Windows' (GDI); on
+      macOS and Linux the pages print through the browser, since printing there needs an
+      `NSView` or GTK, which GPUI and Birchpad do not have
+      ([ADR 0044](adr/0044-print-preview-and-native-printing.md))
 - [ ] 6.38 Tools: hashes of files in a dialog with Copy, as Notepad++ shows them, besides the
       listing in a new document
 - [ ] 6.39 Help menu: Command Line Arguments, home page, online manual and forum, Debug Info

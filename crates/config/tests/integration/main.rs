@@ -38,6 +38,9 @@ mod settings_completion_tests;
 #[path = "settings/link_tests.rs"]
 mod settings_link_tests;
 
+#[path = "settings/print_tests.rs"]
+mod settings_print_tests;
+
 #[path = "settings/search_engine_tests.rs"]
 mod settings_search_engine_tests;
 

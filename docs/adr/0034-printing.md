@@ -1,6 +1,6 @@
 # ADR 0034: Printing
 
-- Status: accepted
+- Status: accepted, changed by [ADR 0044](0044-print-preview-and-native-printing.md)
 - Date: 2026-10-12
 
 ## Context

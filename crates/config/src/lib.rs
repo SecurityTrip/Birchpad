@@ -38,10 +38,10 @@ pub use settings::{
     CompletionSettings, CurrentLine, DEFAULT_TOOLBAR, DateSettings, DefaultDirectory,
     DelimiterSettings, DiagnosticsSettings, Edge, EditorSettings, FileSettings,
     HighlightingSettings, InstanceMode, InstanceSettings, InterfaceMode, LanguageSettings,
-    LinkSettings, NetworkSettings, NewDocumentSettings, PluginInstall, PluginSettings,
-    PreviewSettings, SearchEngine, SearchEngineSettings, SessionSettings, Settings,
-    SmartHighlighting, TabSettings, TokenMatching, ToolbarSettings, ToolbarSize, UpdateChannel,
-    UpdateMode, UpdateSettings,
+    LinkSettings, NetworkSettings, NewDocumentSettings, Paper, PluginInstall, PluginSettings,
+    PreviewSettings, PrintColors, PrintSettings, SearchEngine, SearchEngineSettings,
+    SessionSettings, Settings, SmartHighlighting, TabSettings, TokenMatching, ToolbarSettings,
+    ToolbarSize, UpdateChannel, UpdateMode, UpdateSettings,
 };
 pub use state::{
     FindInFilesState, MAX_RECENT_FILES, PanelsState, PreviewMode, SearchResultsState,

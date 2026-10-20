@@ -364,6 +364,7 @@ pub const COMMANDS: &[CommandSpec] = &[
     editor("encoding.edit-anyway", "Edit Anyway..."),
     // Language; { "language": "rust" | "cpp" | ... | "text" }
     workspace("file.print", "Print..."),
+    workspace("file.print-now", "Print Now"),
     workspace("file.export-html", "Export to HTML..."),
     workspace("language.set", "Language"),
     workspace("language.define-udl", "Define Your Language..."),

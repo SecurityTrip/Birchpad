@@ -65,12 +65,16 @@ tempfile = "3"
 [lints]
 workspace = true
 
-# View > Always on Top, Edit > Paste Special > Paste HTML/RTF Content: the platforms' own calls.
+# View > Always on Top, Edit > Paste Special > Paste HTML/RTF Content, File > Print: the
+# platforms' own calls.
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.61", features = [
     "Win32_Foundation",
+    "Win32_Graphics_Gdi",
+    "Win32_Storage_Xps",
     "Win32_System_DataExchange",
     "Win32_System_Memory",
+    "Win32_UI_Controls_Dialogs",
     "Win32_UI_WindowsAndMessaging",
 ] }
 

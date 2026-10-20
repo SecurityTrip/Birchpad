@@ -51,3 +51,13 @@ channel = "nightly"
 
 [highlighting.smart]
 enabled = false
+
+[print]
+line-numbers = false
+colors = "invert"
+paper = "letter"
+landscape = true
+margin-top = 10
+font-size = 9
+header-left = "$(FULL_CURRENT_PATH)"
+footer-center = "$(CURRENT_PRINTING_PAGE)"

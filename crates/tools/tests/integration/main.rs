@@ -19,6 +19,9 @@ mod html;
 #[path = "json/tests.rs"]
 mod json;
 
+#[path = "print/tests.rs"]
+mod print;
+
 #[path = "spell/tests.rs"]
 mod spell;
 
