@@ -385,7 +385,8 @@ fn compares_with_git_head(cx: &mut TestAppContext) {
     cx.run_until_parked();
     run(&workspace, Invocation::new("compare.with-git"), cx).unwrap();
     assert_eq!(panes(&workspace, cx).0[1], ["tracked.txt (HEAD)"]);
-    assert_eq!(marked(&workspace, cx), [vec![], vec![(2, Change::Added)]]);
+    // The file keeps its view and gains the line; HEAD, in the other view, loses nothing.
+    assert_eq!(marked(&workspace, cx), [vec![(2, Change::Added)], vec![]]);
 
     // A file Git does not track: what Git says.
     run(&workspace, Invocation::new("compare.clear"), cx).unwrap();
