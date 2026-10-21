@@ -238,17 +238,29 @@ impl JsonTree {
     /// `['name']`) and `[n]`; a path may start with a name without the dot (`store.book`).
     pub fn find(&self, path: &str) -> Result<usize, PathError> {
         let steps = parse_path(path)?;
-        let mut at = 0;
-        for step in &steps {
-            let node = &self.nodes[at];
-            at = node
+        self.find_steps(0, &steps)
+            .ok_or_else(|| PathError::NotFound(path.trim().to_owned()))
+    }
+
+    /// The first node below `at` that `steps` lead to. An object may name a key twice: each
+    /// member of that name is tried in turn, so that every value's path finds it.
+    fn find_steps(&self, at: usize, steps: &[JsonKey]) -> Option<usize> {
+        // Depth-first, without recursion: (node, steps taken).
+        let mut stack = vec![(at, 0)];
+        while let Some((node, taken)) = stack.pop() {
+            let Some(step) = steps.get(taken) else {
+                return Some(node);
+            };
+            let matching = self.nodes[node]
                 .children
                 .iter()
                 .copied()
-                .find(|&child| self.nodes[child].key.as_ref() == Some(step))
-                .ok_or_else(|| PathError::NotFound(path.trim().to_owned()))?;
+                .filter(|&child| self.nodes[child].key.as_ref() == Some(step));
+            let before = stack.len();
+            stack.extend(matching.map(|child| (child, taken + 1)));
+            stack[before..].reverse();
         }
-        Ok(at)
+        None
     }
 
     /// The value of node `index` to copy: a string without its quotes and escapes, anything

@@ -150,3 +150,22 @@ fn deep_nesting_neither_builds_nor_drops_recursively() {
     let deeper = format!("{}{}", "[".repeat(depth + 1), "]".repeat(depth + 1));
     assert!(JsonTree::parse(&deeper).is_err());
 }
+
+#[test]
+fn a_key_named_twice_still_finds_every_value() {
+    // The second "a" holds what the path names; the first does not.
+    let text = r#"{"a": 1, "a": {"b": [true, {"a": 2}]}, "c": {"a": null}}"#;
+    let tree = JsonTree::parse(text).unwrap();
+    let b = tree.find("$.a.b").unwrap();
+    assert_eq!(&text[tree.nodes[b].range.clone()], r#"[true, {"a": 2}]"#);
+    assert_eq!(tree.value(tree.find("$.a.b[1].a").unwrap(), text), "2");
+    // The first of the name, where both would do.
+    assert_eq!(tree.value(tree.find("$.a").unwrap(), text), "1");
+    for index in 0..tree.nodes.len() {
+        let found = tree.find(&tree.path(index)).unwrap();
+        assert_eq!(tree.path(found), tree.path(index));
+    }
+    // Nowhere under either.
+    assert!(tree.find("$.a.x").is_err());
+    assert!(tree.find("$.a.b[2]").is_err());
+}
