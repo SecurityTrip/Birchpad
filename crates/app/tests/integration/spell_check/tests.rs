@@ -232,7 +232,7 @@ fn checks_several_languages_together(cx: &mut TestAppContext) {
     std::fs::write(folder.join("yy_TEST.dic"), "2\nhund\nkatze\n").unwrap();
     use_test_dictionary(&workspace, cx);
     run(&workspace, Invocation::new("spell.auto"), cx).unwrap();
-    type_text(&workspace, "the hund walked to the vogel", cx);
+    type_text(&workspace, "the hund walked the vogel", cx);
     assert_eq!(underlined_words(&workspace, cx), ["hund", "vogel"]);
     set_spell(cx, |spell| spell.languages = "xx_TEST, yy_TEST".into());
     assert_eq!(
@@ -262,7 +262,10 @@ fn the_rules_leave_words_alone(cx: &mut TestAppContext) {
         spell.ignore_all_caps = false;
         spell.ignore_numbers = false;
     });
-    assert_eq!(underlined_words(&workspace, cx), ["NASAA", "walk2"]);
+    // NASAA starts with a capital too.
+    assert_eq!(underlined_words(&workspace, cx), ["walk2"]);
+    set_spell(cx, |spell| spell.ignore_capital_start = false);
+    assert_eq!(underlined_words(&workspace, cx), ["Wlak", "NASAA", "walk2"]);
 }
 
 #[gpui_kit::test]
