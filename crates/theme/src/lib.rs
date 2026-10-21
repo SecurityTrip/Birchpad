@@ -171,6 +171,10 @@ palette! {
         compare_added,
         compare_removed,
         compare_changed,
+        /// Compare: the characters that differ within a changed line, over its color.
+        compare_inline,
+        /// Compare: the blank rows that keep the two documents' lines side by side.
+        compare_padding,
         /// The wavy line under a misspelled word.
         spell_error,
     }
@@ -509,6 +513,8 @@ impl Theme {
                 compare_added: black,
                 compare_removed: black,
                 compare_changed: black,
+                compare_inline: black,
+                compare_padding: black,
                 spell_error: black,
             },
             ui: UiColors {

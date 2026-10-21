@@ -1,0 +1,20 @@
+{
+  "format": 1,
+  "plugins": [],
+  "dictionaries": [
+    {
+      "language": "en_US",
+      "name": "English (United States), SCOWL",
+      "aff": {
+        "url": "https://raw.githubusercontent.com/SecurityTrip/Birchpad/main/crates/app/assets/dictionaries/en_US.aff",
+        "size": 3090,
+        "sha256": "c7a8c4d08c29d237880844b1623099f59092602f189be38ce3912e457ff38bc1"
+      },
+      "dic": {
+        "url": "https://raw.githubusercontent.com/SecurityTrip/Birchpad/main/crates/app/assets/dictionaries/en_US.dic",
+        "size": 551762,
+        "sha256": "f0b1a234bd178bdd01875b2a392a9647f888b8fe879f79c52aae62c2759b3647"
+      }
+    }
+  ]
+}

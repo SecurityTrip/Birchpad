@@ -151,6 +151,7 @@ pub fn register_commands(registry: &mut CommandRegistry) {
     crate::hex_view::register_commands(registry);
     crate::incremental::register_commands(registry);
     crate::json_xml::register_commands(registry);
+    crate::online::register_commands(registry);
     crate::navigation::register_commands(registry);
     crate::panels::register_commands(registry);
     crate::session::register_commands(registry);
@@ -234,7 +235,7 @@ pub struct Workspace {
     pub quick_prints: Vec<gpui_kit::Task<()>>,
     buffer_subscriptions: HashMap<EntityId, Subscription>,
     /// Focus and scroll events of each view, and its changes for the navigation history.
-    view_subscriptions: HashMap<EntityId, [Subscription; 3]>,
+    view_subscriptions: HashMap<EntityId, [Subscription; 4]>,
     pub session_state: SessionState,
     pub disk_state: DiskState,
     /// Go Back and Go Forward.
@@ -349,6 +350,7 @@ impl Workspace {
                 self.refresh_menus(cx);
                 cx.notify();
                 cx.defer_in(window, |this, window, cx| {
+                    this.note_seen_by_plugins(cx);
                     if let Some(view) = this.active_view(cx) {
                         this.plugin_event(birchpad_plugin::EventKind::Activated, &view, window, cx);
                     }
@@ -473,8 +475,12 @@ impl Workspace {
         let events = cx.subscribe_in(view, window, Self::on_editor_event);
         // Wherever its caret goes, for Go Back.
         let changes = cx.observe(view, |this, _, cx| this.note_place(cx));
+        // Its typing and its selection, for the plugins that hear about them.
+        let watched = cx.observe_in(view, window, |this, _, window, cx| {
+            this.watch_for_plugins(window, cx);
+        });
         self.view_subscriptions
-            .insert(view.entity_id(), [focused, events, changes]);
+            .insert(view.entity_id(), [focused, events, changes, watched]);
     }
 
     /// View > Move/Clone Current Document.
@@ -605,8 +611,10 @@ impl Workspace {
             self.ghost_type(ghost, window, cx);
         }
         if let Some(message) = &command_line.plugin_message {
-            // Plugins have no event for it yet (roadmap 6.42).
-            eprintln!("-pluginMessage={message}: plugins hear no command line messages yet");
+            self.deliver_plugin_message(message, window, cx);
+        }
+        if command_line.help {
+            crate::help::show_command_line(window, cx);
         }
         if command_line.quick_print {
             for view in &views {
@@ -897,7 +905,10 @@ impl Workspace {
                 self.refresh_menus(cx);
                 cx.notify();
             }
-            BufferEvent::Edited { transaction, .. } => self.map_places(buffer, transaction),
+            BufferEvent::Edited { transaction, .. } => {
+                self.map_places(buffer, transaction);
+                self.compare_after_edit(buffer, window, cx);
+            }
             BufferEvent::MarksChanged | BufferEvent::SyntaxChanged | BufferEvent::FollowEnd => {}
         }
     }
@@ -1050,6 +1061,8 @@ impl Workspace {
         let requested_read_only = self
             .active_view(cx)
             .is_some_and(|view| view.read(cx).buffer.read(cx).requested_read_only());
+        let close_tags = AppState::global(cx).settings.completion.close_tags;
+        let hex_shown = self.active_hex_editor(cx).is_some();
         let checked = |invocation: &Invocation| {
             if let Some(on) = crate::pane::is_checked(invocation, tab_marks) {
                 return on;
@@ -1103,6 +1116,12 @@ impl Workspace {
             if let Some(open) = crate::panels::is_checked(&self.docks, invocation) {
                 return open;
             }
+            if invocation.command == "xml.tag-auto-close" {
+                return close_tags;
+            }
+            if invocation.command == "hex.editor" {
+                return hex_shown;
+            }
             let Some(format) = format else {
                 return false;
             };
@@ -1136,7 +1155,7 @@ impl Workspace {
             .unwrap_or_default();
         let user_languages = crate::user_languages::names(cx);
         let spell_languages = crate::spell_check::languages(cx);
-        let scripts = crate::extensions::scripts::names(cx);
+        let scripts = crate::extensions::scripts::scripts(cx);
         let plugin_menus = crate::extensions::plugins::menus(cx);
         let (documents, active_document) = crate::window_menu::menu_documents(self, cx);
         let state = MenuState {

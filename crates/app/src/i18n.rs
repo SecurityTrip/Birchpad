@@ -16,6 +16,13 @@ pub fn apply(cx: &gpui_kit::App) {
     birchpad_i18n::set_native_texts(native);
 }
 
+/// The interface language `-L<code>` asks for: one Birchpad has, by its language part (`ru-RU` is
+/// `ru`; `auto` is the system's), or English, as Notepad++ falls back to for a translation it
+/// does not have.
+pub fn for_this_run(code: &str) -> &'static str {
+    birchpad_i18n::resolve(code, system_language().as_deref())
+}
+
 /// The texts of the Notepad++ translation at `path`; none for an empty path, or a file that
 /// does not read (said on the standard error).
 pub fn native_texts(path: &str) -> Option<std::collections::HashMap<String, String>> {

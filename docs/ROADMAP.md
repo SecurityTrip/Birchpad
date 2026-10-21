@@ -1,5 +1,7 @@
 # Birchpad roadmap
 
+English · [Русский](ROADMAP.ru.md)
+
 Birchpad first reaches feature parity with Notepad++ (Phases 1 to 6), then goes beyond it
 (Phase 7); closing Phase 7 releases Birchpad 1.0.0. On the way, each release from 0.2.0 on
 closes a group of steps, named in this roadmap's headings (Release 0.3.0, ...). Phases are
@@ -619,30 +621,45 @@ floors in `.github/coverage-floors.toml` with its tests.
 
 Closing Phase 6.
 
-- [ ] 6.42 A wider plugin API: settings of their own, files opened with the user's permission,
+- [x] 6.42 A wider plugin API: settings of their own, files opened with the user's permission,
       a panel of their own controls, items in the text's context menu, events while typing and
-      when the selection changes, the command line's -pluginMessage, work in the background; scripts' own commands and keys;
-      Settings > Import plugin(s)
-- [ ] 6.43 Compare as ComparePlus: lines padded to stay aligned side by side, differences
+      when the selection changes, the command line's -pluginMessage, work in the background;
+      scripts' own commands and keys; Settings > Import plugin(s)
+      ([ADR 0046](adr/0046-plugin-api-0-2.md))
+- [x] 6.43 Compare as ComparePlus: lines padded to stay aligned side by side, differences
       within a line, comparing with the last save, the clipboard or Git; a navigation bar of the
-      differences
-- [ ] 6.44 JSON Viewer's tree panel (find a path, copy a value), sorting keys; XML Tools'
+      differences ([ADR 0047](adr/0047-compare-as-compareplus.md)): the navigation bar is the
+      vertical scrollbar's track, marked where the differences are
+- [x] 6.44 JSON Viewer's tree panel (find a path, copy a value), sorting keys; XML Tools'
       XPath, XSD and DTD validation, escaping and unescaping, closing tags as typed
-- [ ] 6.45 Hex Editor in place: the bytes edited in a hex view of the document itself
+      ([ADR 0048](adr/0048-json-viewer-and-xml-tools.md)): XPath and schemas as far as the ADR
+      lists; Tag Auto-Close is the Auto-Completion setting that closes tags
+- [x] 6.45 Hex Editor in place: the bytes edited in a hex view of the document itself
       (overwrite, insert, the caret shared with the text), columns and grouping, Find in hex
-- [ ] 6.46 DSpellCheck's options (several languages at once, ignore rules, words in code by
+      ([ADR 0049](adr/0049-hex-editor-in-place.md)): bytes that are not text in the document's
+      encoding wait for the rest of their character, since the document is text
+- [x] 6.46 DSpellCheck's options (several languages at once, ignore rules, words in code by
       style); a dictionary bundled for English under a license compatible with Birchpad's
-- [ ] 6.47 Online features under the `OnlineFeatures` policy: Plugins Admin's online list of
+      ([ADR 0050](adr/0050-spell-checker-options-and-built-in-dictionary.md): SCOWL's en_US)
+- [x] 6.47 Online features under the `OnlineFeatures` policy: Plugins Admin's online list of
       plugins (available, updates, installed) with checksums; DSpellCheck's dictionary download
+      ([ADR 0051](adr/0051-online-catalog.md))
 
-- [ ] 6.48 Documentation in Russian: the user's and the contributor's documents (README,
+- [x] 6.48 Documentation in Russian: the user's and the contributor's documents (README,
       CONTRIBUTING, SECURITY, PRIVACY, the code of conduct, writing plugins and scripts, the
       release checklist and this roadmap) as `*.ru.md` next to the English ones, linked from
       each other; from then on a change to one updates the other. ADRs and the changelog stay
       in English
-- [ ] 6.49 A last comparison with Notepad++ 8's menus, Preferences and command line, with what
-      is still missing moved to Phase 7 or written down
-- [ ] Release 0.6.0: the workspace version (0.6.0, set when its branch opens, so that nightly
+- [x] 6.49 A last comparison with Notepad++ 8's menus, Preferences and command line, with what
+      is still missing moved to Phase 7 or written down. Done against the user manual
+      (npp-user-manual.org) on 2026-10-21: the command line gained `-noPlugin`, `-L<code>`,
+      `-notepadStyleCmdline`, `-z` and `--help`; what the menus and Preferences still lack is
+      7.4a to 7.4d. Not planned, as they have no meaning for Birchpad: DirectWrite (GPUI draws
+      the text), the colorization of Notepad++'s toolbar icons (Birchpad's are Lucide's
+      outlines), Preferences > File Association (Birchpad registers as the default editor, 0.2.8)
+      and the installer's own options (`/S`, `/D=`, `/noUpdater`, ...; Birchpad's installers
+      take their own)
+- [x] Release 0.6.0: the workspace version (0.6.0, set when its branch opens, so that nightly
       builds are its pre-releases), `CHANGELOG.md` and this roadmap updated; the
       [release checklist](release-checklist.md) gone through
 
@@ -662,6 +679,41 @@ each with its tests, docs and a `CHANGELOG.md` entry, its options in Preferences
       enclosing scopes' first lines kept at the top)
 - [ ] 7.4 Minimize to the system tray (Notepad++'s Preferences > MISC), once GPUI has a tray
       icon; until then, written down why not
+- [ ] 7.4a Menus left from Notepad++ 8 (6.49): Edit > Auto-Completion (the completion commands
+      exist, the submenu does not), Line Operations' Sort in Locale Order, On Selection's Redact
+      Selection and Change Search Engine..., Column Mode..., Read-Only in Notepad++ (on the
+      current or every document) beside the file's read-only attribute; Search > Copy Marked
+      Text (only the Mark tab has it) and the search results' Find in These Search Results...;
+      View > Show Symbol's Non-Printing Characters and Control Characters & Unicode EOL, Zoom's
+      Synchronize Across Views; Tools' hash Generate... of a typed text
+- [ ] 7.4b Preferences left from Notepad++ 8 for the window and the text (6.49): hide the menu
+      bar and the status bar; the tab bar's maximum label length, alternate icons, inactive tab
+      color, colored bar on the active tab, pinning turned off or only on its button, buttons
+      on inactive tabs; Editing's caret width and blink rate, wrapped lines' indent, smooth
+      font, virtual space everywhere, scrolling beyond the last line, keeping the selection on
+      a right click, copying and cutting the line with nothing selected as an option, the
+      selected text's own foreground, dragging the selected text turned off; multi-editing and
+      column-to-multi-editing as options, how end of lines and non-printing characters are
+      drawn, typing control characters prevented; Dark Mode's tones; Margins' fold style,
+      border width, line numbers' width, padding left, right and in Distraction Free mode, the
+      vertical edge as a background
+- [ ] 7.4c Preferences left from Notepad++ 8 for files, search and typing (6.49): New Document's
+      encoding applied to opened ANSI files, a new document at startup, the first line as an
+      untitled tab's name; opening a folder's files one by one; Recent Files' submenu, file name
+      only or full path, maximum length, skipping the existence check; Language's compact menu,
+      hidden languages, SQL's backslash; Backspace unindents; Highlighting's Mark All match case
+      and whole word, smart highlighting in the other view, matching tags and their attributes,
+      comment zones; Print's form feed as a page break; every option of Searching (In selection
+      from a size, filling the Find field from the selection or the word, monospaced font, the
+      dialog staying open, confirming Replace All in all documents, replacing without moving,
+      one result per line, Find in Files on unsaved changes and from the document's folder);
+      Auto-Completion's accept with Tab or Enter, brief list, each pair and three of one's own;
+      Delimiter's word characters; Performance's large file restrictions one by one; Cloud &
+      Link's full box on hover; MISC's peek on the document map, mute sounds, encoding
+      detection, Save All confirmation, following symbolic links in Folder as Workspace, the
+      session and workspace file extensions; Multi-Instance's panels with `-nosession`
+- [ ] 7.4d Command line left from Notepad++ 8 (6.49): `-fullReadOnly` and
+      `-fullReadOnlySavingForbidden`, every document read-only for the run, saving too
 - [ ] Release 0.7.0: the workspace version (0.7.0, set when its branch opens, so that nightly
       builds are its pre-releases), `CHANGELOG.md` and this roadmap updated; the
       [release checklist](release-checklist.md) gone through

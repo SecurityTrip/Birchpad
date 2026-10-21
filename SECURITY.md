@@ -1,5 +1,7 @@
 # Security Policy
 
+English · [Русский](SECURITY.ru.md)
+
 ## Reporting a vulnerability
 
 Please **do not** open a public issue for security problems.
@@ -17,7 +19,8 @@ Of particular interest:
 
 - the update mechanism (manifest and package signature verification, downgrade attacks);
 - file handling (malformed encodings, huge or crafted files, path handling, symlinks);
-- the plugin sandbox;
+- the plugin sandbox, and the permissions users give plugins (to files, say);
+- the online catalog of plugins and dictionaries (the sizes and SHA-256 of downloads checked);
 - administrator policies that can be bypassed by a non-administrator user.
 
 ## Supported versions

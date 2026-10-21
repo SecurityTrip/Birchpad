@@ -120,3 +120,42 @@ fn a_single_empty_element() {
     assert_eq!(pretty("<a/>"), "<a/>");
     assert_eq!(linearize("  <a/>  ").unwrap(), "<a/>");
 }
+
+#[test]
+fn escapes_what_xml_gives_a_meaning() {
+    assert_eq!(
+        escape("a < b && \"c\" 'd' > é"),
+        "a &lt; b &amp;&amp; &quot;c&quot; &apos;d&apos; &gt; é"
+    );
+    assert_eq!(escape(""), "");
+    assert_eq!(escape("plain"), "plain");
+    // Escaping twice escapes the ampersands of the first time.
+    assert_eq!(escape("&lt;"), "&amp;lt;");
+}
+
+#[test]
+fn unescapes_entities_and_character_references() {
+    assert_eq!(
+        unescape("&lt;a&gt; &amp;&quot;&apos; &#233;&#xE9;&#Xe9; &#128512;"),
+        "<a> &\"' ééé 😀"
+    );
+    // What is not a reference stays.
+    for text in [
+        "&",
+        "&;",
+        "&nbsp;",
+        "&#;",
+        "&#x;",
+        "&#xD800;",
+        "&#99999999;",
+        "a & b",
+        "&lt",
+        "&verylongname;",
+    ] {
+        assert_eq!(unescape(text), text, "{text:?}");
+    }
+    assert_eq!(unescape(""), "");
+    // Unescaping undoes escaping.
+    let text = "<x a=\"1\">'&'</x>";
+    assert_eq!(unescape(&escape(text)), text);
+}

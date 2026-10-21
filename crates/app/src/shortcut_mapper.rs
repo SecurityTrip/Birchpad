@@ -90,14 +90,52 @@ pub enum MapperTab {
     Commands,
     Macros,
     Run,
+    /// The commands of the plugins that are ready, and of the scripts.
+    Plugins,
 }
 
 impl MapperTab {
-    pub const ALL: [Self; 3] = [Self::Commands, Self::Macros, Self::Run];
+    pub const ALL: [Self; 4] = [Self::Commands, Self::Macros, Self::Run, Self::Plugins];
 }
 
-/// The rows of a tab: every command, or the saved macros (`macro.run`) or command lines
-/// (`run.run`).
+/// The Plugin commands tab: each ready plugin's commands (`plugin.run`), then each script
+/// (`script.run`) and the commands it declares.
+fn plugin_rows(cx: &App) -> Vec<Row> {
+    let mut rows = Vec::new();
+    for (id, name, commands) in crate::extensions::plugins::menus(cx) {
+        for command in commands {
+            rows.push(Row {
+                invocation: Invocation::with_args(
+                    "plugin.run",
+                    serde_json::json!({ "plugin": id, "command": command.id }),
+                ),
+                category: "plugin".to_owned(),
+                name: format!("{name}: {}", command.title),
+            });
+        }
+    }
+    for (script, commands) in crate::extensions::scripts::scripts(cx) {
+        rows.push(Row {
+            invocation: Invocation::with_args("script.run", serde_json::json!({ "name": script })),
+            category: "script".to_owned(),
+            name: script.clone(),
+        });
+        for command in commands {
+            rows.push(Row {
+                invocation: Invocation::with_args(
+                    "script.run",
+                    serde_json::json!({ "name": script, "command": command.function }),
+                ),
+                category: "script".to_owned(),
+                name: format!("{script}: {}", command.title),
+            });
+        }
+    }
+    rows
+}
+
+/// The rows of a tab: every command, the saved macros (`macro.run`) or command lines
+/// (`run.run`), or the plugins' and scripts' commands.
 pub fn rows_of(tab: MapperTab, keymap: &Keymap, cx: &App) -> Vec<Row> {
     let named = |command: &str, names: Vec<String>| {
         names
@@ -129,6 +167,7 @@ pub fn rows_of(tab: MapperTab, keymap: &Keymap, cx: &App) -> Vec<Row> {
                 .map(|menu| menu.saved.iter().map(|entry| entry.name.clone()).collect())
                 .unwrap_or_default(),
         ),
+        MapperTab::Plugins => plugin_rows(cx),
     }
 }
 
@@ -341,7 +380,8 @@ impl ShortcutMapper {
         let mut result = match self.tab {
             MapperTab::Macros => crate::macros::delete(&name, cx),
             MapperTab::Run => crate::run_menu::delete(&name, cx),
-            MapperTab::Commands => return,
+            // Plugins and scripts are removed in Plugins Admin and their folder.
+            MapperTab::Commands | MapperTab::Plugins => return,
         };
         for keys in keys {
             if result.is_ok() {
@@ -576,7 +616,7 @@ impl Render for ShortcutMapper {
                     .on_click(cx.listener(|this, _, _, cx| this.start_capture(cx)))
                     .into_any_element()
             };
-            let deletable = self.tab != MapperTab::Commands;
+            let deletable = matches!(self.tab, MapperTab::Macros | MapperTab::Run);
             let only_here = self.only_here;
             div()
                 .flex()
@@ -657,6 +697,11 @@ impl Render for ShortcutMapper {
                 gpui_kit::component::tab::Tab::new()
                     .debug_selector(|| "shortcut-tab-2".into())
                     .label(t!("shortcut-mapper.run-commands")),
+            )
+            .child(
+                gpui_kit::component::tab::Tab::new()
+                    .debug_selector(|| "shortcut-tab-3".into())
+                    .label(t!("shortcut-mapper.plugin-commands")),
             );
         div()
             .flex()

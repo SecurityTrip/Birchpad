@@ -1,9 +1,11 @@
 //! Plugins > Scripts (ADR 0037): the `.rhai` files of the `scripts` folder next to the
-//! settings, run over the active document.
+//! settings, run over the active document; a script that declares commands
+//! (`// command: <function> <title>`, ADR 0046) gets a submenu of them.
 
 use std::path::PathBuf;
 
 use anyhow::{Context as _, anyhow, bail};
+use birchpad_plugin::script::ScriptCommand;
 use gpui_kit::App;
 use serde::Deserialize;
 
@@ -42,9 +44,30 @@ pub fn names(cx: &App) -> Vec<String> {
     names
 }
 
+/// The scripts with the commands each declares; a script that cannot be read declares none.
+pub fn scripts(cx: &App) -> Vec<(String, Vec<ScriptCommand>)> {
+    let dir = scripts_dir(cx);
+    names(cx)
+        .into_iter()
+        .map(|name| {
+            let commands = dir
+                .as_ref()
+                .and_then(|dir| {
+                    std::fs::read_to_string(dir.join(format!("{name}.{EXTENSION}"))).ok()
+                })
+                .map(|source| birchpad_plugin::script::commands(&source))
+                .unwrap_or_default();
+            (name, commands)
+        })
+        .collect()
+}
+
 #[derive(Deserialize)]
 struct RunArgs {
     name: String,
+    /// One of the functions the script declares as a command: run after the script.
+    #[serde(default)]
+    command: Option<String>,
 }
 
 pub fn register_commands(registry: &mut CommandRegistry) {
@@ -71,7 +94,10 @@ pub fn register_commands(registry: &mut CommandRegistry) {
         let source = std::fs::read_to_string(&path)
             .with_context(|| format!("cannot read the script {}", path.display()))?;
         let (view, session) = super::session(this, cx);
-        let outcome = super::nested(|| birchpad_plugin::script::run(&name, &source, session))?;
+        let outcome = super::nested(|| match &args.command {
+            Some(command) => birchpad_plugin::script::run_command(&name, &source, command, session),
+            None => birchpad_plugin::script::run(&name, &source, session),
+        })?;
         this.apply_outcome(view.as_ref(), PanelOwner::Script(name), outcome, window, cx)
     });
     registry.workspace("script.open-folder", |this, (), _, cx| {

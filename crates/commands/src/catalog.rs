@@ -266,6 +266,7 @@ pub const COMMANDS: &[CommandSpec] = &[
     workspace("panel.function-list", "Function List"),
     workspace("panel.clipboard-history", "Clipboard History"),
     workspace("panel.character-panel", "Character Panel"),
+    workspace("panel.json-viewer", "Show JSON Viewer"),
     // View > Preview: a Markdown or PlantUML document's text, its preview beside it, or the
     // preview alone
     workspace("view.preview-editor", "Editor Only"),
@@ -412,19 +413,42 @@ pub const COMMANDS: &[CommandSpec] = &[
     ),
     workspace("settings.theme", "Theme"),
     workspace("settings.import-theme", "Import Style Themes..."),
+    // settings.import-plugins takes { "paths": [<plugin.toml>, ...] } or asks for them
+    workspace("settings.import-plugins", "Import plugin(s)..."),
     // Plugins: the built-in JSON Viewer and XML Tools work on the selection, or the whole text
     editor("json.format", "Format JSON"),
     editor("json.minify", "Compress JSON"),
     editor("json.validate", "Validate JSON"),
+    editor("json.sort-keys", "Sort JSON Keys"),
+    // json.find-path takes { "path": "$.store.book[0]" }
+    workspace("json.find-path", "Find JSON Path"),
+    workspace("json.copy-value", "Copy Value"),
+    workspace("json.copy-key", "Copy Key"),
+    workspace("json.copy-path", "Copy Path"),
     editor("xml.pretty-print", "Pretty Print XML"),
     editor("xml.linearize", "Linearize XML"),
     editor("xml.check", "Check XML Syntax"),
+    // xml.validate takes { "schema": <an .xsd> } or validates as the document says
+    workspace("xml.validate", "Validate Now"),
+    // xml.xpath takes { "expression": "//item" } or opens its dialog
+    workspace("xml.xpath", "Evaluate XPath Expression..."),
+    editor("xml.escape", "Escape Selected Text"),
+    editor("xml.unescape", "Unescape Selected Text"),
+    workspace("xml.tag-auto-close", "Tag Auto-Close"),
     // Hex Editor: the active document's bytes in a new document, and back
-    workspace("hex.view", "View in Hex"),
+    workspace("hex.view", "Hex Dump in New Document"),
     workspace("hex.apply", "Apply Hex to Document"),
+    workspace("hex.editor", "View in HEX"),
+    // hex.find takes { "pattern": "4A 6F" or "\"text\"", "backward": false }, or goes to
+    // the hex view's field
+    workspace("hex.find", "Find in HEX"),
+    workspace("hex.switch-column", "Switch Between Hex and Text"),
     // Compare: the active document with the other view's, or with the tab before it
     workspace("compare.compare", "Compare"),
     workspace("compare.clear", "Clear Results"),
+    workspace("compare.with-saved", "Diff since Last Save"),
+    workspace("compare.with-clipboard", "Compare to Clipboard"),
+    workspace("compare.with-git", "Diff to Git HEAD"),
     editor("compare.next", "Next Difference"),
     editor("compare.previous", "Previous Difference"),
     workspace("compare.ignore-spaces", "Ignore Spaces"),
@@ -437,7 +461,8 @@ pub const COMMANDS: &[CommandSpec] = &[
     editor("spell.add-word", "Add Word to Dictionary"),
     workspace("spell.language", "Dictionary Language"),
     workspace("spell.open-dictionaries-folder", "Open Dictionaries Folder"),
-    // Scripts; script.run takes { "name": <a script of the scripts folder, without .rhai> }
+    // Scripts; script.run takes { "name": <a script of the scripts folder, without .rhai> },
+    // and "command": <a function the script declares as a command> to run that after it
     workspace("script.run", "Run Script"),
     workspace("script.open-folder", "Open Scripts Folder"),
     workspace("script.reload", "Reload Scripts"),
@@ -445,12 +470,22 @@ pub const COMMANDS: &[CommandSpec] = &[
     workspace("plugin.run", "Run Plugin Command"),
     workspace("plugin.open-folder", "Open Plugins Folder"),
     workspace("plugin.reload", "Reload Plugins"),
+    // plugin.set-setting takes { "plugin": <id>, "key": <a setting>, "value": <text> }
+    workspace("plugin.set-setting", "Set Plugin Setting"),
     // Plugins Admin; plugin.install takes { "path": <a plugin.toml> } or asks for it,
     // plugin.uninstall { "plugin": <id> }, plugin.enable { "plugin": <id>, "enabled": true }
     workspace("plugin.admin", "Plugins Admin..."),
     workspace("plugin.install", "Install Plugin..."),
     workspace("plugin.uninstall", "Remove Plugin"),
     workspace("plugin.enable", "Turn Plugin On or Off"),
+    // The online catalog of plugins and dictionaries; plugin.install-online takes
+    // { "plugin": <id> }, spell.download { "language": "en_GB" }
+    workspace("catalog.refresh", "Refresh Online List"),
+    workspace("plugin.install-online", "Install Plugin from the List"),
+    workspace("spell.download", "Download Dictionary"),
+    workspace("spell.download-languages", "Download Languages..."),
+    // plugin.allow-files takes { "plugin": <id>, "allowed": true }
+    workspace("plugin.allow-files", "Allow Plugin to Use Files"),
     // Help
     workspace("help.check-updates", "Check for Updates..."),
     // From the update dialogs and notifications.

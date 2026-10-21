@@ -275,3 +275,47 @@ fn the_explorer_menu_switch(cx: &mut TestAppContext) {
         }
     });
 }
+
+#[gpui_kit::test]
+fn the_plugins_section_sets_the_plugins_own_settings(cx: &mut TestAppContext) {
+    let (workspace, cx, dir) = open_preferences(cx);
+    // Without plugins: a line that says so.
+    show_section("Plugins", cx);
+    assert!(cx.debug_bounds("preferences-plugins.settings").is_some());
+    assert!(cx.debug_bounds("plugin-setting-probe-loud").is_none());
+
+    let folder = dir.path().join("plugins/probe");
+    std::fs::create_dir_all(&folder).unwrap();
+    std::fs::write(
+        folder.join("plugin.toml"),
+        "id = \"probe\"\nname = \"Probe\"\nversion = \"1\"\napi = \"0.2\"\n\n[[settings]]\nkey = \"loud\"\ntitle = \"Loud\"\nkind = \"bool\"\n\n[[settings]]\nkey = \"limit\"\ntitle = \"Limit\"\nkind = \"number\"\ndefault = \"3\"\n",
+    )
+    .unwrap();
+    std::fs::write(
+        folder.join("plugin.wasm"),
+        include_bytes!("../../../../plugin/tests/fixtures/probe.wasm"),
+    )
+    .unwrap();
+    workspace.update_in(cx, |workspace, window, cx| {
+        workspace.load_plugins(window, cx)
+    });
+    cx.run_until_parked();
+    show_section("Plugins", cx);
+    let kept = |cx: &mut VisualTestContext| {
+        let _ = cx;
+        birchpad_plugin::manager::read_settings(&dir.path().join("plugins"), "probe")
+    };
+    click_on("plugin-setting-probe-loud", MouseButton::Left, cx);
+    assert_eq!(kept(cx)["loud"], "true");
+    draw(cx);
+    click_on("plugin-setting-probe-loud", MouseButton::Left, cx);
+    assert_eq!(kept(cx)["loud"], "false");
+
+    type_over("plugin-setting-probe-limit", "42", cx);
+    assert_eq!(kept(cx)["limit"], "42");
+    // Not a number: refused and said, the setting stays.
+    type_over("plugin-setting-probe-limit", "x", cx);
+    assert_eq!(kept(cx)["limit"], "42");
+    let errors = opened().read_with(cx, |preferences, _| preferences.plugin_errors.len());
+    assert_eq!(errors, 1);
+}

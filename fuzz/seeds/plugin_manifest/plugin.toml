@@ -3,6 +3,18 @@ name = "Word Count"
 version = "1.0.0"
 description = "Counts words."
 author = "Jane Doe"
-api = "0.1"
+api = "0.2"
 entry = "plugin.wasm"
-events = ["opened", "saved", "closed", "activated"]
+events = ["opened", "saved", "closed", "activated", "changed", "selection-changed", "message"]
+permissions = ["files"]
+
+[[settings]]
+key = "count-numbers"
+title = "Count numbers as words"
+kind = "bool"
+default = "true"
+
+[[settings]]
+key = "greeting"
+title = "Greeting"
+kind = "text"

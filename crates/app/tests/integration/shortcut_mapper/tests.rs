@@ -312,3 +312,52 @@ fn the_macros_and_run_tabs(cx: &mut TestAppContext) {
         assert!(this.rows.len() > 100);
     });
 }
+
+#[gpui_kit::test]
+fn the_plugin_commands_tab_lists_scripts_and_their_commands(cx: &mut TestAppContext) {
+    let (mapper, cx, dir) = mapper(cx);
+    let scripts = dir.path().join("scripts");
+    std::fs::create_dir_all(&scripts).unwrap();
+    std::fs::write(
+        scripts.join("cases.rhai"),
+        "// command: upper Upper Case\nfn upper() { set_text(text().to_upper()); }\n",
+    )
+    .unwrap();
+    std::fs::write(scripts.join("plain.rhai"), "insert(\"x\");").unwrap();
+    mapper.update(cx, |this, cx| this.select_tab(MapperTab::Plugins, cx));
+    let rows: Vec<(String, Invocation)> = mapper.read_with(cx, |this, _| {
+        this.rows
+            .iter()
+            .map(|row| (row.name.clone(), row.invocation.clone()))
+            .collect()
+    });
+    let command =
+        Invocation::with_args("script.run", json!({ "name": "cases", "command": "upper" }));
+    assert_eq!(
+        rows,
+        [
+            (
+                "cases".to_owned(),
+                Invocation::with_args("script.run", json!({ "name": "cases" }))
+            ),
+            ("cases: Upper Case".to_owned(), command.clone()),
+            (
+                "plain".to_owned(),
+                Invocation::with_args("script.run", json!({ "name": "plain" }))
+            ),
+        ]
+    );
+    // A script's command gets keys of its own.
+    select(&mapper, &command, cx);
+    mapper.update(cx, |this, cx| {
+        this.start_capture(cx);
+        this.pressed_keys("ctrl-alt-shift-u", cx);
+        this.assign(cx);
+        assert!(this.error.is_none(), "{:?}", this.error);
+    });
+    assert_eq!(keys_now(&command, cx), ["ctrl-alt-shift-u"]);
+    // Scripts are not deleted from here.
+    mapper.update(cx, |this, cx| this.delete_selected(cx));
+    assert!(scripts.join("cases.rhai").exists());
+    assert_eq!(mapper.read_with(cx, |this, _| this.rows.len()), 3);
+}

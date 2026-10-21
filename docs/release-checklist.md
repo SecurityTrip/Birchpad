@@ -1,5 +1,7 @@
 # Release checklist
 
+English · [Русский](release-checklist.ru.md)
+
 The tests run in CI cover what a program can check (CONTRIBUTING.md, Tests). This list is what
 they cannot: real input methods, screen readers, displays, installers and updates on real
 systems. Before publishing a draft release (ADR 0009), a maintainer goes through it with the
@@ -19,7 +21,7 @@ desktops are welcome but not required.
 - [ ] `cargo run -p birchpad-release-tool -- crate-versions` passes: the crates that changed
       since the last release rose, the others kept their versions (the release workflow checks
       it again)
-- [ ] `docs/ROADMAP.md` marks what the release delivers
+- [ ] `docs/ROADMAP.md` and `docs/ROADMAP.ru.md` mark what the release delivers
 
 ## Installers and the first start
 

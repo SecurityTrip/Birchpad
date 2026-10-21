@@ -32,6 +32,9 @@ mod session;
 #[path = "session_names/tests.rs"]
 mod session_names;
 
+#[path = "settings/compare_tests.rs"]
+mod settings_compare_tests;
+
 #[path = "settings/completion_tests.rs"]
 mod settings_completion_tests;
 

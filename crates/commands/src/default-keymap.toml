@@ -1241,3 +1241,14 @@ command = "file.print"
 [[binding]]
 keys = "alt-shift-s"
 command = "macro.trim-and-save"
+
+# Hex Editor: Tab goes between the bytes and their text, before the window's focus order.
+[[binding]]
+keys = "tab"
+command = "hex.switch-column"
+context = "HexEditor"
+
+[[binding]]
+keys = "shift-tab"
+command = "hex.switch-column"
+context = "HexEditor"

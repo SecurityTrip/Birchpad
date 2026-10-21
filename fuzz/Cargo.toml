@@ -188,3 +188,31 @@ path = "fuzz_targets/rhai_script.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "json_tree"
+path = "fuzz_targets/json_tree.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "xpath"
+path = "fuzz_targets/xpath.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "xml_schema"
+path = "fuzz_targets/xml_schema.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "catalog"
+path = "fuzz_targets/catalog.rs"
+test = false
+doc = false
+bench = false

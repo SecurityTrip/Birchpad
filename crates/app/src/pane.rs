@@ -245,6 +245,8 @@ pub struct Pane {
     tabs_hidden: bool,
     /// The previews of the documents that have one (Markdown), by their views.
     previews: HashMap<EntityId, Entity<Preview>>,
+    /// The documents shown as bytes (View in HEX), by their views.
+    hex_editors: HashMap<EntityId, Entity<crate::hex_editor::HexEditor>>,
     workspace: WeakEntity<Workspace>,
 }
 
@@ -265,8 +267,39 @@ impl Pane {
             split_zone: None,
             tabs_hidden: false,
             previews: HashMap::new(),
+            hex_editors: HashMap::new(),
             workspace: WeakEntity::new_invalid(),
         }
+    }
+
+    /// The hex view of `item`, while it shows.
+    pub fn hex_editor(
+        &self,
+        item: &Entity<EditorView>,
+    ) -> Option<&Entity<crate::hex_editor::HexEditor>> {
+        self.hex_editors.get(&item.entity_id())
+    }
+
+    /// View in HEX: shows `item`'s bytes in place of its text, or its text again. The caret
+    /// goes with it, and so does the focus.
+    pub fn toggle_hex(
+        &mut self,
+        item: &Entity<EditorView>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let id = item.entity_id();
+        if self.hex_editors.remove(&id).is_some() {
+            let focus = item.read(cx).focus_handle.clone();
+            window.focus(&focus, cx);
+        } else {
+            let item = item.clone();
+            let editor = cx.new(|cx| crate::hex_editor::HexEditor::new(item, window, cx));
+            let focus = gpui_kit::Focusable::focus_handle(editor.read(cx), cx);
+            self.hex_editors.insert(id, editor);
+            window.focus(&focus, cx);
+        }
+        cx.notify();
     }
 
     /// Hides the tab bar (Post-It, Distraction Free) or shows it again.
@@ -338,6 +371,9 @@ impl Pane {
 
     /// The active document: its text, with its preview beside it or in its place.
     fn render_item(&mut self, item: Entity<EditorView>, cx: &mut Context<Self>) -> AnyElement {
+        if let Some(hex) = self.hex_editors.get(&item.entity_id()) {
+            return hex.clone().into_any_element();
+        }
         let Some(preview) = self.preview(&item, cx) else {
             return item.into_any_element();
         };
@@ -715,6 +751,7 @@ impl Pane {
         self.items.remove(index);
         self.subscriptions.retain(|(view, _)| view != item);
         self.recent.retain(|id| *id != item.entity_id());
+        self.hex_editors.remove(&item.entity_id());
         if let Some(switcher) = &mut self.switcher {
             if let Some(position) = switcher.order.iter().position(|view| view == item) {
                 switcher.order.remove(position);

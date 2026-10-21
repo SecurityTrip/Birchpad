@@ -25,6 +25,15 @@ fn links(cx: &mut App) -> &mut HashMap<EntityId, WeakEntity<Buffer>> {
     &mut cx.global_mut::<HexLinks>().0
 }
 
+#[derive(serde::Deserialize)]
+struct FindArgs {
+    /// Hex digits, or text in quotes; none goes to the hex view's field.
+    #[serde(default)]
+    pattern: Option<String>,
+    #[serde(default)]
+    backward: bool,
+}
+
 pub fn register_commands(registry: &mut CommandRegistry) {
     registry.workspace("hex.view", |this, (), window, cx| {
         this.view_in_hex(window, cx)
@@ -32,6 +41,46 @@ pub fn register_commands(registry: &mut CommandRegistry) {
     registry.workspace("hex.apply", |this, (), window, cx| {
         this.apply_hex(window, cx)
     });
+    registry.workspace("hex.editor", |this, (), window, cx| {
+        let view = this
+            .active_view(cx)
+            .ok_or_else(|| anyhow!("{}", t!("hex-view.there-is-no-document")))?;
+        this.active_pane()
+            .clone()
+            .update(cx, |pane, cx| pane.toggle_hex(&view, window, cx));
+        this.refresh_menus(cx);
+        Ok(())
+    });
+    registry.workspace("hex.switch-column", |this, (), _, cx| {
+        let editor = this
+            .active_hex_editor(cx)
+            .ok_or_else(|| anyhow!("{}", t!("hex-editor.not-in-hex")))?;
+        editor.update(cx, |editor, cx| editor.switch_column(cx));
+        Ok(())
+    });
+    registry.workspace("hex.find", |this, args: FindArgs, window, cx| {
+        let editor = this
+            .active_hex_editor(cx)
+            .ok_or_else(|| anyhow!("{}", t!("hex-editor.not-in-hex")))?;
+        match args.pattern {
+            Some(pattern) => editor.update(cx, |editor, cx| {
+                editor.find_next(&pattern, args.backward, cx)
+            }),
+            None => {
+                let field = editor.read(cx).find.clone();
+                field.update(cx, |input, cx| input.focus(window, cx));
+                Ok(())
+            }
+        }
+    });
+}
+
+impl Workspace {
+    /// The active document's hex view, while it shows.
+    pub fn active_hex_editor(&self, cx: &App) -> Option<Entity<crate::hex_editor::HexEditor>> {
+        let view = self.active_view(cx)?;
+        self.active_pane().read(cx).hex_editor(&view).cloned()
+    }
 }
 
 impl Workspace {

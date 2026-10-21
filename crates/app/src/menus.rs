@@ -25,8 +25,8 @@ pub struct MenuState<'a> {
     pub run_commands: &'a [String],
     /// The languages of the spell checker's dictionaries.
     pub spell_languages: &'a [String],
-    /// The scripts of the `scripts` folder.
-    pub scripts: &'a [String],
+    /// The scripts of the `scripts` folder, with the commands they declare.
+    pub scripts: &'a [(String, Vec<birchpad_plugin::script::ScriptCommand>)],
     /// The plugins ready to run: id, name and commands.
     pub plugins: &'a [(String, String, Vec<birchpad_plugin::PluginCommand>)],
     /// The documents of the active view, and which one is active (the Window menu).
@@ -194,9 +194,28 @@ fn build_menu(
                 }
             }
             MenuItem::Placeholder(Placeholder::Scripts) => {
-                for name in state.scripts {
+                for (name, commands) in state.scripts {
                     let invocation = Invocation::with_args("script.run", json!({ "name": name }));
-                    items.push(GpuiMenuItem::action(name.clone(), RunCommand(invocation)));
+                    if commands.is_empty() {
+                        items.push(GpuiMenuItem::action(name.clone(), RunCommand(invocation)));
+                        continue;
+                    }
+                    // Run, then the script's own commands.
+                    let entries = std::iter::once(GpuiMenuItem::action(
+                        t!("menus.run-script"),
+                        RunCommand(invocation),
+                    ))
+                    .chain(std::iter::once(GpuiMenuItem::separator()))
+                    .chain(commands.iter().map(|command| {
+                        let invocation = Invocation::with_args(
+                            "script.run",
+                            json!({ "name": name, "command": command.function }),
+                        );
+                        GpuiMenuItem::action(command.title.clone(), RunCommand(invocation))
+                    }));
+                    items.push(GpuiMenuItem::submenu(
+                        gpui_kit::Menu::new(name.clone()).items(entries),
+                    ));
                 }
             }
             MenuItem::Placeholder(Placeholder::Plugins) => {

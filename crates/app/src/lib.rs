@@ -29,6 +29,7 @@ pub mod file_ops;
 pub mod find;
 pub mod find_in_files;
 pub mod help;
+pub mod hex_editor;
 pub mod hex_view;
 pub mod i18n;
 pub mod incremental;
@@ -36,6 +37,7 @@ pub mod json_xml;
 pub mod macros;
 pub mod menus;
 pub mod navigation;
+pub mod online;
 pub mod pane;
 pub mod panels;
 pub mod path_dialog;
@@ -161,6 +163,10 @@ pub fn run() {
             cx.set_global(app_state);
             themes::init(cx);
             i18n::apply(cx);
+            // `-L<code>`: the interface's language this time.
+            if let Some(code) = &command_line.interface_language {
+                i18n::set_language(i18n::for_this_run(code));
+            }
             macros::init(cx);
             run_menu::init(cx);
             user_languages::init(cx);

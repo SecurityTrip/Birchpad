@@ -115,6 +115,7 @@ fn every_listed_option_is_understood() {
             .replace("<column>", "4")
             .replace("<position>", "5")
             .replace("<language>", "cpp")
+            .replace("<code>", "de")
             .replace("<name>", "Markdown")
             .replace("<left>", "10")
             .replace("<top>", "20")
@@ -312,4 +313,60 @@ fn older_command_lines_read_with_the_new_options_off() {
     let full = parse(&["-qt=x", "-x5", "-udl=U", "a.txt"]);
     let json = serde_json::to_string(&full).unwrap();
     assert_eq!(serde_json::from_str::<CommandLine>(&json).unwrap(), full);
+}
+
+#[test]
+fn notepad_plus_plus_8_options_for_plugins_and_the_interface() {
+    let line = parse(&["-noPlugin", "-Lru", "-lpython", "--help", "a.txt"]);
+    assert!(line.no_plugins && line.help);
+    assert_eq!(line.interface_language.as_deref(), Some("ru"));
+    // `-L` is the interface, `-l` the document: the one option whose case counts.
+    assert_eq!(line.language.as_deref(), Some("python"));
+    assert_eq!(line.files, [PathBuf::from("/work/a.txt")]);
+    assert!(line.warnings.is_empty(), "{:?}", line.warnings);
+    // The older spelling still works; neither is on by default.
+    assert!(parse(&["-nopluginsupport"]).no_plugins);
+    let plain = parse(&["a.txt"]);
+    assert!(!plain.no_plugins && !plain.help && plain.interface_language.is_none());
+    // `-L` with no code says so and changes nothing.
+    let empty = parse(&["-L"]);
+    assert_eq!(empty.interface_language, None);
+    assert_eq!(empty.warnings, ["-L: expected a language code after -L"]);
+    // `--help` is not `--`: the names after it are still options.
+    let help = parse(&["--help", "-ro"]);
+    assert!(help.help && help.read_only && help.files.is_empty());
+}
+
+#[test]
+fn notepad_style_command_lines_stand_in_for_notepad() {
+    // How Windows runs Notepad's replacement: the options, Notepad's own path, then the file
+    // name as Notepad was given it, spaces and all.
+    let line = parse(&[
+        "-notepadStyleCmdline",
+        "-z",
+        "C:\\Windows\\notepad.exe",
+        "my",
+        "notes.txt",
+    ]);
+    assert_eq!(line.files, [PathBuf::from("/work/my notes.txt")]);
+    assert!(line.warnings.is_empty(), "{:?}", line.warnings);
+    // Options still work after it, and a single word is a name of its own.
+    let line = parse(&["-NOTEPADSTYLECMDLINE", "-ro", "one.txt"]);
+    assert!(line.read_only);
+    assert_eq!(line.files, [PathBuf::from("/work/one.txt")]);
+    // Nothing after it: no file at all, not an empty one.
+    assert!(parse(&["-notepadStyleCmdline"]).files.is_empty());
+    // Without it, the words are files of their own.
+    assert_eq!(parse(&["my", "notes.txt"]).files.len(), 2);
+}
+
+#[test]
+fn z_ignores_exactly_the_next_argument() {
+    let line = parse(&["-z", "-ro", "a.txt"]);
+    assert!(!line.read_only, "the option after -z is skipped");
+    assert_eq!(line.files, [PathBuf::from("/work/a.txt")]);
+    // At the end of the line there is nothing to skip, and nothing to warn about.
+    let last = parse(&["a.txt", "-z"]);
+    assert_eq!(last.files, [PathBuf::from("/work/a.txt")]);
+    assert!(last.warnings.is_empty());
 }

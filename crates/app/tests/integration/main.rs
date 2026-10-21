@@ -55,6 +55,9 @@ mod find_mouse_tests;
 #[path = "help/tests.rs"]
 mod help;
 
+#[path = "hex_editor/tests.rs"]
+mod hex_editor;
+
 #[path = "hex_view/tests.rs"]
 mod hex_view;
 
@@ -82,6 +85,9 @@ mod menus;
 
 #[path = "navigation_tests.rs"]
 mod navigation_tests;
+
+#[path = "online/tests.rs"]
+mod online;
 
 #[path = "pane/tests.rs"]
 mod pane;

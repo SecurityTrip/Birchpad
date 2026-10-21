@@ -16,7 +16,8 @@ fn every_entry_is_a_setting_with_valid_choices() {
     let mut keys = std::collections::HashSet::new();
     for entry in ENTRIES {
         assert!(keys.insert(entry.key), "{} twice", entry.key);
-        if entry.kind == Kind::ExplorerMenu {
+        // Neither is a setting of settings.toml.
+        if matches!(entry.kind, Kind::ExplorerMenu | Kind::PluginSettings) {
             assert!(birchpad_config::check_setting(entry.key, &Value::Boolean(true)).is_err());
             continue;
         }
@@ -58,6 +59,10 @@ fn every_entry_is_a_setting_with_valid_choices() {
             "Print",
             "Files",
             "Backup",
+            "Spell Checker",
+            "Hex Editor",
+            "Compare",
+            "Plugins",
             "Updates"
         ]
     );

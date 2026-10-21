@@ -2,8 +2,9 @@
 //! and what Birchpad does with what they return.
 //!
 //! A call gets a copy of the active document ([`document_state`]); its edit is applied as one
-//! undo step, then its effects run in order: commands, messages, the plugin panel. Commands a
-//! plugin runs may run plugins in turn, up to [`MAX_DEPTH`] deep.
+//! undo step, then its effects run in order: commands, messages, the plugin panel, settings,
+//! files to open and background tasks (ADR 0046). Commands a plugin runs may run plugins in
+//! turn, up to [`MAX_DEPTH`] deep.
 
 pub mod admin;
 pub mod plugins;
@@ -11,8 +12,8 @@ pub mod scripts;
 
 use std::cell::Cell;
 
-use anyhow::{Result, bail};
-use birchpad_plugin::{DocumentState, Effect, Outcome, Session};
+use anyhow::{Result, anyhow, bail};
+use birchpad_plugin::{Control, DocumentState, Effect, Outcome, Session};
 use gpui_kit::{App, Context, Entity, Window};
 
 use crate::editor::EditorView;
@@ -111,9 +112,71 @@ impl Workspace {
                 Effect::Panel { title, lines } => {
                     self.show_plugin_panel(owner.clone(), title, lines, window, cx);
                 }
+                Effect::Controls { title, controls } => {
+                    self.show_plugin_controls(owner.clone(), title, controls, window, cx);
+                }
+                Effect::SetSetting { key, value } => {
+                    let result = match &owner {
+                        PanelOwner::Plugin(id) => plugins::set_setting(id, &key, &value, cx),
+                        PanelOwner::Script(name) => Err(anyhow!(
+                            "{}",
+                            t!("extensions.scripts-keep-no-settings", name = name)
+                        )),
+                    };
+                    if let Err(error) = result {
+                        failed.get_or_insert(error);
+                    }
+                }
+                Effect::OpenFile(path) => self.open_path(&path, window, cx),
+                Effect::StartTask { task, input } => match &owner {
+                    PanelOwner::Plugin(id) => self.start_plugin_task(id, task, input, window, cx),
+                    PanelOwner::Script(name) => {
+                        failed.get_or_insert(anyhow!(
+                            "{}",
+                            t!("extensions.scripts-start-no-tasks", name = name)
+                        ));
+                    }
+                },
             }
         }
         failed.map_or(Ok(()), Err)
+    }
+
+    /// Fills the plugin panel with controls and opens it.
+    pub fn show_plugin_controls(
+        &mut self,
+        owner: PanelOwner,
+        title: String,
+        controls: Vec<Control>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.open_panel(PanelKind::PluginPanel, window, cx);
+        if let Some(panel) = self
+            .docks
+            .view(PanelKind::PluginPanel)
+            .and_then(|view| view.clone().downcast::<PluginPanel>().ok())
+        {
+            panel.update(cx, |panel, cx| {
+                panel.fill_controls(owner, title, controls, window, cx);
+            });
+        }
+    }
+
+    /// A control of the plugin panel was used: `id`, with `value`.
+    pub fn plugin_control_used(
+        &mut self,
+        owner: &PanelOwner,
+        id: &str,
+        value: &str,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Result<()> {
+        match owner {
+            // Scripts show no controls.
+            PanelOwner::Script(_) => Ok(()),
+            PanelOwner::Plugin(plugin) => self.plugin_control(plugin, id, value, window, cx),
+        }
     }
 
     /// Fills the plugin panel and opens it.

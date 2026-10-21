@@ -2,21 +2,29 @@
 //! removing them under the administrator's policy (ADR 0038).
 //!
 //! Each plugin lives in `plugins/<id>/` with its `plugin.toml` and component;
-//! `plugins/disabled.toml` lists the plugins turned off.
+//! `plugins/disabled.toml` lists the plugins turned off, `plugins/permissions.toml` those the
+//! user let use files, and `plugins/<id>.settings.toml` holds a plugin's settings, so that
+//! updating it keeps them (ADR 0046).
 
 use birchpad_i18n::t;
+use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context as _, Result, anyhow, bail};
 use birchpad_config::{PluginInstall, PluginSettings};
 use serde::{Deserialize, Serialize};
 
-use crate::manifest::Manifest;
+use crate::manifest::{Manifest, Permission};
+use crate::session::{Grants, MAX_SETTING_VALUE, MAX_SETTINGS, is_setting_key};
 
 /// The file that describes a plugin.
 pub const MANIFEST: &str = "plugin.toml";
 /// The file listing the plugins turned off, in the plugins folder.
 pub const DISABLED: &str = "disabled.toml";
+/// The file listing what the user allowed plugins, in the plugins folder.
+pub const PERMISSIONS: &str = "permissions.toml";
+/// What a plugin's settings file is named after: `<id>.settings.toml`.
+pub const SETTINGS_SUFFIX: &str = ".settings.toml";
 /// The most bytes a plugin's folder may hold when installed.
 pub const MAX_PLUGIN_BYTES: u64 = 64 << 20;
 
@@ -211,7 +219,143 @@ pub fn uninstall(plugins_dir: &Path, id: &str) -> Result<()> {
     if !dir.join(MANIFEST).is_file() {
         bail!("{}", t!("plugin.not-installed", id = id));
     }
-    std::fs::remove_dir_all(&dir).with_context(|| t!("plugin.cannot-remove", path = dir.display()))
+    std::fs::remove_dir_all(&dir)
+        .with_context(|| t!("plugin.cannot-remove", path = dir.display()))?;
+    // What the user gave the plugin goes with it: installed again, it asks again.
+    let settings = settings_file(plugins_dir, id);
+    if settings.exists() {
+        std::fs::remove_file(&settings)
+            .with_context(|| t!("plugin.cannot-remove", path = settings.display()))?;
+    }
+    if read_file_access(plugins_dir)
+        .iter()
+        .any(|known| known == id)
+    {
+        set_file_access(plugins_dir, id, false)?;
+    }
+    Ok(())
+}
+
+/// The file of the plugin `id`'s settings.
+pub fn settings_file(plugins_dir: &Path, id: &str) -> PathBuf {
+    plugins_dir.join(format!("{id}{SETTINGS_SUFFIX}"))
+}
+
+/// The settings the plugin `id` kept. Values that are not text, keys that are not keys, and a
+/// file that does not read are left out.
+pub fn read_settings(plugins_dir: &Path, id: &str) -> BTreeMap<String, String> {
+    let Some(table) = std::fs::read_to_string(settings_file(plugins_dir, id))
+        .ok()
+        .and_then(|text| toml::from_str::<toml::Table>(&text).ok())
+    else {
+        return BTreeMap::new();
+    };
+    table
+        .into_iter()
+        .filter_map(|(key, value)| match value {
+            toml::Value::String(value)
+                if is_setting_key(&key) && value.len() <= MAX_SETTING_VALUE =>
+            {
+                Some((key, value))
+            }
+            _ => None,
+        })
+        .take(MAX_SETTINGS)
+        .collect()
+}
+
+/// Keeps `value` as the plugin `id`'s setting `key`.
+pub fn write_setting(plugins_dir: &Path, id: &str, key: &str, value: &str) -> Result<()> {
+    if !crate::manifest::is_valid_id(id) {
+        bail!("{}", t!("plugin.not-an-id", id = format!("{id:?}")));
+    }
+    if !is_setting_key(key) {
+        bail!(
+            "{}",
+            t!(
+                "plugin.not-a-setting-key",
+                key = format!("{key:?}"),
+                limit = crate::session::MAX_SETTING_KEY
+            )
+        );
+    }
+    if value.len() > MAX_SETTING_VALUE {
+        bail!(
+            "{}",
+            t!(
+                "plugin.setting-too-long",
+                key = key,
+                limit = MAX_SETTING_VALUE
+            )
+        );
+    }
+    let mut settings = read_settings(plugins_dir, id);
+    if !settings.contains_key(key) && settings.len() >= MAX_SETTINGS {
+        bail!("{}", t!("plugin.too-many-settings", limit = MAX_SETTINGS));
+    }
+    settings.insert(key.to_owned(), value.to_owned());
+    std::fs::create_dir_all(plugins_dir)
+        .with_context(|| t!("plugin.cannot-create", path = plugins_dir.display()))?;
+    let path = settings_file(plugins_dir, id);
+    let text = toml::to_string(&settings).unwrap_or_default();
+    std::fs::write(&path, text).with_context(|| t!("plugin.cannot-write", path = path.display()))
+}
+
+/// What `installed` may use: its settings over the defaults of its manifest, and files if it
+/// asks for them and the user allowed it.
+pub fn grants(plugins_dir: &Path, installed: &Installed) -> Grants {
+    let manifest = &installed.manifest;
+    let mut settings: BTreeMap<String, String> = manifest
+        .settings
+        .iter()
+        .map(|setting| (setting.key.clone(), setting.default.clone()))
+        .collect();
+    for (key, value) in read_settings(plugins_dir, &manifest.id) {
+        // A value the declared setting cannot take is the user's file gone wrong.
+        if manifest
+            .setting(&key)
+            .is_none_or(|setting| setting.accepts(&value))
+        {
+            settings.insert(key, value);
+        }
+    }
+    let files = manifest.asks_for(Permission::Files)
+        && read_file_access(plugins_dir).contains(&manifest.id);
+    Grants { settings, files }
+}
+
+#[derive(Debug, Default, Serialize, Deserialize)]
+struct PermissionsFile {
+    /// The plugins the user let use files.
+    #[serde(default)]
+    files: Vec<String>,
+}
+
+/// The plugins the user let use files. A file that does not read allows none.
+pub fn read_file_access(plugins_dir: &Path) -> Vec<String> {
+    std::fs::read_to_string(plugins_dir.join(PERMISSIONS))
+        .ok()
+        .and_then(|text| toml::from_str::<PermissionsFile>(&text).ok())
+        .map(|file| file.files)
+        .unwrap_or_default()
+}
+
+/// Lets the plugin `id` use files, or stops it.
+pub fn set_file_access(plugins_dir: &Path, id: &str, allowed: bool) -> Result<()> {
+    if !crate::manifest::is_valid_id(id) {
+        bail!("{}", t!("plugin.not-an-id", id = format!("{id:?}")));
+    }
+    let mut files = read_file_access(plugins_dir);
+    files.retain(|known| known != id);
+    if allowed {
+        files.push(id.to_owned());
+    }
+    files.sort();
+    std::fs::create_dir_all(plugins_dir)
+        .with_context(|| t!("plugin.cannot-create", path = plugins_dir.display()))?;
+    let path = plugins_dir.join(PERMISSIONS);
+    let text = toml::to_string(&PermissionsFile { files }).unwrap_or_default();
+    std::fs::write(&path, text).with_context(|| t!("plugin.cannot-write", path = path.display()))
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]

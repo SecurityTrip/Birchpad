@@ -13,7 +13,7 @@ use crate::{Layout, SyntaxError};
 pub const MAX_DEPTH: usize = 10_000;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum Kind {
+pub(crate) enum Kind {
     OpenObject,
     CloseObject,
     OpenArray,
@@ -26,10 +26,10 @@ enum Kind {
 }
 
 #[derive(Debug, Clone, Copy)]
-struct Token {
-    kind: Kind,
-    start: usize,
-    end: usize,
+pub(crate) struct Token {
+    pub(crate) kind: Kind,
+    pub(crate) start: usize,
+    pub(crate) end: usize,
 }
 
 /// Checks that `text` is one JSON value, with only whitespace around it.
@@ -90,7 +90,7 @@ fn walk(text: &str, emit: &mut dyn FnMut(Token, &str)) -> Result<(), SyntaxError
     Ok(())
 }
 
-fn lex(text: &str) -> Result<Vec<Token>, SyntaxError> {
+pub(crate) fn lex(text: &str) -> Result<Vec<Token>, SyntaxError> {
     let bytes = text.as_bytes();
     let mut tokens = Vec::new();
     let mut at = 0;
@@ -252,7 +252,7 @@ enum Expect {
     End,
 }
 
-fn check(text: &str, tokens: &[Token]) -> Result<(), SyntaxError> {
+pub(crate) fn check(text: &str, tokens: &[Token]) -> Result<(), SyntaxError> {
     // `true` for an object, `false` for an array.
     let mut stack: Vec<bool> = Vec::new();
     let mut expect = Expect::Value;

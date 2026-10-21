@@ -6,6 +6,58 @@ version's release notes from its section here.
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-10-22
+
+### Added
+
+- Plugins can keep settings of their own, shown in Preferences > Plugins; read, write and open
+  files once you allow them in Plugins Admin (Allow Files); fill their panel with buttons, text
+  fields and check boxes; add items to the text's context menu; hear the text change and the
+  selection move; receive the command line's `-pluginMessage`; and work in the background
+  without holding up the window.
+- Scripts can declare commands (`// command: <function> <title>`): Plugins > Scripts shows them
+  in a submenu of the script, and Settings > Shortcut Mapper > Plugin Commands gives them keys,
+  as it does the plugins' commands.
+- Settings > Import > Import plugin(s)... installs several plugins at once.
+- Plugins > Compare works as ComparePlus: blank rows keep the lines both documents have side
+  by side, what differs within a changed line is marked too, the differences are marked along
+  the scrollbar, and the documents are compared again a moment after either changes. Diff
+  since Last Save, Compare to Clipboard and Diff to Git HEAD compare the document with its
+  file, the clipboard or Git's last commit. Preferences > Compare turns each of these on or
+  off.
+- Plugins > JSON Viewer > Show JSON Viewer: the document's JSON as a tree beside it. A click
+  selects a value in the text; a path (`$.store.book[0].title`) finds one; Copy Value, Copy Key
+  and Copy Path copy it (with the panel closed, the value at the caret). Sort JSON Keys formats
+  the JSON with every object's keys in order.
+- Plugins > XML Tools: Evaluate XPath Expression... lists the nodes an expression selects;
+  Validate Now checks the document against its DTD or XML Schema (the one it names, or one
+  you choose) and goes to the first problem; Escape and Unescape Selected Text; Tag Auto-Close.
+- Plugins > Hex Editor > View in HEX shows the document's bytes in place of its text and edits
+  them there: two digits a byte, over the caret or before it (Insert), characters in the text
+  column, the caret shared with the text. Find in HEX finds bytes or text in quotes.
+  Preferences > Hex Editor sets the bytes in a row, the groups and capitals.
+- Plugins > Spell Checker checks US English out of the box, with a dictionary made from SCOWL.
+  Preferences > Spell Checker checks several languages together, chooses which words are left
+  alone (with digits, in capitals, with a capital inside or at the start, with underscores,
+  single letters, addresses) and what of code is checked (comments, strings, both, or all).
+- Plugins Admin reads an online list of plugins (Refresh List): it installs those not installed
+  yet and offers updates of those that are, each download checked against the list's SHA-256.
+  Plugins > Spell Checker > Download Languages... downloads dictionaries from the same list.
+  Neither goes online while online features are turned off (`OnlineFeatures`).
+- Documentation in Russian: README, CONTRIBUTING, SECURITY, PRIVACY, the code of conduct,
+  writing plugins and scripts, the release checklist and the roadmap as `*.ru.md` beside the
+  English ones, each linking to the other.
+- Notepad++ 8's command-line options `-noPlugin` (as `-nopluginsupport`), `-L<code>` (the
+  interface in that language this time: `-Lde`, `-Lru`), `-notepadStyleCmdline` and `-z` (to
+  stand in for Windows Notepad: Notepad's path is skipped and the rest is one file name with
+  spaces), and `--help` (Help > Command Line Arguments... at start).
+
+### Changed
+
+- Plugins > Hex Editor > View in Hex is now Hex Dump in New Document.
+- The plugin API is version 0.2 (`api = "0.2"`): plugins built for 0.1 must be rebuilt against
+  the new `birchpad.wit`, where what 0.1 had is unchanged.
+
 ## [0.5.0] - 2026-10-21
 
 ### Added
@@ -561,7 +613,8 @@ The first release: a Notepad++-like editor for Windows, Linux and macOS.
   entirely (`updates.mode = "off"`).
 - Nightly builds of `main` on the nightly channel.
 
-[Unreleased]: https://github.com/SecurityTrip/Birchpad/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/SecurityTrip/Birchpad/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/SecurityTrip/Birchpad/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/SecurityTrip/Birchpad/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/SecurityTrip/Birchpad/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/SecurityTrip/Birchpad/compare/v0.2.5...v0.3.0

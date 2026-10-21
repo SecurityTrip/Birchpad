@@ -550,7 +550,7 @@ fn a_plugin_is_installed_and_run() {
     fs::create_dir_all(&folder).unwrap();
     fs::write(
         folder.join("plugin.toml"),
-        "id = \"probe\"\nname = \"Probe\"\nversion = \"1.0\"\napi = \"0.1\"\n",
+        "id = \"probe\"\nname = \"Probe\"\nversion = \"1.0\"\napi = \"0.2\"\n",
     )
     .unwrap();
     let wasm = Path::new(env!("CARGO_MANIFEST_DIR")).join("../plugin/tests/fixtures/probe.wasm");

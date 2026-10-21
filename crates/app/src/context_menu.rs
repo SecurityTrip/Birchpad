@@ -43,6 +43,24 @@ pub fn load(cx: &App) -> (Vec<Node>, Option<String>) {
     }
 }
 
+/// The items plugins add below the menu (ADR 0046): a separator, then each command a ready
+/// plugin marks for the context menu, by its title; none if no plugin adds any.
+pub fn plugin_items(cx: &App) -> Vec<Node> {
+    let commands = crate::extensions::plugins::context_menu_commands(cx);
+    if commands.is_empty() {
+        return Vec::new();
+    }
+    std::iter::once(Node::Separator)
+        .chain(commands.into_iter().map(|(plugin, command)| Node::Command {
+            invocation: Invocation::with_args(
+                "plugin.run",
+                serde_json::json!({ "plugin": plugin, "command": command.id }),
+            ),
+            label: Some(command.title),
+        }))
+        .collect()
+}
+
 /// Fills `menu` with `nodes`; a chosen item asks `view` to run its command.
 pub fn build(
     mut menu: PopupMenu,

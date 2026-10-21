@@ -227,3 +227,66 @@ pub fn linearize(text: &str) -> Result<String, SyntaxError> {
         .map(|token| token.text)
         .collect())
 }
+
+/// `text` with the characters XML gives a meaning written as entities: `&amp;`, `&lt;`, `&gt;`,
+/// `&quot;` and `&apos;` (XML Tools' "Escape selected text").
+pub fn escape(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    for c in text.chars() {
+        match c {
+            '&' => out.push_str("&amp;"),
+            '<' => out.push_str("&lt;"),
+            '>' => out.push_str("&gt;"),
+            '"' => out.push_str("&quot;"),
+            '\'' => out.push_str("&apos;"),
+            c => out.push(c),
+        }
+    }
+    out
+}
+
+/// `text` with XML's five entities and character references (`&#233;`, `&#xE9;`) written as the
+/// characters they stand for; anything else that starts with `&` is left as it is.
+pub fn unescape(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    let mut rest = text;
+    while let Some(at) = rest.find('&') {
+        out.push_str(&rest[..at]);
+        rest = &rest[at..];
+        let reference = rest[1..]
+            .find(';')
+            .filter(|end| *end <= 10)
+            .map(|end| &rest[1..1 + end]);
+        let replaced = reference.and_then(|name| {
+            let c = match name {
+                "amp" => '&',
+                "lt" => '<',
+                "gt" => '>',
+                "quot" => '"',
+                "apos" => '\'',
+                _ => {
+                    let code =
+                        if let Some(hex) = name.strip_prefix("#x").or(name.strip_prefix("#X")) {
+                            u32::from_str_radix(hex, 16).ok()?
+                        } else {
+                            name.strip_prefix('#')?.parse().ok()?
+                        };
+                    char::from_u32(code)?
+                }
+            };
+            Some((c, name.len() + 2))
+        });
+        match replaced {
+            Some((c, len)) => {
+                out.push(c);
+                rest = &rest[len..];
+            }
+            None => {
+                out.push('&');
+                rest = &rest[1..];
+            }
+        }
+    }
+    out.push_str(rest);
+    out
+}

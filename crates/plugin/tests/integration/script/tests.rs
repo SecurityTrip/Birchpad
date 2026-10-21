@@ -124,3 +124,79 @@ fn checks_scripts_without_running_them() {
     assert!(check("let x = ;").is_err());
     assert!(check("").is_ok());
 }
+
+const WITH_COMMANDS: &str = r#"
+// command: upper Upper Case
+//! command: lower_all   Lower Case Everything
+/// command: _private Private
+// command: upper Twice
+// command: 9bad Bad
+// command: notitle
+// command: with-dash Dash
+set_text(text() + "!");
+fn upper() { set_text(text().to_upper()); }
+fn lower_all() { set_text(text().to_lower()); }
+fn _private() { message("private"); }
+"#;
+
+#[test]
+fn reads_the_commands_a_script_declares() {
+    let declared = commands(WITH_COMMANDS);
+    let found: Vec<(&str, &str)> = declared
+        .iter()
+        .map(|c| (c.function.as_str(), c.title.as_str()))
+        .collect();
+    assert_eq!(
+        found,
+        [
+            ("upper", "Upper Case"),
+            ("lower_all", "Lower Case Everything"),
+            ("_private", "Private")
+        ]
+    );
+    assert!(commands("").is_empty());
+    assert!(commands("let command = 1; // not command: x Y").is_empty());
+    let many: String = (0..MAX_COMMANDS + 5)
+        .map(|i| format!("// command: f{i} F{i}\n"))
+        .collect();
+    assert_eq!(commands(&many).len(), MAX_COMMANDS);
+}
+
+fn after(outcome: Outcome, text: &str) -> String {
+    let mut rope = Rope::from(text);
+    if let Some(transaction) = outcome.transaction {
+        transaction.changes().apply(&mut rope);
+    }
+    rope.to_string()
+}
+
+#[test]
+fn runs_a_command_after_the_script() {
+    let outcome = run_command("cases", WITH_COMMANDS, "lower_all", session("AbC", 0, 0)).unwrap();
+    assert_eq!(after(outcome, "AbC"), "abc!");
+    // The function sees what the script's top did first.
+    let outcome = run_command("cases", WITH_COMMANDS, "upper", session("ab", 0, 0)).unwrap();
+    assert_eq!(after(outcome, "ab"), "AB!");
+    // On an empty document too.
+    let outcome = run_command("cases", WITH_COMMANDS, "upper", session("", 0, 0)).unwrap();
+    assert_eq!(after(outcome, ""), "!");
+}
+
+#[test]
+fn refuses_commands_it_does_not_declare() {
+    for function in ["missing", "with-dash", "", "9bad"] {
+        let error = run_command("cases", WITH_COMMANDS, function, session("x", 0, 0)).unwrap_err();
+        assert!(
+            error.to_string().contains("no command"),
+            "{function:?}: {error}"
+        );
+    }
+    // Declared, but no such function: the script fails.
+    let source = "// command: ghost Ghost\nlet a = 1;";
+    let error = run_command("ghost", source, "ghost", session("x", 0, 0)).unwrap_err();
+    assert!(error.to_string().contains("ghost failed"), "{error}");
+    // A command that loops is stopped as a script is.
+    let source = "// command: spin Spin\nfn spin() { loop {} }";
+    let error = run_command("spin", source, "spin", session("x", 0, 0)).unwrap_err();
+    assert!(error.to_string().contains("too long"), "{error}");
+}

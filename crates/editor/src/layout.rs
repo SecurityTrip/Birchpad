@@ -124,6 +124,8 @@ impl VisibleRow {
 pub struct Scrollbar {
     pub track: Bounds<Pixels>,
     pub thumb: Bounds<Pixels>,
+    /// Marks along the track: where Compare found differences (its navigation bar).
+    pub markers: Vec<(Bounds<Pixels>, birchpad_theme::Color)>,
 }
 
 /// The margins left of the text, as in Notepad++: line numbers, symbols (bookmarks), the change
@@ -436,6 +438,9 @@ impl EditorView {
         layout.carets = self.caret_bounds(&layout, &text);
         self.layout_symbols(&mut layout, &text, &settings, window);
         layout.vertical_bar = vertical_scrollbar(bounds, &layout, self.scroll_top);
+        if let Some(bar) = &mut layout.vertical_bar {
+            bar.markers = self.difference_markers(bar.track, layout.total_rows, &text, cx);
+        }
         if show_horizontal {
             layout.horizontal_bar = Some(horizontal_scrollbar(
                 &layout,
@@ -1016,6 +1021,20 @@ impl EditorView {
         ranges.extend(misspelled.iter().map(|range| (range.clone(), spell)));
         let marks = buffer.marks();
         let mut quads = Vec::new();
+        // The blank rows that keep compared documents side by side.
+        let padding = Paint::Fill(theme::paint(theme::editor().compare_padding));
+        for row in layout.rows.iter().filter(|row| row.row.padding) {
+            quads.push((
+                Bounds::from_corners(
+                    point(layout.text_bounds.left(), row.y),
+                    point(
+                        layout.text_bounds.right(),
+                        row.y + layout.metrics.line_height,
+                    ),
+                ),
+                padding,
+            ));
+        }
         // Compared lines are filled across the text area, under the other decorations.
         for (range, change) in marks.compare.overlapping(visible.clone()) {
             let color = match change {
@@ -1024,7 +1043,7 @@ impl EditorView {
                 birchpad_tools::compare::Change::Changed => theme::editor().compare_changed,
             };
             let paint = Paint::Fill(theme::paint(color));
-            for row in &layout.rows {
+            for row in layout.rows.iter().filter(|row| !row.row.padding) {
                 let start = row.row.range.start;
                 if start >= range.start && start < range.end {
                     quads.push((
@@ -1040,12 +1059,75 @@ impl EditorView {
                 }
             }
         }
+        // What differs within changed lines, over their color.
+        let inline = Paint::Fill(theme::paint(theme::editor().compare_inline));
+        let inline_ranges: Vec<ByteRange<usize>> = marks
+            .compare_inline
+            .overlapping(visible.clone())
+            .map(|(range, _)| range)
+            .collect();
+        for range in inline_ranges {
+            for bounds in self.range_bounds(layout, text, range) {
+                quads.push((bounds, inline));
+            }
+        }
         for (range, paint) in ranges {
             for bounds in self.range_bounds(layout, text, range) {
                 quads.push((bounds, paint));
             }
         }
         quads
+    }
+
+    /// The navigation bar of Compare: each difference of the document as a mark along the
+    /// vertical scrollbar's track, at its rows' place among all rows; none when it is turned
+    /// off (`compare.navigation-bar`) or nothing was compared.
+    fn difference_markers(
+        &mut self,
+        track: Bounds<Pixels>,
+        total_rows: usize,
+        text: &Rope,
+        cx: &App,
+    ) -> Vec<(Bounds<Pixels>, birchpad_theme::Color)> {
+        if !birchpad_ui::AppState::global(cx)
+            .settings
+            .compare
+            .navigation_bar
+        {
+            return Vec::new();
+        }
+        let differences: Vec<(ByteRange<usize>, birchpad_tools::compare::Change)> = self
+            .buffer
+            .read(cx)
+            .marks()
+            .compare
+            .overlapping(0..text.len())
+            .map(|(range, change)| (range, *change))
+            .collect();
+        let total = total_rows.max(1) as f32;
+        let inset = px(2.);
+        differences
+            .into_iter()
+            .map(|(range, change)| {
+                let first = self.display.row_of(text, range.start).0;
+                let last = self.display.row_of(text, range.end.saturating_sub(1)).0;
+                let top = track.top() + track.size.height * (first as f32 / total);
+                let height =
+                    (track.size.height * ((last + 1 - first.min(last)) as f32 / total)).max(px(2.));
+                let color = match change {
+                    birchpad_tools::compare::Change::Added => theme::editor().compare_added,
+                    birchpad_tools::compare::Change::Removed => theme::editor().compare_removed,
+                    birchpad_tools::compare::Change::Changed => theme::editor().compare_changed,
+                };
+                (
+                    Bounds::new(
+                        point(track.left() + inset, top),
+                        size(track.size.width - inset * 2., height),
+                    ),
+                    color.with_alpha(0xff),
+                )
+            })
+            .collect()
     }
 
     fn selection_bounds(&mut self, layout: &Layout, text: &Rope) -> Vec<Bounds<Pixels>> {
@@ -1056,7 +1138,7 @@ impl EditorView {
             if range.is_empty() || range.to() < visible.start || range.from() > visible.end {
                 continue;
             }
-            for row in &layout.rows {
+            for row in layout.rows.iter().filter(|row| !row.row.padding) {
                 if range.to() < row.row.range.start || range.from() > row.row.range.end {
                     continue;
                 }
@@ -1323,6 +1405,7 @@ fn vertical_scrollbar(
             point(track.left() + px(2.), top),
             size(SCROLLBAR - px(4.), height),
         ),
+        markers: Vec::new(),
     })
 }
 
@@ -1344,5 +1427,6 @@ fn horizontal_scrollbar(layout: &Layout, scroll_left: Pixels, scroll_width: Pixe
             point(left, track.top() + px(2.)),
             size(width, SCROLLBAR - px(4.)),
         ),
+        markers: Vec::new(),
     }
 }

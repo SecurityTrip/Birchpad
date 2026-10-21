@@ -307,7 +307,22 @@ macro_rules! fuzz_tests {
                 fuzz(stringify!($target));
             }
         )*
+
+        /// The targets that have a test here, to check that none is left out.
+        const TESTED: &[&str] = &[$(stringify!($target)),*];
     };
+}
+
+#[test]
+fn every_target_runs_over_its_seeds() {
+    let mut targets: Vec<&str> = TARGETS.iter().map(|(name, _)| *name).collect();
+    let mut tested = TESTED.to_vec();
+    targets.sort_unstable();
+    tested.sort_unstable();
+    assert_eq!(
+        tested, targets,
+        "a target without its test, or a test without its target"
+    );
 }
 
 fuzz_tests!(
@@ -328,8 +343,12 @@ fuzz_tests!(
     instance_message,
     manifest,
     plugin_manifest,
+    catalog,
     json,
+    json_tree,
     xml,
+    xpath,
+    xml_schema,
     hex_dump,
     spell_dictionary,
     search_query,

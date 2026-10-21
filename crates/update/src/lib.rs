@@ -8,6 +8,7 @@
 //!
 //! [`check`] never touches the network when `updates.mode` is `off`.
 
+pub mod catalog;
 pub mod component;
 pub mod install;
 mod keys;
@@ -331,10 +332,16 @@ mod stall {
         }
 
         fn await_input(&mut self, timeout: NextTimeout) -> Result<bool, ureq::Error> {
+            // The rest of the timeout as it was: ureq 3.5 adds per-read and per-write limits.
+            #[allow(
+                clippy::needless_update,
+                reason = "nothing is left to copy before ureq 3.5"
+            )]
             let timeout = if *timeout.after > self.stall {
                 NextTimeout {
                     after: self.stall.into(),
                     reason: Timeout::RecvBody,
+                    ..timeout
                 }
             } else {
                 timeout

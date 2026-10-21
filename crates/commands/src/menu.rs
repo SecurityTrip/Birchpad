@@ -810,7 +810,10 @@ pub fn main_menu() -> Vec<Menu> {
             cmd("settings.edit-context-menu"),
             cmd("settings.default-app"),
             Submenu(Menu::new("Theme", vec![Dynamic(Placeholder::Themes)])),
-            Submenu(Menu::new("Import", vec![cmd("settings.import-theme")])),
+            Submenu(Menu::new(
+                "Import",
+                vec![cmd("settings.import-plugins"), cmd("settings.import-theme")],
+            )),
         ],
     );
 
@@ -820,10 +823,17 @@ pub fn main_menu() -> Vec<Menu> {
             Submenu(Menu::new(
                 "JSON Viewer",
                 vec![
+                    cmd("panel.json-viewer"),
+                    Separator,
                     cmd("json.format"),
                     cmd("json.minify"),
+                    cmd("json.sort-keys"),
                     Separator,
                     cmd("json.validate"),
+                    Separator,
+                    cmd("json.copy-value"),
+                    cmd("json.copy-key"),
+                    cmd("json.copy-path"),
                 ],
             )),
             Submenu(Menu::new(
@@ -833,16 +843,32 @@ pub fn main_menu() -> Vec<Menu> {
                     cmd("xml.linearize"),
                     Separator,
                     cmd("xml.check"),
+                    cmd("xml.validate"),
+                    cmd("xml.xpath"),
+                    Separator,
+                    cmd("xml.escape"),
+                    cmd("xml.unescape"),
+                    Separator,
+                    cmd("xml.tag-auto-close"),
                 ],
             )),
             Submenu(Menu::new(
                 "Hex Editor",
-                vec![cmd("hex.view"), cmd("hex.apply")],
+                vec![
+                    cmd("hex.editor"),
+                    cmd("hex.find"),
+                    Separator,
+                    cmd("hex.view"),
+                    cmd("hex.apply"),
+                ],
             )),
             Submenu(Menu::new(
                 "Compare",
                 vec![
                     cmd("compare.compare"),
+                    cmd("compare.with-saved"),
+                    cmd("compare.with-clipboard"),
+                    cmd("compare.with-git"),
                     cmd("compare.clear"),
                     Separator,
                     cmd("compare.previous"),
@@ -866,6 +892,7 @@ pub fn main_menu() -> Vec<Menu> {
                         "Language",
                         vec![Dynamic(Placeholder::SpellLanguages)],
                     )),
+                    cmd("spell.download-languages"),
                     cmd("spell.open-dictionaries-folder"),
                 ],
             )),

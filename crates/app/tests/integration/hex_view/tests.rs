@@ -91,7 +91,7 @@ fn refuses_what_is_not_a_hex_view(cx: &mut TestAppContext) {
     let (workspace, cx) = open_workspace(cx);
     type_text(&workspace, "text", cx);
     let error = run(&workspace, Invocation::new("hex.apply"), cx).unwrap_err();
-    assert!(error.to_string().contains("not a hex view"), "{error}");
+    assert!(error.to_string().contains("not a hex dump"), "{error}");
 
     run(&workspace, Invocation::new("hex.view"), cx).unwrap();
     set_text(&workspace, "0 4G", cx);

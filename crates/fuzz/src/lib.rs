@@ -45,8 +45,12 @@ pub const TARGETS: &[(&str, Check)] = &[
     ("instance_message", instance_message),
     ("manifest", manifest),
     ("plugin_manifest", plugin_manifest),
+    ("catalog", catalog),
     ("json", json),
+    ("json_tree", json_tree),
     ("xml", xml),
+    ("xpath", xpath),
+    ("xml_schema", xml_schema),
     ("hex_dump", hex_dump),
     ("spell_dictionary", spell_dictionary),
     ("search_query", search_query),
@@ -575,6 +579,123 @@ pub fn json(data: &[u8]) -> bool {
     true
 }
 
+/// The online catalog of plugins and dictionaries: one that reads names only https files of a
+/// size Birchpad downloads, with a SHA-256 each, and plugins and languages once.
+pub fn catalog(data: &[u8]) -> bool {
+    use birchpad_update::catalog::{MAX_FILE, parse};
+    let Ok(catalog) = parse(data) else {
+        return false;
+    };
+    let files = catalog.plugins.iter().map(|plugin| &plugin.file).chain(
+        catalog
+            .dictionaries
+            .iter()
+            .flat_map(|dictionary| [&dictionary.aff, &dictionary.dic]),
+    );
+    for file in files {
+        assert!(file.url.starts_with("https://"));
+        assert!(file.size > 0 && file.size <= MAX_FILE);
+        assert_eq!(file.sha256.len(), 64);
+    }
+    let mut ids: Vec<&str> = catalog
+        .plugins
+        .iter()
+        .map(|plugin| plugin.id.as_str())
+        .collect();
+    ids.sort_unstable();
+    ids.dedup();
+    assert_eq!(ids.len(), catalog.plugins.len());
+    true
+}
+
+/// JSON read as JSON Viewer's tree: a text is a tree exactly when it is JSON; every value lies
+/// within its parent; the path of a value finds a value of that path; and the text with its
+/// keys sorted is JSON with the same values, which sorting again leaves as it is.
+pub fn json_tree(data: &[u8]) -> bool {
+    use birchpad_tools::json;
+    use birchpad_tools::json_tree::{self, JsonTree};
+    let Ok(text) = std::str::from_utf8(data) else {
+        return false;
+    };
+    let layout = birchpad_tools::Layout::default();
+    let Ok(tree) = JsonTree::parse(text) else {
+        assert!(json::validate(text).is_err());
+        assert!(json_tree::sort_keys(text, layout).is_err());
+        return false;
+    };
+    assert!(json::validate(text).is_ok());
+    for (index, node) in tree.nodes.iter().enumerate() {
+        assert!(node.range.start < node.range.end && node.range.end <= text.len());
+        if let Some(parent) = node.parent {
+            let outer = &tree.nodes[parent].range;
+            assert!(outer.start < node.range.start && node.range.end < outer.end);
+            assert!(tree.nodes[parent].children.contains(&index));
+        }
+        if index < 200 {
+            let path = tree.path(index);
+            let found = tree.find(&path).unwrap();
+            assert_eq!(tree.path(found), path);
+        }
+    }
+    let sorted = json_tree::sort_keys(text, layout).unwrap();
+    let again = JsonTree::parse(&sorted).unwrap();
+    assert_eq!(again.nodes.len(), tree.nodes.len());
+    assert_eq!(json_tree::sort_keys(&sorted, layout).unwrap(), sorted);
+    true
+}
+
+/// An XPath expression over a document: the bytes up to the first NUL are the document, the
+/// rest the expression. It is evaluated or refused; the nodes it gives are in the document,
+/// in order.
+pub fn xpath(data: &[u8]) -> bool {
+    use birchpad_tools::xpath::{XPathResult, evaluate};
+    let Ok(text) = std::str::from_utf8(data) else {
+        return false;
+    };
+    let (document, expression) = text.split_once('\0').unwrap_or((text, "/*"));
+    match evaluate(document, expression) {
+        Ok(XPathResult::Nodes(nodes)) => {
+            for node in &nodes {
+                assert!(node.range.start <= node.range.end && node.range.end <= document.len());
+                assert!(document.is_char_boundary(node.range.start));
+                assert!(document.is_char_boundary(node.range.end));
+            }
+            true
+        }
+        Ok(XPathResult::Value(_)) => true,
+        Err(_) => false,
+    }
+}
+
+/// A document validated against a DTD or an XML Schema: the bytes up to the first NUL are the
+/// document, the rest the external DTD, or the schema when it is one. Validation ends with a
+/// list of problems in the document, or refuses what is not XML.
+pub fn xml_schema(data: &[u8]) -> bool {
+    use birchpad_tools::xml_schema::{doctype, schema_location, validate_dtd, validate_xsd};
+    let Ok(text) = std::str::from_utf8(data) else {
+        return false;
+    };
+    let (document, other) = text.split_once('\0').unwrap_or((text, ""));
+    let _ = schema_location(document);
+    let result = if other.contains("schema") {
+        validate_xsd(document, other)
+    } else if doctype(document).is_some() {
+        validate_dtd(document, (!other.is_empty()).then_some(other))
+    } else {
+        return false;
+    };
+    match result {
+        Ok(problems) => {
+            assert!(problems.len() <= birchpad_tools::xml_schema::MAX_PROBLEMS);
+            for problem in &problems {
+                assert!(problem.offset <= document.len());
+            }
+            true
+        }
+        Err(_) => false,
+    }
+}
+
 /// A document checked, pretty printed and linearized as XML: what is well formed stays well
 /// formed both ways, and pretty printing twice changes nothing more.
 pub fn xml(data: &[u8]) -> bool {
@@ -603,6 +724,11 @@ pub fn hex_dump(data: &[u8]) -> bool {
     let Ok(text) = std::str::from_utf8(data) else {
         return false;
     };
+    // The same text as a pattern of View in HEX's Find: two digits a byte.
+    if let Ok(pattern) = hex::parse_pattern(text) {
+        let digits = text.chars().filter(|c| !c.is_whitespace()).count();
+        assert_eq!(pattern.len() * 2, digits);
+    }
     let Ok(bytes) = hex::parse(text) else {
         return false;
     };
@@ -717,10 +843,11 @@ pub fn search_query(data: &[u8]) -> bool {
 /// The calls a plugin makes into the host, with any arguments: the text up to the first NUL
 /// byte is the document, each byte after it chooses a call and the bytes after it its
 /// arguments. Every call is done or refused; the document stays text; what the calls did,
-/// applied to the document as it was, gives the text they left.
+/// applied to the document as it was, gives the text they left; a setting set reads back;
+/// files stay out of reach of a plugin the user did not allow them.
 pub fn plugin_calls(data: &[u8]) -> bool {
     use birchpad_core::{Rope, Selection};
-    use birchpad_plugin::{DocumentState, Session};
+    use birchpad_plugin::{Control, DocumentState, Session};
 
     let (document, calls) = match data.iter().position(|&byte| byte == 0) {
         Some(at) => (&data[..at], &data[at + 1..]),
@@ -747,7 +874,7 @@ pub fn plugin_calls(data: &[u8]) -> bool {
     };
     let mut done = 0;
     while let Some(call) = bytes.next() {
-        let accepted = match call % 9 {
+        let accepted = match call % 13 {
             0 => {
                 let (start, end) = (number(&mut bytes), number(&mut bytes));
                 session.text_range(start, end).is_ok()
@@ -781,6 +908,38 @@ pub fn plugin_calls(data: &[u8]) -> bool {
             7 => {
                 let lines = vec![word(&mut bytes), word(&mut bytes)];
                 session.show_panel(&word(&mut bytes), lines);
+                true
+            }
+            8 => {
+                let (key, value) = (word(&mut bytes), word(&mut bytes));
+                let set = session.set_setting(&key, &value).is_ok();
+                if set {
+                    assert_eq!(session.setting(&key).as_deref(), Some(value.as_str()));
+                }
+                set
+            }
+            9 => {
+                let controls = vec![
+                    Control::Button {
+                        id: word(&mut bytes),
+                        title: word(&mut bytes),
+                    },
+                    Control::TextField {
+                        id: word(&mut bytes),
+                        value: word(&mut bytes),
+                    },
+                    Control::Label(word(&mut bytes)),
+                ];
+                session.show_controls(&word(&mut bytes), controls).is_ok()
+            }
+            10 => session
+                .start_task(&word(&mut bytes), &word(&mut bytes))
+                .is_ok(),
+            11 => {
+                let path = word(&mut bytes);
+                assert!(session.read_file(&path).is_err(), "{path:?}");
+                assert!(session.write_file(&path, "x").is_err(), "{path:?}");
+                assert!(session.open_file(&path).is_err(), "{path:?}");
                 true
             }
             _ => {

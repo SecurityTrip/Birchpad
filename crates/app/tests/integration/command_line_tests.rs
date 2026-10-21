@@ -190,3 +190,24 @@ fn a_message_for_plugins_is_accepted(cx: &mut TestAppContext) {
         0
     );
 }
+
+#[gpui_kit::test]
+fn help_shows_the_options(cx: &mut TestAppContext) {
+    use gpui_kit::component::WindowExt as _;
+    let dir = tempfile::tempdir().unwrap();
+    let (workspace, cx) = open_workspace(cx);
+    assert!(!cx.update(|window, cx| window.has_active_dialog(cx)));
+    open(&workspace, dir.path(), &["--help"], cx);
+    assert!(cx.update(|window, cx| window.has_active_dialog(cx)));
+}
+
+#[test]
+fn the_interface_language_for_this_run() {
+    use birchpad::i18n::for_this_run;
+    assert_eq!(for_this_run("ru"), "ru");
+    assert_eq!(for_this_run("de-AT"), "de");
+    assert_eq!(for_this_run("RU"), "ru");
+    // A translation Birchpad does not have: English, as Notepad++ does.
+    assert_eq!(for_this_run("fr"), "en");
+    assert_eq!(for_this_run("-"), "en");
+}

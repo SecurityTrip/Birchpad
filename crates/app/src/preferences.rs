@@ -46,6 +46,9 @@ pub enum Kind {
     /// "Edit with Birchpad" in the Windows Explorer's menu of files, for the user: the
     /// registry's, not a setting.
     ExplorerMenu,
+    /// Preferences > Plugins: the settings each plugin declares, kept in the plugins folder
+    /// (ADR 0046), not in `settings.toml`.
+    PluginSettings,
 }
 
 /// A setting the dialog shows.
@@ -76,6 +79,8 @@ const OFF_ON: &[(&str, &str)] = &[("off", "Off"), ("margin", "In the margin")];
 
 /// The key of Preferences > Files > Edit with Birchpad, which is no setting.
 pub const EXPLORER_MENU: &str = "explorer-menu";
+/// The key of Preferences > Plugins, whose settings are the plugins' own.
+pub const PLUGIN_SETTINGS: &str = "plugins.settings";
 
 /// Every setting the dialog shows, by section. View > Word Wrap and Show Symbol stay in the
 /// View menu, which remembers them.
@@ -601,6 +606,119 @@ pub const ENTRIES: &[Entry] = &[
         Kind::Number { min: 1, max: 3600 },
     ),
     entry(
+        "Spell Checker",
+        "spell.languages",
+        "Languages checked together",
+        Kind::Text,
+    ),
+    entry(
+        "Spell Checker",
+        "spell.check",
+        "In code, check",
+        Kind::Choice(&[
+            ("comments-and-strings", "Comments and strings"),
+            ("comments", "Comments"),
+            ("strings", "Strings"),
+            ("everything", "Everything"),
+        ]),
+    ),
+    entry(
+        "Spell Checker",
+        "spell.ignore-numbers",
+        "Ignore words with digits",
+        Kind::Bool,
+    ),
+    entry(
+        "Spell Checker",
+        "spell.ignore-all-caps",
+        "Ignore words in capitals",
+        Kind::Bool,
+    ),
+    entry(
+        "Spell Checker",
+        "spell.ignore-capitals-inside",
+        "Ignore words with a capital inside",
+        Kind::Bool,
+    ),
+    entry(
+        "Spell Checker",
+        "spell.ignore-capital-start",
+        "Ignore words that start with a capital",
+        Kind::Bool,
+    ),
+    entry(
+        "Spell Checker",
+        "spell.ignore-underscores",
+        "Ignore words with underscores",
+        Kind::Bool,
+    ),
+    entry(
+        "Spell Checker",
+        "spell.ignore-one-letter",
+        "Ignore single letters",
+        Kind::Bool,
+    ),
+    entry(
+        "Spell Checker",
+        "spell.ignore-addresses",
+        "Ignore addresses",
+        Kind::Bool,
+    ),
+    entry(
+        "Hex Editor",
+        "hex.columns",
+        "Bytes in a row",
+        Kind::Number { min: 1, max: 64 },
+    ),
+    entry(
+        "Hex Editor",
+        "hex.group",
+        "Bytes in a group",
+        Kind::Number { min: 1, max: 64 },
+    ),
+    entry(
+        "Hex Editor",
+        "hex.uppercase",
+        "Hexadecimal digits in capitals",
+        Kind::Bool,
+    ),
+    entry(
+        "Compare",
+        "compare.align",
+        "Align the lines both documents have",
+        Kind::Bool,
+    ),
+    entry(
+        "Compare",
+        "compare.inline",
+        "Mark what differs within a changed line",
+        Kind::Bool,
+    ),
+    entry(
+        "Compare",
+        "compare.navigation-bar",
+        "Show the differences along the scrollbar",
+        Kind::Bool,
+    ),
+    entry(
+        "Compare",
+        "compare.recompare",
+        "Compare again after changes",
+        Kind::Bool,
+    ),
+    entry(
+        "Plugins",
+        PLUGIN_SETTINGS,
+        "Settings of the plugins",
+        Kind::PluginSettings,
+    ),
+    entry(
+        "Updates",
+        "network.catalog",
+        "Online list of plugins and dictionaries",
+        Kind::Text,
+    ),
+    entry(
         "Updates",
         "updates.mode",
         "Updates",
@@ -687,7 +805,11 @@ pub fn parse_field(kind: Kind, text: &str) -> Result<Option<Value>> {
             let text = text.trim();
             Ok((!text.is_empty()).then(|| Value::String(text.to_owned())))
         }
-        Kind::Bool | Kind::Choice(_) | Kind::LanguageTabs | Kind::ExplorerMenu => {
+        Kind::Bool
+        | Kind::Choice(_)
+        | Kind::LanguageTabs
+        | Kind::ExplorerMenu
+        | Kind::PluginSettings => {
             bail!("{}", t!("preferences.this-setting-has-no-text-field"))
         }
     }
@@ -745,6 +867,10 @@ pub struct Preferences {
     language_input: Entity<InputState>,
     language_width: Entity<InputState>,
     language_spaces: bool,
+    /// Preferences > Plugins: the fields of the plugins' settings, by plugin and key.
+    pub plugin_inputs: HashMap<(String, String), Entity<InputState>>,
+    /// What went wrong with a plugin's setting, by plugin and key.
+    pub plugin_errors: HashMap<(String, String), String>,
 }
 
 /// Opens the dialog.
@@ -797,7 +923,11 @@ impl Preferences {
         for entry in ENTRIES {
             if matches!(
                 entry.kind,
-                Kind::Bool | Kind::Choice(_) | Kind::LanguageTabs | Kind::ExplorerMenu
+                Kind::Bool
+                    | Kind::Choice(_)
+                    | Kind::LanguageTabs
+                    | Kind::ExplorerMenu
+                    | Kind::PluginSettings
             ) {
                 continue;
             }
@@ -821,7 +951,128 @@ impl Preferences {
                 .new(|cx| InputState::new(window, cx).placeholder(t!("preferences.language-id"))),
             language_width: cx.new(|cx| InputState::new(window, cx).default_value("4")),
             language_spaces: false,
+            plugin_inputs: HashMap::new(),
+            plugin_errors: HashMap::new(),
         }
+    }
+
+    /// Sets the plugin `plugin`'s setting `key`, or shows why not.
+    pub fn set_plugin_setting(
+        &mut self,
+        plugin: &str,
+        key: &str,
+        value: &str,
+        cx: &mut Context<Self>,
+    ) {
+        let field = (plugin.to_owned(), key.to_owned());
+        match crate::extensions::plugins::set_setting(plugin, key, value, cx) {
+            Ok(()) => {
+                self.plugin_errors.remove(&field);
+            }
+            Err(error) => {
+                self.plugin_errors.insert(field, format!("{error:#}"));
+            }
+        }
+        cx.notify();
+    }
+
+    /// Makes the fields of the plugins' text and number settings that are not there yet.
+    fn make_plugin_inputs(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        for (plugin, spec, value) in plugin_settings(cx) {
+            if spec.kind == birchpad_plugin::SettingKind::Bool {
+                continue;
+            }
+            let field = (plugin, spec.key);
+            if self.plugin_inputs.contains_key(&field) {
+                continue;
+            }
+            let input = cx.new(|cx| InputState::new(window, cx).default_value(value));
+            let (plugin, key) = field.clone();
+            cx.subscribe(&input, move |this, input, event: &InputEvent, cx| {
+                if matches!(event, InputEvent::Change) {
+                    let value = input.read(cx).value().to_string();
+                    this.set_plugin_setting(&plugin, &key, value.trim(), cx);
+                }
+            })
+            .detach();
+            self.plugin_inputs.insert(field, input);
+        }
+    }
+
+    /// Preferences > Plugins: each plugin's name, then its settings.
+    fn render_plugin_settings(&self, cx: &mut Context<Self>) -> AnyElement {
+        let colors = ui();
+        let mut rows: Vec<AnyElement> = Vec::new();
+        let mut last_plugin: Option<String> = None;
+        for (index, (plugin, spec, value)) in plugin_settings(cx).into_iter().enumerate() {
+            if last_plugin.as_ref() != Some(&plugin) {
+                rows.push(
+                    div()
+                        .font_weight(gpui_kit::FontWeight::SEMIBOLD)
+                        .child(crate::extensions::plugins::plugin_name(&plugin, cx))
+                        .into_any_element(),
+                );
+                last_plugin = Some(plugin.clone());
+            }
+            let selector = format!("plugin-setting-{plugin}-{}", spec.key);
+            let field = (plugin, spec.key);
+            let control = match spec.kind {
+                birchpad_plugin::SettingKind::Bool => {
+                    let checked = value == "true";
+                    let (plugin, key) = field.clone();
+                    Checkbox::new(("plugin-setting", index))
+                        .debug_selector(move || selector.clone())
+                        .label(spec.title)
+                        .checked(checked)
+                        .on_click(cx.listener(move |this, _, _, cx| {
+                            let value = if checked { "false" } else { "true" };
+                            this.set_plugin_setting(&plugin, &key, value, cx);
+                        }))
+                        .into_any_element()
+                }
+                birchpad_plugin::SettingKind::Number | birchpad_plugin::SettingKind::Text => div()
+                    .flex()
+                    .flex_row()
+                    .items_center()
+                    .gap_3()
+                    .child(div().w(px(200.)).child(spec.title))
+                    .child(
+                        div()
+                            .w(px(200.))
+                            .debug_selector(move || selector.clone())
+                            .children(self.plugin_inputs.get(&field).map(Input::new)),
+                    )
+                    .into_any_element(),
+            };
+            rows.push(
+                div()
+                    .flex()
+                    .flex_col()
+                    .gap_1()
+                    .child(control)
+                    .children(self.plugin_errors.get(&field).map(|error| {
+                        div()
+                            .text_sm()
+                            .text_color(paint(colors.error))
+                            .child(error.clone())
+                    }))
+                    .into_any_element(),
+            );
+        }
+        div()
+            .debug_selector(|| format!("preferences-{PLUGIN_SETTINGS}"))
+            .flex()
+            .flex_col()
+            .gap_2()
+            .when(rows.is_empty(), |list| {
+                list.child(
+                    div()
+                        .text_color(paint(colors.muted))
+                        .child(t!("preferences.no-plugin-has-settings")),
+                )
+            })
+            .children(rows)
+            .into_any_element()
     }
 
     /// Sets `key`, or shows why not.
@@ -1006,6 +1257,26 @@ impl Preferences {
     }
 }
 
+/// The settings the installed plugins declare, in the order of the plugins and of their
+/// manifests: the plugin's id, the setting, and its value now.
+pub fn plugin_settings(cx: &App) -> Vec<(String, birchpad_plugin::SettingSpec, String)> {
+    let Some(plugins) = cx.try_global::<crate::extensions::plugins::Plugins>() else {
+        return Vec::new();
+    };
+    let mut found = Vec::new();
+    for entry in &plugins.entries {
+        if entry.installed.manifest.settings.is_empty() {
+            continue;
+        }
+        let grants = crate::extensions::plugins::grants(entry.id(), cx);
+        for spec in &entry.installed.manifest.settings {
+            let value = grants.settings.get(&spec.key).cloned().unwrap_or_default();
+            found.push((entry.id().to_owned(), spec.clone(), value));
+        }
+    }
+    found
+}
+
 /// The id of a language as typed: its id or its name, without regard to case.
 pub fn language_id(typed: &str) -> Result<String> {
     let typed = typed.trim();
@@ -1027,7 +1298,7 @@ fn label(text: &str) -> String {
 }
 
 impl Render for Preferences {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let colors = ui();
         let sections = sections();
         let state = AppState::global(cx);
@@ -1040,6 +1311,10 @@ impl Render for Preferences {
         let section = sections[self.section.min(sections.len() - 1)];
         let mut language_tabs = (section == "Language")
             .then(|| self.render_language_tabs(locked_keys.contains(&"languages"), cx));
+        let mut plugin_settings = (section == "Plugins").then(|| {
+            self.make_plugin_inputs(window, cx);
+            self.render_plugin_settings(cx)
+        });
         let list = sections.iter().enumerate().map(|(index, name)| {
             div()
                 .id(("preferences-section", index))
@@ -1113,6 +1388,9 @@ impl Render for Preferences {
                             .into_any_element()
                     }
                     Kind::LanguageTabs => language_tabs
+                        .take()
+                        .unwrap_or_else(|| div().into_any_element()),
+                    Kind::PluginSettings => plugin_settings
                         .take()
                         .unwrap_or_else(|| div().into_any_element()),
                     Kind::Number { .. } | Kind::Numbers { .. } | Kind::Text => div()

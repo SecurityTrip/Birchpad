@@ -73,6 +73,8 @@ pub struct DocumentMarks {
     pub incremental: RangeSet<()>,
     /// The lines Plugins > Compare found different, whole with their line breaks.
     pub compare: RangeSet<birchpad_tools::compare::Change>,
+    /// What differs within the lines Compare found changed.
+    pub compare_inline: RangeSet<()>,
 }
 
 impl DocumentMarks {
@@ -97,6 +99,7 @@ impl DocumentMarks {
         self.found.map(changes);
         self.incremental.map(changes);
         self.compare.map(changes);
+        self.compare_inline.map(changes);
     }
 }
 
