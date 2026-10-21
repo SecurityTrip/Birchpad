@@ -1,10 +1,11 @@
 //! Spell checking with Hunspell dictionaries (`.aff` and `.dic`), as Notepad++'s DSpellCheck
 //! plugin does, through `spellbook`.
 //!
-//! Only words are checked: runs of letters, with apostrophes inside. Words with digits or
-//! underscores, words in capitals (acronyms), words with a capital inside (`camelCase`), single
-//! letters, and anything in an address (`https://...`, `name@host`) are left alone, as they are
-//! mostly code and names.
+//! Only words are checked: runs of letters, with apostrophes inside. By default words with
+//! digits or underscores, words in capitals (acronyms), words with a capital inside
+//! (`camelCase`), single letters, and anything in an address (`https://...`, `name@host`) are
+//! left alone, as they are mostly code and names; [`Rules`] says which of these are. A speller
+//! may hold several dictionaries: a word is right if one of them has it.
 
 use std::collections::HashSet;
 use std::ops::Range;
@@ -22,11 +23,47 @@ pub enum SpellError {
     Parse(String),
 }
 
-/// A dictionary and the words the user added to it.
+/// Which words are left alone, as DSpellCheck's options say.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Rules {
+    pub ignore_numbers: bool,
+    pub ignore_all_caps: bool,
+    pub ignore_capitals_inside: bool,
+    pub ignore_capital_start: bool,
+    pub ignore_underscores: bool,
+    pub ignore_one_letter: bool,
+    pub ignore_addresses: bool,
+}
+
+impl Default for Rules {
+    fn default() -> Self {
+        Self {
+            ignore_numbers: true,
+            ignore_all_caps: true,
+            ignore_capitals_inside: true,
+            ignore_capital_start: false,
+            ignore_underscores: true,
+            ignore_one_letter: true,
+            ignore_addresses: true,
+        }
+    }
+}
+
+/// Dictionaries and the words the user added to them.
 pub struct Speller {
-    dictionary: spellbook::Dictionary,
+    dictionaries: Vec<spellbook::Dictionary>,
     /// Words added by the user, checked as they are written and in lower case.
     personal: HashSet<String>,
+    rules: Rules,
+}
+
+fn read_file(path: &Path) -> Result<String, SpellError> {
+    std::fs::read(path)
+        .map(|bytes| String::from_utf8_lossy(&bytes).into_owned())
+        .map_err(|error| SpellError::Read {
+            path: path.to_owned(),
+            error,
+        })
 }
 
 impl Speller {
@@ -35,36 +72,68 @@ impl Speller {
         let dictionary = spellbook::Dictionary::new(aff, dic)
             .map_err(|error| SpellError::Parse(error.to_string()))?;
         Ok(Self {
-            dictionary,
+            dictionaries: vec![dictionary],
             personal: HashSet::new(),
+            rules: Rules::default(),
         })
     }
 
     /// A speller from `<name>.aff` and `<name>.dic`.
     pub fn open(aff: &Path, dic: &Path) -> Result<Self, SpellError> {
-        let read = |path: &Path| {
-            std::fs::read(path)
-                .map(|bytes| String::from_utf8_lossy(&bytes).into_owned())
-                .map_err(|error| SpellError::Read {
-                    path: path.to_owned(),
-                    error,
-                })
-        };
-        Self::new(&read(aff)?, &read(dic)?)
+        Self::new(&read_file(aff)?, &read_file(dic)?)
     }
 
-    /// Whether `word` is spelled right.
+    /// Checks with another dictionary too, from the text of its `.aff` and `.dic` files.
+    pub fn add_dictionary(&mut self, aff: &str, dic: &str) -> Result<(), SpellError> {
+        let dictionary = spellbook::Dictionary::new(aff, dic)
+            .map_err(|error| SpellError::Parse(error.to_string()))?;
+        self.dictionaries.push(dictionary);
+        Ok(())
+    }
+
+    /// Checks with the dictionary of `<name>.aff` and `<name>.dic` too.
+    pub fn open_dictionary(&mut self, aff: &Path, dic: &Path) -> Result<(), SpellError> {
+        self.add_dictionary(&read_file(aff)?, &read_file(dic)?)
+    }
+
+    /// How many dictionaries it checks with.
+    pub fn dictionaries(&self) -> usize {
+        self.dictionaries.len()
+    }
+
+    /// Leaves the words `rules` says alone.
+    pub fn set_rules(&mut self, rules: Rules) {
+        self.rules = rules;
+    }
+
+    pub fn rules(&self) -> Rules {
+        self.rules
+    }
+
+    /// Whether `word` is spelled right: added by the user, or in one of the dictionaries.
     pub fn check(&self, word: &str) -> bool {
         self.personal.contains(word)
             || self.personal.contains(&word.to_lowercase())
-            || self.dictionary.check(word)
+            || self
+                .dictionaries
+                .iter()
+                .any(|dictionary| dictionary.check(word))
     }
 
-    /// Words `word` may have been meant as, the likeliest first.
+    /// Words `word` may have been meant as, the likeliest first: the first dictionary's, then
+    /// the others' not given yet.
     pub fn suggest(&self, word: &str) -> Vec<String> {
-        let mut out = Vec::new();
-        self.dictionary.suggest(word, &mut out);
-        out
+        let mut all: Vec<String> = Vec::new();
+        for dictionary in &self.dictionaries {
+            let mut out = Vec::new();
+            dictionary.suggest(word, &mut out);
+            for suggestion in out {
+                if !all.contains(&suggestion) {
+                    all.push(suggestion);
+                }
+            }
+        }
+        all
     }
 
     /// Takes `word` as spelled right from now on.
@@ -75,16 +144,21 @@ impl Speller {
         }
     }
 
-    /// The words of `text` that are spelled wrong, as byte ranges.
+    /// The words of `text` that are spelled wrong, as byte ranges, by its rules.
     pub fn misspelled(&self, text: &str) -> Vec<Range<usize>> {
-        words(text)
+        words_by(text, self.rules)
             .filter(|range| !self.check(&text[range.clone()]))
             .collect()
     }
 }
 
-/// The words of `text` worth checking, as byte ranges.
+/// The words of `text` worth checking by the default rules, as byte ranges.
 pub fn words(text: &str) -> impl Iterator<Item = Range<usize>> + '_ {
+    words_by(text, Rules::default())
+}
+
+/// The words of `text` worth checking by `rules`, as byte ranges.
+pub fn words_by(text: &str, rules: Rules) -> impl Iterator<Item = Range<usize>> + '_ {
     let mut at = 0;
     std::iter::from_fn(move || {
         while at < text.len() {
@@ -115,7 +189,7 @@ pub fn words(text: &str) -> impl Iterator<Item = Range<usize>> + '_ {
                 }
             }
             at = start + end;
-            if worth_checking(text, start..at) {
+            if worth_checking(text, start..at, rules) {
                 return Some(start..at);
             }
         }
@@ -128,17 +202,31 @@ fn is_word_char(c: char) -> bool {
     c.is_alphanumeric() || c == '_' || ('\u{0300}'..='\u{036F}').contains(&c)
 }
 
-fn worth_checking(text: &str, range: Range<usize>) -> bool {
+fn worth_checking(text: &str, range: Range<usize>, rules: Rules) -> bool {
     let word = &text[range.clone()];
-    let letters = word.chars().filter(|c| c.is_alphabetic()).count();
-    if letters < 2 || word.chars().any(|c| c.is_numeric() || c == '_') {
+    let letters: Vec<char> = word.chars().filter(|c| c.is_alphabetic()).collect();
+    if letters.is_empty() || (rules.ignore_one_letter && letters.len() < 2) {
         return false;
     }
-    let mut chars = word.chars().filter(|c| c.is_alphabetic());
-    let rest_upper = chars.next().is_some() && chars.clone().any(char::is_uppercase);
-    if rest_upper {
-        // ALLCAPS or camelCase.
+    if rules.ignore_numbers && word.chars().any(char::is_numeric) {
         return false;
+    }
+    if rules.ignore_underscores && word.contains('_') {
+        return false;
+    }
+    let all_caps = letters.len() > 1 && letters.iter().all(|c| !c.is_lowercase());
+    if rules.ignore_all_caps && all_caps {
+        return false;
+    }
+    let capital_inside = letters[1..].iter().any(|c| c.is_uppercase()) && !all_caps;
+    if rules.ignore_capitals_inside && capital_inside {
+        return false;
+    }
+    if rules.ignore_capital_start && letters[0].is_uppercase() {
+        return false;
+    }
+    if !rules.ignore_addresses {
+        return true;
     }
     // Part of an address: the run of non-blank text around it holds "://", "@" or "www.".
     let start = text[..range.start]

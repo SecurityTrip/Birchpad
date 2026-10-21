@@ -117,3 +117,91 @@ fn finds_dictionaries_in_folders() {
     // The system's folders are only places to look.
     let _ = system_folders();
 }
+
+fn found_by(text: &str, rules: Rules) -> Vec<&str> {
+    words_by(text, rules).map(|range| &text[range]).collect()
+}
+
+#[test]
+fn rules_say_which_words_are_left_alone() {
+    let text = "a Bob NASA camelCase snake_case word2 http://x.org/path me@host plain";
+    assert_eq!(found_by(text, Rules::default()), found(text));
+    assert_eq!(found_by(text, Rules::default()), ["Bob", "plain"]);
+    let none = Rules {
+        ignore_numbers: false,
+        ignore_all_caps: false,
+        ignore_capitals_inside: false,
+        ignore_capital_start: false,
+        ignore_underscores: false,
+        ignore_one_letter: false,
+        ignore_addresses: false,
+    };
+    assert_eq!(
+        found_by(text, none),
+        [
+            "a",
+            "Bob",
+            "NASA",
+            "camelCase",
+            "snake_case",
+            "word2",
+            "http",
+            "x",
+            "org",
+            "path",
+            "me",
+            "host",
+            "plain"
+        ]
+    );
+    let names = Rules {
+        ignore_capital_start: true,
+        ..Rules::default()
+    };
+    assert_eq!(found_by(text, names), ["plain"]);
+    // A word of digits alone is no word, whatever the rules.
+    assert!(found_by("123 4_5", none).is_empty());
+    assert!(found_by("", none).is_empty());
+}
+
+#[test]
+fn checks_with_several_dictionaries() {
+    let mut speller = speller();
+    assert_eq!(speller.dictionaries(), 1);
+    assert!(!speller.check("hund"));
+    speller
+        .add_dictionary("SET UTF-8\n", "2\nhund\nkatze\n")
+        .unwrap();
+    assert_eq!(speller.dictionaries(), 2);
+    assert!(speller.check("hund") && speller.check("walked"));
+    assert!(!speller.check("vogel"));
+    // Suggestions from both, the first dictionary's first, none twice.
+    let suggestions = speller.suggest("hunf");
+    assert!(suggestions.contains(&"hund".to_owned()), "{suggestions:?}");
+    let unique: std::collections::HashSet<_> = suggestions.iter().collect();
+    assert_eq!(unique.len(), suggestions.len());
+    // A dictionary that cannot be read is refused, the others kept.
+    let missing = Path::new("missing.aff");
+    assert!(speller.open_dictionary(missing, missing).is_err());
+    assert_eq!(speller.dictionaries(), 2);
+}
+
+#[test]
+fn the_speller_finds_by_its_rules() {
+    let mut speller = speller();
+    let text = "Cat wlak NASAA";
+    let wrong = |speller: &Speller| -> Vec<String> {
+        speller
+            .misspelled(text)
+            .into_iter()
+            .map(|range| text[range].to_owned())
+            .collect()
+    };
+    assert_eq!(wrong(&speller), ["wlak"]);
+    speller.set_rules(Rules {
+        ignore_all_caps: false,
+        ..Rules::default()
+    });
+    assert_eq!(speller.rules().ignore_all_caps, false);
+    assert_eq!(wrong(&speller), ["wlak", "NASAA"]);
+}

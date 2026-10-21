@@ -32,6 +32,71 @@ pub struct Settings {
     pub print: PrintSettings,
     pub compare: CompareSettings,
     pub hex: HexSettings,
+    pub spell: SpellSettings,
+}
+
+/// Plugins > Spell Checker, as DSpellCheck's settings.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, rename_all = "kebab-case")]
+pub struct SpellSettings {
+    /// Languages checked together (`en_US ru_RU`): a word is right if one of them has it.
+    /// Empty: the one chosen in Plugins > Spell Checker > Language.
+    pub languages: String,
+    /// What of a document with a language is checked.
+    pub check: SpellScope,
+    /// Words with digits are left alone.
+    pub ignore_numbers: bool,
+    /// Words in capitals (acronyms) are left alone.
+    pub ignore_all_caps: bool,
+    /// Words with a capital after their first letter (`camelCase`) are left alone.
+    pub ignore_capitals_inside: bool,
+    /// Words that start with a capital (names) are left alone.
+    pub ignore_capital_start: bool,
+    /// Words with underscores are left alone.
+    pub ignore_underscores: bool,
+    /// Single letters are left alone.
+    pub ignore_one_letter: bool,
+    /// Words in addresses (`https://...`, `name@host`) are left alone.
+    pub ignore_addresses: bool,
+}
+
+impl Default for SpellSettings {
+    fn default() -> Self {
+        Self {
+            languages: String::new(),
+            check: SpellScope::default(),
+            ignore_numbers: true,
+            ignore_all_caps: true,
+            ignore_capitals_inside: true,
+            ignore_capital_start: false,
+            ignore_underscores: true,
+            ignore_one_letter: true,
+            ignore_addresses: true,
+        }
+    }
+}
+
+impl SpellSettings {
+    /// The languages of `languages`, as written, separated by spaces or commas.
+    pub fn language_list(&self) -> Vec<String> {
+        self.languages
+            .split(|c: char| c.is_whitespace() || c == ',' || c == ';')
+            .filter(|language| !language.is_empty())
+            .map(str::to_owned)
+            .collect()
+    }
+}
+
+/// What of a document with a language the spell checker reads: its text by syntax style.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum SpellScope {
+    #[default]
+    CommentsAndStrings,
+    Comments,
+    Strings,
+    /// All of it, code too.
+    Everything,
 }
 
 /// Plugins > Hex Editor's view of a document's bytes.

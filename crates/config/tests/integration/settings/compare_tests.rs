@@ -50,3 +50,23 @@ fn hex_rows_stay_within_their_limits() {
         assert_eq!(hex.layout(), expected, "{columns} {group}");
     }
 }
+
+#[test]
+fn spell_settings_list_their_languages() {
+    let spell = SpellSettings::default();
+    assert!(spell.language_list().is_empty());
+    assert_eq!(spell.check, SpellScope::CommentsAndStrings);
+    assert!(spell.ignore_numbers && !spell.ignore_capital_start);
+    let several = SpellSettings {
+        languages: " en_US, ru_RU;de_DE  fr_FR,".into(),
+        ..SpellSettings::default()
+    };
+    assert_eq!(
+        several.language_list(),
+        ["en_US", "ru_RU", "de_DE", "fr_FR"]
+    );
+    for scope in ["comments-and-strings", "comments", "strings", "everything"] {
+        check_setting("spell.check", &toml::Value::String(scope.into())).unwrap();
+    }
+    assert!(check_setting("spell.check", &toml::Value::String("code".into())).is_err());
+}

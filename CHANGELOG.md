@@ -34,6 +34,10 @@ version's release notes from its section here.
   them there: two digits a byte, over the caret or before it (Insert), characters in the text
   column, the caret shared with the text. Find in HEX finds bytes or text in quotes.
   Preferences > Hex Editor sets the bytes in a row, the groups and capitals.
+- Plugins > Spell Checker checks US English out of the box, with a dictionary made from SCOWL.
+  Preferences > Spell Checker checks several languages together, chooses which words are left
+  alone (with digits, in capitals, with a capital inside or at the start, with underscores,
+  single letters, addresses) and what of code is checked (comments, strings, both, or all).
 
 ### Changed
 

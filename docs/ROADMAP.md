@@ -636,8 +636,9 @@ Closing Phase 6.
       (overwrite, insert, the caret shared with the text), columns and grouping, Find in hex
       ([ADR 0049](adr/0049-hex-editor-in-place.md)): bytes that are not text in the document's
       encoding wait for the rest of their character, since the document is text
-- [ ] 6.46 DSpellCheck's options (several languages at once, ignore rules, words in code by
+- [x] 6.46 DSpellCheck's options (several languages at once, ignore rules, words in code by
       style); a dictionary bundled for English under a license compatible with Birchpad's
+      ([ADR 0050](adr/0050-spell-checker-options-and-built-in-dictionary.md): SCOWL's en_US)
 - [ ] 6.47 Online features under the `OnlineFeatures` policy: Plugins Admin's online list of
       plugins (available, updates, installed) with checksums; DSpellCheck's dictionary download
 

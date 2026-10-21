@@ -40,8 +40,9 @@ pub use settings::{
     HexSettings, HighlightingSettings, InstanceMode, InstanceSettings, InterfaceMode,
     LanguageSettings, LinkSettings, NetworkSettings, NewDocumentSettings, Paper, PluginInstall,
     PluginSettings, PreviewSettings, PrintColors, PrintSettings, SearchEngine,
-    SearchEngineSettings, SessionSettings, Settings, SmartHighlighting, TabSettings, TokenMatching,
-    ToolbarSettings, ToolbarSize, UpdateChannel, UpdateMode, UpdateSettings,
+    SearchEngineSettings, SessionSettings, Settings, SmartHighlighting, SpellScope, SpellSettings,
+    TabSettings, TokenMatching, ToolbarSettings, ToolbarSize, UpdateChannel, UpdateMode,
+    UpdateSettings,
 };
 pub use state::{
     FindInFilesState, MAX_RECENT_FILES, PanelsState, PreviewMode, SearchResultsState,

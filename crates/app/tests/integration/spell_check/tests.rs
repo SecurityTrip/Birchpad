@@ -218,3 +218,106 @@ fn lists_languages_and_marks_the_one_in_use(cx: &mut TestAppContext) {
     );
     assert_eq!(is_checked(&Invocation::new("file.new"), true, ""), None);
 }
+
+fn set_spell(cx: &mut VisualTestContext, change: impl FnOnce(&mut birchpad_config::SpellSettings)) {
+    cx.update(|_, cx| change(&mut cx.global_mut::<AppState>().settings.spell));
+}
+
+#[gpui_kit::test]
+fn checks_several_languages_together(cx: &mut TestAppContext) {
+    let (workspace, cx, dir) = setup(cx);
+    add_dictionary(&dir);
+    let folder = dir.path().join("dictionaries");
+    std::fs::write(folder.join("yy_TEST.aff"), "SET UTF-8\n").unwrap();
+    std::fs::write(folder.join("yy_TEST.dic"), "2\nhund\nkatze\n").unwrap();
+    use_test_dictionary(&workspace, cx);
+    run(&workspace, Invocation::new("spell.auto"), cx).unwrap();
+    type_text(&workspace, "the hund walked to the vogel", cx);
+    assert_eq!(underlined_words(&workspace, cx), ["hund", "vogel"]);
+    set_spell(cx, |spell| spell.languages = "xx_TEST, yy_TEST".into());
+    assert_eq!(
+        cx.update(|_, cx| languages_checked(cx)),
+        ["xx_TEST", "yy_TEST"]
+    );
+    run(&workspace, Invocation::new("spell.auto"), cx).unwrap();
+    run(&workspace, Invocation::new("spell.auto"), cx).unwrap();
+    assert_eq!(underlined_words(&workspace, cx), ["vogel"]);
+    // A language without a dictionary: nothing underlined, and the reason when asked.
+    set_spell(cx, |spell| spell.languages = "xx_TEST zz_NONE".into());
+    assert!(underlined_words(&workspace, cx).is_empty());
+    let error = run(&workspace, Invocation::new("spell.next"), cx).unwrap_err();
+    assert!(error.to_string().contains("zz_NONE"), "{error}");
+}
+
+#[gpui_kit::test]
+fn the_rules_leave_words_alone(cx: &mut TestAppContext) {
+    let (workspace, cx, dir) = setup(cx);
+    add_dictionary(&dir);
+    use_test_dictionary(&workspace, cx);
+    run(&workspace, Invocation::new("spell.auto"), cx).unwrap();
+    type_text(&workspace, "the Wlak NASAA walk2", cx);
+    assert_eq!(underlined_words(&workspace, cx), ["Wlak"]);
+    set_spell(cx, |spell| {
+        spell.ignore_capital_start = true;
+        spell.ignore_all_caps = false;
+        spell.ignore_numbers = false;
+    });
+    assert_eq!(underlined_words(&workspace, cx), ["NASAA", "walk2"]);
+}
+
+#[gpui_kit::test]
+fn checks_code_by_style(cx: &mut TestAppContext) {
+    let (workspace, cx, dir) = setup(cx);
+    add_dictionary(&dir);
+    use_test_dictionary(&workspace, cx);
+    run(&workspace, Invocation::new("spell.auto"), cx).unwrap();
+    run(
+        &workspace,
+        Invocation::with_args("language.set", json!({ "language": "rust" })),
+        cx,
+    )
+    .unwrap();
+    type_text(&workspace, "// the wlak\nlet dgo = \"the cta\";\n", cx);
+    // The parser runs in the background.
+    cx.executor()
+        .advance_clock(std::time::Duration::from_secs(1));
+    cx.run_until_parked();
+    let found = |cx: &mut VisualTestContext| underlined_words(&workspace, cx);
+    assert_eq!(found(cx), ["wlak", "cta"]);
+    for (scope, expected) in [
+        (birchpad_config::SpellScope::Comments, vec!["wlak"]),
+        (birchpad_config::SpellScope::Strings, vec!["cta"]),
+        (
+            birchpad_config::SpellScope::Everything,
+            vec!["wlak", "dgo", "cta"],
+        ),
+    ] {
+        set_spell(cx, |spell| spell.check = scope);
+        let mut words = found(cx);
+        words.retain(|word| word != "let");
+        assert_eq!(words, expected, "{scope:?}");
+    }
+}
+
+#[gpui_kit::test]
+fn us_english_is_built_in(cx: &mut TestAppContext) {
+    let (workspace, cx, _dir) = setup(cx);
+    // No dictionaries folder, no system dictionary needed.
+    assert!(
+        cx.update(|_, cx| languages(cx))
+            .contains(&BUILT_IN_LANGUAGE.to_owned())
+    );
+    run(
+        &workspace,
+        Invocation::with_args("spell.language", json!({ "language": "en_US" })),
+        cx,
+    )
+    .unwrap();
+    run(&workspace, Invocation::new("spell.auto"), cx).unwrap();
+    type_text(
+        &workspace,
+        "The quick brwn fox jumps over the lazy dog's kennel.",
+        cx,
+    );
+    assert_eq!(underlined_words(&workspace, cx), ["brwn"]);
+}

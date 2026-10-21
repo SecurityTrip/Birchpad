@@ -3,8 +3,10 @@
 //! suggestions in the completion list, the user's own words, and the dictionary's language.
 //!
 //! Dictionaries are Hunspell's `.aff` and `.dic`, from the `dictionaries` folder next to the
-//! settings, then the system's folders. In a document with a language, only comments and
-//! strings are checked.
+//! settings, then the system's folders; US English is built in (SCOWL's, under its permissive
+//! license: `assets/dictionaries`), for when neither has it. Preferences > Spell Checker (`spell`) checks several
+//! languages together, says which words are left alone, and what of a document with a language
+//! is checked: its comments and strings by default.
 
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -14,8 +16,9 @@ use std::rc::Rc;
 
 use anyhow::{Context as _, Result, anyhow, bail};
 use birchpad_commands::Invocation;
+use birchpad_config::{SpellScope, SpellSettings};
 use birchpad_core::{RevisionId, Rope};
-use birchpad_tools::spell::{self, Speller};
+use birchpad_tools::spell::{self, Rules, Speller};
 use gpui_kit::{App, Context, EntityId};
 use serde::Deserialize;
 
@@ -26,6 +29,11 @@ use crate::editor::EditorView;
 
 /// The file of the user's own words, in the dictionaries folder.
 const USER_WORDS: &str = "user.txt";
+
+/// The language of the dictionary built in.
+pub const BUILT_IN_LANGUAGE: &str = "en_US";
+const BUILT_IN_AFF: &str = include_str!("../assets/dictionaries/en_US.aff");
+const BUILT_IN_DIC: &str = include_str!("../assets/dictionaries/en_US.dic");
 
 /// A dictionary read, or why it could not be.
 type Loaded = Result<Rc<RefCell<Speller>>, String>;
@@ -47,6 +55,8 @@ struct Cached {
     syntax: Option<u64>,
     range: Range<usize>,
     generation: u64,
+    /// The options the words were found with.
+    settings: SpellSettings,
     words: Rc<Vec<Range<usize>>>,
 }
 
@@ -87,9 +97,42 @@ pub fn is_enabled(cx: &App) -> bool {
     AppState::global(cx).state.spell_check.enabled
 }
 
-/// The speller of the language checked, read once.
+/// The languages checked: those of `spell.languages`, or the one chosen.
+pub fn languages_checked(cx: &App) -> Vec<String> {
+    let list = AppState::global(cx).settings.spell.language_list();
+    if list.is_empty() {
+        vec![language(cx)]
+    } else {
+        list
+    }
+}
+
+/// The rules of `settings`.
+fn rules(settings: &SpellSettings) -> Rules {
+    Rules {
+        ignore_numbers: settings.ignore_numbers,
+        ignore_all_caps: settings.ignore_all_caps,
+        ignore_capitals_inside: settings.ignore_capitals_inside,
+        ignore_capital_start: settings.ignore_capital_start,
+        ignore_underscores: settings.ignore_underscores,
+        ignore_one_letter: settings.ignore_one_letter,
+        ignore_addresses: settings.ignore_addresses,
+    }
+}
+
+/// The speller of the languages checked, read once, with the rules of the settings.
 fn speller(cx: &App) -> Result<Rc<RefCell<Speller>>> {
-    let language = language(cx);
+    let result = loaded_speller(cx);
+    if let Ok(speller) = &result {
+        speller
+            .borrow_mut()
+            .set_rules(rules(&AppState::global(cx).settings.spell));
+    }
+    result
+}
+
+fn loaded_speller(cx: &App) -> Result<Rc<RefCell<Speller>>> {
+    let language = languages_checked(cx).join(" ");
     let cached = SPELLING.with(|spelling| {
         spelling
             .borrow()
@@ -114,22 +157,38 @@ fn speller(cx: &App) -> Result<Rc<RefCell<Speller>>> {
     result.map_err(|error| anyhow!(error))
 }
 
-fn load(language: &str, cx: &App) -> Result<Speller> {
+/// The speller of `languages`, separated by spaces: each one's dictionary.
+fn load(languages: &str, cx: &App) -> Result<Speller> {
     let folders = folders(cx);
-    let Some((aff, dic)) = spell::find_dictionary(&folders, language) else {
-        let user = dictionaries_dir(cx)
-            .map(|dir| dir.display().to_string())
-            .unwrap_or_default();
-        bail!(
-            "{}",
-            t!(
-                "spell-check.there-is-no-dictionary-put-aff-and-dic-hunspell",
-                language = language,
-                user = user
-            )
-        );
-    };
-    let mut speller = Speller::open(&aff, &dic)?;
+    let mut speller: Option<Speller> = None;
+    for language in languages.split(' ') {
+        let found = spell::find_dictionary(&folders, language);
+        if found.is_none() && language == BUILT_IN_LANGUAGE {
+            match &mut speller {
+                None => speller = Some(Speller::new(BUILT_IN_AFF, BUILT_IN_DIC)?),
+                Some(speller) => speller.add_dictionary(BUILT_IN_AFF, BUILT_IN_DIC)?,
+            }
+            continue;
+        }
+        let Some((aff, dic)) = found else {
+            let user = dictionaries_dir(cx)
+                .map(|dir| dir.display().to_string())
+                .unwrap_or_default();
+            bail!(
+                "{}",
+                t!(
+                    "spell-check.there-is-no-dictionary-put-aff-and-dic-hunspell",
+                    language = language,
+                    user = user
+                )
+            );
+        };
+        match &mut speller {
+            None => speller = Some(Speller::open(&aff, &dic)?),
+            Some(speller) => speller.open_dictionary(&aff, &dic)?,
+        }
+    }
+    let mut speller = speller.ok_or_else(|| anyhow!("{}", t!("spell-check.no-language")))?;
     if let Some(dir) = dictionaries_dir(cx)
         && let Ok(words) = std::fs::read_to_string(dir.join(USER_WORDS))
     {
@@ -155,16 +214,31 @@ fn redraw(cx: &mut App) {
     cx.refresh_windows();
 }
 
-/// The parts of `range` worth checking: comments and strings in a document with a language,
-/// all of it otherwise.
-fn checkable(buffer: &Buffer, text: &Rope, range: Range<usize>) -> Vec<Range<usize>> {
+/// The parts of `range` worth checking: in a document with a language, its text of the styles
+/// `scope` names; all of it otherwise.
+fn checkable(
+    buffer: &Buffer,
+    text: &Rope,
+    range: Range<usize>,
+    scope: SpellScope,
+) -> Vec<Range<usize>> {
     let Some(syntax) = buffer.syntax() else {
         return vec![range];
     };
+    if scope == SpellScope::Everything {
+        return vec![range];
+    }
     let mut parts: Vec<Range<usize>> = Vec::new();
     for (span, highlight) in syntax.highlights(text, range) {
         let name = highlight.name();
-        if !(name.starts_with("comment") || name.starts_with("string")) {
+        let (comment, string) = (name.starts_with("comment"), name.starts_with("string"));
+        let wanted = match scope {
+            SpellScope::CommentsAndStrings => comment || string,
+            SpellScope::Comments => comment,
+            SpellScope::Strings => string,
+            SpellScope::Everything => true,
+        };
+        if !wanted {
             continue;
         }
         match parts.last_mut() {
@@ -181,9 +255,10 @@ fn find_misspelled(
     buffer: &Buffer,
     text: &Rope,
     range: Range<usize>,
+    scope: SpellScope,
 ) -> Vec<Range<usize>> {
     let mut found = Vec::new();
-    for part in checkable(buffer, text, range) {
+    for part in checkable(buffer, text, range, scope) {
         let piece = text.slice(part.clone()).to_string();
         found.extend(
             speller
@@ -212,12 +287,14 @@ pub fn underlined(
     let revision = buffer.doc().revision();
     let syntax = buffer.syntax().map(|syntax| syntax.version());
     let generation = SPELLING.with(|spelling| spelling.borrow().generation);
+    let settings = AppState::global(cx).settings.spell.clone();
     let cached = SPELLING.with(|spelling| {
         spelling.borrow().cache.get(&id).and_then(|cached| {
             (cached.revision == revision
                 && cached.syntax == syntax
                 && cached.range == range
-                && cached.generation == generation)
+                && cached.generation == generation
+                && cached.settings == settings)
                 .then(|| cached.words.clone())
         })
     });
@@ -229,6 +306,7 @@ pub fn underlined(
         buffer,
         buffer.doc().text(),
         range.clone(),
+        settings.check,
     ));
     SPELLING.with(|spelling| {
         spelling.borrow_mut().cache.insert(
@@ -238,6 +316,7 @@ pub fn underlined(
                 syntax,
                 range,
                 generation,
+                settings,
                 words: words.clone(),
             },
         );
@@ -350,9 +429,14 @@ pub fn is_checked(invocation: &Invocation, enabled: bool, language: &str) -> Opt
     }
 }
 
-/// The languages of the dictionaries found, for the Language submenu.
+/// The languages of the dictionaries found and the one built in, for the Language submenu.
 pub fn languages(cx: &App) -> Vec<String> {
-    spell::languages(&folders(cx))
+    let mut found = spell::languages(&folders(cx));
+    if !found.iter().any(|language| language == BUILT_IN_LANGUAGE) {
+        found.push(BUILT_IN_LANGUAGE.to_owned());
+        found.sort();
+    }
+    found
 }
 
 /// The word at the caret (or touching it), and its range.
@@ -363,7 +447,8 @@ fn word_at_caret(view: &EditorView, cx: &App) -> Result<(Range<usize>, String)> 
     let line_range = birchpad_core::motion::line_range(text, line);
     let line_text = text.slice(line_range.clone()).to_string();
     let at = head - line_range.start;
-    spell::words(&line_text)
+    let rules = rules(&AppState::global(cx).settings.spell);
+    spell::words_by(&line_text, rules)
         .find(|word| word.start <= at && at <= word.end)
         .map(|word| {
             let range = line_range.start + word.start..line_range.start + word.end;
@@ -380,11 +465,13 @@ fn go_to_misspelled(
 ) -> Result<()> {
     let speller = speller(cx)?;
     let text = view.text(cx).clone();
+    let scope = AppState::global(cx).settings.spell.check;
     let words = find_misspelled(
         &speller.borrow(),
         view.buffer.read(cx),
         &text,
         0..text.len(),
+        scope,
     );
     let primary = view.selection.primary();
     let target = if forward {
