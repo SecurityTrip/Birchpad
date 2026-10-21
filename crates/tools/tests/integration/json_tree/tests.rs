@@ -169,3 +169,11 @@ fn a_key_named_twice_still_finds_every_value() {
     assert!(tree.find("$.a.x").is_err());
     assert!(tree.find("$.a.b[2]").is_err());
 }
+
+#[test]
+fn values_lose_every_escape() {
+    let text = r#"{"s": "a\r\b\f\n\t\"\\\/é"}"#;
+    let tree = JsonTree::parse(text).unwrap();
+    let at = tree.find("$.s").unwrap();
+    assert_eq!(tree.value(at, text), "a\r\u{8}\u{c}\n\t\"\\/é");
+}

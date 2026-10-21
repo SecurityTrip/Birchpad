@@ -415,3 +415,209 @@ fn the_schema_location_and_the_tag_of_a_problem() {
     assert_eq!(tag_at(text, text.len()), text.len()..text.len());
     assert_eq!(&text[tag_at("<a", 0)], "<a");
 }
+
+const DERIVED: &str = r#"<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:element name="shop">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name="item" type="Item" maxOccurs="unbounded"/>
+        <xs:element name="gift" type="Gift" minOccurs="0"/>
+        <xs:element name="price" type="Price" minOccurs="0"/>
+        <xs:element name="code" type="Code" minOccurs="0"/>
+        <xs:element name="tags" minOccurs="0">
+          <xs:simpleType>
+            <xs:list>
+              <xs:simpleType>
+                <xs:restriction base="xs:string">
+                  <xs:length value="2"/>
+                </xs:restriction>
+              </xs:simpleType>
+            </xs:list>
+          </xs:simpleType>
+        </xs:element>
+        <xs:element name="unit" type="xs:string" fixed="kg" minOccurs="0"/>
+        <xs:element name="extra" minOccurs="0"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+  <xs:complexType name="Base">
+    <xs:sequence>
+      <xs:element name="name" type="xs:string"/>
+    </xs:sequence>
+    <xs:attribute name="id" type="xs:int" use="required"/>
+    <xs:attribute name="old" type="xs:string"/>
+  </xs:complexType>
+  <xs:complexType name="Item">
+    <xs:complexContent>
+      <xs:extension base="Base">
+        <xs:sequence>
+          <xs:element name="weight" type="Weight"/>
+        </xs:sequence>
+        <xs:attribute name="color" type="xs:string"/>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+  <xs:complexType name="Gift">
+    <xs:complexContent>
+      <xs:restriction base="Base">
+        <xs:sequence>
+          <xs:element name="name" type="xs:string"/>
+        </xs:sequence>
+        <xs:attribute name="old" use="prohibited"/>
+      </xs:restriction>
+    </xs:complexContent>
+  </xs:complexType>
+  <xs:complexType name="Amount">
+    <xs:simpleContent>
+      <xs:extension base="xs:decimal">
+        <xs:attribute name="currency" type="xs:string"/>
+      </xs:extension>
+    </xs:simpleContent>
+  </xs:complexType>
+  <xs:complexType name="Price">
+    <xs:simpleContent>
+      <xs:extension base="Amount"/>
+    </xs:simpleContent>
+  </xs:complexType>
+  <xs:simpleType name="Weight">
+    <xs:restriction base="xs:decimal">
+      <xs:minExclusive value="0"/>
+      <xs:maxInclusive value="50"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="Code">
+    <xs:restriction base="Short">
+      <xs:minLength value="2"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="Short">
+    <xs:restriction base="xs:string">
+      <xs:maxLength value="4"/>
+    </xs:restriction>
+  </xs:simpleType>
+</xs:schema>"#;
+
+#[test]
+fn derived_types_inherit_and_restrict() {
+    let valid = r#"<shop>
+  <item id="1" color="red"><name>Box</name><weight>0.5</weight></item>
+  <gift id="2"><name>Card</name></gift>
+  <price currency="EUR">9.99</price>
+  <code>AB</code>
+  <tags>ab cd</tags>
+  <unit>kg</unit>
+  <extra><anything at="all"/></extra>
+</shop>"#;
+    assert_eq!(validate_xsd(valid, DERIVED).unwrap(), []);
+
+    let text = r#"<shop>
+  <item color="red" size="9"><name>Box</name><weight>0</weight></item>
+  <item id="3"><name>Bag</name></item>
+  <gift id="2" old="yes"><name>Card</name></gift>
+  <price currency="EUR">cheap<b/></price>
+  <code>ABCDE</code>
+  <tags>ab cde</tags>
+  <unit>lb</unit>
+</shop>"#;
+    let found = problems(validate_xsd(text, DERIVED).unwrap(), text);
+    let messages: Vec<&str> = found.iter().map(|(message, _)| message.as_str()).collect();
+    for expected in [
+        // The base's attribute is required in the extension, its own and the base's declared.
+        "<item> needs the attribute id",
+        "the attribute size is not declared for <item>",
+        // The base's content comes first, then the extension's.
+        "<weight>: 0 is out of the range the schema allows",
+        // A restriction prohibits what the base allowed.
+        "the attribute old is not declared for <gift>",
+        // Simple content from a complex type: its text type, and no elements.
+        "<b> is not allowed in <price>",
+        // A type restricting another: both its facets and its parent's.
+        "<code>: ABCDE has a length the schema does not allow",
+        // A list of an anonymous type.
+        "<tags>: cde has a length the schema does not allow",
+        "unit must be kg",
+    ] {
+        assert!(messages.contains(&expected), "{expected}: {messages:#?}");
+    }
+    assert!(
+        messages
+            .iter()
+            .any(|message| message.starts_with("the elements in <item> are not as declared")),
+        "{messages:#?}"
+    );
+    assert!(
+        messages
+            .iter()
+            .any(|message| message.starts_with("<price>: cheap is not a decimal")),
+        "{messages:#?}"
+    );
+    // The boundary: 50 is in, the exclusive 0 is out.
+    let at = |weight: &str| {
+        let text =
+            format!("<shop><item id=\"1\"><name>B</name><weight>{weight}</weight></item></shop>");
+        validate_xsd(&text, DERIVED).unwrap().len()
+    };
+    assert_eq!(at("50"), 0);
+    assert_eq!(at("50.01"), 1);
+    assert_eq!(at("0.001"), 0);
+}
+
+#[test]
+fn simple_elements_hold_neither_elements_nor_attributes() {
+    let text = r#"<shop><item id="1"><name>B</name><weight>1</weight></item><code size="2">AB<b/></code></shop>"#;
+    let found = problems(validate_xsd(text, DERIVED).unwrap(), text);
+    let messages: Vec<&str> = found.iter().map(|(message, _)| message.as_str()).collect();
+    assert!(
+        messages.contains(&"<b> is not allowed in <code>"),
+        "{messages:#?}"
+    );
+    assert!(
+        messages.contains(&"the attribute size is not declared for <code>"),
+        "{messages:#?}"
+    );
+}
+
+#[test]
+fn group_references_and_any_elements() {
+    let schema = r#"<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:group name="head">
+    <xs:sequence>
+      <xs:element name="title" type="xs:string"/>
+    </xs:sequence>
+  </xs:group>
+  <xs:element name="page">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:group ref="head"/>
+        <xs:any minOccurs="0" maxOccurs="2"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>"#;
+    let check = |body: &str| validate_xsd(&format!("<page>{body}</page>"), schema).unwrap();
+    assert_eq!(check("<title>T</title>"), []);
+    assert_eq!(check("<title>T</title><p/><q>x</q>"), []);
+    // Past what any allows, or without the group's element.
+    assert_eq!(check("<title>T</title><p/><q/><r/>").len(), 1);
+    assert_eq!(check("<p/>").len(), 1);
+}
+
+#[test]
+fn name_tokens_in_a_dtd() {
+    let text = r#"<!DOCTYPE a [
+  <!ELEMENT a EMPTY>
+  <!ATTLIST a one NMTOKEN #IMPLIED many NMTOKENS #IMPLIED>
+]>
+<a one="x y" many="ok fine !"/>"#;
+    let found = problems(validate_dtd(text, None).unwrap(), text);
+    let messages: Vec<&str> = found.iter().map(|(message, _)| message.as_str()).collect();
+    assert_eq!(
+        messages,
+        [
+            "one: x y is not a name token",
+            "many: ok fine ! is not a name token"
+        ]
+    );
+    let fine = text.replace("x y", "x-y.1").replace(" !", " :z");
+    assert_eq!(validate_dtd(&fine, None).unwrap(), []);
+}

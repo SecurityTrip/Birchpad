@@ -181,3 +181,50 @@ fn a_character_of_several_bytes_where_and_or_or_could_start() {
     // A name that only starts like the word stays a name.
     assert_eq!(texts("//book[order]/@id"), Vec::<String>::new());
 }
+
+#[test]
+fn values_convert_and_compare_as_xpath_says() {
+    // Numbers, texts and booleans as truth, text and number.
+    assert_eq!(texts("not(0)"), ["true"]);
+    assert_eq!(texts("not('')"), ["true"]);
+    assert_eq!(texts("not('x')"), ["false"]);
+    assert_eq!(texts("1.5"), ["1.5"]);
+    assert_eq!(texts("contains(12, 2)"), ["true"]);
+    assert_eq!(texts("starts-with(not(0), 'tr')"), ["true"]);
+    // A text and a number compare as numbers; a boolean against anything as booleans.
+    assert_eq!(texts("'2' = 2"), ["true"]);
+    assert_eq!(texts("not(0) = 1"), ["true"]);
+    assert_eq!(texts("not(0) != 'x'"), ["false"]);
+    // Order between texts is order between their numbers.
+    assert_eq!(texts("'10' < '9'"), ["false"]);
+    assert_eq!(texts("'10' >= '9'"), ["true"]);
+    assert_eq!(texts("2 <= 2"), ["true"]);
+    assert_eq!(texts("'a' < 'b'"), ["false"]);
+    // Node sets compare by any of their nodes.
+    assert_eq!(texts("//price > 29"), ["true"]);
+    assert_eq!(texts("//price >= 31"), ["false"]);
+}
+
+#[test]
+fn steps_from_attributes_comments_and_other_nodes() {
+    // From an attribute: its element, itself, and nothing below.
+    assert_eq!(labels("//book[@id='2']/@id/.."), ["<book>"]);
+    assert_eq!(texts("//book[@id='2']/@id/."), ["id=\"2\""]);
+    assert!(labels("//book/@id/title").is_empty());
+    // Every node of an element; a prefix is left out, as everywhere, so x:* is *.
+    assert_eq!(labels("/library/book[2]/node()").len(), 3);
+    assert_eq!(labels("//x:*"), labels("//*"));
+    // A comment's text and name.
+    assert_eq!(labels("//comment()[contains(., 'books')]").len(), 1);
+    assert_eq!(texts("name(//comment())"), [""]);
+    assert_eq!(texts("local-name(//book[2]/@id)"), ["id"]);
+    // A processing instruction is labelled by its text.
+    let doc = "<r><?go now?></r>";
+    match evaluate(doc, "/r/node()").unwrap() {
+        XPathResult::Nodes(nodes) => assert_eq!(nodes[0].label, "<?go now?>"),
+        other => panic!("{other:?}"),
+    }
+    // name() of what is not a node set; a bracket left open.
+    assert!(evaluate(DOC, "name(1)").is_err());
+    assert!(evaluate(DOC, "(1").is_err());
+}
