@@ -1061,6 +1061,14 @@ impl EditorView {
         self.display.config().tab_width
     }
 
+    /// Shows `rows` blank rows above each `line` of `padding` (a line past the last: below the
+    /// text), as Compare aligns two documents; empty shows none.
+    pub fn set_padding(&mut self, padding: Vec<(usize, u32)>, cx: &mut Context<Self>) {
+        let text = self.buffer.read(cx).doc().text().clone();
+        self.display.set_padding(&text, padding);
+        cx.notify();
+    }
+
     /// Puts a single caret at `pos` and scrolls to it (Go To).
     pub fn go_to(&mut self, pos: usize, cx: &mut Context<Self>) {
         self.select_range(pos..pos, cx);

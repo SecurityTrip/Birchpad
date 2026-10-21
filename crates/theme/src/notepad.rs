@@ -150,6 +150,8 @@ fn editor_colors(
         compare_added: None,
         compare_removed: None,
         compare_changed: None,
+        compare_inline: None,
+        compare_padding: None,
         spell_error: None,
     }
 }

@@ -35,8 +35,8 @@ pub use session_names::{
 };
 pub use settings::{
     AppearanceSettings, AutoIndent, BackupOnSave, ChangeDetection, ChangeHistory, CloudSettings,
-    CompletionSettings, CurrentLine, DEFAULT_TOOLBAR, DateSettings, DefaultDirectory,
-    DelimiterSettings, DiagnosticsSettings, Edge, EditorSettings, FileSettings,
+    CompareSettings, CompletionSettings, CurrentLine, DEFAULT_TOOLBAR, DateSettings,
+    DefaultDirectory, DelimiterSettings, DiagnosticsSettings, Edge, EditorSettings, FileSettings,
     HighlightingSettings, InstanceMode, InstanceSettings, InterfaceMode, LanguageSettings,
     LinkSettings, NetworkSettings, NewDocumentSettings, Paper, PluginInstall, PluginSettings,
     PreviewSettings, PrintColors, PrintSettings, SearchEngine, SearchEngineSettings,

@@ -901,7 +901,10 @@ impl Workspace {
                 self.refresh_menus(cx);
                 cx.notify();
             }
-            BufferEvent::Edited { transaction, .. } => self.map_places(buffer, transaction),
+            BufferEvent::Edited { transaction, .. } => {
+                self.map_places(buffer, transaction);
+                self.compare_after_edit(buffer, window, cx);
+            }
             BufferEvent::MarksChanged | BufferEvent::SyntaxChanged | BufferEvent::FollowEnd => {}
         }
     }

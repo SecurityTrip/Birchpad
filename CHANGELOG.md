@@ -17,6 +17,12 @@ version's release notes from its section here.
   in a submenu of the script, and Settings > Shortcut Mapper > Plugin Commands gives them keys,
   as it does the plugins' commands.
 - Settings > Import > Import plugin(s)... installs several plugins at once.
+- Plugins > Compare works as ComparePlus: blank rows keep the lines both documents have side
+  by side, what differs within a changed line is marked too, the differences are marked along
+  the scrollbar, and the documents are compared again a moment after either changes. Diff
+  since Last Save, Compare to Clipboard and Diff to Git HEAD compare the document with its
+  file, the clipboard or Git's last commit. Preferences > Compare turns each of these on or
+  off.
 
 ### Changed
 

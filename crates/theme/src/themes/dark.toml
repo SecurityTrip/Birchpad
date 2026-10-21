@@ -32,10 +32,13 @@ mark-3 = "#ffff0040"
 mark-4 = "#a070ff50"
 mark-5 = "#3fb95050"
 scrollbar-thumb = "#4e4e4e"
-# Plugins > Compare: added, removed and changed lines.
+# Plugins > Compare: added, removed and changed lines; what differs within a changed line;
+# the blank rows that keep the lines side by side.
 compare-added = "#3fb95035"
 compare-removed = "#f4474735"
 compare-changed = "#e2a03f40"
+compare-inline = "#e2a03f70"
+compare-padding = "#ffffff0c"
 # Plugins > Spell Checker: under misspelled words.
 spell-error = "#f44747"
 

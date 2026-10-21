@@ -427,6 +427,9 @@ pub const COMMANDS: &[CommandSpec] = &[
     // Compare: the active document with the other view's, or with the tab before it
     workspace("compare.compare", "Compare"),
     workspace("compare.clear", "Clear Results"),
+    workspace("compare.with-saved", "Diff since Last Save"),
+    workspace("compare.with-clipboard", "Compare to Clipboard"),
+    workspace("compare.with-git", "Diff to Git HEAD"),
     editor("compare.next", "Next Difference"),
     editor("compare.previous", "Previous Difference"),
     workspace("compare.ignore-spaces", "Ignore Spaces"),

@@ -846,6 +846,9 @@ pub fn main_menu() -> Vec<Menu> {
                 "Compare",
                 vec![
                     cmd("compare.compare"),
+                    cmd("compare.with-saved"),
+                    cmd("compare.with-clipboard"),
+                    cmd("compare.with-git"),
                     cmd("compare.clear"),
                     Separator,
                     cmd("compare.previous"),

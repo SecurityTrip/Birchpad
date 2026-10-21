@@ -93,6 +93,45 @@ proptest! {
     }
 
     #[test]
+    fn padding_rows_hold_no_position(
+        doc in text(),
+        width in prop::option::of(1usize..12),
+        pads in prop::collection::vec((any::<usize>(), 0u32..4), 0..6),
+    ) {
+        let rope = Rope::from_str(&doc);
+        let lines = birchpad_core::motion::line_count(&rope);
+        let mut map = DisplayMap::new(&rope, LayoutConfig { tab_width: 4, wrap_width: width });
+        let before = map.row_count(&rope);
+        let pads: Vec<(usize, u32)> = pads
+            .into_iter()
+            .map(|(line, rows)| (line % (lines + 1), rows))
+            .collect();
+        let total: usize = pads.iter().map(|(_, rows)| *rows as usize).sum();
+        map.set_padding(&rope, pads);
+        let rows = map.row_count(&rope);
+        prop_assert_eq!(rows, before + total);
+        // Every row is padding or holds text; positions land on rows that hold text, in order.
+        let shown: usize = (0..rows).filter(|&index| !map.row(&rope, index).padding).count();
+        prop_assert_eq!(shown, before);
+        let mut previous = 0;
+        for pos in doc
+            .char_indices()
+            .map(|(i, _)| i)
+            .chain([doc.len()])
+            .filter(|&i| !(doc[..i].ends_with('\r') && doc[i..].starts_with('\n')))
+        {
+            let (index, row) = map.row_of(&rope, pos);
+            prop_assert!(!row.padding);
+            prop_assert!(index < rows && index >= previous);
+            prop_assert_eq!(map.row(&rope, index), row);
+            previous = index;
+            // Moving down and up again lands on text, never in padding.
+            let down = map.move_by_rows(&rope, pos, 1, 0);
+            prop_assert!(!map.row_of(&rope, down).1.padding);
+        }
+    }
+
+    #[test]
     fn fast_row_count_agrees(doc in text(), width in 1usize..12) {
         let rope = Rope::from_str(&doc);
         prop_assert_eq!(

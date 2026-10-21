@@ -249,10 +249,12 @@ fn a_style_without_colors_stays_one() {
 #[test]
 fn colors_by_key() {
     let mut editor = Theme::default_theme().editor;
-    assert_eq!(EditorColors::KEYS.len(), 34);
+    assert_eq!(EditorColors::KEYS.len(), 36);
     assert_eq!(EditorColors::KEYS[0], "text");
     assert!(
         EditorColors::KEYS.contains(&"compare-added")
+            && EditorColors::KEYS.contains(&"compare-inline")
+            && EditorColors::KEYS.contains(&"compare-padding")
             && EditorColors::KEYS.contains(&"spell-error")
     );
     assert!(EditorColors::KEYS.contains(&"current-line"));

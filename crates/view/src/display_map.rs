@@ -9,6 +9,10 @@
 //! The layout of a long line is kept through edits: an edit inside it updates its column index
 //! and its rows around the edit, so that typing into a multi-megabyte line costs about as much
 //! as typing into a short one.
+//!
+//! Padding adds blank rows above lines, or below the last one, which show no text (Compare
+//! aligns two documents side by side with them). A padding row maps to the start of the line
+//! below it; the caret never stops in one.
 
 use std::collections::HashMap;
 use std::ops::Range;
@@ -65,6 +69,9 @@ pub struct Row {
     /// Column of `range.start` counted from the start of the line (tab stops are per line).
     pub start_column: usize,
     pub last_in_line: bool,
+    /// A blank row of padding above `line` (or below the last line, at the end of the text): no
+    /// text, an empty `range` where the line starts, and `index_in_line` past any row's.
+    pub padding: bool,
 }
 
 /// A point of a column index.
@@ -291,6 +298,14 @@ pub struct DisplayMap {
     hidden: Vec<Range<usize>>,
     /// `hidden_before[i]` is the number of lines hidden by `hidden[..i]`.
     hidden_before: Vec<usize>,
+    /// Blank rows above lines: sorted by line, one entry a line at most, none of zero rows; the
+    /// line after the last stands for below the text.
+    padding: Vec<(usize, u32)>,
+    /// The entries of `padding` above visible lines: the line's index among the visible lines,
+    /// and the padding rows up to and with it.
+    padding_visible: Vec<(usize, usize)>,
+    /// Lines of the text last laid out, to move the padding along with edits.
+    line_total: usize,
 }
 
 impl DisplayMap {
@@ -330,6 +345,7 @@ impl DisplayMap {
     pub fn reset(&mut self, text: &Rope) {
         let rows = Self::compute_rows(text, self.config);
         self.install(self.config, rows);
+        self.line_total = line_count(text);
     }
 
     /// Rows per line of `text` laid out with `config` (empty without word wrap). Pure and
@@ -364,6 +380,7 @@ impl DisplayMap {
     /// Updates the layout after `changes` produced `text`.
     pub fn edit(&mut self, text: &Rope, changes: &ChangeSet) {
         self.carry_over(text, changes);
+        self.move_padding(text, changes);
         let Some(width) = self.config.wrap_width else {
             return;
         };
@@ -468,6 +485,114 @@ impl DisplayMap {
         &self.rows_per_line
     }
 
+    /// Shows `rows` blank rows above each `line` of `padding`; a line past the last puts them
+    /// below the text. Entries for the same line add up; lines past the text count as below it.
+    pub fn set_padding(&mut self, text: &Rope, padding: impl IntoIterator<Item = (usize, u32)>) {
+        let lines = line_count(text);
+        let mut sorted: Vec<(usize, u32)> = Vec::new();
+        let mut entries: Vec<(usize, u32)> = padding
+            .into_iter()
+            .filter(|(_, rows)| *rows > 0)
+            .map(|(line, rows)| (line.min(lines), rows))
+            .collect();
+        entries.sort_by_key(|(line, _)| *line);
+        for (line, rows) in entries {
+            match sorted.last_mut() {
+                Some(last) if last.0 == line => last.1 = last.1.saturating_add(rows),
+                _ => sorted.push((line, rows)),
+            }
+        }
+        self.padding = sorted;
+        self.line_total = lines;
+        self.index_padding();
+        self.valid_prefix = 0;
+    }
+
+    /// The blank rows above lines, sorted by line.
+    pub fn padding(&self) -> &[(usize, u32)] {
+        &self.padding
+    }
+
+    /// Keeps the padding with its lines through an edit: lines after the first one the edit
+    /// touched move with the line breaks it added or removed; padding of lines it removed goes.
+    fn move_padding(&mut self, text: &Rope, changes: &ChangeSet) {
+        let lines = line_count(text);
+        let delta = lines as isize - self.line_total as isize;
+        self.line_total = lines;
+        if self.padding.is_empty() || delta == 0 {
+            return;
+        }
+        let Some(changed) = changed_range(changes) else {
+            return;
+        };
+        let first = line_of(text, changed.start) as isize;
+        let moved: Vec<(usize, u32)> = self
+            .padding
+            .iter()
+            .filter_map(|&(line, rows)| {
+                if line as isize <= first {
+                    return Some((line, rows));
+                }
+                let line = line as isize + delta;
+                (line > first).then(|| ((line as usize).min(lines), rows))
+            })
+            .collect();
+        self.set_padding(text, moved);
+    }
+
+    /// Indexes the padding of the visible lines, after the padding or the hidden lines changed.
+    fn index_padding(&mut self) {
+        let mut total = 0;
+        let visible: Vec<(usize, usize)> = self
+            .padding
+            .iter()
+            .filter(|(line, _)| !self.is_hidden(*line))
+            .map(|&(line, rows)| {
+                total += rows as usize;
+                (line - self.hidden_lines_before(line), total)
+            })
+            .collect();
+        self.padding_visible = visible;
+    }
+
+    /// Blank rows above `line`; none above a hidden line.
+    fn pad(&self, line: usize) -> usize {
+        if self.is_hidden(line) {
+            return 0;
+        }
+        self.padding
+            .binary_search_by_key(&line, |(line, _)| *line)
+            .map_or(0, |index| self.padding[index].1 as usize)
+    }
+
+    /// Blank rows above the visible lines before the visible line of index `visible`.
+    fn padding_before_visible(&self, visible: usize) -> usize {
+        let index = self
+            .padding_visible
+            .partition_point(|(index, _)| *index < visible);
+        index
+            .checked_sub(1)
+            .map_or(0, |last| self.padding_visible[last].1)
+    }
+
+    /// A row of padding above `line`, or below the text when `line` is past the last line.
+    fn padding_row(text: &Rope, line: usize) -> Row {
+        let lines = line_count(text);
+        let (line, at) = if line < lines {
+            (line, line_range(text, line).start)
+        } else {
+            (lines - 1, text.len())
+        };
+        Row {
+            line,
+            index_in_line: usize::MAX,
+            range: at..at,
+            start_column: 0,
+            last_in_line: false,
+            padding: true,
+        }
+    }
+
     /// Hides `ranges` of lines (sorted, disjoint), as collapsed folds do.
     pub fn set_hidden(&mut self, ranges: Vec<Range<usize>>) {
         if ranges == self.hidden {
@@ -493,6 +618,7 @@ impl DisplayMap {
             }))
             .collect();
         self.valid_prefix = self.valid_prefix.min(changed_line);
+        self.index_padding();
     }
 
     pub fn hidden(&self) -> &[Range<usize>] {
@@ -561,7 +687,7 @@ impl DisplayMap {
             let rows = if self.is_hidden(i) {
                 0
             } else {
-                self.rows_per_line[i] as usize
+                self.pad(i) + self.rows_per_line[i] as usize
             };
             self.rows_before[i + 1] = self.rows_before[i] + rows;
             self.valid_prefix += 1;
@@ -572,21 +698,24 @@ impl DisplayMap {
         if self.is_wrapping() {
             let lines = self.rows_per_line.len();
             self.ensure_prefix(lines);
-            self.rows_before[lines]
+            self.rows_before[lines] + self.pad(lines)
         } else {
             let lines = line_count(text);
-            lines - self.hidden_total(lines)
+            let visible = lines - self.hidden_total(lines);
+            visible + self.padding_before_visible(visible + 1)
         }
     }
 
-    /// The first row of `line`; for a hidden line, of the visible line above it.
+    /// The first row of `line` that shows text (below its padding); for a hidden line, of the
+    /// visible line above it.
     pub fn first_row_of_line(&mut self, line: usize) -> usize {
         let line = self.visible_line(line);
         if self.is_wrapping() {
             self.ensure_prefix(line);
-            self.rows_before[line.min(self.rows_per_line.len())]
+            self.rows_before[line.min(self.rows_per_line.len())] + self.pad(line)
         } else {
-            line - self.hidden_lines_before(line)
+            let visible = line - self.hidden_lines_before(line);
+            visible + self.padding_before_visible(visible + 1)
         }
     }
 
@@ -635,6 +764,7 @@ impl DisplayMap {
             range: line_start + offset..end,
             start_column,
             last_in_line: index + 1 == starts.len(),
+            padding: false,
         }
     }
 
@@ -642,20 +772,52 @@ impl DisplayMap {
     pub fn row(&mut self, text: &Rope, row: usize) -> Row {
         if !self.is_wrapping() {
             let row = row.min(self.row_count(text).saturating_sub(1));
-            let line = self.line_of_unwrapped_row(row).min(line_count(text) - 1);
+            if self.padding_visible.is_empty() {
+                let line = self.line_of_unwrapped_row(row).min(line_count(text) - 1);
+                return self.make_row(text, line, 0);
+            }
+            // The visible line whose padding and row hold `row`: the last one whose padding
+            // starts at or before it. Each takes at least its own row, so the starts rise.
+            let lines = line_count(text);
+            let visible_lines = lines - self.hidden_total(lines);
+            let top = |visible: usize| visible + self.padding_before_visible(visible);
+            let (mut low, mut high) = (0, visible_lines + 1);
+            while low + 1 < high {
+                let middle = (low + high) / 2;
+                if top(middle) <= row {
+                    low = middle;
+                } else {
+                    high = middle;
+                }
+            }
+            let own = self.padding_before_visible(low + 1) - self.padding_before_visible(low);
+            if low == visible_lines {
+                return Self::padding_row(text, lines);
+            }
+            let line = self.line_of_unwrapped_row(low).min(lines - 1);
+            if row < top(low) + own {
+                return Self::padding_row(text, line);
+            }
             return self.make_row(text, line, 0);
         }
         let lines = self.rows_per_line.len();
         self.ensure_prefix(lines);
-        let total = self.rows_before[lines];
+        let total = self.rows_before[lines] + self.pad(lines);
         let row = row.min(total.saturating_sub(1));
+        if row >= self.rows_before[lines] {
+            return Self::padding_row(text, lines);
+        }
         // The last line whose first row is at or before `row`.
         let line = self.rows_before[..=lines]
             .partition_point(|&before| before <= row)
             .saturating_sub(1)
             .min(lines - 1);
         let index = row - self.rows_before[line];
-        self.make_row(text, line, index)
+        let pad = self.pad(line);
+        if index < pad {
+            return Self::padding_row(text, line);
+        }
+        self.make_row(text, line, index - pad)
     }
 
     /// The row index and row containing `pos`. A position where a wrapped line breaks belongs
@@ -765,18 +927,24 @@ impl DisplayMap {
     }
 
     /// Moves `pos` by `rows` visual rows, aiming for `goal` columns from the start of the row
-    /// (the column the caret had when vertical movement began). Returns the new position.
+    /// (the column the caret had when vertical movement began), past rows of padding. Returns
+    /// the new position.
     pub fn move_by_rows(&mut self, text: &Rope, pos: usize, rows: isize, goal: usize) -> usize {
         let (current, _) = self.row_of(text, pos);
-        let target = current as isize + rows;
-        if target < 0 {
-            return 0;
+        let mut target = current as isize + rows;
+        loop {
+            if target < 0 {
+                return 0;
+            }
+            if target as usize >= self.row_count(text) {
+                return text.len();
+            }
+            let row = self.row(text, target as usize);
+            if !row.padding || rows == 0 {
+                return self.pos_at_column(text, &row, row.start_column + goal);
+            }
+            target += rows.signum();
         }
-        if target as usize >= self.row_count(text) {
-            return text.len();
-        }
-        let row = self.row(text, target as usize);
-        self.pos_at_column(text, &row, row.start_column + goal)
     }
 
     /// Columns from the start of its row to `pos` (the goal for vertical movement).

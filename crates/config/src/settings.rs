@@ -30,6 +30,33 @@ pub struct Settings {
     pub diagnostics: DiagnosticsSettings,
     pub preview: PreviewSettings,
     pub print: PrintSettings,
+    pub compare: CompareSettings,
+}
+
+/// Plugins > Compare, as ComparePlus's settings.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, rename_all = "kebab-case")]
+pub struct CompareSettings {
+    /// Blank rows keep the lines of the two documents side by side ("Align matches").
+    pub align: bool,
+    /// What differs within a changed line is marked too ("Detect character diffs").
+    pub inline: bool,
+    /// The differences are marked along the vertical scrollbar, where a click goes to them
+    /// (ComparePlus's navigation bar).
+    pub navigation_bar: bool,
+    /// The documents are compared again a moment after either changes ("Auto re-compare").
+    pub recompare: bool,
+}
+
+impl Default for CompareSettings {
+    fn default() -> Self {
+        Self {
+            align: true,
+            inline: true,
+            navigation_bar: true,
+            recompare: true,
+        }
+    }
 }
 
 /// How Birchpad looks.

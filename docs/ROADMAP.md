@@ -624,9 +624,10 @@ Closing Phase 6.
       when the selection changes, the command line's -pluginMessage, work in the background;
       scripts' own commands and keys; Settings > Import plugin(s)
       ([ADR 0046](adr/0046-plugin-api-0-2.md))
-- [ ] 6.43 Compare as ComparePlus: lines padded to stay aligned side by side, differences
+- [x] 6.43 Compare as ComparePlus: lines padded to stay aligned side by side, differences
       within a line, comparing with the last save, the clipboard or Git; a navigation bar of the
-      differences
+      differences ([ADR 0047](adr/0047-compare-as-compareplus.md)): the navigation bar is the
+      vertical scrollbar's track, marked where the differences are
 - [ ] 6.44 JSON Viewer's tree panel (find a path, copy a value), sorting keys; XML Tools'
       XPath, XSD and DTD validation, escaping and unescaping, closing tags as typed
 - [ ] 6.45 Hex Editor in place: the bytes edited in a hex view of the document itself

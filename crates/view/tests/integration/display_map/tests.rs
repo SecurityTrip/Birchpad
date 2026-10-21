@@ -267,3 +267,160 @@ fn incremental_edits_match_a_fresh_layout() {
         assert_eq!(map.rows_per_line(), fresh.rows_per_line(), "{text:?}");
     }
 }
+
+/// The rows of the map as (line, padding), top to bottom.
+fn rows_of(map: &mut DisplayMap, text: &Rope) -> Vec<(usize, bool)> {
+    (0..map.row_count(text))
+        .map(|index| {
+            let row = map.row(text, index);
+            (row.line, row.padding)
+        })
+        .collect()
+}
+
+#[test]
+fn padding_adds_blank_rows_above_lines() {
+    let text = Rope::from_str("a\nb\nc");
+    let mut map = DisplayMap::new(&text, LayoutConfig::default());
+    map.set_padding(&text, [(1, 2), (0, 1)]);
+    assert_eq!(map.padding(), [(0, 1), (1, 2)]);
+    assert_eq!(map.row_count(&text), 6);
+    assert_eq!(
+        rows_of(&mut map, &text),
+        [
+            (0, true),
+            (0, false),
+            (1, true),
+            (1, true),
+            (1, false),
+            (2, false)
+        ]
+    );
+    // A padding row shows nothing, where its line starts, and is no line's first row.
+    let blank = map.row(&text, 2);
+    assert_eq!(blank.range, 2..2);
+    assert!(!blank.last_in_line && blank.index_in_line != 0);
+    // Rows of positions skip the padding.
+    assert_eq!(map.first_row_of_line(1), 4);
+    assert_eq!(map.row_of(&text, 2).0, 4);
+    assert_eq!(map.row_of(&text, 0).0, 1);
+    assert_eq!(map.row_of(&text, 5).0, 5);
+}
+
+#[test]
+fn padding_below_the_last_line_and_none() {
+    let text = Rope::from_str("a\nb");
+    let mut map = DisplayMap::new(&text, LayoutConfig::default());
+    // Past the text counts as below it; entries of a line add up; zero rows are none.
+    map.set_padding(&text, [(2, 1), (9, 1), (0, 0)]);
+    assert_eq!(map.padding(), [(2, 2)]);
+    assert_eq!(map.row_count(&text), 4);
+    let last = map.row(&text, 3);
+    assert!(last.padding);
+    assert_eq!((last.line, last.range.clone()), (1, 3..3));
+    // Clamped to the last row, a padding one.
+    assert!(map.row(&text, 99).padding);
+    map.set_padding(&text, []);
+    assert_eq!(map.row_count(&text), 2);
+    assert_eq!(rows_of(&mut map, &text), [(0, false), (1, false)]);
+}
+
+#[test]
+fn padding_of_an_empty_text() {
+    let text = Rope::new();
+    let mut map = DisplayMap::new(&text, LayoutConfig::default());
+    map.set_padding(&text, [(0, 2)]);
+    assert_eq!(rows_of(&mut map, &text), [(0, true), (0, true), (0, false)]);
+    assert_eq!(map.row_of(&text, 0).0, 2);
+}
+
+#[test]
+fn padding_while_wrapping() {
+    let text = Rope::from_str("aaaa bbbb\nc\nd");
+    let mut map = DisplayMap::new(&text, wrapped(5));
+    map.set_padding(&text, [(1, 1), (3, 2)]);
+    assert_eq!(map.row_count(&text), 2 + 1 + 1 + 1 + 2);
+    assert_eq!(
+        rows_of(&mut map, &text),
+        [
+            (0, false),
+            (0, false),
+            (1, true),
+            (1, false),
+            (2, false),
+            (2, true),
+            (2, true)
+        ]
+    );
+    assert_eq!(map.first_row_of_line(1), 3);
+    assert_eq!(map.row_of(&text, 12).0, 4);
+    let wrapped_row = map.row(&text, 1);
+    assert_eq!((wrapped_row.index_in_line, wrapped_row.padding), (1, false));
+}
+
+#[test]
+fn hidden_lines_have_no_padding() {
+    let text = Rope::from_str("a\nb\nc\nd");
+    let mut map = DisplayMap::new(&text, LayoutConfig::default());
+    map.set_padding(&text, [(2, 1), (3, 1)]);
+    map.set_hidden(vec![1..3]);
+    // Lines 1 and 2 are hidden with the padding above line 2; line 3's stays.
+    assert_eq!(
+        rows_of(&mut map, &text),
+        [(0, false), (3, true), (3, false)]
+    );
+    assert_eq!(map.first_row_of_line(3), 2);
+    map.set_hidden(Vec::new());
+    assert_eq!(map.row_count(&text), 6);
+}
+
+#[test]
+fn the_caret_moves_past_padding() {
+    let text = Rope::from_str("ab\ncd\nef");
+    for config in [LayoutConfig::default(), wrapped(10)] {
+        let mut map = DisplayMap::new(&text, config);
+        map.set_padding(&text, [(1, 2), (3, 1)]);
+        // Down from line 0 lands on line 1, not in the blank rows between.
+        assert_eq!(map.move_by_rows(&text, 1, 1, 1), 4);
+        assert_eq!(map.move_by_rows(&text, 4, -1, 1), 1);
+        // Down from the last line, past the padding below it: the end of the text.
+        assert_eq!(map.move_by_rows(&text, 7, 1, 1), text.len());
+        // Up from the first line: the start.
+        assert_eq!(map.move_by_rows(&text, 1, -1, 1), 0);
+        // Not moving stays.
+        assert_eq!(map.move_by_rows(&text, 4, 0, 1), 4);
+    }
+}
+
+#[test]
+fn padding_follows_lines_through_edits() {
+    let text = Rope::from_str("a\nb\nc\nd");
+    let mut map = DisplayMap::new(&text, LayoutConfig::default());
+    map.set_padding(&text, [(0, 1), (2, 1), (4, 1)]);
+    // A line break typed in line 0: the padding below moves down a line.
+    let changes = ChangeSet::from_edits(&text, [Edit::insert(1, "\nx")]).unwrap();
+    let mut edited = text.clone();
+    changes.apply(&mut edited);
+    map.edit(&edited, &changes);
+    assert_eq!(map.padding(), [(0, 1), (3, 1), (5, 1)]);
+    // Lines x and b removed: the padding above c and below the text moves up with them.
+    let removed = ChangeSet::from_edits(&edited, [Edit::replace(1..5, "")]).unwrap();
+    let mut shorter = edited.clone();
+    removed.apply(&mut shorter);
+    map.edit(&shorter, &removed);
+    assert_eq!(shorter.to_string(), "a\nc\nd");
+    assert_eq!(map.padding(), [(0, 1), (1, 1), (3, 1)]);
+    // Line c removed: its padding goes with it.
+    let gone = ChangeSet::from_edits(&shorter, [Edit::replace(1..3, "")]).unwrap();
+    let mut two = shorter.clone();
+    gone.apply(&mut two);
+    map.edit(&two, &gone);
+    assert_eq!(two.to_string(), "a\nd");
+    assert_eq!(map.padding(), [(0, 1), (2, 1)]);
+    // An edit within a line moves nothing.
+    let typed = ChangeSet::from_edits(&two, [Edit::insert(0, "z")]).unwrap();
+    let mut longer = two.clone();
+    typed.apply(&mut longer);
+    map.edit(&longer, &typed);
+    assert_eq!(map.padding(), [(0, 1), (2, 1)]);
+}

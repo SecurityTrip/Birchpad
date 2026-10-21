@@ -257,6 +257,10 @@ impl Element for EditorElement {
                 fill(bar.thumb, theme::paint(theme::editor().scrollbar_thumb))
                     .corner_radii(gpui_kit::px(4.)),
             );
+            // Over the thumb, so that the differences in view show too.
+            for (bounds, color) in &bar.markers {
+                window.paint_quad(fill(*bounds, theme::paint(*color)));
+            }
         }
 
         self.view.update(cx, |view, _| view.layout = Some(layout));

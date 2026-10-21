@@ -84,7 +84,7 @@ impl EditorView {
             symbols.wrap_marks = layout
                 .rows
                 .iter()
-                .filter(|row| !row.row.last_in_line)
+                .filter(|row| !row.row.last_in_line && !row.row.padding)
                 .map(|row| Bounds::new(point(x, row.y), size(cell, layout.metrics.line_height)))
                 .collect();
         }
@@ -93,7 +93,10 @@ impl EditorView {
 
     fn current_line_bounds(&self, layout: &Layout, text: &Rope) -> Option<Bounds<Pixels>> {
         let line = line_of(text, self.selection.primary().head);
-        let mut rows = layout.rows.iter().filter(|row| row.row.line == line);
+        let mut rows = layout
+            .rows
+            .iter()
+            .filter(|row| row.row.line == line && !row.row.padding);
         let first = rows.next()?;
         let last = rows.next_back().unwrap_or(first);
         let area = layout.text_bounds;

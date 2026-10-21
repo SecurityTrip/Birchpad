@@ -606,6 +606,30 @@ pub const ENTRIES: &[Entry] = &[
         Kind::Number { min: 1, max: 3600 },
     ),
     entry(
+        "Compare",
+        "compare.align",
+        "Align the lines both documents have",
+        Kind::Bool,
+    ),
+    entry(
+        "Compare",
+        "compare.inline",
+        "Mark what differs within a changed line",
+        Kind::Bool,
+    ),
+    entry(
+        "Compare",
+        "compare.navigation-bar",
+        "Show the differences along the scrollbar",
+        Kind::Bool,
+    ),
+    entry(
+        "Compare",
+        "compare.recompare",
+        "Compare again after changes",
+        Kind::Bool,
+    ),
+    entry(
         "Plugins",
         PLUGIN_SETTINGS,
         "Settings of the plugins",
