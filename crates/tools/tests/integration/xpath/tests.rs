@@ -171,3 +171,13 @@ fn double_slash_positions_count_among_siblings() {
     // Past every parent's last: nothing.
     assert!(ids("//b[3]/@id").is_empty());
 }
+
+#[test]
+fn a_character_of_several_bytes_where_and_or_or_could_start() {
+    // "o€" is checked for "or" two bytes in, in the middle of the "€".
+    for expression in ["1 o€", "1 an€", "//book[o\u{feff}r]"] {
+        assert!(evaluate(DOC, expression).is_err(), "{expression}");
+    }
+    // A name that only starts like the word stays a name.
+    assert_eq!(texts("//book[order]/@id"), Vec::<String>::new());
+}

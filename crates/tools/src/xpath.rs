@@ -172,13 +172,12 @@ impl<'a> Parser<'a> {
     /// `word` as a whole word (`and`, `or`), not the start of a name.
     fn eat_word(&mut self, word: &str) -> bool {
         self.skip_space();
-        let rest = self.rest();
-        let follows = rest[word.len().min(rest.len())..].chars().next();
-        if rest.starts_with(word) && !follows.is_some_and(is_name_char) {
-            self.at += word.len();
-            true
-        } else {
-            false
+        match self.rest().strip_prefix(word) {
+            Some(after) if !after.chars().next().is_some_and(is_name_char) => {
+                self.at += word.len();
+                true
+            }
+            _ => false,
         }
     }
 
