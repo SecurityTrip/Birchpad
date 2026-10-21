@@ -1,5 +1,7 @@
 # Contributing to Birchpad
 
+English · [Русский](CONTRIBUTING.ru.md)
+
 Thanks for your interest in Birchpad!
 
 ## Before you start
@@ -99,9 +101,8 @@ workspace or GPUI already builds, and turn off default features it does not need
 Everything that reads input from outside (files and their encodings, settings, the state file,
 sessions and Notepad++'s `session.xml`, `.workspace` files, the keymap, the text's context menu
 (`context-menu.toml`), the command line and the message that hands it to a running instance, the
-update manifest, plugins' `plugin.toml`, the JSON, XML and hex dumps the built-in tools read,
-JSON paths, XPath expressions, DTDs and XML Schemas,
-Hunspell dictionaries, search queries and Find in Files' filters, the calls plugins make into
+update manifest and the online catalog, plugins' `plugin.toml`, the JSON, XML and hex dumps the
+built-in tools read, JSON paths, XPath expressions, DTDs and XML Schemas, Hunspell dictionaries, search queries and Find in Files' filters, the calls plugins make into
 Birchpad, and Rhai scripts) is fuzzed. The checks live in `crates/fuzz`: each takes any bytes and checks more than "no
 panic" (what reads cleanly writes back the same). `cargo test -p birchpad-fuzz` runs them over
 the seeds in `fuzz/seeds`, every cut of each seed and a few hundred mutants of it
@@ -146,6 +147,15 @@ cargo mutants --package birchpad-core
 
 What no automated test sees (input methods, screen readers, displays, installers and updates)
 is checked by hand before each release: [docs/release-checklist.md](docs/release-checklist.md).
+
+### Documentation in two languages
+
+The documents for users and contributors are in English and in Russian, side by side: README,
+CONTRIBUTING, SECURITY, PRIVACY, the code of conduct, [writing plugins and
+scripts](docs/plugins.md), the [release checklist](docs/release-checklist.md) and the
+[roadmap](docs/ROADMAP.md), each with its `*.ru.md` next to it, linked from each other at the
+top. A change to one changes the other in the same commit. ADRs and the changelog are in English
+only.
 
 ### Versions
 

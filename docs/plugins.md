@@ -1,5 +1,7 @@
 # Writing plugins and scripts
 
+English · [Русский](plugins.ru.md)
+
 Birchpad runs two kinds of extensions:
 
 - **Plugins**: WebAssembly components, built from any language that targets the component

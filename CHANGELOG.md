@@ -42,6 +42,9 @@ version's release notes from its section here.
   yet and offers updates of those that are, each download checked against the list's SHA-256.
   Plugins > Spell Checker > Download Languages... downloads dictionaries from the same list.
   Neither goes online while online features are turned off (`OnlineFeatures`).
+- Documentation in Russian: README, CONTRIBUTING, SECURITY, PRIVACY, the code of conduct,
+  writing plugins and scripts, the release checklist and the roadmap as `*.ru.md` beside the
+  English ones, each linking to the other.
 
 ### Changed
 

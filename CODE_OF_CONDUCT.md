@@ -1,5 +1,7 @@
 # Code of Conduct
 
+English · [Русский](CODE_OF_CONDUCT.ru.md)
+
 Birchpad adopts the [Contributor Covenant, version 2.1](https://www.contributor-covenant.org/version/2/1/code_of_conduct/).
 
 In short: be respectful, assume good intent, and focus on what is best for the community.

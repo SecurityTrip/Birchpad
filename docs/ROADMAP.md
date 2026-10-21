@@ -1,5 +1,7 @@
 # Birchpad roadmap
 
+English · [Русский](ROADMAP.ru.md)
+
 Birchpad first reaches feature parity with Notepad++ (Phases 1 to 6), then goes beyond it
 (Phase 7); closing Phase 7 releases Birchpad 1.0.0. On the way, each release from 0.2.0 on
 closes a group of steps, named in this roadmap's headings (Release 0.3.0, ...). Phases are
@@ -643,7 +645,7 @@ Closing Phase 6.
       plugins (available, updates, installed) with checksums; DSpellCheck's dictionary download
       ([ADR 0051](adr/0051-online-catalog.md))
 
-- [ ] 6.48 Documentation in Russian: the user's and the contributor's documents (README,
+- [x] 6.48 Documentation in Russian: the user's and the contributor's documents (README,
       CONTRIBUTING, SECURITY, PRIVACY, the code of conduct, writing plugins and scripts, the
       release checklist and this roadmap) as `*.ru.md` next to the English ones, linked from
       each other; from then on a change to one updates the other. ADRs and the changelog stay

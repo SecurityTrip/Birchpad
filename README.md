@@ -2,6 +2,8 @@
 
 <img src="packaging/icons/birchpad.svg" alt="" width="96" align="right">
 
+English · [Русский](README.ru.md)
+
 A fast, extensible, cross-platform text editor in the spirit of Notepad++, written in Rust.
 
 > **Status: alpha (0.6).** A Notepad++-like editor: tabs and split views, encodings, syntax
@@ -75,7 +77,8 @@ SHA-256 checksums and GitHub build provenance show that a download is what the r
 built from this repository's source on GitHub-hosted runners.
 
 Privacy policy: Birchpad collects no personal data, and connects to the network only to check
-for and download updates, which can be turned off; see [PRIVACY.md](PRIVACY.md).
+for and download updates, which can be turned off, and, when you ask, to install PlantUML,
+plugins and dictionaries; see [PRIVACY.md](PRIVACY.md).
 
 ## Building
 
@@ -122,12 +125,13 @@ Put a file named `birchpad-portable.txt` next to the executable (the Windows and
 with it) and Birchpad keeps its settings and data in a `data` folder next to it. Administrator
 policies of the machine still apply.
 
-Birchpad uses the network only to check for updates: once a day, and when you pick Help > Check
-for Updates. It reads a manifest signed with the project's key and refuses any other; installed
+On its own, Birchpad uses the network only to check for updates: once a day, and when you pick
+Help > Check for Updates. It reads a manifest signed with the project's key and refuses any other; installed
 copies (the Windows installer) update themselves when Birchpad restarts, other copies show where
 to download the new version. With `updates.mode = "off"` (a setting or an administrator policy)
-Birchpad makes no network requests at all; `"notify"` announces new versions without
-downloading them. See [ADR 0020](docs/adr/0020-signed-updates-and-nightly-builds.md) and the
+Birchpad makes no update requests; `"notify"` announces new versions without downloading them.
+PlantUML, plugins from the online list and dictionaries are downloaded only when you ask, and
+not with `network.online-features = false`. See [ADR 0020](docs/adr/0020-signed-updates-and-nightly-builds.md) and the
 [privacy policy](PRIVACY.md).
 
 ## Repository layout
@@ -142,15 +146,15 @@ downloading them. See [ADR 0020](docs/adr/0020-signed-updates-and-nightly-builds
 | `crates/view` | Layout of a document view in cells: tab stops, word wrap, visual rows, right-to-left text. No UI. |
 | `crates/syntax` | Languages and syntax trees: detection, tree-sitter parsing, highlighting, folding. No UI. |
 | `crates/cli` | Notepad++-compatible command line and the single-instance hand-off. No UI. |
-| `crates/tools` | Built-in tools: JSON and XML formatting, hex dumps, comparing texts, spell checking, date formats, HTML export. No UI. |
+| `crates/tools` | Built-in tools: JSON and XML formatting, XPath and schemas, hex dumps, comparing texts, spell checking, date formats, HTML export. No UI. |
 | `crates/plugin` | Plugins as WebAssembly components (`wit/birchpad.wit`), Rhai scripts, the plugin manager. No UI. |
-| `crates/update` | Updates: the signed update manifest, channels, versions, installing (Velopack on Windows). No UI. |
+| `crates/update` | Updates: the signed update manifest, channels, versions, installing (Velopack on Windows); the online catalog. No UI. |
 | `crates/release-tool` | `birchpad-release`: signing keys and the update manifest, for the release workflows. |
 | `crates/ui` | What the window's parts share: the command registry, the settings and state of the application, dialog buttons, messages to the user. |
 | `crates/editor` | The editor: the buffer, the editor view drawn and edited in GPUI, the active theme. |
 | `crates/menu-bar` | The menu bar drawn in the window on Windows and Linux, with Windows' keyboard access. |
 | `crates/app` | The desktop application: the workspace, panes, panels, dialogs and menus. See ADR 0041 for the layout. |
-| `packaging/` | Release packaging: per-machine MSI, macOS app bundle, portable-mode marker, update signing setup. |
+| `packaging/` | Release packaging: per-machine MSI, macOS app bundle, portable-mode marker, update signing setup, the online catalog. |
 | `docs/` | Roadmap, architecture decision records, and [writing plugins and scripts](docs/plugins.md). |
 
 ## Contributing

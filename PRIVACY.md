@@ -1,5 +1,7 @@
 # Privacy policy
 
+English · [Русский](PRIVACY.ru.md)
+
 Birchpad collects no personal data. It has no telemetry, no crash reporting and no accounts, and
 your documents, sessions and backups stay on your computer, in Birchpad's data folder (or, in
 portable mode, the `data` folder next to it).
@@ -18,7 +20,6 @@ dictionaries when you ask:
 - **Downloading updates**: with `updates.mode = "auto"` (the default), a copy installed with the
   per-user Windows installer downloads the package of a newer version, from the address the
   manifest lists (GitHub's release downloads).
-
 - **Installing PlantUML**: when you click Install PlantUML in the preview of a PlantUML
   document (or View > Preview > Install PlantUML), Birchpad downloads PlantUML and the Java that
   runs it from a release of its repository on GitHub (`plantuml-*`), once. With
@@ -44,10 +45,12 @@ covers them.
 
 ## Turning it off
 
-- `updates.mode = "off"`, in Birchpad's settings, stops all network requests.
+- `updates.mode = "off"`, in Birchpad's settings, stops the requests for updates.
 - `updates.mode = "notify"` checks and announces new versions, but downloads nothing.
-- Administrators can set the same with the `UpdateMode` policy (the Windows registry), which
-  users cannot override.
+- `network.online-features = false` stops installing PlantUML and reading the online list of
+  plugins and dictionaries; with both, Birchpad makes no network requests at all.
+- Administrators can set the same with the `UpdateMode` and `OnlineFeatures` policies (the
+  Windows registry), which users cannot override.
 
 A link you choose to open (Open Download Page in an update notice, or Birchpad's home page,
 manual and forum in the Help menu) goes to your browser.
