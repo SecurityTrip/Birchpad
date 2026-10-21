@@ -37,7 +37,3 @@ pub fn hash_hex(kind: HashKind, bytes: &[u8]) -> String {
         HashKind::Sha512 => hex(&sha2::Sha512::digest(bytes)),
     }
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/hash/tests.rs"]
-mod tests;

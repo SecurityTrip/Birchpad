@@ -21,7 +21,7 @@ use crate::editor::EditorView;
 use crate::workspace::Workspace;
 
 /// Where a plugin stands.
-pub(crate) enum State {
+pub enum State {
     /// Being compiled.
     Loading,
     Ready(Box<Plugin>),
@@ -32,17 +32,17 @@ pub(crate) enum State {
     Failed(String),
 }
 
-pub(crate) struct Entry {
-    pub(crate) installed: Installed,
-    pub(crate) state: State,
+pub struct Entry {
+    pub installed: Installed,
+    pub state: State,
 }
 
 impl Entry {
-    pub(crate) fn id(&self) -> &str {
+    pub fn id(&self) -> &str {
         &self.installed.manifest.id
     }
 
-    pub(crate) fn commands(&self) -> &[PluginCommand] {
+    pub fn commands(&self) -> &[PluginCommand] {
         match &self.state {
             State::Ready(plugin) => plugin.commands(),
             _ => &[],
@@ -52,10 +52,10 @@ impl Entry {
 
 /// The installed plugins, and folders that hold none that reads.
 #[derive(Default)]
-pub(crate) struct Plugins {
+pub struct Plugins {
     runtime: Option<Runtime>,
-    pub(crate) entries: Vec<Entry>,
-    pub(crate) problems: Vec<String>,
+    pub entries: Vec<Entry>,
+    pub problems: Vec<String>,
     /// Bumped by every load, so that a slow compilation of an earlier one is dropped.
     generation: u64,
     /// The view plugins last heard was activated: it is not activated again until another is.
@@ -64,7 +64,7 @@ pub(crate) struct Plugins {
 
 impl Global for Plugins {}
 
-pub(crate) fn plugins_dir(cx: &App) -> Option<PathBuf> {
+pub fn plugins_dir(cx: &App) -> Option<PathBuf> {
     AppState::global(cx)
         .paths
         .user_config_dir()
@@ -79,7 +79,7 @@ fn plugins(cx: &mut App) -> &mut Plugins {
 }
 
 /// The plugins' menus: each ready plugin's name with its commands.
-pub(crate) fn menus(cx: &App) -> Vec<(String, String, Vec<PluginCommand>)> {
+pub fn menus(cx: &App) -> Vec<(String, String, Vec<PluginCommand>)> {
     cx.try_global::<Plugins>()
         .map(|plugins| {
             plugins
@@ -104,7 +104,7 @@ struct RunArgs {
     command: String,
 }
 
-pub(crate) fn register_commands(registry: &mut CommandRegistry) {
+pub fn register_commands(registry: &mut CommandRegistry) {
     registry.workspace("plugin.run", |this, args: RunArgs, window, cx| {
         let (view, session) = super::session(this, cx);
         let outcome = super::nested(|| {
@@ -164,7 +164,7 @@ fn with_plugin<T>(
 
 impl Workspace {
     /// Reads the plugins folder and compiles the plugins that may run, in the background.
-    pub(crate) fn load_plugins(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+    pub fn load_plugins(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let Some(dir) = plugins_dir(cx) else {
             return;
         };
@@ -246,7 +246,7 @@ impl Workspace {
     }
 
     /// A click on line `line` of a plugin's panel.
-    pub(crate) fn plugin_panel_click(
+    pub fn plugin_panel_click(
         &mut self,
         id: &str,
         line: usize,
@@ -268,7 +268,7 @@ impl Workspace {
 
     /// Tells the plugins that asked for `event` about it, with `view`'s document. Their
     /// failures are reported, not returned: the event has happened anyway.
-    pub(crate) fn plugin_event(
+    pub fn plugin_event(
         &mut self,
         event: EventKind,
         view: &Entity<EditorView>,
@@ -317,17 +317,9 @@ impl Workspace {
     }
 
     /// The view that shows `buffer`, for an event about it.
-    pub(crate) fn view_of_buffer(
-        &self,
-        buffer: &Entity<Buffer>,
-        cx: &App,
-    ) -> Option<Entity<EditorView>> {
+    pub fn view_of_buffer(&self, buffer: &Entity<Buffer>, cx: &App) -> Option<Entity<EditorView>> {
         self.all_views(cx)
             .into_iter()
             .find(|view| &view.read(cx).buffer == buffer)
     }
 }
-
-#[cfg(test)]
-#[path = "../../tests/unit/extensions/plugins/tests.rs"]
-mod tests;

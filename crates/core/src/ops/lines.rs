@@ -225,7 +225,3 @@ pub fn split_lines(
     }
     replace_block(text, selection, lines, &new_lines, eol)
 }
-
-#[cfg(test)]
-#[path = "../../tests/unit/ops/lines/tests.rs"]
-mod tests;

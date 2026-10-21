@@ -213,7 +213,3 @@ pub(crate) fn next_tab(text: &Rope, range: Range<usize>) -> Option<usize> {
 pub fn row_count(text: &Rope, range: Range<usize>, width: usize, tab_width: usize) -> usize {
     count_rows(text.slice(range), width, tab_width)
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/wrap/tests.rs"]
-mod tests;

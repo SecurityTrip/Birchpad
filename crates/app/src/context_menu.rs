@@ -9,16 +9,16 @@ use std::path::PathBuf;
 
 use crate::app_state::AppState;
 use crate::commands::{CommandRegistry, Register as _};
-use crate::editor::{EditorEvent, EditorView};
+pub use crate::editor::{EditorEvent, EditorView};
 use crate::workspace::Workspace;
 use anyhow::anyhow;
 use birchpad_commands::Invocation;
-pub(crate) use birchpad_commands::context_menu::{DEFAULT, FILE_NAME, Node, parse};
+pub use birchpad_commands::context_menu::{DEFAULT, FILE_NAME, Node, parse};
 use gpui_kit::component::menu::{PopupMenu, PopupMenuItem};
 use gpui_kit::{App, ClickEvent, Context, WeakEntity, Window};
 
 /// The user's menu file, if there is a settings folder.
-pub(crate) fn file_path(cx: &App) -> Option<PathBuf> {
+pub fn file_path(cx: &App) -> Option<PathBuf> {
     AppState::global(cx)
         .paths
         .user_config_dir()
@@ -27,7 +27,7 @@ pub(crate) fn file_path(cx: &App) -> Option<PathBuf> {
 
 /// The menu to show: the user's file, or the default one. A file that cannot be read gives the
 /// default menu and the reason.
-pub(crate) fn load(cx: &App) -> (Vec<Node>, Option<String>) {
+pub fn load(cx: &App) -> (Vec<Node>, Option<String>) {
     let default = || parse(DEFAULT).expect("the default context menu reads");
     let Some(path) = file_path(cx) else {
         return (default(), None);
@@ -44,7 +44,7 @@ pub(crate) fn load(cx: &App) -> (Vec<Node>, Option<String>) {
 }
 
 /// Fills `menu` with `nodes`; a chosen item asks `view` to run its command.
-pub(crate) fn build(
+pub fn build(
     mut menu: PopupMenu,
     nodes: &[Node],
     view: &WeakEntity<EditorView>,
@@ -83,7 +83,7 @@ pub(crate) fn build(
     menu
 }
 
-pub(crate) fn register_commands(registry: &mut CommandRegistry) {
+pub fn register_commands(registry: &mut CommandRegistry) {
     registry.workspace("settings.edit-context-menu", |this, (), window, cx| {
         let path = file_path(cx)
             .ok_or_else(|| anyhow!("{}", t!("context-menu.there-is-no-settings-folder")))?;
@@ -100,7 +100,7 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
 
 impl Workspace {
     /// A command chosen in a view's context menu: runs on that view's document.
-    pub(crate) fn run_context_command(
+    pub fn run_context_command(
         &mut self,
         view: &gpui_kit::Entity<EditorView>,
         invocation: &Invocation,
@@ -113,7 +113,3 @@ impl Workspace {
         }
     }
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/context_menu/tests.rs"]
-mod tests;

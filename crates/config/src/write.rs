@@ -129,7 +129,3 @@ pub fn write_setting(path: &Path, key: &str, value: Option<&Value>) -> Result<()
     crate::session::write_private(path, text.as_bytes())
         .map_err(|error| SettingError::Io(format!("{}: {error}", path.display())))
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/write/tests.rs"]
-mod tests;

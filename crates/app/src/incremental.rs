@@ -24,7 +24,7 @@ use crate::commands::{CommandRegistry, Register as _};
 use crate::find::plural;
 use crate::workspace::Workspace;
 
-pub(crate) fn register_commands(registry: &mut CommandRegistry) {
+pub fn register_commands(registry: &mut CommandRegistry) {
     registry.workspace("search.incremental", |this, (), window, cx| {
         this.open_incremental(window, cx);
         Ok(())
@@ -36,24 +36,24 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum IncrementalEvent {
+pub enum IncrementalEvent {
     /// The text or an option changed: search again from the start of the selection.
     Changed,
     Find(Direction),
     Close,
 }
 
-pub(crate) struct IncrementalBar {
-    pub(crate) visible: bool,
+pub struct IncrementalBar {
+    pub visible: bool,
     input: Entity<InputState>,
     /// The text last searched for: the field also reports a change after Enter, when nothing
     /// changed, which must not search again from the start of the match.
     last_text: String,
-    pub(crate) highlight_all: bool,
-    pub(crate) match_case: bool,
-    pub(crate) whole_word: bool,
+    pub highlight_all: bool,
+    pub match_case: bool,
+    pub whole_word: bool,
     /// What the last search says: that it wrapped around, or found nothing.
-    status: Option<&'static str>,
+    pub status: Option<&'static str>,
     not_found: bool,
     /// How many matches Highlight all marked.
     count: Option<usize>,
@@ -72,7 +72,7 @@ impl Focusable for IncrementalBar {
 }
 
 impl IncrementalBar {
-    pub(crate) fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
+    pub fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
         let input = cx.new(|cx| InputState::new(window, cx));
         let events =
             cx.subscribe_in(
@@ -106,7 +106,7 @@ impl IncrementalBar {
         }
     }
 
-    fn query(&self, cx: &App) -> Query {
+    pub fn query(&self, cx: &App) -> Query {
         Query {
             pattern: self.input.read(cx).value().to_string(),
             match_case: self.match_case,
@@ -141,15 +141,15 @@ impl IncrementalBar {
     }
 
     /// Sets the text as if typed, for tests: the field's own change events need a keyboard.
-    #[cfg(test)]
-    pub(crate) fn type_text(&mut self, text: &str, window: &mut Window, cx: &mut Context<Self>) {
+    #[cfg(feature = "test-support")]
+    pub fn type_text(&mut self, text: &str, window: &mut Window, cx: &mut Context<Self>) {
         self.input
             .update(cx, |input, cx| input.set_value(text, window, cx));
         self.text_changed(cx);
     }
 
-    #[cfg(test)]
-    pub(crate) fn state(&self) -> (Option<&'static str>, bool, Option<usize>) {
+    #[cfg(feature = "test-support")]
+    pub fn state(&self) -> (Option<&'static str>, bool, Option<usize>) {
         (self.status, self.not_found, self.count)
     }
 
@@ -278,7 +278,7 @@ impl Workspace {
     }
 
     /// Escape: hides the bar and its highlights, and returns to the text.
-    fn close_incremental(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+    pub fn close_incremental(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         self.clear_incremental_highlights(cx);
         self.incremental.update(cx, |bar, cx| {
             bar.visible = false;
@@ -294,7 +294,7 @@ impl Workspace {
         cx.notify();
     }
 
-    pub(crate) fn on_incremental_event(
+    pub fn on_incremental_event(
         &mut self,
         _: &Entity<IncrementalBar>,
         event: &IncrementalEvent,
@@ -319,7 +319,7 @@ impl Workspace {
 
     /// Searches again: from the start of the selection when the text changed (`None`), or for
     /// the next or previous match.
-    pub(crate) fn incremental_search(&mut self, step: Option<Direction>, cx: &mut Context<Self>) {
+    pub fn incremental_search(&mut self, step: Option<Direction>, cx: &mut Context<Self>) {
         self.clear_incremental_highlights(cx);
         let Some(view) = self.active_view(cx) else {
             return;
@@ -386,7 +386,3 @@ impl Workspace {
         });
     }
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/incremental/tests.rs"]
-mod tests;

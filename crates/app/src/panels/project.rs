@@ -36,10 +36,10 @@ const INDENT: f32 = 14.;
 type MenuAction = Box<dyn Fn(&mut ProjectPanel, &mut Window, &mut Context<ProjectPanel>)>;
 
 /// Where an item is: the project's index, then the index in each folder on the way down.
-pub(crate) type Address = Vec<usize>;
+pub type Address = Vec<usize>;
 
 /// The project or folder at `address`.
-pub(crate) fn folder_mut<'a>(
+pub fn folder_mut<'a>(
     model: &'a mut ProjectWorkspace,
     address: &[usize],
 ) -> Option<&'a mut ProjectFolder> {
@@ -67,11 +67,7 @@ fn parent_items<'a>(
 }
 
 /// Adds a folder to the project or folder at `at`; returns where it went.
-pub(crate) fn add_folder(
-    model: &mut ProjectWorkspace,
-    at: &[usize],
-    name: &str,
-) -> Option<Address> {
+pub fn add_folder(model: &mut ProjectWorkspace, at: &[usize], name: &str) -> Option<Address> {
     let folder = folder_mut(model, at)?;
     folder.items.push(ProjectItem::Folder(ProjectFolder {
         name: name.to_owned(),
@@ -83,7 +79,7 @@ pub(crate) fn add_folder(
 }
 
 /// Adds `files` to the project or folder at `at`, leaving out those already there.
-pub(crate) fn add_files(model: &mut ProjectWorkspace, at: &[usize], files: Vec<PathBuf>) -> bool {
+pub fn add_files(model: &mut ProjectWorkspace, at: &[usize], files: Vec<PathBuf>) -> bool {
     let Some(folder) = folder_mut(model, at) else {
         return false;
     };
@@ -97,7 +93,7 @@ pub(crate) fn add_files(model: &mut ProjectWorkspace, at: &[usize], files: Vec<P
 
 /// The items for Add Files from Directory: the files of `dir`, and a folder for each of its
 /// folders with their files, in name order. Hidden entries (a leading dot) are left out.
-pub(crate) fn items_from_directory(dir: &Path) -> Vec<ProjectItem> {
+pub fn items_from_directory(dir: &Path) -> Vec<ProjectItem> {
     let Ok(entries) = std::fs::read_dir(dir) else {
         return Vec::new();
     };
@@ -127,7 +123,7 @@ pub(crate) fn items_from_directory(dir: &Path) -> Vec<ProjectItem> {
 }
 
 /// Renames the project or folder at `address`.
-pub(crate) fn rename(model: &mut ProjectWorkspace, address: &[usize], name: &str) -> bool {
+pub fn rename(model: &mut ProjectWorkspace, address: &[usize], name: &str) -> bool {
     match folder_mut(model, address) {
         Some(folder) => {
             folder.name = name.to_owned();
@@ -138,11 +134,7 @@ pub(crate) fn rename(model: &mut ProjectWorkspace, address: &[usize], name: &str
 }
 
 /// Points the file at `address` somewhere else (Modify File Path).
-pub(crate) fn set_file_path(
-    model: &mut ProjectWorkspace,
-    address: &[usize],
-    path: PathBuf,
-) -> bool {
+pub fn set_file_path(model: &mut ProjectWorkspace, address: &[usize], path: PathBuf) -> bool {
     match parent_items(model, address) {
         Some((items, index)) => match items.get_mut(index) {
             Some(ProjectItem::File(file)) => {
@@ -156,7 +148,7 @@ pub(crate) fn set_file_path(
 }
 
 /// Removes the project, folder or file at `address`.
-pub(crate) fn remove(model: &mut ProjectWorkspace, address: &[usize]) -> bool {
+pub fn remove(model: &mut ProjectWorkspace, address: &[usize]) -> bool {
     if let [project] = address {
         if *project < model.projects.len() {
             model.projects.remove(*project);
@@ -174,11 +166,7 @@ pub(crate) fn remove(model: &mut ProjectWorkspace, address: &[usize]) -> bool {
 }
 
 /// Moves the item at `address` up or down among its siblings; returns where it went.
-pub(crate) fn move_item(
-    model: &mut ProjectWorkspace,
-    address: &[usize],
-    up: bool,
-) -> Option<Address> {
+pub fn move_item(model: &mut ProjectWorkspace, address: &[usize], up: bool) -> Option<Address> {
     fn swap<T>(items: &mut [T], index: usize, up: bool) -> Option<usize> {
         let other = if up { index.checked_sub(1)? } else { index + 1 };
         if other >= items.len() || index >= items.len() {
@@ -200,7 +188,7 @@ pub(crate) fn move_item(
 
 /// What a row shows.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) enum RowKind {
+pub enum RowKind {
     /// The workspace itself, at the top.
     Workspace,
     Project,
@@ -212,29 +200,29 @@ pub(crate) enum RowKind {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct Row {
+pub struct Row {
     /// `None` for the workspace row.
-    pub(crate) address: Option<Address>,
-    pub(crate) kind: RowKind,
-    pub(crate) name: String,
-    pub(crate) depth: usize,
-    pub(crate) expanded: bool,
+    pub address: Option<Address>,
+    pub kind: RowKind,
+    pub name: String,
+    pub depth: usize,
+    pub expanded: bool,
 }
 
-pub(crate) struct ProjectPanel {
+pub struct ProjectPanel {
     /// 1 to 3.
     panel: u8,
     workspace: WeakEntity<Workspace>,
     /// The workspace file shown; none until one is opened or made.
-    pub(crate) file: Option<PathBuf>,
-    pub(crate) model: ProjectWorkspace,
+    pub file: Option<PathBuf>,
+    pub model: ProjectWorkspace,
     /// Why the workspace file could not be read or written.
-    pub(crate) error: Option<String>,
+    pub error: Option<String>,
     collapsed: HashSet<Address>,
     /// The selected row's address; `Some(None)` for the workspace row.
-    pub(crate) selected: Option<Option<Address>>,
+    pub selected: Option<Option<Address>>,
     scroll: UniformListScrollHandle,
-    focus_handle: FocusHandle,
+    pub focus_handle: FocusHandle,
 }
 
 impl Focusable for ProjectPanel {
@@ -244,7 +232,7 @@ impl Focusable for ProjectPanel {
 }
 
 impl ProjectPanel {
-    pub(crate) fn new(
+    pub fn new(
         panel: u8,
         workspace: WeakEntity<Workspace>,
         _: &mut Window,
@@ -287,7 +275,7 @@ impl ProjectPanel {
 
     /// Shows the workspace in `file`; a file that cannot be read leaves an empty workspace and
     /// says why.
-    pub(crate) fn open_workspace(&mut self, file: PathBuf, cx: &mut Context<Self>) {
+    pub fn open_workspace(&mut self, file: PathBuf, cx: &mut Context<Self>) {
         match ProjectWorkspace::load(&file) {
             Ok(model) => {
                 self.model = model;
@@ -306,7 +294,7 @@ impl ProjectPanel {
     }
 
     /// New Workspace: an empty workspace kept in `file`.
-    pub(crate) fn new_workspace(&mut self, file: PathBuf, cx: &mut Context<Self>) {
+    pub fn new_workspace(&mut self, file: PathBuf, cx: &mut Context<Self>) {
         self.model = ProjectWorkspace::default();
         self.file = Some(file);
         self.collapsed.clear();
@@ -315,7 +303,7 @@ impl ProjectPanel {
         self.remember(cx);
     }
 
-    pub(crate) fn reload(&mut self, cx: &mut Context<Self>) {
+    pub fn reload(&mut self, cx: &mut Context<Self>) {
         if let Some(file) = self.file.clone() {
             self.open_workspace(file, cx);
         }
@@ -330,7 +318,7 @@ impl ProjectPanel {
     }
 
     /// Save As (`switch`) or Save a Copy As.
-    pub(crate) fn save_as(&mut self, file: PathBuf, switch: bool, cx: &mut Context<Self>) {
+    pub fn save_as(&mut self, file: PathBuf, switch: bool, cx: &mut Context<Self>) {
         match self.model.save(&file) {
             Ok(()) if switch => {
                 self.file = Some(file);
@@ -344,7 +332,7 @@ impl ProjectPanel {
     }
 
     /// Applies a change to the tree and saves it.
-    pub(crate) fn change(
+    pub fn change(
         &mut self,
         cx: &mut Context<Self>,
         change: impl FnOnce(&mut ProjectWorkspace) -> Option<Option<Address>>,
@@ -355,7 +343,7 @@ impl ProjectPanel {
         }
     }
 
-    pub(crate) fn add_project(&mut self, name: &str, cx: &mut Context<Self>) {
+    pub fn add_project(&mut self, name: &str, cx: &mut Context<Self>) {
         self.change(cx, |model| {
             model.projects.push(ProjectFolder {
                 name: name.to_owned(),
@@ -366,7 +354,7 @@ impl ProjectPanel {
     }
 
     /// The rows shown, top to bottom.
-    pub(crate) fn rows(&self) -> Vec<Row> {
+    pub fn rows(&self) -> Vec<Row> {
         let Some(file) = &self.file else {
             return Vec::new();
         };
@@ -908,7 +896,3 @@ impl Render for ProjectPanel {
             .child(div().flex_1().min_h(px(0.)).child(body))
     }
 }
-
-#[cfg(test)]
-#[path = "../../tests/unit/panels/project_tests.rs"]
-mod tests;

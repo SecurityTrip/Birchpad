@@ -107,7 +107,3 @@ pub fn format(pattern: &str, time: &NaiveDateTime) -> String {
     }
     out
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/date_time/tests.rs"]
-mod tests;

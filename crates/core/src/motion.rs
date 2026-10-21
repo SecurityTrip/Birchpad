@@ -232,15 +232,3 @@ pub fn go_to_position(text: &Rope, target: GoToTarget) -> usize {
         }
     }
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/motion/tests.rs"]
-mod tests;
-
-#[cfg(test)]
-#[path = "../tests/unit/motion/count_tests.rs"]
-mod count_tests;
-
-#[cfg(test)]
-#[path = "../tests/unit/motion/go_to_tests.rs"]
-mod go_to_tests;

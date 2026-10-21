@@ -132,7 +132,3 @@ fn capitalize(text: &str, blend: bool, starts_word: impl Fn(Option<char>) -> boo
     }
     out
 }
-
-#[cfg(test)]
-#[path = "../../tests/unit/ops/case/tests.rs"]
-mod tests;

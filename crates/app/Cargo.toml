@@ -41,12 +41,16 @@ trash = "5"
 # Runs the script named by BIRCHPAD_E2E_SCRIPT once started, for the end-to-end tests
 # (`cargo test -p birchpad --features e2e --test e2e`). Release builds leave it out.
 e2e = []
+# What the tests drive and read of the application, and the system calls they fake: the
+# integration tests (`tests/integration`) turn it on.
+test-support = ["birchpad-editor/test-support", "birchpad-ui/test-support"]
 
 # The Windows icon and version resources (build.rs); the version GPUI uses.
 [build-dependencies]
 embed-resource = "3"
 
 [dev-dependencies]
+birchpad = { path = ".", features = ["test-support"] }
 birchpad-editor = { workspace = true, features = ["test-support"] }
 birchpad-ui = { workspace = true, features = ["test-support"] }
 # Tests switch the language each in its own thread.
@@ -57,16 +61,22 @@ rustc-hash = "2"
 # The SHA-256 of an update package served in a test.
 sha2 = "0.11"
 tempfile = "3"
+# The PlantUML packages served in tests; the version birchpad-update builds.
+zip = { version = "8.6", default-features = false, features = ["deflate"] }
 
 [lints]
 workspace = true
 
-# View > Always on Top, Edit > Paste Special > Paste HTML/RTF Content: the platforms' own calls.
+# View > Always on Top, Edit > Paste Special > Paste HTML/RTF Content, File > Print: the
+# platforms' own calls.
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.61", features = [
     "Win32_Foundation",
+    "Win32_Graphics_Gdi",
+    "Win32_Storage_Xps",
     "Win32_System_DataExchange",
     "Win32_System_Memory",
+    "Win32_UI_Controls_Dialogs",
     "Win32_UI_WindowsAndMessaging",
 ] }
 

@@ -29,6 +29,6 @@ pub use encoding::{
 };
 pub use file::{
     FileInfo, LoadOptions, LoadedFile, MAX_FILE_SIZE, ReadError, Recovery, SaveError, decode_file,
-    discard_recovery, load, pending_recoveries, read_file, save,
+    discard_recovery, load, pending_recoveries, read_file, read_file_within, save,
 };
 pub use folder::{FilterError, Filters, FolderOptions, files_in};

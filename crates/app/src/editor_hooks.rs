@@ -6,7 +6,7 @@ use gpui_kit::component::menu::{PopupMenu, PopupMenuItem};
 use gpui_kit::{App, Context, WeakEntity, Window};
 
 /// Gives the editor the application's hooks.
-pub(crate) fn install(cx: &mut App) {
+pub fn install(cx: &mut App) {
     cx.set_global(EditorHooks {
         ran: crate::macros::record,
         typed: crate::macros::record_typing,

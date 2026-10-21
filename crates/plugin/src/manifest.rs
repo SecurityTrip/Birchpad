@@ -16,9 +16,10 @@ use serde::{Deserialize, Serialize};
 /// as major and minor.
 pub const API_VERSION: &str = "0.1";
 
-/// The longest id and name accepted.
-const MAX_ID: usize = 64;
-const MAX_NAME: usize = 100;
+/// The longest plugin id accepted, in bytes.
+pub const MAX_ID: usize = 64;
+/// The longest plugin name accepted, in characters.
+pub const MAX_NAME: usize = 100;
 
 /// An event a plugin may ask to hear about.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -129,7 +130,3 @@ impl Manifest {
         toml::to_string(self).unwrap_or_default()
     }
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/manifest/tests.rs"]
-mod tests;

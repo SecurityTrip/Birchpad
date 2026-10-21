@@ -88,7 +88,3 @@ impl<'de> Deserialize<'de> for Color {
         text.parse().map_err(serde::de::Error::custom)
     }
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/color/tests.rs"]
-mod tests;

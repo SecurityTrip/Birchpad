@@ -25,7 +25,7 @@ fn links(cx: &mut App) -> &mut HashMap<EntityId, WeakEntity<Buffer>> {
     &mut cx.global_mut::<HexLinks>().0
 }
 
-pub(crate) fn register_commands(registry: &mut CommandRegistry) {
+pub fn register_commands(registry: &mut CommandRegistry) {
     registry.workspace("hex.view", |this, (), window, cx| {
         this.view_in_hex(window, cx)
     });
@@ -117,7 +117,3 @@ fn apply_text(view: &Entity<crate::editor::EditorView>, text: &str, cx: &mut App
         Ok(())
     })
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/hex_view/tests.rs"]
-mod tests;

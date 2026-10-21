@@ -5,9 +5,9 @@
 //! undo step, then its effects run in order: commands, messages, the plugin panel. Commands a
 //! plugin runs may run plugins in turn, up to [`MAX_DEPTH`] deep.
 
-pub(crate) mod admin;
-pub(crate) mod plugins;
-pub(crate) mod scripts;
+pub mod admin;
+pub mod plugins;
+pub mod scripts;
 
 use std::cell::Cell;
 
@@ -20,7 +20,7 @@ use crate::panels::{PanelKind, PluginPanel};
 use crate::workspace::Workspace;
 
 /// How deep plugins and scripts may run each other through commands.
-pub(crate) const MAX_DEPTH: usize = 8;
+pub const MAX_DEPTH: usize = 8;
 
 thread_local! {
     static DEPTH: Cell<usize> = const { Cell::new(0) };
@@ -28,14 +28,14 @@ thread_local! {
 
 /// Who filled the plugin panel, and is told when a line of it is clicked.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) enum PanelOwner {
+pub enum PanelOwner {
     Script(String),
     /// A plugin, by id.
     Plugin(String),
 }
 
 /// A copy of `view`'s document for a call.
-pub(crate) fn document_state(view: &EditorView, cx: &App) -> DocumentState {
+pub fn document_state(view: &EditorView, cx: &App) -> DocumentState {
     let buffer = view.buffer.read(cx);
     let language = match (buffer.language(), buffer.user_language()) {
         (Some(language), _) => language.id.to_owned(),
@@ -51,7 +51,7 @@ pub(crate) fn document_state(view: &EditorView, cx: &App) -> DocumentState {
 }
 
 /// A session over the active document, or without one.
-pub(crate) fn session(workspace: &Workspace, cx: &App) -> (Option<Entity<EditorView>>, Session) {
+pub fn session(workspace: &Workspace, cx: &App) -> (Option<Entity<EditorView>>, Session) {
     match workspace.active_view(cx) {
         Some(view) => {
             let state = document_state(view.read(cx), cx);
@@ -62,7 +62,7 @@ pub(crate) fn session(workspace: &Workspace, cx: &App) -> (Option<Entity<EditorV
 }
 
 /// Runs `call` unless plugins and scripts are already running each other too deep.
-pub(crate) fn nested<T>(call: impl FnOnce() -> Result<T>) -> Result<T> {
+pub fn nested<T>(call: impl FnOnce() -> Result<T>) -> Result<T> {
     let depth = DEPTH.with(Cell::get);
     if depth >= MAX_DEPTH {
         bail!(
@@ -82,7 +82,7 @@ pub(crate) fn nested<T>(call: impl FnOnce() -> Result<T>) -> Result<T> {
 impl Workspace {
     /// Applies what a call returned: its edit to `view`, then its effects. The first command
     /// that fails is the error; the others still run.
-    pub(crate) fn apply_outcome(
+    pub fn apply_outcome(
         &mut self,
         view: Option<&Entity<EditorView>>,
         owner: PanelOwner,
@@ -117,7 +117,7 @@ impl Workspace {
     }
 
     /// Fills the plugin panel and opens it.
-    pub(crate) fn show_plugin_panel(
+    pub fn show_plugin_panel(
         &mut self,
         owner: PanelOwner,
         title: String,
@@ -136,7 +136,7 @@ impl Workspace {
     }
 
     /// A click on line `line` of the plugin panel.
-    pub(crate) fn plugin_panel_clicked(
+    pub fn plugin_panel_clicked(
         &mut self,
         owner: &PanelOwner,
         line: usize,
@@ -150,7 +150,3 @@ impl Workspace {
         }
     }
 }
-
-#[cfg(test)]
-#[path = "../../tests/unit/extensions/tests.rs"]
-mod tests;

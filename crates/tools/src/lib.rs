@@ -9,6 +9,7 @@ pub mod date_time;
 pub mod hex;
 pub mod html;
 pub mod json;
+pub mod print;
 pub mod spell;
 pub mod xml;
 
@@ -90,7 +91,3 @@ pub(crate) fn floor_char_boundary(text: &str, mut offset: usize) -> usize {
     }
     offset
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/tests.rs"]
-mod tests;

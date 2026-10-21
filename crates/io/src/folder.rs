@@ -192,7 +192,3 @@ fn is_hidden(name: &str, metadata: &fs::Metadata) -> bool {
         name.starts_with('.')
     }
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/folder/tests.rs"]
-mod tests;

@@ -100,7 +100,3 @@ pub fn write_macros(macros: &[Macro]) -> String {
     };
     toml::to_string(&file).expect("macros serialize")
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/macros/tests.rs"]
-mod tests;

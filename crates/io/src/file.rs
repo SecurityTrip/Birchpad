@@ -69,8 +69,9 @@ pub fn read_file(path: &Path, progress: &AtomicU64) -> Result<(Vec<u8>, FileInfo
     read_file_within(path, progress, MAX_FILE_SIZE)
 }
 
-/// [`read_file`] with another size limit, so that tests need no file of gigabytes.
-fn read_file_within(
+/// [`read_file`] with another size limit than [`MAX_FILE_SIZE`] (and tests need no file of
+/// gigabytes).
+pub fn read_file_within(
     path: &Path,
     progress: &AtomicU64,
     limit: u64,
@@ -392,7 +393,3 @@ pub fn pending_recoveries(dir: &Path) -> Vec<Recovery> {
 pub fn discard_recovery(recovery: &Recovery) {
     remove_recovery(recovery);
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/file/tests.rs"]
-mod tests;

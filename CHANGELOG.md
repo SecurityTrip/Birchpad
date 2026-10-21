@@ -6,6 +6,48 @@ version's release notes from its section here.
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-10-21
+
+### Added
+
+- File > Print... shows a print preview of Birchpad's own: the pages one at a time, as they
+  will be printed, with Page Setup... and Print.... A selection is printed alone, with its
+  line numbers.
+- Preferences > Print: paper and orientation, margins, the font's size, line numbers, the
+  colors (WYSIWYG, Invert, Black on white, No background color), and a header and a footer
+  of three parts each with Notepad++'s variables (`$(FULL_CURRENT_PATH)`, `$(FILE_NAME)`,
+  `$(CURRENT_DIRECTORY)`, `$(CURRENT_PRINTING_PAGE)`, `$(SHORT_DATE)`, `$(LONG_DATE)`,
+  `$(TIME)`).
+- On Windows, printing goes through Windows' print dialog, and File > Print Now prints on the
+  default printer at once. On macOS and Linux the same pages print from the browser.
+- Tools > MD5, SHA-1, SHA-256, SHA-512 > Generate from Files... shows the hashes in a window,
+  as Notepad++ does, with Copy and Open in New Document.
+- The Help menu of Notepad++: Command Line Arguments..., Birchpad Home, Online Manual,
+  Community (Forum), Set Updater Proxy... (`updates.proxy`, the proxy updates go through) and
+  Debug Info... (what a bug report needs, with Copy).
+- The command line options of Notepad++ that Birchpad ignored now work: `-notabbar`,
+  `-alwaysOnTop`, `-systemtray` (starts minimized), `-x` and `-y`, `-titleAdd`,
+  `-settingsDir`, `-loadingTime`, `-quickPrint`, `-monitor`, `-udl`, `-r` with wildcards (which
+  now open every file they match), ghost typing with `-qt`, `-qf` and `-qSpeed`, and
+  `-nopluginsupport`.
+- PlantUML previews work without installing anything: when no PlantUML is found, the preview
+  offers Install PlantUML, which downloads PlantUML and the Java that runs it (about 50 MB),
+  checks them and keeps them in Birchpad's data folder. Diagrams are laid out without Graphviz.
+  `preview.plantuml` still names a PlantUML of your own.
+
+### Changed
+
+- Links in the text open with Ctrl+click (Cmd+click on macOS); a double click selects a word
+  of them, as anywhere in the text (#45). Preferences > Cloud & Link > Open them with a double
+  click too (`links.double-click`) brings back Notepad++'s double click.
+- Every crate is tested through its public interface: the tests in `tests/integration`, one
+  test binary per crate, and `birchpad` is a library and a program that runs it (ADR 0043).
+
+### Fixed
+
+- In a very long line whose start has combining marks, a click or a move to a column landed
+  after the marks rather than before them.
+
 ## [0.4.0] - 2026-10-19
 
 ### Added
@@ -519,7 +561,8 @@ The first release: a Notepad++-like editor for Windows, Linux and macOS.
   entirely (`updates.mode = "off"`).
 - Nightly builds of `main` on the nightly channel.
 
-[Unreleased]: https://github.com/SecurityTrip/Birchpad/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/SecurityTrip/Birchpad/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/SecurityTrip/Birchpad/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/SecurityTrip/Birchpad/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/SecurityTrip/Birchpad/compare/v0.2.5...v0.3.0
 [0.2.5]: https://github.com/SecurityTrip/Birchpad/compare/v0.2.0...v0.2.5

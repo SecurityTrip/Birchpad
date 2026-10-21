@@ -49,7 +49,7 @@ fn any_style(args: Option<AnyStyleArgs>) -> Result<Option<usize>> {
     args.unwrap_or_default().style.map(style_index).transpose()
 }
 
-pub(crate) fn register_commands(registry: &mut CommandRegistry) {
+pub fn register_commands(registry: &mut CommandRegistry) {
     registry.editor("mark.style-all", |this, args: StyleArgs, _, cx| {
         let style = style_index(args.style)?;
         this.style_token(style, true, cx);
@@ -140,7 +140,7 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
 }
 
 impl EditorView {
-    fn update_marks(
+    pub fn update_marks(
         &mut self,
         cx: &mut Context<Self>,
         change: impl FnOnce(&mut crate::buffer::DocumentMarks, &Rope),
@@ -216,7 +216,7 @@ impl EditorView {
         cx.write_to_clipboard(ClipboardItem::new_string(copied));
     }
 
-    fn bookmarked_lines(&self, cx: &gpui_kit::App) -> Vec<usize> {
+    pub fn bookmarked_lines(&self, cx: &gpui_kit::App) -> Vec<usize> {
         let buffer = self.buffer.read(cx);
         buffer.marks().bookmarks.lines(buffer.doc().text())
     }
@@ -331,11 +331,3 @@ impl EditorView {
         }
     }
 }
-
-#[cfg(test)]
-#[allow(
-    clippy::single_range_in_vec_init,
-    reason = "decorations are lists of byte ranges, some with one range"
-)]
-#[path = "../tests/unit/marks/tests.rs"]
-mod tests;

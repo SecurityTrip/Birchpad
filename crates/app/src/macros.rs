@@ -20,26 +20,26 @@ use crate::theme::{paint, ui};
 use crate::workspace::{Workspace, report_error};
 
 /// The most times "until the end of the file" runs a macro, in case it never gets there.
-pub(crate) const UNTIL_END_LIMIT: usize = 100_000;
+pub const UNTIL_END_LIMIT: usize = 100_000;
 
 /// Macros of this run and the saved ones.
 #[derive(Default)]
-pub(crate) struct Macros {
+pub struct Macros {
     /// The steps recorded so far, while recording.
     recording: Option<Vec<Invocation>>,
     /// The last macro recorded, which Playback runs.
-    current: Vec<Invocation>,
+    pub current: Vec<Invocation>,
     /// While a macro plays, what it runs is not recorded.
-    playing: bool,
+    pub playing: bool,
     /// While a recorded step does more than one thing, the rest is not recorded.
     paused: bool,
-    pub(crate) saved: Vec<Macro>,
+    pub saved: Vec<Macro>,
 }
 
 impl Global for Macros {}
 
 impl Macros {
-    pub(crate) fn is_recording(&self) -> bool {
+    pub fn is_recording(&self) -> bool {
         self.recording.is_some()
     }
 }
@@ -52,7 +52,7 @@ fn macros_path(cx: &App) -> Option<std::path::PathBuf> {
 }
 
 /// Reads the saved macros.
-pub(crate) fn init(cx: &mut App) {
+pub fn init(cx: &mut App) {
     let mut macros = Macros::default();
     if let Some(path) = macros_path(cx)
         && let Ok(text) = std::fs::read_to_string(&path)
@@ -73,7 +73,7 @@ fn macros(cx: &mut App) -> &mut Macros {
 }
 
 /// Notes a command that ran, or text typed, if a macro is being recorded.
-pub(crate) fn record(invocation: &Invocation, cx: &mut App) {
+pub fn record(invocation: &Invocation, cx: &mut App) {
     if !cx.has_global::<Macros>() || !birchpad_commands::is_recordable(&invocation.command) {
         return;
     }
@@ -88,7 +88,7 @@ pub(crate) fn record(invocation: &Invocation, cx: &mut App) {
 
 /// Notes `invocation` even if its command is not recorded when it runs (searches, recorded with
 /// their text and options).
-pub(crate) fn record_always(invocation: &Invocation, cx: &mut App) {
+pub fn record_always(invocation: &Invocation, cx: &mut App) {
     if !cx.has_global::<Macros>() {
         return;
     }
@@ -102,14 +102,14 @@ pub(crate) fn record_always(invocation: &Invocation, cx: &mut App) {
 }
 
 /// Stops (or starts again) noting what runs, while a recorded step does several things.
-pub(crate) fn pause(paused: bool, cx: &mut App) {
+pub fn pause(paused: bool, cx: &mut App) {
     if cx.has_global::<Macros>() {
         cx.global_mut::<Macros>().paused = paused;
     }
 }
 
 /// Text typed into an editor, for a macro being recorded.
-pub(crate) fn record_typing(text: &str, cx: &mut App) {
+pub fn record_typing(text: &str, cx: &mut App) {
     if !text.is_empty() {
         record(
             &Invocation::with_args("edit.type", serde_json::json!({ "text": text })),
@@ -119,7 +119,7 @@ pub(crate) fn record_typing(text: &str, cx: &mut App) {
 }
 
 /// Saves `found` as a macro named `name`, replacing one of that name.
-pub(crate) fn save(name: &str, steps: Vec<Invocation>, cx: &mut App) -> Result<()> {
+pub fn save(name: &str, steps: Vec<Invocation>, cx: &mut App) -> Result<()> {
     let name = name.trim();
     if name.is_empty() {
         bail!("{}", t!("macros.a-macro-needs-a-name"));
@@ -152,7 +152,7 @@ pub(crate) fn save(name: &str, steps: Vec<Invocation>, cx: &mut App) -> Result<(
 }
 
 /// Deletes the saved macro `name` (Shortcut Mapper > Macros > Delete).
-pub(crate) fn delete(name: &str, cx: &mut App) -> Result<()> {
+pub fn delete(name: &str, cx: &mut App) -> Result<()> {
     let path = macros_path(cx).ok_or_else(|| {
         anyhow!(
             "{}",
@@ -181,7 +181,7 @@ fn progress(workspace: &Workspace, cx: &App) -> Option<(usize, usize)> {
 
 /// Runs `steps` `times` times, or until the caret reaches the end of the document (or stops
 /// moving) with `until_end`. The first step that fails stops it.
-pub(crate) fn play(
+pub fn play(
     workspace: &mut Workspace,
     steps: &[Invocation],
     times: usize,
@@ -248,7 +248,7 @@ fn steps_of(name: Option<&str>, cx: &mut App) -> Result<Vec<Invocation>> {
     }
 }
 
-pub(crate) fn register_commands(registry: &mut CommandRegistry) {
+pub fn register_commands(registry: &mut CommandRegistry) {
     // Notepad++'s built-in macro: Trim Trailing Space, then Save.
     registry.workspace("macro.trim-and-save", |this, (), window, cx| {
         let trim = Invocation::with_args("edit.trim", serde_json::json!({ "which": "trailing" }));
@@ -373,14 +373,14 @@ impl RenderOnce for MessageView {
 }
 
 /// Run a Macro Multiple Times...: which macro, and how many times or until the end of the file.
-pub(crate) struct RunMultiple {
+pub struct RunMultiple {
     workspace: WeakEntity<Workspace>,
     /// "Current recorded macro" (when there is one), then the saved ones.
     choices: Vec<Option<String>>,
-    choice: usize,
-    until_end: bool,
-    times: Entity<InputState>,
-    error: Option<String>,
+    pub choice: usize,
+    pub until_end: bool,
+    pub times: Entity<InputState>,
+    pub error: Option<String>,
 }
 
 fn open_run_multiple(workspace: WeakEntity<Workspace>, window: &mut Window, cx: &mut App) {
@@ -403,7 +403,11 @@ fn open_run_multiple(workspace: WeakEntity<Workspace>, window: &mut Window, cx: 
 }
 
 impl RunMultiple {
-    fn new(workspace: WeakEntity<Workspace>, window: &mut Window, cx: &mut Context<Self>) -> Self {
+    pub fn new(
+        workspace: WeakEntity<Workspace>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Self {
         let macros = macros(cx);
         let mut choices = Vec::new();
         if !macros.current.is_empty() {
@@ -421,7 +425,7 @@ impl RunMultiple {
     }
 
     /// Runs the chosen macro; false keeps the dialog open to show what went wrong.
-    pub(crate) fn run(&mut self, window: &mut Window, cx: &mut Context<Self>) -> bool {
+    pub fn run(&mut self, window: &mut Window, cx: &mut Context<Self>) -> bool {
         let result = (|| {
             let name = self
                 .choices
@@ -514,7 +518,3 @@ impl Render for RunMultiple {
             )
     }
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/macros/tests.rs"]
-mod tests;

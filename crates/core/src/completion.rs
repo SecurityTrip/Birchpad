@@ -146,7 +146,3 @@ pub fn closing_tag(before: &str, html: bool) -> Option<String> {
     }
     Some(format!("</{name}>"))
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/completion/tests.rs"]
-mod tests;

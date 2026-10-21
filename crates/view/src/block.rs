@@ -98,7 +98,3 @@ impl DisplayMap {
         BlockPoint::new(line_of(text, pos), self.column(text, pos) + virtual_cells)
     }
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/block/tests.rs"]
-mod tests;

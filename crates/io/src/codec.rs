@@ -72,10 +72,6 @@ impl Codec {
         }
     }
 
-    pub(crate) fn is_iso_2022_jp(self) -> bool {
-        matches!(self, Self::Rs(encoding) if encoding == encoding_rs::ISO_2022_JP)
-    }
-
     /// The text of `bytes`, undefined bytes replaced, and whether there were any.
     pub(crate) fn decode_without_bom_handling(self, bytes: &[u8]) -> (Cow<'_, str>, bool) {
         match self {
@@ -92,47 +88,6 @@ impl Codec {
                     })
                     .collect::<String>();
                 (Cow::Owned(text), errors)
-            }
-        }
-    }
-
-    pub(crate) fn decode_without_bom_handling_and_without_replacement(
-        self,
-        bytes: &[u8],
-    ) -> Option<Cow<'_, str>> {
-        match self {
-            Self::Rs(encoding) => {
-                encoding.decode_without_bom_handling_and_without_replacement(bytes)
-            }
-            Self::Page(page) => bytes
-                .iter()
-                .map(|&byte| char_of(page, byte))
-                .collect::<Option<String>>()
-                .map(Cow::Owned),
-        }
-    }
-
-    /// The bytes of `text`, and whether some characters had no bytes (written as encoding_rs
-    /// writes them, `&#NNNN;`, for an encoding of its own; `?` for a code page).
-    pub(crate) fn encode(self, text: &str) -> (Cow<'_, [u8]>, bool) {
-        match self {
-            Self::Rs(encoding) => {
-                let (bytes, _, unmappable) = encoding.encode(text);
-                (bytes, unmappable)
-            }
-            Self::Page(page) => {
-                let map = reverse(page);
-                let mut unmappable = false;
-                let bytes = text
-                    .chars()
-                    .map(|ch| {
-                        map.get(&ch).copied().unwrap_or_else(|| {
-                            unmappable = true;
-                            b'?'
-                        })
-                    })
-                    .collect();
-                (Cow::Owned(bytes), unmappable)
             }
         }
     }
@@ -236,7 +191,3 @@ impl Encoder {
         }
     }
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/codec/tests.rs"]
-mod tests;

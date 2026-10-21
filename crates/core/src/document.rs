@@ -151,7 +151,3 @@ impl Document {
         self.saved = RevisionId::NEVER;
     }
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/document/tests.rs"]
-mod tests;

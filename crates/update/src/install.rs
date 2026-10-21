@@ -56,4 +56,4 @@ pub fn run_hooks(installed: fn(), updated: fn(), uninstalling: fn()) {
 }
 
 #[cfg(all(windows, feature = "installer"))]
-mod velopack_installer;
+pub mod velopack_installer;

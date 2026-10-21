@@ -20,11 +20,11 @@ use crate::editor::EditorView;
 use crate::workspace::Workspace;
 
 /// Lines the caret must move to make a jump.
-const JUMP_LINES: usize = 10;
+pub const JUMP_LINES: usize = 10;
 /// Places kept on each stack.
-const LIMIT: usize = 50;
+pub const LIMIT: usize = 50;
 
-pub(crate) fn register_commands(registry: &mut CommandRegistry) {
+pub fn register_commands(registry: &mut CommandRegistry) {
     registry.workspace("navigate.back", |this, (), window, cx| {
         this.navigate(true, window, cx);
         Ok(())
@@ -37,7 +37,7 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
 
 /// Back and forward stacks of places, and the current place.
 #[derive(Debug, Clone)]
-pub(crate) struct History<L> {
+pub struct History<L> {
     back: Vec<L>,
     forward: Vec<L>,
     current: Option<L>,
@@ -56,7 +56,7 @@ impl<L> Default for History<L> {
 impl<L: Clone> History<L> {
     /// The caret is at `here`. If `jump` says it is far from the current place, that place is
     /// pushed on the back stack and the forward stack dropped.
-    pub(crate) fn visit(&mut self, here: L, jump: impl FnOnce(&L, &L) -> bool) {
+    pub fn visit(&mut self, here: L, jump: impl FnOnce(&L, &L) -> bool) {
         if let Some(current) = self.current.take()
             && jump(&current, &here)
         {
@@ -67,7 +67,7 @@ impl<L: Clone> History<L> {
     }
 
     /// Go Back: the place to go to, which becomes the current one.
-    pub(crate) fn back(&mut self) -> Option<L> {
+    pub fn back(&mut self) -> Option<L> {
         let target = self.back.pop()?;
         if let Some(current) = self.current.replace(target.clone()) {
             push(&mut self.forward, current);
@@ -76,7 +76,7 @@ impl<L: Clone> History<L> {
     }
 
     /// Go Forward: the place to go to, which becomes the current one.
-    pub(crate) fn forward(&mut self) -> Option<L> {
+    pub fn forward(&mut self) -> Option<L> {
         let target = self.forward.pop()?;
         if let Some(current) = self.current.replace(target.clone()) {
             push(&mut self.back, current);
@@ -84,8 +84,8 @@ impl<L: Clone> History<L> {
         Some(target)
     }
 
-    #[cfg(test)]
-    pub(crate) fn can_go(&self, back: bool) -> bool {
+    #[cfg(feature = "test-support")]
+    pub fn can_go(&self, back: bool) -> bool {
         if back {
             !self.back.is_empty()
         } else {
@@ -114,7 +114,7 @@ fn push<L>(stack: &mut Vec<L>, place: L) {
 
 /// A place: a document, its file if it has one, and a byte offset.
 #[derive(Debug, Clone)]
-pub(crate) struct Place {
+pub struct Place {
     buffer: WeakEntity<Buffer>,
     path: Option<PathBuf>,
     pos: usize,
@@ -129,7 +129,7 @@ impl Place {
 
 impl Workspace {
     /// Notes where the caret of the active view is, unless its file is still being read.
-    pub(crate) fn note_place(&mut self, cx: &App) {
+    pub fn note_place(&mut self, cx: &App) {
         let Some(view) = self.active_view(cx) else {
             return;
         };
@@ -154,7 +154,7 @@ impl Workspace {
 
     /// Moves the places in `buffer` along with an edit. The current place moves past text
     /// inserted where it is, as the caret does, so that typing is never taken for a jump.
-    pub(crate) fn map_places(&mut self, buffer: &Entity<Buffer>, transaction: &Transaction) {
+    pub fn map_places(&mut self, buffer: &Entity<Buffer>, transaction: &Transaction) {
         let buffer = buffer.downgrade();
         let changes = transaction.changes();
         for place in self.navigation.places_mut() {
@@ -236,7 +236,3 @@ impl<L> History<L> {
         self.current.as_mut()
     }
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/navigation_tests.rs"]
-mod tests;

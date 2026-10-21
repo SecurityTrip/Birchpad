@@ -18,7 +18,7 @@ pub use block::{Block, BlockPoint};
 pub use cells::{
     DisplayText, cells_at, char_cells, column_after, control_picture, pos_at_column, tab_advance,
 };
-pub use display_map::{DisplayMap, LayoutConfig, Row};
+pub use display_map::{DisplayMap, LayoutConfig, LongLines, Row};
 pub use folding::{
     Fold, fold_at, folds_from_ranges, hidden_lines, innermost_containing, shift_folds,
 };

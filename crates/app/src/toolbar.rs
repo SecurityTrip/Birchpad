@@ -15,7 +15,7 @@ use crate::theme::{paint, ui};
 use crate::workspace::Workspace;
 
 /// The icon of each command that has one.
-const ICONS: &[(&str, &[u8])] = &[
+pub const ICONS: &[(&str, &[u8])] = &[
     (
         "file.new",
         include_bytes!("../assets/toolbar/file-plus.svg"),
@@ -122,7 +122,7 @@ const ICONS: &[(&str, &[u8])] = &[
 ];
 
 /// The icon of `command`, if it has one.
-pub(crate) fn icon(command: &str) -> Option<&'static [u8]> {
+pub fn icon(command: &str) -> Option<&'static [u8]> {
     ICONS
         .iter()
         .find(|(id, _)| *id == command)
@@ -131,14 +131,14 @@ pub(crate) fn icon(command: &str) -> Option<&'static [u8]> {
 
 /// What the toolbar shows: a button for a command, or a separator.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) enum Item {
+pub enum Item {
     Button(String),
     Separator,
 }
 
 /// The items of `settings.buttons` that can show: commands the catalog knows, separators not
 /// at either end nor two in a row.
-pub(crate) fn items(settings: &ToolbarSettings) -> Vec<Item> {
+pub fn items(settings: &ToolbarSettings) -> Vec<Item> {
     let mut items: Vec<Item> = Vec::new();
     for entry in &settings.buttons {
         let entry = entry.trim();
@@ -158,7 +158,7 @@ pub(crate) fn items(settings: &ToolbarSettings) -> Vec<Item> {
 
 impl Workspace {
     /// The toolbar, or nothing when it is hidden or has no buttons.
-    pub(crate) fn render_toolbar(&self, cx: &mut Context<Self>) -> Option<AnyElement> {
+    pub fn render_toolbar(&self, cx: &mut Context<Self>) -> Option<AnyElement> {
         let settings = crate::app_state::AppState::global(cx)
             .settings
             .toolbar
@@ -235,7 +235,3 @@ impl Workspace {
         )
     }
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/toolbar/tests.rs"]
-mod tests;

@@ -6,21 +6,29 @@ portable mode, the `data` folder next to it).
 
 ## Network requests
 
-Birchpad connects to the network only for updates:
+Birchpad connects to the network only for updates, and to install PlantUML when you ask:
 
 - **Checking for updates**: once a day while Birchpad runs, and when you pick Help > Check for
   Updates, it downloads the update manifest from
   `https://github.com/SecurityTrip/Birchpad/releases/download/updates/birchpad-updates.json`, or
   from the address in the `updates.url` setting. The request says which version of Birchpad
   asks and on which operating system (the `User-Agent` header, such as
-  `Birchpad/0.4.0 (windows)`), and nothing about you or your files.
+  `Birchpad/0.5.0 (windows)`), and nothing about you or your files.
 - **Downloading updates**: with `updates.mode = "auto"` (the default), a copy installed with the
   per-user Windows installer downloads the package of a newer version, from the address the
   manifest lists (GitHub's release downloads).
 
+- **Installing PlantUML**: when you click Install PlantUML in the preview of a PlantUML
+  document (or View > Preview > Install PlantUML), Birchpad downloads PlantUML and the Java that
+  runs it from a release of its repository on GitHub (`plantuml-*`), once. With
+  `network.online-features = false` it does not.
+
+These go through the proxy of Help > Set Updater Proxy... (`updates.proxy`) when one is set, else
+through the one of `HTTPS_PROXY` or `ALL_PROXY` or, on Windows, the system's.
+
 The Markdown preview loads no images from the web, and a link in it opens in your browser
-only when you click it. PlantUML diagrams are drawn by the PlantUML installed on your computer,
-not by a server.
+only when you click it. PlantUML diagrams are drawn by PlantUML on your computer (yours, or the
+one Birchpad installed), not by a server.
 
 GitHub serves these files and, like any web server, sees the requests: the address of your
 computer or network and the time. Its
@@ -34,5 +42,5 @@ covers them.
 - Administrators can set the same with the `UpdateMode` policy (the Windows registry), which
   users cannot override.
 
-A link you choose to open (Open Download Page in an update notice, for example) goes to your
-browser.
+A link you choose to open (Open Download Page in an update notice, or Birchpad's home page,
+manual and forum in the Help menu) goes to your browser.

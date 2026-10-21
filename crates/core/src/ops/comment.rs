@@ -175,7 +175,3 @@ pub fn block_comment(
     }
     Transaction::from_edits(text, edits).ok()
 }
-
-#[cfg(test)]
-#[path = "../../tests/unit/ops/comment/tests.rs"]
-mod tests;

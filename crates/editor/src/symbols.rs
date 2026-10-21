@@ -18,24 +18,24 @@ pub struct Symbols {
     /// Draw the current line as a frame of this width rather than a background.
     pub current_line_frame: Option<Pixels>,
     /// Vertical lines at the edge columns, across the text area.
-    pub(crate) edge_lines: Vec<Bounds<Pixels>>,
+    pub edge_lines: Vec<Bounds<Pixels>>,
     /// Text past the edge column, in background mode.
-    pub(crate) edge_backgrounds: Vec<Bounds<Pixels>>,
+    pub edge_backgrounds: Vec<Bounds<Pixels>>,
     /// Indentation guides, one pixel wide, drawn dotted.
-    pub(crate) indent_guides: Vec<Bounds<Pixels>>,
+    pub indent_guides: Vec<Bounds<Pixels>>,
     /// A dot for each space.
-    pub(crate) spaces: Vec<Bounds<Pixels>>,
+    pub spaces: Vec<Bounds<Pixels>>,
     /// The cells of each tab, drawn as an arrow across them.
-    pub(crate) tabs: Vec<Bounds<Pixels>>,
+    pub tabs: Vec<Bounds<Pixels>>,
     /// Boxes labeled CR, LF or CRLF after the end of lines.
-    pub(crate) line_breaks: Vec<(Bounds<Pixels>, ShapedLine)>,
+    pub line_breaks: Vec<(Bounds<Pixels>, ShapedLine)>,
     /// The cells where wrapped rows show the wrap symbol.
-    pub(crate) wrap_marks: Vec<Bounds<Pixels>>,
+    pub wrap_marks: Vec<Bounds<Pixels>>,
 }
 
 impl EditorView {
     /// Computes the visual aids for the rows of `layout`.
-    pub(crate) fn layout_symbols(
+    pub fn layout_symbols(
         &mut self,
         layout: &mut Layout,
         text: &Rope,
@@ -271,7 +271,3 @@ impl<'a> GlyphCursor<'a> {
         self.row.x + x
     }
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/symbols/tests.rs"]
-mod tests;

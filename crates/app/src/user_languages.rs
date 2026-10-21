@@ -14,19 +14,19 @@ use crate::commands::{CommandRegistry, Register as _};
 use crate::editor::theme::TextStyle;
 use crate::workspace::{Workspace, report_error};
 
-pub(crate) mod define;
+pub mod define;
 
 /// The prefix of a user defined language's id in `language.set` and sessions: `udl:Name`.
-pub(crate) const ID_PREFIX: &str = birchpad_config::USER_LANGUAGE_PREFIX;
+pub const ID_PREFIX: &str = birchpad_config::USER_LANGUAGE_PREFIX;
 
 /// The user defined languages read at start or imported since.
 #[derive(Default)]
-pub(crate) struct UserLanguages(pub(crate) Vec<Rc<UserLanguage>>);
+pub struct UserLanguages(pub Vec<Rc<UserLanguage>>);
 
 impl Global for UserLanguages {}
 
 /// The folder of UDL files.
-pub(crate) fn folder(cx: &App) -> Option<PathBuf> {
+pub fn folder(cx: &App) -> Option<PathBuf> {
     AppState::global(cx)
         .paths
         .user_config_dir()
@@ -35,7 +35,7 @@ pub(crate) fn folder(cx: &App) -> Option<PathBuf> {
 
 /// Every language of the `.xml` files of `dir`, by name; a later one of the same name is left
 /// out.
-pub(crate) fn read_folder(dir: &Path) -> Vec<Rc<UserLanguage>> {
+pub fn read_folder(dir: &Path) -> Vec<Rc<UserLanguage>> {
     let mut paths: Vec<PathBuf> = std::fs::read_dir(dir)
         .into_iter()
         .flatten()
@@ -66,7 +66,7 @@ pub(crate) fn read_folder(dir: &Path) -> Vec<Rc<UserLanguage>> {
     languages
 }
 
-pub(crate) fn init(cx: &mut App) {
+pub fn init(cx: &mut App) {
     let languages = folder(cx).map(|dir| read_folder(&dir)).unwrap_or_default();
     cx.set_global(UserLanguages(languages));
 }
@@ -77,7 +77,7 @@ fn all(cx: &App) -> &[Rc<UserLanguage>] {
 }
 
 /// The user defined language named `name`.
-pub(crate) fn find(name: &str, cx: &App) -> Option<Rc<UserLanguage>> {
+pub fn find(name: &str, cx: &App) -> Option<Rc<UserLanguage>> {
     all(cx)
         .iter()
         .find(|language| language.name == name)
@@ -85,7 +85,7 @@ pub(crate) fn find(name: &str, cx: &App) -> Option<Rc<UserLanguage>> {
 }
 
 /// The user defined language of a file named `name`, by its extension.
-pub(crate) fn for_file(name: &str, cx: &App) -> Option<Rc<UserLanguage>> {
+pub fn for_file(name: &str, cx: &App) -> Option<Rc<UserLanguage>> {
     all(cx)
         .iter()
         .find(|language| language.matches_file(name))
@@ -93,7 +93,7 @@ pub(crate) fn for_file(name: &str, cx: &App) -> Option<Rc<UserLanguage>> {
 }
 
 /// The names the Language menu lists.
-pub(crate) fn names(cx: &App) -> Vec<String> {
+pub fn names(cx: &App) -> Vec<String> {
     all(cx)
         .iter()
         .map(|language| language.name.clone())
@@ -101,7 +101,7 @@ pub(crate) fn names(cx: &App) -> Vec<String> {
 }
 
 /// How text of `kind` looks, from the language's own colors.
-pub(crate) fn text_style(style: UdlStyle) -> TextStyle {
+pub fn text_style(style: UdlStyle) -> TextStyle {
     let rgba = |rgb: u32| (rgb << 8) | 0xff;
     TextStyle {
         color: style.color.map(rgba),
@@ -113,7 +113,7 @@ pub(crate) fn text_style(style: UdlStyle) -> TextStyle {
 }
 
 /// The theme's highlight for what a piece of a user defined language is.
-pub(crate) fn theme_highlight(kind: UdlKind) -> &'static str {
+pub fn theme_highlight(kind: UdlKind) -> &'static str {
     match kind {
         UdlKind::Comment | UdlKind::LineComment => "comment",
         UdlKind::Number => "number",
@@ -125,7 +125,7 @@ pub(crate) fn theme_highlight(kind: UdlKind) -> &'static str {
 
 /// The style of each piece `language` colors: the language's own colors, and the theme's
 /// where the language leaves the text color unset.
-pub(crate) fn style_of(language: &UserLanguage, kind: UdlKind) -> Option<TextStyle> {
+pub fn style_of(language: &UserLanguage, kind: UdlKind) -> Option<TextStyle> {
     let own = language.style(kind).map(text_style);
     if own.is_some_and(|style| style.color.is_some()) {
         return own;
@@ -144,7 +144,7 @@ pub(crate) fn style_of(language: &UserLanguage, kind: UdlKind) -> Option<TextSty
 
 /// Copies UDL files into `dir` after checking them; the languages they hold, and a message for
 /// each file that is not one.
-pub(crate) fn import(paths: &[PathBuf], dir: &Path) -> (usize, Vec<String>) {
+pub fn import(paths: &[PathBuf], dir: &Path) -> (usize, Vec<String>) {
     let mut imported = 0;
     let mut errors = Vec::new();
     for path in paths {
@@ -177,9 +177,9 @@ pub(crate) fn import(paths: &[PathBuf], dir: &Path) -> (usize, Vec<String>) {
 }
 
 /// The collection of UDL files Notepad++'s users share.
-pub(crate) const COLLECTION_URL: &str = "https://github.com/notepad-plus-plus/userDefinedLanguages";
+pub const COLLECTION_URL: &str = "https://github.com/notepad-plus-plus/userDefinedLanguages";
 
-pub(crate) fn register_commands(registry: &mut CommandRegistry) {
+pub fn register_commands(registry: &mut CommandRegistry) {
     registry.workspace("language.import-udl", |this, (), window, cx| {
         this.import_user_languages(window, cx);
         Ok(())
@@ -213,7 +213,7 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
 impl Workspace {
     /// Language > User Defined Language > Define your language...: the language `name`, or the
     /// active document's, or a new one.
-    fn define_user_language(
+    pub fn define_user_language(
         &mut self,
         name: Option<String>,
         window: &mut Window,
@@ -233,7 +233,7 @@ impl Workspace {
 
     /// After the dialog saved a language: the menus list it, and the documents in it (by its
     /// old name, or a new one) are colored by it as it is now.
-    pub(crate) fn user_language_saved(
+    pub fn user_language_saved(
         &mut self,
         original: Option<&str>,
         name: &str,
@@ -292,7 +292,3 @@ impl Workspace {
         .detach();
     }
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/user_languages/tests.rs"]
-mod tests;

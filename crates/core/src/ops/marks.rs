@@ -116,7 +116,3 @@ fn blocks(lines: &[usize], count: usize) -> Vec<Range<usize>> {
     }
     blocks
 }
-
-#[cfg(test)]
-#[path = "../../tests/unit/ops/marks/tests.rs"]
-mod tests;

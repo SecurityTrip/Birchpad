@@ -182,7 +182,3 @@ fn table_for(theme: &Theme, language: Option<&str>) -> Rc<[Option<TextStyle>]> {
         })
         .collect()
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/theme/tests.rs"]
-mod tests;

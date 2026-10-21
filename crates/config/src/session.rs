@@ -239,7 +239,3 @@ pub fn create_private_dir(dir: &Path) -> io::Result<()> {
     }
     builder.create(dir)
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/session/tests.rs"]
-mod tests;

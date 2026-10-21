@@ -140,7 +140,3 @@ impl CommandRegistry {
         !self.is_pending(id) && self.enabled.get(id).is_none_or(|enabled| enabled(cx))
     }
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/commands/tests.rs"]
-mod tests;

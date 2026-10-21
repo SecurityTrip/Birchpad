@@ -12,7 +12,7 @@ use anyhow::{Result, anyhow, bail};
 use birchpad_commands::Invocation;
 use birchpad_core::Rope;
 use birchpad_core::motion::line_range_with_break;
-use birchpad_tools::compare::{self, Change, Options};
+pub use birchpad_tools::compare::{self, Change, Options};
 use gpui_kit::{App, Context, Entity, Global, Window};
 
 use crate::commands::{CommandRegistry, Register as _};
@@ -25,13 +25,13 @@ struct CompareOptions(Options);
 
 impl Global for CompareOptions {}
 
-pub(crate) fn options(cx: &App) -> Options {
+pub fn options(cx: &App) -> Options {
     cx.try_global::<CompareOptions>()
         .map(|options| options.0)
         .unwrap_or_default()
 }
 
-pub(crate) fn register_commands(registry: &mut CommandRegistry) {
+pub fn register_commands(registry: &mut CommandRegistry) {
     registry.workspace("compare.compare", |this, (), window, cx| {
         this.compare(window, cx)
     });
@@ -78,7 +78,7 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
 }
 
 /// Whether a Compare option shows a check mark.
-pub(crate) fn is_checked(invocation: &Invocation, options: Options) -> Option<bool> {
+pub fn is_checked(invocation: &Invocation, options: Options) -> Option<bool> {
     match invocation.command.as_str() {
         "compare.ignore-spaces" => Some(options.ignore_whitespace),
         "compare.ignore-case" => Some(options.ignore_case),
@@ -87,7 +87,7 @@ pub(crate) fn is_checked(invocation: &Invocation, options: Options) -> Option<bo
 }
 
 /// The byte range of `lines`, with their line breaks.
-fn byte_range(text: &Rope, lines: &Range<usize>) -> Range<usize> {
+pub fn byte_range(text: &Rope, lines: &Range<usize>) -> Range<usize> {
     if lines.is_empty() {
         return 0..0;
     }
@@ -96,7 +96,7 @@ fn byte_range(text: &Rope, lines: &Range<usize>) -> Range<usize> {
 
 /// The marks of each side: the old text keeps what it loses and what changes, the new text
 /// what it gains and what changes.
-pub(crate) fn marks(
+pub fn marks(
     old: &Rope,
     new: &Rope,
     differences: &[compare::Difference],
@@ -186,7 +186,3 @@ impl Workspace {
         Ok(())
     }
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/compare/tests.rs"]
-mod tests;

@@ -27,12 +27,12 @@ const INDENT: f32 = 14.;
 
 /// A row of the tree.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct Row {
+pub struct Row {
     /// The symbol's index in the outline.
-    pub(crate) symbol: usize,
-    pub(crate) depth: usize,
-    pub(crate) has_children: bool,
-    pub(crate) collapsed: bool,
+    pub symbol: usize,
+    pub depth: usize,
+    pub has_children: bool,
+    pub collapsed: bool,
 }
 
 /// The key of a symbol that stays the same while the document changes: the names on its way
@@ -62,7 +62,7 @@ fn parents(symbols: &[Symbol]) -> Vec<Option<usize>> {
 /// The rows to show of `symbols` (in text order, with depths): children under their parent,
 /// each level by name if `sorted`, nothing under a collapsed symbol, and with a `filter` only
 /// the symbols whose names contain it (without regard to case) and their parents.
-pub(crate) fn rows(
+pub fn rows(
     symbols: &[Symbol],
     sorted: bool,
     collapsed: &HashSet<String>,
@@ -132,7 +132,7 @@ pub(crate) fn rows(
 }
 
 /// The innermost symbol the caret at `pos` is in.
-pub(crate) fn current_symbol(symbols: &[Symbol], pos: usize) -> Option<usize> {
+pub fn current_symbol(symbols: &[Symbol], pos: usize) -> Option<usize> {
     symbols
         .iter()
         .rposition(|symbol| symbol.range.start <= pos && pos < symbol.range.end)
@@ -158,10 +158,10 @@ struct Outline {
     symbols: Vec<Symbol>,
 }
 
-pub(crate) struct FunctionList {
+pub struct FunctionList {
     workspace: WeakEntity<Workspace>,
     filter: Entity<InputState>,
-    pub(crate) sorted: bool,
+    pub sorted: bool,
     /// Folded symbols, by their paths.
     collapsed: HashSet<String>,
     outline: Option<Outline>,
@@ -178,7 +178,7 @@ impl Focusable for FunctionList {
 }
 
 /// What the panel shows for the active document.
-pub(crate) enum Contents {
+pub enum Contents {
     /// No document, a language without a function list, or no tree (yet, or ever: plain text,
     /// a file over the large file limit).
     Message(String),
@@ -190,7 +190,7 @@ pub(crate) enum Contents {
 }
 
 impl FunctionList {
-    pub(crate) fn new(
+    pub fn new(
         workspace: WeakEntity<Workspace>,
         window: &mut Window,
         cx: &mut Context<Self>,
@@ -214,15 +214,15 @@ impl FunctionList {
         }
     }
 
-    #[cfg(test)]
-    pub(crate) fn set_filter(&mut self, text: &str, window: &mut Window, cx: &mut Context<Self>) {
+    #[cfg(feature = "test-support")]
+    pub fn set_filter(&mut self, text: &str, window: &mut Window, cx: &mut Context<Self>) {
         self.filter
             .update(cx, |input, cx| input.set_value(text, window, cx));
         cx.notify();
     }
 
     /// The outline of the active document, read again if its tree changed.
-    pub(crate) fn contents(&mut self, cx: &App) -> Contents {
+    pub fn contents(&mut self, cx: &App) -> Contents {
         let Some(view) = self
             .workspace
             .upgrade()
@@ -264,12 +264,12 @@ impl FunctionList {
         }
     }
 
-    pub(crate) fn symbol(&self, index: usize) -> Option<&Symbol> {
+    pub fn symbol(&self, index: usize) -> Option<&Symbol> {
         self.outline.as_ref()?.symbols.get(index)
     }
 
     /// Folds or unfolds the symbol at `index`.
-    pub(crate) fn toggle(&mut self, index: usize, cx: &mut Context<Self>) {
+    pub fn toggle(&mut self, index: usize, cx: &mut Context<Self>) {
         let Some(outline) = &self.outline else {
             return;
         };
@@ -282,7 +282,7 @@ impl FunctionList {
     }
 
     /// Goes to the symbol at `index` in `view`: its name is selected.
-    pub(crate) fn go_to(
+    pub fn go_to(
         &mut self,
         view: &Entity<EditorView>,
         index: usize,
@@ -438,7 +438,3 @@ impl Render for FunctionList {
             .child(div().flex_1().min_h(px(0.)).child(body))
     }
 }
-
-#[cfg(test)]
-#[path = "../../tests/unit/panels/function_list_tests.rs"]
-mod tests;

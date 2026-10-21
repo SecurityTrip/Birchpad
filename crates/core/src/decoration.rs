@@ -426,11 +426,3 @@ impl LineMarkers {
 fn line_start(text: &Rope, line: usize) -> usize {
     text.line_to_byte_idx(line.min(line_count(text) - 1), crate::motion::LINE_TYPE)
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/decoration/size_tests.rs"]
-mod size_tests;
-
-#[cfg(test)]
-#[path = "../tests/unit/decoration/tests.rs"]
-mod tests;

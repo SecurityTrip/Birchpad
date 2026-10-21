@@ -271,6 +271,7 @@ pub const COMMANDS: &[CommandSpec] = &[
     workspace("view.preview-editor", "Editor Only"),
     workspace("view.preview-split", "Editor and Preview"),
     workspace("view.preview-only", "Preview Only"),
+    workspace("preview.install-plantuml", "Install PlantUML"),
     editor("search.go-to-matching-brace", "Go to Matching Brace"),
     editor(
         "search.select-to-matching-brace",
@@ -364,6 +365,7 @@ pub const COMMANDS: &[CommandSpec] = &[
     editor("encoding.edit-anyway", "Edit Anyway..."),
     // Language; { "language": "rust" | "cpp" | ... | "text" }
     workspace("file.print", "Print..."),
+    workspace("file.print-now", "Print Now"),
     workspace("file.export-html", "Export to HTML..."),
     workspace("language.set", "Language"),
     workspace("language.define-udl", "Define Your Language..."),
@@ -454,6 +456,12 @@ pub const COMMANDS: &[CommandSpec] = &[
     // From the update dialogs and notifications.
     workspace("help.update-now", "Update and Restart"),
     workspace("help.restart-to-update", "Restart to Update"),
+    workspace("help.command-line", "Command Line Arguments..."),
+    workspace("help.home-page", "Birchpad Home"),
+    workspace("help.manual", "Online Manual"),
+    workspace("help.forum", "Community (Forum)"),
+    workspace("help.updater-proxy", "Set Updater Proxy..."),
+    workspace("help.debug-info", "Debug Info..."),
     workspace("help.about", "About Birchpad"),
 ];
 
@@ -461,7 +469,3 @@ pub const COMMANDS: &[CommandSpec] = &[
 pub fn find(id: &str) -> Option<&'static CommandSpec> {
     COMMANDS.iter().find(|spec| spec.id == id)
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/catalog/tests.rs"]
-mod tests;

@@ -86,7 +86,3 @@ pub fn free_untitled_number(wanted: Option<usize>, numbers: &mut HashSet<usize>)
     numbers.insert(number);
     number
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/session_names/tests.rs"]
-mod tests;

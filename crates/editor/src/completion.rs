@@ -95,7 +95,7 @@ thread_local! {
 }
 
 /// Birchpad's own API files, written for it (Notepad++'s are under the GPL), by language id.
-const BUNDLED: &[(&str, &str)] = &[
+pub const BUNDLED: &[(&str, &str)] = &[
     ("bash", include_str!("../api/bash.xml")),
     ("c", include_str!("../api/c.xml")),
     ("cpp", include_str!("../api/cpp.xml")),
@@ -115,14 +115,14 @@ const BUNDLED: &[(&str, &str)] = &[
 ];
 
 /// The bundled API file of `language`, if Birchpad has one.
-pub(crate) fn bundled_api(language: &str) -> Option<ApiFile> {
+pub fn bundled_api(language: &str) -> Option<ApiFile> {
     let (_, xml) = BUNDLED.iter().find(|(id, _)| *id == language)?;
     ApiFile::parse(xml).ok()
 }
 
 /// The API file of `language`: `autoCompletion/<id>.xml` next to the settings, or else
 /// Birchpad's own.
-pub(crate) fn api_file(language: Option<&'static str>, cx: &App) -> Option<Rc<ApiFile>> {
+pub fn api_file(language: Option<&'static str>, cx: &App) -> Option<Rc<ApiFile>> {
     let language = language?;
     if let Some(found) = API_FILES.with(|files| files.borrow().get(language).cloned()) {
         return found;
@@ -147,22 +147,22 @@ pub(crate) fn api_file(language: Option<&'static str>, cx: &App) -> Option<Rc<Ap
 }
 
 /// Forgets the API files read, so that changed ones are read again.
-#[cfg(test)]
-pub(crate) fn forget_api_files() {
+#[cfg(feature = "test-support")]
+pub fn forget_api_files() {
     API_FILES.with(|files| files.borrow_mut().clear());
 }
 
 /// Which entries the list offers (Auto-Completion's options).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) struct Sources {
-    pub(crate) api: bool,
-    pub(crate) words: bool,
-    pub(crate) options: WordOptions,
+pub struct Sources {
+    pub api: bool,
+    pub words: bool,
+    pub options: WordOptions,
 }
 
 impl Sources {
     /// What the settings offer for a word of `typed` characters.
-    pub(crate) fn for_typed(settings: &CompletionSettings, typed: usize) -> Self {
+    pub fn for_typed(settings: &CompletionSettings, typed: usize) -> Self {
         Self {
             api: settings.api && typed >= usize::from(settings.api_min_chars).max(1),
             words: settings.words && typed >= usize::from(settings.min_chars).max(1),
@@ -174,7 +174,7 @@ impl Sources {
     }
 
     /// Everything, as Ctrl+Space asks.
-    pub(crate) fn all(settings: &CompletionSettings) -> Self {
+    pub fn all(settings: &CompletionSettings) -> Self {
         Self {
             api: true,
             words: true,
@@ -185,7 +185,7 @@ impl Sources {
 
 /// The list for the word `prefix` (at `start..pos`): the API's keywords, then the document's
 /// words, each once, as far as `sources` offer them.
-pub(crate) fn items(
+pub fn items(
     api: Option<&ApiFile>,
     text: &birchpad_core::Rope,
     start: usize,
@@ -256,7 +256,7 @@ impl EditorView {
     }
 
     /// Typing `typed` with auto-closing: true when it paired or stepped over a partner.
-    pub(crate) fn type_paired(&mut self, typed: &str, cx: &mut Context<Self>) -> bool {
+    pub fn type_paired(&mut self, typed: &str, cx: &mut Context<Self>) -> bool {
         let mut chars = typed.chars();
         let (Some(ch), None) = (chars.next(), chars.next()) else {
             return false;
@@ -276,7 +276,7 @@ impl EditorView {
     }
 
     /// Backspace between an empty pair: true when it deleted both.
-    pub(crate) fn backspace_pair(&mut self, cx: &mut Context<Self>) -> bool {
+    pub fn backspace_pair(&mut self, cx: &mut Context<Self>) -> bool {
         if !self.is_editable(cx) {
             return false;
         }
@@ -292,7 +292,7 @@ impl EditorView {
     }
 
     /// After text was typed: the list and the call tip follow it.
-    pub(crate) fn after_typing(&mut self, typed: &str, cx: &mut Context<Self>) {
+    pub fn after_typing(&mut self, typed: &str, cx: &mut Context<Self>) {
         let settings = AppState::global(cx).settings.completion.clone();
         let api = api_file(self.language_id(cx), cx);
         let head = self.selection.primary().head;
@@ -429,7 +429,7 @@ impl EditorView {
 
     /// Closes the list and the call tip when the caret goes elsewhere: any command but typing,
     /// deleting and the list's own.
-    pub(crate) fn close_completion_for(&mut self, command: &str) {
+    pub fn close_completion_for(&mut self, command: &str) {
         let keeps =
             command.starts_with("completion.") || matches!(command, "edit.type" | "edit.backspace");
         if !keeps {
@@ -439,7 +439,7 @@ impl EditorView {
     }
 
     /// The key context of the editor: the list and the call tip take some keys.
-    pub(crate) fn key_context(&self) -> &'static str {
+    pub fn key_context(&self) -> &'static str {
         match (&self.completion, &self.call_tip) {
             (Some(_), _) => "Editor Completion",
             (None, Some(_)) => "Editor CallTip",
@@ -448,7 +448,7 @@ impl EditorView {
     }
 
     /// The list or the call tip, drawn below the caret.
-    pub(crate) fn render_completion(&self, cx: &mut Context<Self>) -> Option<AnyElement> {
+    pub fn render_completion(&self, cx: &mut Context<Self>) -> Option<AnyElement> {
         if self.completion.is_none() && self.call_tip.is_none() {
             return None;
         }
@@ -533,7 +533,7 @@ fn move_selection(view: &mut EditorView, step: isize) {
     }
 }
 
-pub(crate) fn register_commands(registry: &mut CommandRegistry) {
+pub fn register_commands(registry: &mut CommandRegistry) {
     registry.editor("completion.complete", |this, (), _, cx| {
         this.update_completion(true, cx);
         Ok(())
@@ -609,7 +609,3 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
         Ok(())
     });
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/completion/tests.rs"]
-mod tests;

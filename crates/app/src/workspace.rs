@@ -22,7 +22,7 @@ use crate::app_state::AppState;
 use crate::buffer::{Buffer, BufferEvent};
 use crate::commands::{CommandRegistry, Register as _, RunCommand};
 use crate::disk::DiskState;
-use crate::editor::{EditorEvent, EditorView, ViewSettings};
+pub use crate::editor::{EditorEvent, EditorView, ViewSettings};
 use crate::find::FindBar;
 use crate::incremental::IncrementalBar;
 use crate::menus::{self, MenuState};
@@ -33,7 +33,7 @@ use crate::search_results::SearchResults;
 use crate::session::SessionState;
 use crate::status_bar::StatusInfo;
 
-pub(crate) fn register_commands(registry: &mut CommandRegistry) {
+pub fn register_commands(registry: &mut CommandRegistry) {
     registry.workspace("file.new", |this, (), window, cx| {
         this.new_file(window, cx);
         Ok(())
@@ -169,6 +169,7 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
     crate::print::register_commands(registry);
     crate::pane::register_commands(registry);
     crate::preview::register_commands(registry);
+    crate::plantuml::register_commands(registry);
     crate::window_menu::register_commands(registry);
     crate::file_commands::register_commands(registry);
     crate::window_modes::register_commands(registry);
@@ -187,7 +188,7 @@ struct LanguageArgs {
 
 /// The format and language of a new document: Preferences > New Document. Names it does not
 /// know give UTF-8, the platform's line ending and plain text.
-pub(crate) fn new_document(
+pub fn new_document(
     cx: &App,
 ) -> (
     birchpad_core::Format,
@@ -210,41 +211,45 @@ pub(crate) fn new_document(
     (format, language)
 }
 
-pub(crate) use birchpad_ui::{
+pub use birchpad_ui::{
     dialog_action, dialog_close, report_error, report_info, report_success, report_warning,
 };
 
-pub(crate) struct Workspace {
+pub struct Workspace {
     focus_handle: FocusHandle,
     /// Notepad++'s main and second views. A pane without tabs is hidden; split view shows both.
-    panes: [Entity<Pane>; 2],
-    active_pane: usize,
+    pub panes: [Entity<Pane>; 2],
+    pub active_pane: usize,
     /// View > Synchronize Vertical / Horizontal Scrolling.
     sync_vertical: bool,
     sync_horizontal: bool,
     menu_bar: Option<Entity<MenuBar>>,
-    pub(crate) find_bar: Entity<FindBar>,
-    pub(crate) incremental: Entity<IncrementalBar>,
-    pub(crate) search_results: Entity<SearchResults>,
+    pub find_bar: Entity<FindBar>,
+    pub incremental: Entity<IncrementalBar>,
+    pub search_results: Entity<SearchResults>,
     title: String,
+    /// `-titleAdd`: text after the window's title.
+    pub title_add: Option<String>,
+    /// `-quickPrint`: the printings of the files, for a launch that quits after them.
+    pub quick_prints: Vec<gpui_kit::Task<()>>,
     buffer_subscriptions: HashMap<EntityId, Subscription>,
     /// Focus and scroll events of each view, and its changes for the navigation history.
     view_subscriptions: HashMap<EntityId, [Subscription; 3]>,
-    pub(crate) session_state: SessionState,
-    pub(crate) disk_state: DiskState,
+    pub session_state: SessionState,
+    pub disk_state: DiskState,
     /// Go Back and Go Forward.
-    pub(crate) navigation: History<Place>,
+    pub navigation: History<Place>,
     /// The side panels.
-    pub(crate) docks: Docks,
+    pub docks: Docks,
     /// Always on Top, Full Screen, Post-It, Distraction Free.
-    pub(crate) modes: crate::window_modes::WindowModes,
+    pub modes: crate::window_modes::WindowModes,
     /// The toolbar's commands whose switch is on, shown pressed.
-    pub(crate) toolbar_checked: Vec<String>,
+    pub toolbar_checked: Vec<String>,
     _subscriptions: Vec<Subscription>,
 }
 
 impl Workspace {
-    pub(crate) fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
+    pub fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
         let panes = [cx.new(|_| Pane::new(0)), cx.new(|_| Pane::new(1))];
         for (pane, other) in [(0, 1), (1, 0)] {
             let other = panes[other].downgrade();
@@ -275,6 +280,8 @@ impl Workspace {
             incremental,
             search_results,
             title: String::new(),
+            title_add: None,
+            quick_prints: Vec::new(),
             buffer_subscriptions: HashMap::new(),
             view_subscriptions: HashMap::new(),
             session_state: SessionState::default(),
@@ -414,28 +421,28 @@ impl Workspace {
         }
     }
 
-    pub(crate) fn active_pane(&self) -> &Entity<Pane> {
+    pub fn active_pane(&self) -> &Entity<Pane> {
         &self.panes[self.active_pane]
     }
 
     /// The main and the second view.
-    pub(crate) fn panes(&self) -> &[Entity<Pane>; 2] {
+    pub fn panes(&self) -> &[Entity<Pane>; 2] {
         &self.panes
     }
 
-    pub(crate) fn active_pane_index(&self) -> usize {
+    pub fn active_pane_index(&self) -> usize {
         self.active_pane
     }
 
     /// The pane showing `view`: 0 for the main view, 1 for the second.
-    pub(crate) fn pane_of(&self, view: &Entity<EditorView>, cx: &App) -> Option<usize> {
+    pub fn pane_of(&self, view: &Entity<EditorView>, cx: &App) -> Option<usize> {
         self.panes
             .iter()
             .position(|pane| pane.read(cx).index_of(view).is_some())
     }
 
     /// Whether both views are shown.
-    pub(crate) fn is_split(&self, cx: &App) -> bool {
+    pub fn is_split(&self, cx: &App) -> bool {
         self.panes
             .iter()
             .all(|pane| !pane.read(cx).items().is_empty())
@@ -443,7 +450,7 @@ impl Workspace {
 
     /// Follows the focus into a view (a click in the other pane makes it the active one) and its
     /// scrolling.
-    pub(crate) fn track_view(
+    pub fn track_view(
         &mut self,
         view: &Entity<EditorView>,
         window: &mut Window,
@@ -529,11 +536,11 @@ impl Workspace {
         cx.notify();
     }
 
-    pub(crate) fn active_view(&self, cx: &App) -> Option<Entity<EditorView>> {
+    pub fn active_view(&self, cx: &App) -> Option<Entity<EditorView>> {
         self.active_pane().read(cx).active_item().cloned()
     }
 
-    pub(crate) fn all_views(&self, cx: &App) -> Vec<Entity<EditorView>> {
+    pub fn all_views(&self, cx: &App) -> Vec<Entity<EditorView>> {
         self.panes
             .iter()
             .flat_map(|pane| pane.read(cx).items().to_vec())
@@ -552,7 +559,7 @@ impl Workspace {
             .expect("some number is free")
     }
 
-    pub(crate) fn new_file(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+    pub fn new_file(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let number = self.next_untitled_number(cx);
         let (format, language) = new_document(cx);
         let buffer = cx.new(|cx| {
@@ -567,12 +574,7 @@ impl Workspace {
     }
 
     /// Opens a document that was not read from a file (e.g. generated text) as untitled.
-    pub(crate) fn open_document(
-        &mut self,
-        doc: Document,
-        window: &mut Window,
-        cx: &mut Context<Self>,
-    ) {
+    pub fn open_document(&mut self, doc: Document, window: &mut Window, cx: &mut Context<Self>) {
         let number = self.next_untitled_number(cx);
         let buffer = cx.new(|_| Buffer::untitled_with(number, doc));
         self.add_buffer(buffer, window, cx);
@@ -580,17 +582,65 @@ impl Workspace {
 
     /// Opens a file in a new tab, or switches to its tab if it is already open. The file is read
     /// in the background.
-    pub(crate) fn open_path(&mut self, path: &Path, window: &mut Window, cx: &mut Context<Self>) {
+    pub fn open_path(&mut self, path: &Path, window: &mut Window, cx: &mut Context<Self>) {
         self.open_path_with(path, false, window, cx);
     }
 
-    /// Opens files and places carets as a command line asks (also from a second launch).
-    pub(crate) fn open_command_line(
+    /// Opens files and places carets as a command line asks (also from a second launch), and
+    /// does what it asks of them: Monitoring, a user defined language, printing, saying how
+    /// long they took; and ghost typing. Returns the views of the files opened.
+    pub fn open_command_line(
         &mut self,
         command_line: &CommandLine,
         window: &mut Window,
         cx: &mut Context<Self>,
-    ) {
+    ) -> Vec<Entity<EditorView>> {
+        let started = std::time::Instant::now();
+        let views = self.open_command_line_files(command_line, window, cx);
+        if command_line.loading_time && !views.is_empty() {
+            let time = format!("{:.3}", started.elapsed().as_secs_f64());
+            report_info(t!("workspace.loading-time", seconds = time), window, cx);
+        }
+        if let Some(ghost) = &command_line.ghost {
+            self.ghost_type(ghost, window, cx);
+        }
+        if let Some(message) = &command_line.plugin_message {
+            // Plugins have no event for it yet (roadmap 6.42).
+            eprintln!("-pluginMessage={message}: plugins hear no command line messages yet");
+        }
+        if command_line.quick_print {
+            for view in &views {
+                self.activate_view(view, window, cx);
+                let source = match crate::print::PrintSource::active(self, cx) {
+                    Ok(source) => source,
+                    Err(error) => {
+                        report_error(&error, window, cx);
+                        continue;
+                    }
+                };
+                let setup = crate::print::page_setup(cx);
+                let pages = source.paginate(&setup);
+                let printing =
+                    crate::print::print_task(&source.title, &pages, &setup, false, window, cx);
+                self.quick_prints
+                    .push(cx.spawn_in(window, async move |_, cx| {
+                        if let Err(error) = printing.await {
+                            cx.update(|window, cx| report_error(&error, window, cx))
+                                .ok();
+                        }
+                    }));
+            }
+        }
+        views
+    }
+
+    fn open_command_line_files(
+        &mut self,
+        command_line: &CommandLine,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Vec<Entity<EditorView>> {
+        let mut views = Vec::new();
         if let Some(lines) = command_line.generate {
             let doc = Document::from_text(birchpad_core::Rope::from_str(&crate::generate(lines)));
             self.open_document(doc, window, cx);
@@ -601,8 +651,16 @@ impl Workspace {
                     report_error(&error, window, cx);
                 }
             }
-            return;
+            return views;
         }
+        // `-udl="name"`: a user defined language the user has.
+        let user_language = command_line.udl.as_deref().and_then(|name| {
+            let found = crate::user_languages::find(name, cx);
+            if found.is_none() {
+                report_warning(t!("workspace.unknown-udl-option", name = name), window, cx);
+            }
+            found
+        });
         let target = command_line.caret_target();
         // `-l<language>`, with Notepad++'s names; `-lnormal` is plain text.
         let language = command_line.language.as_deref().and_then(|id| match id {
@@ -631,7 +689,83 @@ impl Workspace {
                 let buffer = view.read(cx).buffer.clone();
                 buffer.update(cx, |buffer, cx| buffer.set_language(language, cx));
             }
+            if let Some(found) = &user_language {
+                let buffer = view.read(cx).buffer.clone();
+                let found = found.clone();
+                buffer.update(cx, |buffer, cx| buffer.set_user_language(Some(found), cx));
+            }
+            if command_line.monitor {
+                let monitoring = view.read(cx).buffer.read(cx).is_monitoring();
+                self.activate_view(&view, window, cx);
+                if !monitoring && let Err(error) = self.toggle_monitoring(window, cx) {
+                    report_error(&error, window, cx);
+                }
+            }
+            views.push(view);
         }
+        views
+    }
+
+    /// Ghost typing (`-qt`, `-qf`): the text typed into a new document, a few characters at a
+    /// time as `-qSpeed` says (3: at once). `-qn` names Notepad++'s easter eggs, which are its
+    /// own: Birchpad says it has none.
+    fn ghost_type(
+        &mut self,
+        ghost: &birchpad_cli::Ghost,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let text = match (&ghost.text, &ghost.file, &ghost.name) {
+            (Some(text), _, _) => text.clone(),
+            (None, Some(file), _) => match std::fs::read_to_string(file) {
+                Ok(text) => text,
+                Err(error) => {
+                    let error = anyhow::anyhow!(
+                        "{}",
+                        t!(
+                            "workspace.cannot-read",
+                            path = file.display(),
+                            error = error
+                        )
+                    );
+                    report_error(&error, window, cx);
+                    return;
+                }
+            },
+            (None, None, Some(name)) => {
+                report_warning(t!("workspace.no-easter-egg", name = name), window, cx);
+                return;
+            }
+            (None, None, None) => return,
+        };
+        self.new_file(window, cx);
+        let Some(view) = self.active_view(cx) else {
+            return;
+        };
+        let chars: Vec<char> = text.chars().collect();
+        let (chunk, delay) = match ghost.speed {
+            1 => (1, 60),
+            3 => (chars.len().max(1), 0),
+            _ => (2, 15),
+        };
+        let view = view.downgrade();
+        cx.spawn_in(window, async move |_, cx| {
+            for piece in chars.chunks(chunk) {
+                let piece: String = piece.iter().collect();
+                let typed = view.update(cx, |view, cx| {
+                    view.insert(&piece, crate::editor::LastEdit::None, cx);
+                });
+                if typed.is_err() {
+                    return;
+                }
+                if delay > 0 {
+                    cx.background_executor()
+                        .timer(std::time::Duration::from_millis(delay))
+                        .await;
+                }
+            }
+        })
+        .detach();
     }
 
     /// Opens `path` (read-only if asked) or switches to its tab; returns the view.
@@ -667,7 +801,7 @@ impl Workspace {
 
     /// Tells the user about recovery copies left by saves that were interrupted (a crash or
     /// power loss while writing).
-    pub(crate) fn report_pending_recoveries(&self, window: &mut Window, cx: &mut App) {
+    pub fn report_pending_recoveries(&self, window: &mut Window, cx: &mut App) {
         let Some(dir) = AppState::global(cx).recovery_dir() else {
             return;
         };
@@ -684,13 +818,13 @@ impl Workspace {
         }
     }
 
-    pub(crate) fn view_for_path(&self, path: &Path, cx: &App) -> Option<Entity<EditorView>> {
+    pub fn view_for_path(&self, path: &Path, cx: &App) -> Option<Entity<EditorView>> {
         self.all_views(cx)
             .into_iter()
             .find(|view| view.read(cx).buffer.read(cx).path() == Some(path))
     }
 
-    pub(crate) fn activate_view(
+    pub fn activate_view(
         &mut self,
         view: &Entity<EditorView>,
         window: &mut Window,
@@ -722,7 +856,7 @@ impl Workspace {
     }
 
     /// Follows a buffer's events: loading failures, state shown in the menus.
-    pub(crate) fn watch_buffer(
+    pub fn watch_buffer(
         &mut self,
         buffer: &Entity<Buffer>,
         window: &mut Window,
@@ -768,7 +902,7 @@ impl Workspace {
         }
     }
 
-    pub(crate) fn close_view(
+    pub fn close_view(
         &mut self,
         view: &Entity<EditorView>,
         window: &mut Window,
@@ -829,7 +963,7 @@ impl Workspace {
 
     /// Runs a command. Editor commands that reach the workspace (focus is in a panel or the menu
     /// bar) go to the active view.
-    pub(crate) fn dispatch(
+    pub fn dispatch(
         &mut self,
         invocation: &Invocation,
         window: &mut Window,
@@ -875,7 +1009,7 @@ impl Workspace {
     }
 
     /// Redraws every editor after a view setting (zoom, word wrap, Show Symbol) changed.
-    pub(crate) fn refresh_views(&mut self, cx: &mut Context<Self>) {
+    pub fn refresh_views(&mut self, cx: &mut Context<Self>) {
         for view in self.all_views(cx) {
             view.update(cx, |view, cx| view.settings_changed(cx));
         }
@@ -888,7 +1022,7 @@ impl Workspace {
     }
 
     /// Rebuilds the menus from the current state.
-    pub(crate) fn refresh_menus(&mut self, cx: &mut Context<Self>) {
+    pub fn refresh_menus(&mut self, cx: &mut Context<Self>) {
         let format = self
             .active_view(cx)
             .map(|view| view.read(cx).buffer.read(cx).doc().format());
@@ -1037,8 +1171,8 @@ impl Workspace {
 
     /// The window's title: `*` for unsaved changes, the active file's path (or only its name,
     /// Preferences > Appearance), and Birchpad.
-    pub(crate) fn window_title(&self, cx: &App) -> String {
-        match self.active_view(cx) {
+    pub fn window_title(&self, cx: &App) -> String {
+        let title = match self.active_view(cx) {
             Some(view) => {
                 let buffer = view.read(cx).buffer.read(cx);
                 let name_only = AppState::global(cx)
@@ -1054,6 +1188,10 @@ impl Workspace {
                 format!("{modified}{name} - Birchpad")
             }
             None => "Birchpad".to_owned(),
+        };
+        match &self.title_add {
+            Some(text) if !text.is_empty() => format!("{title} - {text}"),
+            _ => title,
         }
     }
 }
@@ -1228,7 +1366,3 @@ impl Focusable for Workspace {
         self.focus_handle.clone()
     }
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/workspace/tests.rs"]
-pub(crate) mod tests;

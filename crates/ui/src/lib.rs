@@ -12,8 +12,8 @@ pub use commands::{CommandRegistry, CommandTarget, Handler, RunCommand};
 pub use keymap::{
     ActiveKeymap, bind_keymap, key_bindings, reload_keymap, replace_command_bindings,
 };
-#[cfg(feature = "test-support")]
-pub use report::take_info;
 pub use report::{
     dialog_action, dialog_close, report_error, report_info, report_success, report_warning,
 };
+#[cfg(feature = "test-support")]
+pub use report::{take_info, take_warnings};

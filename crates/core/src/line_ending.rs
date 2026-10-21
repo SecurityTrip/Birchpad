@@ -114,7 +114,3 @@ fn push_break(
         edits.push(Edit::replace(range, target.as_str()));
     }
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/line_ending/tests.rs"]
-mod tests;

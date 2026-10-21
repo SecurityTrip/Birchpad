@@ -36,7 +36,7 @@ use crate::preview::Preview;
 use crate::theme::{paint, ui};
 use crate::workspace::Workspace;
 
-pub(crate) use birchpad_editor::{TAB_COLORS, TabMarks};
+pub use birchpad_editor::{TAB_COLORS, TabMarks};
 
 /// The theme's color `number` (1 to 5) for a tab.
 fn tab_color(number: u8) -> Option<birchpad_theme::Color> {
@@ -55,10 +55,10 @@ fn tab_color(number: u8) -> Option<birchpad_theme::Color> {
 const PIN_ICON: &[u8] = br#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none" stroke="black" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5.5 2h5M6.5 2v4L4 9h8L9.5 6V2M8 9v5"/></svg>"#;
 
 /// How many lines the document peeker shows, and how many characters of each.
-const PEEK_LINES: usize = 12;
-const PEEK_COLUMNS: usize = 72;
+pub const PEEK_LINES: usize = 12;
+pub const PEEK_COLUMNS: usize = 72;
 
-pub(crate) fn register_commands(registry: &mut CommandRegistry) {
+pub fn register_commands(registry: &mut CommandRegistry) {
     registry.workspace("view.go-to-tab", |this, args: IndexArgs, window, cx| {
         if args.index == 0 {
             anyhow::bail!("{}", t!("pane.tabs-are-counted-from-1"));
@@ -147,7 +147,7 @@ struct SwitchArgs {
 
 /// Where View > Tab > Move Tab moves the active tab, within its group (pinned or not).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum Step {
+pub enum Step {
     Forward,
     Backward,
     Start,
@@ -155,7 +155,7 @@ pub(crate) enum Step {
 }
 
 /// Whether View > Tab's switches are checked for the active tab.
-pub(crate) fn is_checked(invocation: &Invocation, marks: Option<TabMarks>) -> Option<bool> {
+pub fn is_checked(invocation: &Invocation, marks: Option<TabMarks>) -> Option<bool> {
     let marks = marks.unwrap_or_default();
     match invocation.command.as_str() {
         "view.pin-tab" => Some(marks.pinned),
@@ -170,7 +170,7 @@ pub(crate) fn is_checked(invocation: &Invocation, marks: Option<TabMarks>) -> Op
     }
 }
 
-pub(crate) enum PaneEvent {
+pub enum PaneEvent {
     /// Another tab became active, or the active tab's state changed.
     ActiveItemChanged,
     /// The user clicked a tab's close button, or the tab with the middle mouse button.
@@ -200,8 +200,8 @@ pub(crate) enum PaneEvent {
 
 /// A tab being dragged.
 #[derive(Clone)]
-pub(crate) struct DraggedTab {
-    pub(crate) view: Entity<EditorView>,
+pub struct DraggedTab {
+    pub view: Entity<EditorView>,
     label: SharedString,
 }
 
@@ -227,7 +227,7 @@ struct Switcher {
     selected: usize,
 }
 
-pub(crate) struct Pane {
+pub struct Pane {
     /// 0 for the main view, 1 for the second one.
     index: usize,
     /// The other pane.
@@ -252,7 +252,7 @@ impl EventEmitter<PaneEvent> for Pane {}
 
 impl Pane {
     /// The main (`index` 0) or the second view.
-    pub(crate) fn new(index: usize) -> Self {
+    pub fn new(index: usize) -> Self {
         Self {
             index,
             other: WeakEntity::new_invalid(),
@@ -270,21 +270,21 @@ impl Pane {
     }
 
     /// Hides the tab bar (Post-It, Distraction Free) or shows it again.
-    pub(crate) fn set_tabs_hidden(&mut self, hidden: bool, cx: &mut Context<Self>) {
+    pub fn set_tabs_hidden(&mut self, hidden: bool, cx: &mut Context<Self>) {
         self.tabs_hidden = hidden;
         cx.notify();
     }
 
-    pub(crate) fn set_other(&mut self, other: WeakEntity<Pane>) {
+    pub fn set_other(&mut self, other: WeakEntity<Pane>) {
         self.other = other;
     }
 
-    pub(crate) fn set_workspace(&mut self, workspace: WeakEntity<Workspace>) {
+    pub fn set_workspace(&mut self, workspace: WeakEntity<Workspace>) {
         self.workspace = workspace;
     }
 
     /// The preview of `item`, if its document has one, made when first asked for.
-    pub(crate) fn preview(
+    pub fn preview(
         &mut self,
         item: &Entity<EditorView>,
         cx: &mut Context<Self>,
@@ -309,7 +309,7 @@ impl Pane {
     }
 
     /// How the active document is shown, if it has a preview.
-    pub(crate) fn preview_mode(&self, cx: &App) -> Option<PreviewMode> {
+    pub fn preview_mode(&self, cx: &App) -> Option<PreviewMode> {
         let item = self.active_item()?;
         crate::preview::kind_of(item.read(cx).buffer.read(cx))?;
         Some(
@@ -323,7 +323,7 @@ impl Pane {
 
     /// Shows the active document as `mode` (View > Preview), remembered for documents opened
     /// later; false if it has no preview.
-    pub(crate) fn set_preview_mode(&mut self, mode: PreviewMode, cx: &mut Context<Self>) -> bool {
+    pub fn set_preview_mode(&mut self, mode: PreviewMode, cx: &mut Context<Self>) -> bool {
         let Some(item) = self.active_item().cloned() else {
             return false;
         };
@@ -419,15 +419,15 @@ impl Pane {
         }
     }
 
-    pub(crate) fn items(&self) -> &[Entity<EditorView>] {
+    pub fn items(&self) -> &[Entity<EditorView>] {
         &self.items
     }
 
-    pub(crate) fn active_item(&self) -> Option<&Entity<EditorView>> {
+    pub fn active_item(&self) -> Option<&Entity<EditorView>> {
         self.items.get(self.active)
     }
 
-    pub(crate) fn index_of(&self, item: &Entity<EditorView>) -> Option<usize> {
+    pub fn index_of(&self, item: &Entity<EditorView>) -> Option<usize> {
         self.items.iter().position(|existing| existing == item)
     }
 
@@ -451,12 +451,7 @@ impl Pane {
     }
 
     /// Adds a tab after the active one and activates it.
-    pub(crate) fn add(
-        &mut self,
-        item: Entity<EditorView>,
-        window: &mut Window,
-        cx: &mut Context<Self>,
-    ) {
+    pub fn add(&mut self, item: Entity<EditorView>, window: &mut Window, cx: &mut Context<Self>) {
         let index = if self.items.is_empty() {
             0
         } else {
@@ -467,7 +462,7 @@ impl Pane {
 
     /// Puts a tab at `index` (at the end if past it, after the pinned tabs unless it is pinned)
     /// and activates it.
-    pub(crate) fn insert(
+    pub fn insert(
         &mut self,
         index: usize,
         item: Entity<EditorView>,
@@ -492,7 +487,7 @@ impl Pane {
 
     /// Moves a tab of this pane so that it ends up at `to` (counted before the move), within
     /// its group, and activates it.
-    pub(crate) fn move_item(
+    pub fn move_item(
         &mut self,
         item: &Entity<EditorView>,
         to: usize,
@@ -512,7 +507,7 @@ impl Pane {
 
     /// View > Tab > Move Tab Forward, Backward, to Start, to End: the active tab, within its
     /// group.
-    pub(crate) fn move_active(&mut self, step: Step, cx: &mut Context<Self>) {
+    pub fn move_active(&mut self, step: Step, cx: &mut Context<Self>) {
         let Some(item) = self.active_item().cloned() else {
             return;
         };
@@ -541,7 +536,7 @@ impl Pane {
 
     /// Puts the tabs in the order of `order` (Window > Sort By, Sort Tabs); tabs it leaves out
     /// follow in their own order, and pinned tabs still come first.
-    pub(crate) fn reorder(&mut self, order: &[Entity<EditorView>], cx: &mut Context<Self>) {
+    pub fn reorder(&mut self, order: &[Entity<EditorView>], cx: &mut Context<Self>) {
         let active = self.active_item().cloned();
         let mut items: Vec<Entity<EditorView>> = Vec::with_capacity(self.items.len());
         for item in order.iter().chain(self.items.iter()) {
@@ -562,12 +557,7 @@ impl Pane {
 
     /// Pins or unpins a tab: it goes to the end of the pinned tabs, or to the start of the
     /// others.
-    pub(crate) fn set_pinned(
-        &mut self,
-        item: &Entity<EditorView>,
-        pinned: bool,
-        cx: &mut Context<Self>,
-    ) {
+    pub fn set_pinned(&mut self, item: &Entity<EditorView>, pinned: bool, cx: &mut Context<Self>) {
         let Some(from) = self.index_of(item) else {
             return;
         };
@@ -584,7 +574,7 @@ impl Pane {
     }
 
     /// View > Tab > Apply Color (1 to 5) or Remove Color.
-    pub(crate) fn set_color(
+    pub fn set_color(
         &mut self,
         item: &Entity<EditorView>,
         color: Option<u8>,
@@ -599,7 +589,7 @@ impl Pane {
     }
 
     /// Activates the tab at `index`, if there is one, and ends the document switcher.
-    pub(crate) fn activate(&mut self, index: usize, window: &mut Window, cx: &mut Context<Self>) {
+    pub fn activate(&mut self, index: usize, window: &mut Window, cx: &mut Context<Self>) {
         if index >= self.items.len() {
             return;
         }
@@ -631,7 +621,7 @@ impl Pane {
     }
 
     /// Activates the next (`delta = 1`) or previous (`-1`) tab, wrapping around.
-    pub(crate) fn cycle(&mut self, delta: isize, window: &mut Window, cx: &mut Context<Self>) {
+    pub fn cycle(&mut self, delta: isize, window: &mut Window, cx: &mut Context<Self>) {
         let len = self.items.len() as isize;
         if len == 0 {
             return;
@@ -668,7 +658,7 @@ impl Pane {
 
     /// Ctrl+Tab (Ctrl+Shift+Tab with `backward`): the next document of the switcher, which
     /// shows while Ctrl is held. Without the switcher (Preferences > Tab Bar), the next tab.
-    pub(crate) fn switch(&mut self, backward: bool, window: &mut Window, cx: &mut Context<Self>) {
+    pub fn switch(&mut self, backward: bool, window: &mut Window, cx: &mut Context<Self>) {
         let settings = AppState::global(cx).settings.tabs.clone();
         if !settings.switcher {
             self.cycle(if backward { -1 } else { 1 }, window, cx);
@@ -703,7 +693,7 @@ impl Pane {
 
     /// Ctrl was released: the document the switcher shows stays, as the most recent one.
     /// Whether the switcher was open.
-    pub(crate) fn end_switch(&mut self, cx: &mut Context<Self>) -> bool {
+    pub fn end_switch(&mut self, cx: &mut Context<Self>) -> bool {
         if self.switcher.take().is_none() {
             return false;
         }
@@ -713,7 +703,7 @@ impl Pane {
     }
 
     /// Removes a tab. If it was active, its right neighbor (or the new last tab) becomes active.
-    pub(crate) fn remove(
+    pub fn remove(
         &mut self,
         item: &Entity<EditorView>,
         window: &mut Window,
@@ -1100,7 +1090,7 @@ impl Pane {
 
 /// Up to [`PEEK_LINES`] lines of `text` from line `first`, tabs as spaces, each cut at
 /// [`PEEK_COLUMNS`] characters with an ellipsis.
-pub(crate) fn peek_lines(text: &Rope, first: usize) -> Vec<String> {
+pub fn peek_lines(text: &Rope, first: usize) -> Vec<String> {
     let count = line_count(text);
     let first = first.min(count.saturating_sub(1));
     (first..count.min(first + PEEK_LINES))
@@ -1214,7 +1204,7 @@ impl Render for Pane {
 
 impl Workspace {
     /// Runs a command of a tab's context menu on its document.
-    pub(crate) fn run_tab_command(
+    pub fn run_tab_command(
         &mut self,
         view: Option<&Entity<EditorView>>,
         invocation: &Invocation,
@@ -1229,7 +1219,3 @@ impl Workspace {
         }
     }
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/pane/tests.rs"]
-mod tests;

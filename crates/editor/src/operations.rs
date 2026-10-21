@@ -90,7 +90,7 @@ type Op = fn(&Rope, &Selection, LineEnding) -> Option<Transaction>;
 /// A comment operation, given the language's comment tokens.
 type CommentOp = fn(&Rope, &Selection, CommentTokens) -> Option<Transaction>;
 
-pub(crate) fn register_commands(registry: &mut CommandRegistry) {
+pub fn register_commands(registry: &mut CommandRegistry) {
     let simple: [(&'static str, Op); 6] = [
         ("edit.duplicate-line", ops::duplicate),
         ("edit.delete-line", |text, selection, _| {
@@ -263,7 +263,7 @@ fn random_seed() -> u64 {
 
 impl EditorView {
     /// Runs an operation on the text and the selection as one undo step.
-    pub(crate) fn run_op(
+    pub fn run_op(
         &mut self,
         cx: &mut Context<Self>,
         op: impl FnOnce(&Rope, &Selection, LineEnding) -> Option<Transaction>,
@@ -298,7 +298,3 @@ impl EditorView {
         Ok(())
     }
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/operations/tests.rs"]
-mod tests;

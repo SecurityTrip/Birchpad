@@ -14,7 +14,7 @@ use crate::commands::{CommandRegistry, Register as _};
 /// The extension of scripts.
 const EXTENSION: &str = "rhai";
 
-pub(crate) fn scripts_dir(cx: &App) -> Option<PathBuf> {
+pub fn scripts_dir(cx: &App) -> Option<PathBuf> {
     AppState::global(cx)
         .paths
         .user_config_dir()
@@ -22,7 +22,7 @@ pub(crate) fn scripts_dir(cx: &App) -> Option<PathBuf> {
 }
 
 /// The scripts' names (their files without `.rhai`), sorted.
-pub(crate) fn names(cx: &App) -> Vec<String> {
+pub fn names(cx: &App) -> Vec<String> {
     let Some(dir) = scripts_dir(cx) else {
         return Vec::new();
     };
@@ -47,7 +47,7 @@ struct RunArgs {
     name: String,
 }
 
-pub(crate) fn register_commands(registry: &mut CommandRegistry) {
+pub fn register_commands(registry: &mut CommandRegistry) {
     registry.workspace("script.run", |this, args: RunArgs, window, cx| {
         if !AppState::global(cx).settings.plugins.scripts {
             bail!(

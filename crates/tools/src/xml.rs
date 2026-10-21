@@ -227,7 +227,3 @@ pub fn linearize(text: &str) -> Result<String, SyntaxError> {
         .map(|token| token.text)
         .collect())
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/xml/tests.rs"]
-mod tests;

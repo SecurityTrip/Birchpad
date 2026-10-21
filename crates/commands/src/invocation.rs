@@ -62,7 +62,3 @@ impl Invocation {
         })
     }
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/invocation/tests.rs"]
-mod tests;

@@ -14,7 +14,7 @@ use crate::commands::{CommandRegistry, Register as _};
 use crate::editor::{EditorView, LastEdit};
 use crate::workspace::Workspace;
 
-pub(crate) fn register_commands(registry: &mut CommandRegistry) {
+pub fn register_commands(registry: &mut CommandRegistry) {
     registry.workspace("edit.toggle-read-only", |this, (), _, cx| {
         let buffer = this
             .active_view(cx)
@@ -218,7 +218,7 @@ impl Workspace {
 
 /// A format of the clipboard besides plain text.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum RichFormat {
+pub enum RichFormat {
     Html,
     Rtf,
 }
@@ -233,19 +233,19 @@ impl RichFormat {
 }
 
 /// Reading the clipboard's HTML and RTF, which GPUI's clipboard does not offer.
-pub(crate) mod rich_clipboard {
+pub mod rich_clipboard {
     use super::RichFormat;
 
-    #[cfg(test)]
+    #[cfg(feature = "test-support")]
     thread_local! {
         /// The clipboard's HTML and RTF as tests set them.
-        pub(crate) static FAKE: std::cell::RefCell<Vec<(RichFormat, String)>> =
+        pub static FAKE: std::cell::RefCell<Vec<(RichFormat, String)>> =
             std::cell::RefCell::default();
     }
 
     /// The clipboard's content in `format`, if it has some.
-    pub(crate) fn read(format: RichFormat) -> anyhow::Result<Option<String>> {
-        #[cfg(test)]
+    pub fn read(format: RichFormat) -> anyhow::Result<Option<String>> {
+        #[cfg(feature = "test-support")]
         {
             Ok(FAKE.with(|fake| {
                 fake.borrow()
@@ -254,7 +254,7 @@ pub(crate) mod rich_clipboard {
                     .map(|(_, text)| text.clone())
             }))
         }
-        #[cfg(not(test))]
+        #[cfg(not(feature = "test-support"))]
         {
             native::read(format)
         }
@@ -262,8 +262,8 @@ pub(crate) mod rich_clipboard {
 
     /// The HTML of Windows' "HTML Format": the document after its description, which says
     /// where it starts (`StartHTML:`); all of it if that is missing.
-    #[cfg(any(test, windows))]
-    pub(crate) fn html_of_windows_format(data: &str) -> String {
+    #[cfg(any(feature = "test-support", windows))]
+    pub fn html_of_windows_format(data: &str) -> String {
         let start = data.lines().find_map(|line| {
             line.strip_prefix("StartHTML:")
                 .and_then(|offset| offset.trim().parse::<usize>().ok())
@@ -276,7 +276,7 @@ pub(crate) mod rich_clipboard {
         }
     }
 
-    #[cfg(all(not(test), windows))]
+    #[cfg(all(not(feature = "test-support"), windows))]
     mod native {
         use windows_sys::Win32::System::DataExchange::{
             CloseClipboard, GetClipboardData, OpenClipboard, RegisterClipboardFormatW,
@@ -328,7 +328,7 @@ pub(crate) mod rich_clipboard {
         }
     }
 
-    #[cfg(all(not(test), target_os = "macos"))]
+    #[cfg(all(not(feature = "test-support"), target_os = "macos"))]
     mod native {
         use objc2_app_kit::{NSPasteboard, NSPasteboardTypeHTML, NSPasteboardTypeRTF};
 
@@ -348,7 +348,7 @@ pub(crate) mod rich_clipboard {
         }
     }
 
-    #[cfg(all(not(test), unix, not(target_os = "macos")))]
+    #[cfg(all(not(feature = "test-support"), unix, not(target_os = "macos")))]
     mod native {
         use super::RichFormat;
 
@@ -386,7 +386,3 @@ pub(crate) mod rich_clipboard {
         }
     }
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/edit_extras/tests.rs"]
-mod tests;

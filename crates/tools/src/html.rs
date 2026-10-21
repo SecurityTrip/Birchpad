@@ -154,7 +154,3 @@ pub fn to_html(
     html.push_str("</pre></body></html>\n");
     html
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/html/tests.rs"]
-mod tests;

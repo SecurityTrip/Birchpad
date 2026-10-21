@@ -121,7 +121,3 @@ pub fn replace_differing(old: &Rope, new: &str) -> Result<Transaction, InvalidEd
             .with_selection(Selection::point(range.start + inserted.len())),
     )
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/hex/tests.rs"]
-mod tests;

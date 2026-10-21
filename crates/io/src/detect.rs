@@ -147,7 +147,3 @@ fn decodes_cleanly(bytes: &[u8], encoding: Encoding, complete: bool) -> bool {
     let (result, _) = decoder.decode_to_string_without_replacement(bytes, &mut out, complete);
     matches!(result, encoding_rs::DecoderResult::InputEmpty)
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/detect/tests.rs"]
-mod tests;

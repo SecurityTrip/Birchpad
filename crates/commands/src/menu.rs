@@ -211,6 +211,7 @@ pub fn main_menu() -> Vec<Menu> {
             Separator,
             cmd("file.export-html"),
             cmd("file.print"),
+            cmd("file.print-now"),
             Separator,
             cmd("file.exit"),
         ],
@@ -670,6 +671,8 @@ pub fn main_menu() -> Vec<Menu> {
                     cmd("view.preview-editor"),
                     cmd("view.preview-split"),
                     cmd("view.preview-only"),
+                    Separator,
+                    cmd("preview.install-plantuml"),
                 ],
             )),
             Separator,
@@ -919,7 +922,19 @@ pub fn main_menu() -> Vec<Menu> {
 
     let help = Menu::new(
         "Help",
-        vec![cmd("help.check-updates"), Separator, cmd("help.about")],
+        vec![
+            cmd("help.command-line"),
+            Separator,
+            cmd("help.home-page"),
+            cmd("help.manual"),
+            cmd("help.forum"),
+            Separator,
+            cmd("help.check-updates"),
+            cmd("help.updater-proxy"),
+            Separator,
+            cmd("help.debug-info"),
+            cmd("help.about"),
+        ],
     );
 
     vec![
@@ -927,7 +942,3 @@ pub fn main_menu() -> Vec<Menu> {
         window, help,
     ]
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/menu/tests.rs"]
-mod tests;

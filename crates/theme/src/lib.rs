@@ -588,7 +588,3 @@ impl Theme {
         }
     }
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/tests.rs"]
-mod tests;

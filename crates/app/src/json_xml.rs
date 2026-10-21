@@ -9,7 +9,7 @@ use gpui_kit::{Context, Window};
 use crate::commands::{CommandRegistry, Register as _};
 use crate::editor::EditorView;
 
-pub(crate) fn register_commands(registry: &mut CommandRegistry) {
+pub fn register_commands(registry: &mut CommandRegistry) {
     registry.editor("json.format", |this, (), _, cx| {
         reformat(this, cx, json::format)
     });
@@ -124,7 +124,3 @@ fn validate(
         Err(error) => Err(locate(view, range.start, &part, &error, cx)),
     }
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/json_xml/tests.rs"]
-mod tests;

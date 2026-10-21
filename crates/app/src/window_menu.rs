@@ -22,7 +22,7 @@ use crate::file_ops::SaveMode;
 use crate::theme::{paint, ui};
 use crate::workspace::Workspace;
 
-pub(crate) fn register_commands(registry: &mut CommandRegistry) {
+pub fn register_commands(registry: &mut CommandRegistry) {
     registry.workspace("window.sort", |this, args: SortArgs, _, cx| {
         let pane = this.active_pane().clone();
         let mut documents: Vec<Document> = pane
@@ -49,7 +49,7 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
 /// What Sort By and the dialog's columns order by.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "kebab-case")]
-pub(crate) enum SortBy {
+pub enum SortBy {
     Name,
     Path,
     /// The language.
@@ -69,23 +69,23 @@ struct SortArgs {
 
 /// A document of the view, as the menu and the dialog show it.
 #[derive(Clone)]
-pub(crate) struct Document {
-    pub(crate) view: Entity<EditorView>,
-    pub(crate) name: String,
+pub struct Document {
+    pub view: Entity<EditorView>,
+    pub name: String,
     /// The full path; the name for an untitled document.
-    pub(crate) path: String,
+    pub path: String,
     /// The language's name.
-    pub(crate) kind: String,
+    pub kind: String,
     /// The text's length in bytes.
-    pub(crate) size: usize,
+    pub size: usize,
     /// The file's modification time; none for an untitled document or a file that is gone.
-    pub(crate) modified: Option<SystemTime>,
+    pub modified: Option<SystemTime>,
     /// It has unsaved changes.
-    pub(crate) changed: bool,
+    pub changed: bool,
 }
 
 impl Document {
-    pub(crate) fn of(view: &Entity<EditorView>, cx: &App) -> Self {
+    pub fn of(view: &Entity<EditorView>, cx: &App) -> Self {
         let buffer = view.read(cx).buffer.read(cx);
         let name = buffer.display_name();
         let path = buffer
@@ -120,7 +120,7 @@ fn by_text(a: &str, b: &str) -> Ordering {
 }
 
 /// Orders `documents` by `by`, keeping the order of equal ones.
-pub(crate) fn sort(documents: &mut [Document], by: SortBy, descending: bool) {
+pub fn sort(documents: &mut [Document], by: SortBy, descending: bool) {
     documents.sort_by(|a, b| {
         let order = match by {
             SortBy::Name => by_text(&a.name, &b.name),
@@ -135,7 +135,7 @@ pub(crate) fn sort(documents: &mut [Document], by: SortBy, descending: bool) {
 }
 
 /// The documents of the active view, for the Window menu: their names, and which is active.
-pub(crate) fn menu_documents(workspace: &Workspace, cx: &App) -> (Vec<String>, Option<usize>) {
+pub fn menu_documents(workspace: &Workspace, cx: &App) -> (Vec<String>, Option<usize>) {
     let pane = workspace.active_pane().read(cx);
     let names = pane
         .items()
@@ -147,7 +147,7 @@ pub(crate) fn menu_documents(workspace: &Workspace, cx: &App) -> (Vec<String>, O
 }
 
 /// Window > Windows...
-pub(crate) fn open(
+pub fn open(
     workspace: WeakEntity<Workspace>,
     active: Option<Entity<EditorView>>,
     window: &mut Window,
@@ -164,22 +164,19 @@ pub(crate) fn open(
 }
 
 /// The Windows dialog: the documents of the active view.
-pub(crate) struct WindowsDialog {
+pub struct WindowsDialog {
     workspace: WeakEntity<Workspace>,
     /// The column sorted by, and whether in reverse; none for the order of the tabs.
-    pub(crate) sort: Option<(SortBy, bool)>,
+    pub sort: Option<(SortBy, bool)>,
     /// The selected documents' views.
-    pub(crate) selected: HashSet<EntityId>,
+    pub selected: HashSet<EntityId>,
     /// The row a Shift+click selects from.
     anchor: Option<EntityId>,
 }
 
 impl WindowsDialog {
     /// The dialog, with the active document `active` selected.
-    pub(crate) fn new(
-        workspace: WeakEntity<Workspace>,
-        active: Option<&Entity<EditorView>>,
-    ) -> Self {
+    pub fn new(workspace: WeakEntity<Workspace>, active: Option<&Entity<EditorView>>) -> Self {
         let anchor = active.map(Entity::entity_id);
         Self {
             workspace,
@@ -190,7 +187,7 @@ impl WindowsDialog {
     }
 
     /// The rows, in the order shown.
-    pub(crate) fn rows(&self, cx: &App) -> Vec<Document> {
+    pub fn rows(&self, cx: &App) -> Vec<Document> {
         let Some(workspace) = self.workspace.upgrade() else {
             return Vec::new();
         };
@@ -209,7 +206,7 @@ impl WindowsDialog {
     }
 
     /// The selected documents, in the order shown.
-    pub(crate) fn selection(&self, cx: &App) -> Vec<Entity<EditorView>> {
+    pub fn selection(&self, cx: &App) -> Vec<Entity<EditorView>> {
         self.rows(cx)
             .into_iter()
             .filter(|row| self.selected.contains(&row.view.entity_id()))
@@ -218,7 +215,7 @@ impl WindowsDialog {
     }
 
     /// A click on a column's heading: sorts by it, in reverse on a second click.
-    pub(crate) fn sort_by(&mut self, by: SortBy, cx: &mut Context<Self>) {
+    pub fn sort_by(&mut self, by: SortBy, cx: &mut Context<Self>) {
         self.sort = match self.sort {
             Some((current, descending)) if current == by => Some((by, !descending)),
             _ => Some((by, false)),
@@ -228,7 +225,7 @@ impl WindowsDialog {
 
     /// A click on a row: selects it alone, adds or removes it (`toggle`, Ctrl), or selects from
     /// the last one clicked (`range`, Shift).
-    pub(crate) fn click(&mut self, row: usize, toggle: bool, range: bool, cx: &mut Context<Self>) {
+    pub fn click(&mut self, row: usize, toggle: bool, range: bool, cx: &mut Context<Self>) {
         let rows = self.rows(cx);
         let Some(clicked) = rows.get(row).map(|row| row.view.entity_id()) else {
             return;
@@ -255,7 +252,7 @@ impl WindowsDialog {
     }
 
     /// Activate: shows the one selected document and closes the dialog.
-    pub(crate) fn activate(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+    pub fn activate(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let selection = self.selection(cx);
         let [view] = selection.as_slice() else {
             return;
@@ -269,7 +266,7 @@ impl WindowsDialog {
     }
 
     /// Save: saves the selected documents.
-    pub(crate) fn save(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+    pub fn save(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let views = self.selection(cx);
         self.workspace
             .update(cx, |workspace, cx| {
@@ -282,7 +279,7 @@ impl WindowsDialog {
     }
 
     /// Close Window(s): closes the selected documents, asking about unsaved changes.
-    pub(crate) fn close(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+    pub fn close(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let views = self.selection(cx);
         let task = self
             .workspace
@@ -311,7 +308,7 @@ impl WindowsDialog {
     }
 
     /// Sort Tabs: the tabs take the order shown.
-    pub(crate) fn sort_tabs(&mut self, cx: &mut Context<Self>) {
+    pub fn sort_tabs(&mut self, cx: &mut Context<Self>) {
         let order: Vec<_> = self.rows(cx).into_iter().map(|row| row.view).collect();
         if let Some(workspace) = self.workspace.upgrade() {
             let pane = workspace.read(cx).active_pane().clone();
@@ -449,7 +446,3 @@ impl Render for WindowsDialog {
             )
     }
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/window_menu/tests.rs"]
-mod tests;

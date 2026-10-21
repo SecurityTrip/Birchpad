@@ -23,7 +23,7 @@ use crate::editor::{EditorView, ViewState};
 use crate::pane::TabMarks;
 use crate::workspace::{Workspace, report_error};
 
-pub(crate) fn register_commands(registry: &mut CommandRegistry) {
+pub fn register_commands(registry: &mut CommandRegistry) {
     registry.workspace("file.save-session", |this, (), window, cx| {
         let session = this.session(false, cx);
         let directory = this.default_directory(cx);
@@ -62,7 +62,7 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
 
 /// The session bookkeeping of a workspace.
 #[derive(Default)]
-pub(crate) struct SessionState {
+pub struct SessionState {
     /// The session last written, to skip writing it again unchanged.
     written: Option<String>,
     /// Backup copies the last written session uses: kept until the next one is written, as the
@@ -76,11 +76,11 @@ pub(crate) struct SessionState {
     timer: Option<Task<()>>,
     /// Files of the restored session that could not be read (Remember inaccessible files):
     /// they stay in the sessions written, to open once they can be.
-    pub(crate) inaccessible: Vec<SessionDocument>,
+    pub inaccessible: Vec<SessionDocument>,
 }
 
 /// What a snapshot writes: backup copies of unsaved text, then the session.
-pub(crate) struct Snapshot {
+pub struct Snapshot {
     paths: SessionPaths,
     backups: Vec<(PathBuf, Rope)>,
     session: Option<Session>,
@@ -89,7 +89,7 @@ pub(crate) struct Snapshot {
 }
 
 /// What the workspace records once a snapshot is written.
-pub(crate) struct Written {
+pub struct Written {
     backups: Vec<(Entity<Buffer>, String, RevisionId)>,
     session: Option<String>,
     names: HashSet<String>,
@@ -125,7 +125,7 @@ impl Workspace {
     /// The session of this window. With `backups`, unsaved text is referenced by its backup
     /// copy; without (Save Session, or quitting when nothing is backed up), documents reopen
     /// from their files and untitled ones are left out, as in Notepad++.
-    pub(crate) fn session(&self, backups: bool, cx: &App) -> Session {
+    pub fn session(&self, backups: bool, cx: &App) -> Session {
         let mut session = Session::new();
         session.active_view = self.active_pane_index();
         let mut buffers: Vec<Entity<Buffer>> = Vec::new();
@@ -261,7 +261,7 @@ impl Workspace {
     }
 
     /// At startup: the documents of the last session, or an empty "new 1".
-    pub(crate) fn restore_last_session(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+    pub fn restore_last_session(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let restored = AppState::global(cx)
             .session_paths()
             .and_then(|paths| {
@@ -275,7 +275,7 @@ impl Workspace {
     }
 
     /// Writes the snapshot now, on this thread (quitting).
-    pub(crate) fn write_snapshot_now(&mut self, cx: &mut Context<Self>) {
+    pub fn write_snapshot_now(&mut self, cx: &mut Context<Self>) {
         if let Some((snapshot, written)) = self.plan_snapshot(cx) {
             let result = snapshot.write();
             self.finish_snapshot(written, result, cx);
@@ -283,7 +283,7 @@ impl Workspace {
     }
 
     /// Writes the snapshot in the background, unless a write is still running.
-    pub(crate) fn write_snapshot_later(&mut self, cx: &mut Context<Self>) -> Task<()> {
+    pub fn write_snapshot_later(&mut self, cx: &mut Context<Self>) -> Task<()> {
         if self.session_state.writing {
             return Task::ready(());
         }
@@ -302,7 +302,7 @@ impl Workspace {
     }
 
     /// Backs up unsaved changes every `session.backup-interval-seconds`, if they are backed up.
-    pub(crate) fn start_backups(&mut self, cx: &mut Context<Self>) {
+    pub fn start_backups(&mut self, cx: &mut Context<Self>) {
         let state = AppState::global(cx);
         if !state.backs_up_unsaved() {
             return;
@@ -323,7 +323,7 @@ impl Workspace {
     /// Saves what the next launch restores, once, when quitting: with backups everything,
     /// unsaved text included; otherwise the files (after the user answered about unsaved
     /// changes, or, when quitting cannot be asked about, without them).
-    pub(crate) fn save_session_for_quit(&mut self, cx: &mut Context<Self>) {
+    pub fn save_session_for_quit(&mut self, cx: &mut Context<Self>) {
         if std::mem::replace(&mut self.session_state.saved_for_quit, true) {
             return;
         }
@@ -341,7 +341,7 @@ impl Workspace {
     }
 
     /// Opens a session file (Birchpad's or Notepad++'s) in addition to what is open.
-    pub(crate) fn load_session_file(
+    pub fn load_session_file(
         &mut self,
         path: &Path,
         window: &mut Window,
@@ -363,7 +363,7 @@ impl Workspace {
     /// Opens the documents of `session` in their views, with their carets, scroll positions,
     /// folds and bookmarks. Backup copies named relative to `backups` give unsaved text.
     /// Returns the number of the session's tabs now shown, opened or already open.
-    pub(crate) fn restore_session(
+    pub fn restore_session(
         &mut self,
         session: &Session,
         backups: Option<&Path>,

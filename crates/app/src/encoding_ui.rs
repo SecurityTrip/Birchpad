@@ -20,7 +20,7 @@ struct EncodingArgs {
     encoding: String,
 }
 
-pub(crate) fn register_commands(registry: &mut CommandRegistry) {
+pub fn register_commands(registry: &mut CommandRegistry) {
     registry.workspace(
         "encoding.encode-in",
         |this, args: EncodingArgs, window, cx| encode_in(this, &args.encoding, window, cx),
@@ -177,7 +177,7 @@ fn edit_anyway(
 
 /// Where saving a document that did not decode exactly will change the file, for the user to
 /// accept before editing it.
-pub(crate) fn describe_changes(changes: &ByteChanges, encoding: &str) -> String {
+pub fn describe_changes(changes: &ByteChanges, encoding: &str) -> String {
     let hex = |bytes: &[u8]| {
         bytes
             .iter()
@@ -234,7 +234,7 @@ pub(crate) fn describe_changes(changes: &ByteChanges, encoding: &str) -> String 
 }
 
 /// "first at Ln 3, Col 7" for an encoding problem.
-pub(crate) fn first_position(text: &Rope, problem: &birchpad_io::Unencodable) -> String {
+pub fn first_position(text: &Rope, problem: &birchpad_io::Unencodable) -> String {
     let Some(&(offset, _)) = problem.samples.first() else {
         return String::new();
     };
@@ -247,7 +247,7 @@ pub(crate) fn first_position(text: &Rope, problem: &birchpad_io::Unencodable) ->
 }
 
 /// Whether a menu item describes the document's current format (for check marks).
-pub(crate) fn is_current(invocation: &Invocation, format: Format, ansi: Encoding) -> bool {
+pub fn is_current(invocation: &Invocation, format: Format, ansi: Encoding) -> bool {
     match invocation.command.as_str() {
         "encoding.encode-in" => invocation
             .args
@@ -269,7 +269,3 @@ pub(crate) fn is_current(invocation: &Invocation, format: Format, ansi: Encoding
         _ => false,
     }
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/encoding_ui/tests.rs"]
-mod tests;

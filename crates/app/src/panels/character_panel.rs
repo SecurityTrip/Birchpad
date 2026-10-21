@@ -70,7 +70,7 @@ const WINDOWS_1252: [(char, &str); 25] = [
 ];
 
 /// The HTML entity name of `ch`, if HTML 4 has one.
-pub(crate) fn entity_name(ch: char) -> Option<&'static str> {
+pub fn entity_name(ch: char) -> Option<&'static str> {
     match ch {
         '"' => Some("quot"),
         '&' => Some("amp"),
@@ -86,31 +86,31 @@ pub(crate) fn entity_name(ch: char) -> Option<&'static str> {
 
 /// One value of the code page.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct CharRow {
-    pub(crate) value: u8,
+pub struct CharRow {
+    pub value: u8,
     /// `None` where the code page has no character.
-    pub(crate) ch: Option<char>,
+    pub ch: Option<char>,
     /// What the Character column shows: the character, or a control's name.
-    pub(crate) shown: String,
-    pub(crate) name: Option<&'static str>,
+    pub shown: String,
+    pub name: Option<&'static str>,
 }
 
 impl CharRow {
-    pub(crate) fn html_name(&self) -> Option<String> {
+    pub fn html_name(&self) -> Option<String> {
         self.name.map(|name| format!("&{name};"))
     }
 
-    pub(crate) fn html_decimal(&self) -> Option<String> {
+    pub fn html_decimal(&self) -> Option<String> {
         self.ch.map(|ch| format!("&#{};", u32::from(ch)))
     }
 
-    pub(crate) fn html_hex(&self) -> Option<String> {
+    pub fn html_hex(&self) -> Option<String> {
         self.ch.map(|ch| format!("&#x{:X};", u32::from(ch)))
     }
 }
 
 /// The 256 rows for the legacy `encoding`.
-pub(crate) fn rows(encoding: Encoding) -> Vec<CharRow> {
+pub fn rows(encoding: Encoding) -> Vec<CharRow> {
     (0..=255u8)
         .map(|value| {
             let ch = if value < 0x80 {
@@ -148,11 +148,11 @@ const COLUMNS: [(&str, f32); 6] = [
     ("HTML hex", 60.),
 ];
 
-pub(crate) struct CharacterPanel {
+pub struct CharacterPanel {
     workspace: WeakEntity<Workspace>,
     /// The rows, and the encoding they are of.
     rows: Option<(Encoding, Vec<CharRow>)>,
-    pub(crate) selected: Option<u8>,
+    pub selected: Option<u8>,
     scroll: UniformListScrollHandle,
     focus_handle: FocusHandle,
 }
@@ -164,11 +164,7 @@ impl Focusable for CharacterPanel {
 }
 
 impl CharacterPanel {
-    pub(crate) fn new(
-        workspace: WeakEntity<Workspace>,
-        _: &mut Window,
-        cx: &mut Context<Self>,
-    ) -> Self {
+    pub fn new(workspace: WeakEntity<Workspace>, _: &mut Window, cx: &mut Context<Self>) -> Self {
         Self {
             workspace,
             rows: None,
@@ -179,7 +175,7 @@ impl CharacterPanel {
     }
 
     /// The legacy encoding of the active document, or the ANSI code page.
-    pub(crate) fn encoding(&self, cx: &App) -> Encoding {
+    pub fn encoding(&self, cx: &App) -> Encoding {
         let active = self.workspace.upgrade().and_then(|workspace| {
             let view = workspace.read(cx).active_view(cx)?;
             Some(view.read(cx).buffer.read(cx).doc().format().encoding)
@@ -191,7 +187,7 @@ impl CharacterPanel {
     }
 
     /// The rows for the active document.
-    pub(crate) fn current_rows(&mut self, cx: &App) -> &[CharRow] {
+    pub fn current_rows(&mut self, cx: &App) -> &[CharRow] {
         let encoding = self.encoding(cx);
         if self
             .rows
@@ -204,7 +200,7 @@ impl CharacterPanel {
     }
 
     /// Inserts what column `column` of row `value` holds, if anything.
-    pub(crate) fn insert(
+    pub fn insert(
         &mut self,
         value: u8,
         column: usize,
@@ -324,7 +320,3 @@ impl Render for CharacterPanel {
             .child(list)
     }
 }
-
-#[cfg(test)]
-#[path = "../../tests/unit/panels/character_panel/tests.rs"]
-mod tests;

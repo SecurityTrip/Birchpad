@@ -15,30 +15,36 @@ use gpui_kit::{App, AppContext as _, Context, Entity, Window, div, prelude::*, p
 use super::EditorView;
 use super::multi::{ColumnInsertArgs, FormatName, LeadingName, NumberArgs};
 
-pub(crate) struct ColumnEditor {
+pub struct ColumnEditor {
     view: Entity<EditorView>,
-    numbers: bool,
+    pub numbers: bool,
     text: Entity<InputState>,
     initial: Entity<InputState>,
     step: Entity<InputState>,
     repeat: Entity<InputState>,
-    leading: LeadingName,
-    format: FormatName,
-    uppercase: bool,
-    error: Option<String>,
+    pub leading: LeadingName,
+    pub format: FormatName,
+    pub uppercase: bool,
+    pub error: Option<String>,
 }
 
-#[cfg(test)]
+#[cfg(feature = "test-support")]
 thread_local! {
     /// The dialog last opened, for tests to drive.
     static OPENED: std::cell::RefCell<Option<gpui_kit::WeakEntity<ColumnEditor>>> =
         std::cell::RefCell::default();
 }
 
+/// The dialog opened last, for tests to drive.
+#[cfg(feature = "test-support")]
+pub fn opened() -> Option<Entity<ColumnEditor>> {
+    OPENED.with(|opened| opened.borrow().clone().and_then(|weak| weak.upgrade()))
+}
+
 /// Opens the dialog for `view`.
-pub(crate) fn open(view: Entity<EditorView>, window: &mut Window, cx: &mut App) {
+pub fn open(view: Entity<EditorView>, window: &mut Window, cx: &mut App) {
     let editor = cx.new(|cx| ColumnEditor::new(view, window, cx));
-    #[cfg(test)]
+    #[cfg(feature = "test-support")]
     OPENED.with(|opened| *opened.borrow_mut() = Some(editor.downgrade()));
     let focus = editor.read(cx).text.clone();
     window.open_dialog(cx, move |dialog, _, _| {
@@ -69,11 +75,7 @@ pub(crate) fn open(view: Entity<EditorView>, window: &mut Window, cx: &mut App) 
 }
 
 impl ColumnEditor {
-    pub(crate) fn new(
-        view: Entity<EditorView>,
-        window: &mut Window,
-        cx: &mut Context<Self>,
-    ) -> Self {
+    pub fn new(view: Entity<EditorView>, window: &mut Window, cx: &mut Context<Self>) -> Self {
         let input = |value: &str, window: &mut Window, cx: &mut Context<Self>| {
             let value = value.to_owned();
             cx.new(|cx| InputState::new(window, cx).default_value(value))
@@ -151,7 +153,7 @@ impl ColumnEditor {
         }))
     }
 
-    pub(crate) fn insert(&mut self, cx: &mut Context<Self>) -> Result<()> {
+    pub fn insert(&mut self, cx: &mut Context<Self>) -> Result<()> {
         let args = self.args(cx)?;
         self.view
             .update(cx, |view, cx| view.column_insert(args, cx));
@@ -311,10 +313,10 @@ impl Render for ColumnEditor {
     }
 }
 
-#[cfg(test)]
+#[cfg(feature = "test-support")]
 impl ColumnEditor {
     /// Fills the dialog as a user would, for tests.
-    pub(crate) fn fill_numbers(
+    pub fn fill_numbers(
         &mut self,
         initial: &str,
         step: &str,
@@ -334,7 +336,3 @@ impl ColumnEditor {
         }
     }
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/column_editor/tests.rs"]
-mod tests;

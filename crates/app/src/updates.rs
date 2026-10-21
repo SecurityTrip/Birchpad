@@ -54,12 +54,12 @@ const INTERVAL: u64 = 20 * 60 * 60;
 const REDRAW: Duration = Duration::from_millis(250);
 /// A download that received nothing for this long is shown as stalled; it fails after
 /// [`birchpad_update::STALL`].
-const SHOWN_STALLED: Duration = Duration::from_secs(10);
+pub const SHOWN_STALLED: Duration = Duration::from_secs(10);
 
 /// The build's time, below which update manifests are refused (`build.rs`).
 const BUILD_TIME: &str = env!("BIRCHPAD_BUILD_TIME");
 
-pub(crate) fn register_commands(registry: &mut CommandRegistry) {
+pub fn register_commands(registry: &mut CommandRegistry) {
     registry.workspace("help.check-updates", |this, (), window, cx| {
         this.check_for_updates(Trigger::Request, window, cx)
     });
@@ -83,30 +83,30 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
 }
 
 /// How updates are checked and installed.
-pub(crate) struct Updates {
+pub struct Updates {
     transport: Arc<dyn Transport>,
     keys: Vec<VerifyingKey>,
     /// Set when Birchpad was installed per user and can update itself.
     installer: Option<Arc<dyn Installer>>,
     /// The platform whose packages it installs ([`PLATFORM`]).
-    platform: Option<&'static str>,
+    pub platform: Option<&'static str>,
     checking: bool,
     /// The update being downloaded.
-    download: Option<Download>,
+    pub download: Option<Download>,
     /// The last download that failed, and why.
-    failed: Option<(Version, String)>,
+    pub failed: Option<(Version, String)>,
     /// The newest release found, if it is newer than this one.
-    available: Option<Release>,
+    pub available: Option<Release>,
     /// A downloaded update, installed at the next start.
-    ready: Option<Version>,
+    pub ready: Option<Version>,
 }
 
 /// An update being downloaded: what its bars show.
 #[derive(Clone)]
-pub(crate) struct Download {
-    pub(crate) version: Version,
+pub struct Download {
+    pub version: Version,
     /// The package's size, from the manifest.
-    pub(crate) size: u64,
+    pub size: u64,
     received: Arc<Received>,
     /// The window the user updated from, while it is open; otherwise the status bar shows it.
     window: Option<UpdateWindow>,
@@ -114,7 +114,7 @@ pub(crate) struct Download {
 
 /// A window that announces an update, which shows the bar of its download.
 #[derive(Clone)]
-enum UpdateWindow {
+pub enum UpdateWindow {
     /// Help > Check for Updates.
     Dialog,
     /// The announcement of a background check.
@@ -128,7 +128,7 @@ struct Received {
 }
 
 impl Download {
-    fn new(version: Version, size: u64, window: Option<UpdateWindow>) -> Self {
+    pub fn new(version: Version, size: u64, window: Option<UpdateWindow>) -> Self {
         Self {
             version,
             size,
@@ -141,7 +141,7 @@ impl Download {
     }
 
     /// Takes the bytes received so far.
-    fn progress(&self) -> birchpad_update::install::Progress {
+    pub fn progress(&self) -> birchpad_update::install::Progress {
         let received = self.received.clone();
         Arc::new(move |bytes| {
             received.bytes.store(bytes, Ordering::Relaxed);
@@ -149,12 +149,12 @@ impl Download {
         })
     }
 
-    pub(crate) fn received(&self) -> u64 {
+    pub fn received(&self) -> u64 {
         self.received.bytes.load(Ordering::Relaxed).min(self.size)
     }
 
     /// The share received, from 0 to 1.
-    pub(crate) fn fraction(&self) -> f32 {
+    pub fn fraction(&self) -> f32 {
         if self.size == 0 {
             return 0.;
         }
@@ -162,13 +162,13 @@ impl Download {
     }
 
     /// How long nothing has arrived, if it is [`SHOWN_STALLED`] or longer at `now`.
-    pub(crate) fn stalled(&self, now: Instant) -> Option<Duration> {
+    pub fn stalled(&self, now: Instant) -> Option<Duration> {
         let at = *self.received.at.lock().expect("not poisoned");
         Some(now.saturating_duration_since(at)).filter(|quiet| *quiet >= SHOWN_STALLED)
     }
 
     /// What is happening, under its bar and in the status bar's tooltip.
-    pub(crate) fn describe(&self, now: Instant) -> String {
+    pub fn describe(&self, now: Instant) -> String {
         match self.stalled(now) {
             Some(quiet) => t!(
                 "updates.download-stalled",
@@ -185,7 +185,7 @@ impl Download {
     }
 
     /// Whether it is shown in the status bar: no window shows it.
-    pub(crate) fn in_status_bar(&self) -> bool {
+    pub fn in_status_bar(&self) -> bool {
         self.window.is_none()
     }
 }
@@ -201,7 +201,7 @@ fn megabytes(bytes: u64) -> String {
 impl Global for Updates {}
 
 impl Updates {
-    pub(crate) fn install(
+    pub fn install(
         transport: Arc<dyn Transport>,
         keys: Vec<VerifyingKey>,
         installer: Option<Arc<dyn Installer>>,
@@ -220,33 +220,58 @@ impl Updates {
         });
     }
 
-    /// The real transport. Creating it does not touch the network.
-    pub(crate) fn http() -> Arc<dyn Transport> {
+    /// The real transport, through the proxy `updates.proxy` names (the environment's or the
+    /// system's when it is empty or names none). Creating it does not touch the network.
+    pub fn http(proxy: &str) -> Arc<dyn Transport> {
         let user_agent = format!("Birchpad/{VERSION} ({})", std::env::consts::OS);
-        Arc::new(HttpTransport::new(&user_agent))
+        match HttpTransport::with_proxy(&user_agent, proxy) {
+            Ok(transport) => Arc::new(transport),
+            Err(error) => {
+                eprintln!("updates.proxy: {error}");
+                Arc::new(HttpTransport::new(&user_agent))
+            }
+        }
     }
 
-    pub(crate) fn installed(cx: &App) -> bool {
+    /// Updates go through the proxy `setting` names from now on (Help > Set Updater Proxy...).
+    pub fn use_proxy(setting: &str, cx: &mut App) -> anyhow::Result<()> {
+        let user_agent = format!("Birchpad/{VERSION} ({})", std::env::consts::OS);
+        let transport = HttpTransport::with_proxy(&user_agent, setting)
+            .map_err(|error| anyhow::anyhow!(error))?;
+        // Tests keep the transport they installed.
+        if cfg!(not(feature = "test-support")) && cx.has_global::<Self>() {
+            cx.global_mut::<Self>().transport = Arc::new(transport);
+        }
+        Ok(())
+    }
+
+    /// The transport of updates, which components are downloaded through too.
+    pub fn transport(cx: &App) -> Option<Arc<dyn Transport>> {
+        cx.try_global::<Self>()
+            .map(|updates| updates.transport.clone())
+    }
+
+    pub fn installed(cx: &App) -> bool {
         cx.try_global::<Self>()
             .is_some_and(|updates| updates.installer.is_some())
     }
 
     /// The update being downloaded, if any.
-    pub(crate) fn download(cx: &App) -> Option<&Download> {
+    pub fn download(cx: &App) -> Option<&Download> {
         cx.try_global::<Self>()?.download.as_ref()
     }
 }
 
 /// Who asked for a check.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum Trigger {
+pub enum Trigger {
     /// Help > Check for Updates: every outcome is shown.
     Request,
     /// The daily check: only news is shown, once.
     Background,
 }
 
-fn now() -> u64 {
+pub fn now() -> u64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map_or(0, |elapsed| elapsed.as_secs())
@@ -254,13 +279,13 @@ fn now() -> u64 {
 
 /// Whether this build checks in the background: release builds, and development builds with
 /// `BIRCHPAD_BACKGROUND_UPDATES` set (for trying it out).
-pub(crate) fn checks_in_background() -> bool {
+pub fn checks_in_background() -> bool {
     BUILD_CHANNEL != "development" || std::env::var_os("BIRCHPAD_BACKGROUND_UPDATES").is_some()
 }
 
 /// Checks for updates in the background while the window is open, when the mode is not `off`:
 /// first shortly after the start, then once a day.
-pub(crate) fn start_background_checks(
+pub fn start_background_checks(
     window: AnyWindowHandle,
     workspace: WeakEntity<Workspace>,
     cx: &mut App,
@@ -304,7 +329,7 @@ pub(crate) fn start_background_checks(
 
 impl Workspace {
     /// Reads the update manifest and deals with what it says.
-    pub(crate) fn check_for_updates(
+    pub fn check_for_updates(
         &mut self,
         trigger: Trigger,
         window: &mut Window,
@@ -517,7 +542,7 @@ impl Workspace {
 
     /// Quits into the installer of the downloaded update, which starts Birchpad again: first
     /// as when quitting, saving the session (or asking about unsaved changes).
-    pub(crate) fn restart_to_update(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+    pub fn restart_to_update(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let Some(installer) = cx.global::<Updates>().installer.clone() else {
             return;
         };
@@ -629,22 +654,22 @@ fn download_bar(download: &Download, id: &'static str) -> Div {
         )
 }
 
-#[cfg(test)]
+#[cfg(feature = "test-support")]
 thread_local! {
     /// The last tooltip of the status bar's download, for tests to read.
-    static TOOLTIP: std::cell::RefCell<Option<String>> = std::cell::RefCell::default();
+    pub static TOOLTIP: std::cell::RefCell<Option<String>> = std::cell::RefCell::default();
 }
 
 /// The status bar's bar of a download that no window shows; hovering it says what is
 /// happening.
-pub(crate) fn status_bar_item(download: Download) -> impl IntoElement {
+pub fn status_bar_item(download: Download) -> impl IntoElement {
     div()
         .id("status-update")
         .w(px(80.))
         .child(bar(download.fraction(), "status-update"))
         .tooltip(move |window, cx| {
             let text = download.describe(Instant::now());
-            #[cfg(test)]
+            #[cfg(feature = "test-support")]
             TOOLTIP.with(|tooltip| *tooltip.borrow_mut() = Some(text.clone()));
             Tooltip::new(text).build(window, cx)
         })
@@ -652,7 +677,7 @@ pub(crate) fn status_bar_item(download: Download) -> impl IntoElement {
 
 /// The "Don't show again" check box: checked turns update checks off, unchecked turns them back
 /// to `before`, the mode when the window opened.
-fn dont_show_again(checked: bool, before: UpdateMode, window: &mut Window, cx: &mut App) {
+pub fn dont_show_again(checked: bool, before: UpdateMode, window: &mut Window, cx: &mut App) {
     let mode = match (checked, before) {
         (true, _) => UpdateMode::Off,
         (false, UpdateMode::Off) => UpdateMode::Notify,
@@ -917,12 +942,12 @@ fn announce_ready(
 }
 
 /// The trusted keys compiled into Birchpad.
-pub(crate) fn trusted_keys() -> Vec<VerifyingKey> {
+pub fn trusted_keys() -> Vec<VerifyingKey> {
     manifest::trusted_keys()
 }
 
 /// How this copy of Birchpad is updated, for Help > About.
-pub(crate) fn describe(cx: &App) -> String {
+pub fn describe(cx: &App) -> String {
     let state = AppState::global(cx);
     let settings = &state.settings.updates;
     if settings.mode == UpdateMode::Off {
@@ -951,7 +976,3 @@ pub(crate) fn describe(cx: &App) -> String {
         last = last
     )
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/updates/tests.rs"]
-mod tests;

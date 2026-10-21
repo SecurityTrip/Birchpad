@@ -65,6 +65,33 @@ pub fn is_default(extension: &str) -> bool {
     imp::is_default(extension)
 }
 
+/// [`register`] under `root` of the user's registry (Windows' own is `Software`), so that a
+/// test registers in a key of its own.
+#[cfg(windows)]
+pub fn register_at(root: &str, exe: &Path) -> io::Result<()> {
+    imp::register(root, exe)
+}
+
+/// [`unregister`] under `root` of the user's registry.
+#[cfg(windows)]
+pub fn unregister_at(root: &str) -> io::Result<()> {
+    imp::unregister(root)
+}
+
+/// Whether Birchpad's file type is registered under `root` of the user's registry.
+#[cfg(windows)]
+pub fn is_registered_at(root: &str) -> bool {
+    imp::is_registered(root)
+}
+
+/// The arguments of `xdg-mime` that make Birchpad the default of [`MIME_TYPES`] on Linux:
+/// `default`, the desktop file, then the types.
+pub fn xdg_mime_default_args() -> Vec<&'static str> {
+    let mut args = vec!["default", DESKTOP_FILE];
+    args.extend(MIME_TYPES);
+    args
+}
+
 /// The command Windows runs for a file of the type: the program and the file, both quoted.
 pub fn open_command(exe: &Path) -> String {
     format!("\"{}\" \"%1\"", exe.display())
@@ -175,8 +202,6 @@ mod imp {
             .is_ok_and(|prog_id| is_birchpad_choice(&prog_id))
     }
 
-    /// The tests' own key, not the user's classes.
-    #[cfg(test)]
     pub(super) fn is_registered(root: &str) -> bool {
         CURRENT_USER
             .open(format!(r"{root}\Classes\{PROG_ID}\shell\open\command"))
@@ -210,7 +235,3 @@ mod imp {
         false
     }
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/associations/tests.rs"]
-mod tests;

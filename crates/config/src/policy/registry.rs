@@ -16,7 +16,18 @@ pub(crate) fn read() -> (Table, Vec<Diagnostic>) {
     (table, diagnostics)
 }
 
-pub(crate) fn read_key(key: &Key, table: &mut Table, diagnostics: &mut Vec<Diagnostic>) {
+/// The policies under `path` in the current user's registry (`HKCU`), read as [`REGISTRY_KEY`]
+/// is: a table of settings, and what could not be read. Nothing if the key does not exist.
+pub fn user_registry_policies(path: &str) -> (Table, Vec<Diagnostic>) {
+    let mut table = Table::new();
+    let mut diagnostics = Vec::new();
+    if let Ok(key) = CURRENT_USER.open(path) {
+        read_key(&key, &mut table, &mut diagnostics);
+    }
+    (table, diagnostics)
+}
+
+fn read_key(key: &Key, table: &mut Table, diagnostics: &mut Vec<Diagnostic>) {
     for policy in POLICIES {
         // A missing value means the policy is not configured.
         if key.get_type(policy.name).is_err() {
@@ -41,7 +52,3 @@ pub(crate) fn read_key(key: &Key, table: &mut Table, diagnostics: &mut Vec<Diagn
         }
     }
 }
-
-#[cfg(test)]
-#[path = "../../tests/unit/policy/registry/tests.rs"]
-mod tests;

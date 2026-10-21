@@ -51,9 +51,9 @@ actions!(
 );
 
 const CONTEXT: &str = "MenuBar";
-const ITEM_HEIGHT: Pixels = px(26.);
+pub const ITEM_HEIGHT: Pixels = px(26.);
 /// The room menus keep from the window's edges.
-const WINDOW_MARGIN: Pixels = px(8.);
+pub const WINDOW_MARGIN: Pixels = px(8.);
 /// The gap between the menu bar and a menu below it.
 const POPUP_GAP: Pixels = px(4.);
 
@@ -147,11 +147,11 @@ pub fn route_input<E: InteractiveElement>(root: E, menu_bar: Entity<MenuBar>) ->
 
 /// The letter that opens or chooses an item from the keyboard.
 #[derive(Debug, Clone, PartialEq, Eq)]
-struct Mnemonic {
+pub struct Mnemonic {
     /// Where it is in the label (bytes).
-    range: Range<usize>,
+    pub range: Range<usize>,
     /// Lowercase.
-    key: char,
+    pub key: char,
 }
 
 struct Item {
@@ -184,7 +184,7 @@ struct Title {
 
 /// What the menu bar shows.
 #[derive(Debug, Clone, PartialEq, Eq)]
-enum State {
+pub enum State {
     Closed,
     /// A menu's title is selected, the menu closed (from the keyboard).
     Selected(usize),
@@ -293,6 +293,11 @@ impl MenuBar {
 
     pub fn is_active(&self) -> bool {
         self.state != State::Closed
+    }
+
+    /// What the menu bar shows: nothing, a selected title, or an open menu.
+    pub fn state(&self) -> &State {
+        &self.state
     }
 
     /// The window saw the modifiers change.
@@ -938,7 +943,7 @@ fn items(menu_items: &[OwnedMenuItem]) -> Vec<Item> {
 
 /// A mnemonic for each label (an empty label is a separator): the first letter of the label,
 /// of a later word, or any later letter or digit, that no earlier label has.
-fn mnemonics(labels: &[&str]) -> Vec<Option<Mnemonic>> {
+pub fn mnemonics(labels: &[&str]) -> Vec<Option<Mnemonic>> {
     let mut used = HashSet::new();
     labels
         .iter()
@@ -1130,12 +1135,3 @@ impl Render for MenuBar {
             .children(overlay)
     }
 }
-
-// macOS has the native menu bar.
-#[cfg(all(test, not(target_os = "macos")))]
-#[path = "../tests/unit/gpui_tests.rs"]
-mod gpui_tests;
-
-#[cfg(test)]
-#[path = "../tests/unit/tests.rs"]
-mod tests;

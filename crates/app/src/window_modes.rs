@@ -13,21 +13,23 @@ use crate::workspace::Workspace;
 
 /// The window's modes.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-pub(crate) struct WindowModes {
-    pub(crate) always_on_top: bool,
-    pub(crate) full_screen: bool,
-    pub(crate) post_it: bool,
-    pub(crate) distraction_free: bool,
+pub struct WindowModes {
+    pub always_on_top: bool,
+    pub full_screen: bool,
+    pub post_it: bool,
+    pub distraction_free: bool,
+    /// `-notabbar`: the tab bar stays hidden.
+    pub no_tab_bar: bool,
 }
 
 impl WindowModes {
     /// Only the text shows: no menu bar, tabs, panels or status bar.
-    pub(crate) fn text_only(self) -> bool {
+    pub fn text_only(self) -> bool {
         self.post_it || self.distraction_free
     }
 }
 
-pub(crate) fn register_commands(registry: &mut CommandRegistry) {
+pub fn register_commands(registry: &mut CommandRegistry) {
     registry.workspace("view.always-on-top", |this, (), window, cx| {
         let on = !this.modes.always_on_top;
         set_always_on_top(window, on)?;
@@ -66,7 +68,7 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
 }
 
 /// Whether View's switches are checked.
-pub(crate) fn is_checked(command: &str, modes: WindowModes) -> Option<bool> {
+pub fn is_checked(command: &str, modes: WindowModes) -> Option<bool> {
     match command {
         "view.always-on-top" => Some(modes.always_on_top),
         "view.full-screen" => Some(modes.full_screen),
@@ -83,16 +85,21 @@ impl Workspace {
         if window.is_fullscreen() != on {
             window.toggle_fullscreen();
         }
-        let hidden = self.modes.text_only();
-        for pane in self.panes().clone() {
-            pane.update(cx, |pane, cx| pane.set_tabs_hidden(hidden, cx));
-        }
+        self.show_tabs(cx);
         self.refresh_menus(cx);
         cx.notify();
     }
 
+    /// Shows or hides the panes' tabs as the modes say.
+    pub fn show_tabs(&mut self, cx: &mut Context<Self>) {
+        let hidden = self.modes.text_only() || self.modes.no_tab_bar;
+        for pane in self.panes().clone() {
+            pane.update(cx, |pane, cx| pane.set_tabs_hidden(hidden, cx));
+        }
+    }
+
     /// Ends Post-It and Distraction Free (the button shown in them, and Escape).
-    pub(crate) fn leave_text_only(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+    pub fn leave_text_only(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let full_screen = self.modes.full_screen;
         self.modes.post_it = false;
         self.modes.distraction_free = false;
@@ -136,7 +143,7 @@ impl Workspace {
 
 /// The command line of a new instance for `path` with the caret at `line` and `column`
 /// (1-based): its own window, without the session.
-pub(crate) fn instance_args(path: &std::path::Path, line: usize, column: usize) -> Vec<OsString> {
+pub fn instance_args(path: &std::path::Path, line: usize, column: usize) -> Vec<OsString> {
     vec![
         "-multiInst".into(),
         "-nosession".into(),
@@ -147,23 +154,23 @@ pub(crate) fn instance_args(path: &std::path::Path, line: usize, column: usize) 
     ]
 }
 
-#[cfg(test)]
+#[cfg(feature = "test-support")]
 thread_local! {
     /// The command lines tests started instances with, instead of starting them.
-    pub(crate) static LAUNCHED: std::cell::RefCell<Vec<Vec<OsString>>> =
+    pub static LAUNCHED: std::cell::RefCell<Vec<Vec<OsString>>> =
         std::cell::RefCell::default();
     /// Always on Top as tests set it, instead of the window's.
-    pub(crate) static ON_TOP: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+    pub static ON_TOP: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
 }
 
 /// Starts this program again with `args` (in tests, only notes them).
 fn launch(args: Vec<OsString>) -> Result<()> {
-    #[cfg(test)]
+    #[cfg(feature = "test-support")]
     {
         LAUNCHED.with(|launched| launched.borrow_mut().push(args));
         Ok(())
     }
-    #[cfg(not(test))]
+    #[cfg(not(feature = "test-support"))]
     {
         let program = std::env::current_exe()?;
         std::process::Command::new(program)
@@ -176,13 +183,13 @@ fn launch(args: Vec<OsString>) -> Result<()> {
 
 /// Keeps the window above the others, or not.
 fn set_always_on_top(window: &Window, on: bool) -> Result<()> {
-    #[cfg(test)]
+    #[cfg(feature = "test-support")]
     {
         let _ = window;
         ON_TOP.with(|top| top.set(on));
         Ok(())
     }
-    #[cfg(not(test))]
+    #[cfg(not(feature = "test-support"))]
     {
         use raw_window_handle::HasWindowHandle;
         // The trait's handle, not GPUI's own `window_handle`.
@@ -195,13 +202,13 @@ fn set_always_on_top(window: &Window, on: bool) -> Result<()> {
 }
 
 #[cfg(windows)]
-mod native {
+pub mod native {
     use raw_window_handle::RawWindowHandle;
     use windows_sys::Win32::UI::WindowsAndMessaging::{
         HWND_NOTOPMOST, HWND_TOPMOST, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SetWindowPos,
     };
 
-    pub(super) fn set_always_on_top(handle: RawWindowHandle, on: bool) -> anyhow::Result<()> {
+    pub fn set_always_on_top(handle: RawWindowHandle, on: bool) -> anyhow::Result<()> {
         let RawWindowHandle::Win32(handle) = handle else {
             anyhow::bail!("not a Win32 window");
         };
@@ -228,11 +235,11 @@ mod native {
 }
 
 #[cfg(target_os = "macos")]
-mod native {
+pub mod native {
     use objc2_app_kit::{NSFloatingWindowLevel, NSNormalWindowLevel, NSView};
     use raw_window_handle::RawWindowHandle;
 
-    pub(super) fn set_always_on_top(handle: RawWindowHandle, on: bool) -> anyhow::Result<()> {
+    pub fn set_always_on_top(handle: RawWindowHandle, on: bool) -> anyhow::Result<()> {
         let RawWindowHandle::AppKit(handle) = handle else {
             anyhow::bail!("not an AppKit window");
         };
@@ -253,14 +260,14 @@ mod native {
 }
 
 #[cfg(all(unix, not(target_os = "macos")))]
-mod native {
+pub mod native {
     use raw_window_handle::RawWindowHandle;
     use x11rb::connection::Connection as _;
     use x11rb::protocol::xproto::{ClientMessageEvent, ConnectionExt as _, EventMask};
 
     /// Asks the window manager through EWMH's `_NET_WM_STATE_ABOVE`; Wayland has no way for an
     /// application to do it.
-    pub(super) fn set_always_on_top(handle: RawWindowHandle, on: bool) -> anyhow::Result<()> {
+    pub fn set_always_on_top(handle: RawWindowHandle, on: bool) -> anyhow::Result<()> {
         let window = match handle {
             RawWindowHandle::Xlib(handle) => handle.window as u32,
             RawWindowHandle::Xcb(handle) => handle.window.get(),
@@ -283,7 +290,3 @@ mod native {
         Ok(())
     }
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/window_modes/tests.rs"]
-mod tests;

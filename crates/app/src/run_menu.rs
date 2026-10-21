@@ -22,8 +22,8 @@ use crate::workspace::Workspace;
 
 /// The saved command lines, and the one run last (which Run... offers again).
 #[derive(Default)]
-pub(crate) struct RunMenu {
-    pub(crate) saved: Vec<RunEntry>,
+pub struct RunMenu {
+    pub saved: Vec<RunEntry>,
     last: String,
 }
 
@@ -37,7 +37,7 @@ fn run_path(cx: &App) -> Option<std::path::PathBuf> {
 }
 
 /// Reads `run.toml`; Notepad++'s defaults when there is none.
-pub(crate) fn init(cx: &mut App) {
+pub fn init(cx: &mut App) {
     let saved = match run_path(cx).map(|path| (std::fs::read_to_string(&path), path)) {
         Some((Ok(text), path)) => {
             birchpad_commands::parse_run_commands(&text).unwrap_or_else(|error| {
@@ -64,7 +64,7 @@ fn run_menu(cx: &mut App) -> &mut RunMenu {
 }
 
 /// What the variables stand for in the active document.
-pub(crate) fn variables(workspace: &Workspace, cx: &App) -> RunVariables {
+pub fn variables(workspace: &Workspace, cx: &App) -> RunVariables {
     let executable = std::env::current_exe().unwrap_or_default();
     let mut vars = RunVariables {
         executable: executable.display().to_string(),
@@ -109,7 +109,7 @@ pub(crate) fn variables(workspace: &Workspace, cx: &App) -> RunVariables {
 }
 
 /// Expands `line` with `vars` and runs it.
-pub(crate) fn launch(line: &str, vars: RunVariables, cx: &mut App) -> Result<()> {
+pub fn launch(line: &str, vars: RunVariables, cx: &mut App) -> Result<()> {
     if line.trim().is_empty() {
         bail!("{}", t!("run-menu.there-is-no-command-to-run"));
     }
@@ -132,7 +132,7 @@ pub(crate) fn launch(line: &str, vars: RunVariables, cx: &mut App) -> Result<()>
 }
 
 /// Saves `line` as `name` in `run.toml`, replacing a command of that name.
-pub(crate) fn save(name: &str, line: &str, cx: &mut App) -> Result<()> {
+pub fn save(name: &str, line: &str, cx: &mut App) -> Result<()> {
     let name = name.trim();
     if name.is_empty() {
         bail!("{}", t!("run-menu.a-command-needs-a-name"));
@@ -165,7 +165,7 @@ pub(crate) fn save(name: &str, line: &str, cx: &mut App) -> Result<()> {
 }
 
 /// Deletes the saved command `name` from `run.toml` (Shortcut Mapper > Run > Delete).
-pub(crate) fn delete(name: &str, cx: &mut App) -> Result<()> {
+pub fn delete(name: &str, cx: &mut App) -> Result<()> {
     let path = run_path(cx).ok_or_else(|| {
         anyhow!(
             "{}",
@@ -197,7 +197,7 @@ struct RunArgs {
     name: Option<String>,
 }
 
-pub(crate) fn register_commands(registry: &mut CommandRegistry) {
+pub fn register_commands(registry: &mut CommandRegistry) {
     registry.workspace("run.run", |this, args: RunArgs, window, cx| {
         let line = match (args.line, args.name) {
             (Some(line), _) => line,
@@ -245,11 +245,11 @@ struct BuiltinArgs {
 }
 
 /// The Run... dialog.
-pub(crate) struct RunDialog {
+pub struct RunDialog {
     workspace: WeakEntity<Workspace>,
-    line: Entity<InputState>,
-    name: Entity<InputState>,
-    error: Option<String>,
+    pub line: Entity<InputState>,
+    pub name: Entity<InputState>,
+    pub error: Option<String>,
 }
 
 fn open(workspace: WeakEntity<Workspace>, window: &mut Window, cx: &mut App) {
@@ -274,7 +274,11 @@ fn open(workspace: WeakEntity<Workspace>, window: &mut Window, cx: &mut App) {
 }
 
 impl RunDialog {
-    fn new(workspace: WeakEntity<Workspace>, window: &mut Window, cx: &mut Context<Self>) -> Self {
+    pub fn new(
+        workspace: WeakEntity<Workspace>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Self {
         let last = run_menu(cx).last.clone();
         Self {
             workspace,
@@ -293,7 +297,7 @@ impl RunDialog {
     }
 
     /// Runs the line; false keeps the dialog open to show what went wrong.
-    pub(crate) fn run(&mut self, cx: &mut Context<Self>) -> bool {
+    pub fn run(&mut self, cx: &mut Context<Self>) -> bool {
         let line = self.line.read(cx).value().to_string();
         let result = self
             .workspace
@@ -306,7 +310,7 @@ impl RunDialog {
         self.finish(result, cx)
     }
 
-    pub(crate) fn save(&mut self, cx: &mut Context<Self>) {
+    pub fn save(&mut self, cx: &mut Context<Self>) {
         let line = self.line.read(cx).value().to_string();
         let name = self.name.read(cx).value().to_string();
         let result = save(&name, &line, cx);
@@ -358,7 +362,3 @@ impl Render for RunDialog {
             )
     }
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/run_menu/tests.rs"]
-mod tests;

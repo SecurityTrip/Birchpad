@@ -151,7 +151,3 @@ pub fn spaces_to_tabs(
         .collect();
     replace_block(text, selection, lines, &converted, eol)
 }
-
-#[cfg(test)]
-#[path = "../../tests/unit/ops/blank/tests.rs"]
-mod tests;

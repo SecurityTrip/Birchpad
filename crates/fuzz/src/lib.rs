@@ -482,7 +482,8 @@ pub fn command_line(data: &[u8]) -> bool {
     } else {
         "/home/me"
     });
-    let mut line = CommandLine::parse(args, cwd);
+    // Wildcards would be matched on the fuzzing machine's disk: `-r /*` walks all of it.
+    let mut line = CommandLine::parse_unexpanded(args, cwd);
     let _ = line.caret_target();
     // Warnings are shown by the instance that parsed the arguments, not sent.
     line.warnings.clear();

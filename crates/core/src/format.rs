@@ -67,7 +67,3 @@ impl fmt::Display for Encoding {
         }
     }
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/format/tests.rs"]
-mod tests;

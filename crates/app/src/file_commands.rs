@@ -19,11 +19,11 @@ use serde::Deserialize;
 use crate::app_state::AppState;
 use crate::buffer::Buffer;
 use crate::commands::{CommandRegistry, Register as _};
-use crate::editor::EditorView;
+pub use crate::editor::EditorView;
 use crate::theme::{paint, ui};
 use crate::workspace::{Workspace, report_error, report_info};
 
-pub(crate) fn register_commands(registry: &mut CommandRegistry) {
+pub fn register_commands(registry: &mut CommandRegistry) {
     registry.workspace(
         "file.containing-folder",
         |this, args: FolderArgs, window, cx| {
@@ -121,7 +121,7 @@ enum FolderTarget {
 
 /// What is handed to the system.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) enum Shell {
+pub enum Shell {
     /// The file manager, showing this file.
     Reveal(PathBuf),
     /// A terminal in this folder.
@@ -134,21 +134,21 @@ pub(crate) enum Shell {
     Browser(String, PathBuf),
 }
 
-#[cfg(test)]
+#[cfg(feature = "test-support")]
 thread_local! {
     /// What tests asked of the system, instead of doing it.
-    pub(crate) static SHELL: std::cell::RefCell<Vec<Shell>> = std::cell::RefCell::default();
+    pub static SHELL: std::cell::RefCell<Vec<Shell>> = std::cell::RefCell::default();
 }
 
 /// Hands `request` to the system (in tests, only notes it).
-pub(crate) fn shell(request: Shell, cx: &mut App) -> Result<()> {
-    #[cfg(test)]
+pub fn shell(request: Shell, cx: &mut App) -> Result<()> {
+    #[cfg(feature = "test-support")]
     {
         let _ = &cx;
         SHELL.with(|shell| shell.borrow_mut().push(request));
         Ok(())
     }
-    #[cfg(not(test))]
+    #[cfg(not(feature = "test-support"))]
     match request {
         Shell::Reveal(path) => {
             cx.reveal_path(&path);
@@ -168,7 +168,7 @@ pub(crate) fn shell(request: Shell, cx: &mut App) -> Result<()> {
 }
 
 /// Opens `path` in the browser named `browser`.
-#[cfg(not(test))]
+#[cfg(not(feature = "test-support"))]
 fn open_in_browser(browser: &str, path: &Path) -> Result<()> {
     use std::process::Command;
     let started = if cfg!(windows) {
@@ -211,17 +211,17 @@ fn open_in_browser(browser: &str, path: &Path) -> Result<()> {
 
 /// Moves `path` to the system's recycle bin (in tests, deletes it).
 fn trash(path: &Path) -> Result<()> {
-    #[cfg(test)]
+    #[cfg(feature = "test-support")]
     {
         std::fs::remove_file(path)?;
         Ok(())
     }
-    #[cfg(not(test))]
+    #[cfg(not(feature = "test-support"))]
     trash::delete(path).map_err(|error| anyhow!("{error}"))
 }
 
 /// Why a name cannot be a document's new name, if it cannot.
-pub(crate) fn check_name(name: &str) -> Result<()> {
+pub fn check_name(name: &str) -> Result<()> {
     if name.trim().is_empty() {
         bail!("{}", t!("file-commands.the-name-is-empty"));
     }
@@ -261,7 +261,7 @@ impl Workspace {
 
     /// File > Reload from Disk: reads the file again, after asking whether to drop unsaved
     /// changes.
-    pub(crate) fn reload_from_disk(
+    pub fn reload_from_disk(
         &mut self,
         view: &Entity<EditorView>,
         window: &mut Window,
@@ -309,7 +309,7 @@ impl Workspace {
 
     /// File > Save a Copy As: writes the text to another file, in the document's encoding; the
     /// document stays as it is, with its own file.
-    pub(crate) fn save_copy_as(
+    pub fn save_copy_as(
         &mut self,
         view: &Entity<EditorView>,
         window: &mut Window,
@@ -338,7 +338,7 @@ impl Workspace {
 
     /// Writes a copy of the document of `view` to `target`. The document's own file is saved
     /// as File > Save does; a file another tab shows is refused.
-    pub(crate) fn write_copy(
+    pub fn write_copy(
         &mut self,
         view: &Entity<EditorView>,
         target: &Path,
@@ -371,7 +371,7 @@ impl Workspace {
 
     /// File > Rename: the file in its folder gets the name `name`; an untitled document only
     /// shows it.
-    pub(crate) fn rename(
+    pub fn rename(
         &mut self,
         view: &Entity<EditorView>,
         name: &str,
@@ -425,7 +425,7 @@ impl Workspace {
 
     /// File > Move to Recycle Bin: after asking, the file goes to the recycle bin and its tabs
     /// close.
-    pub(crate) fn move_to_recycle_bin(
+    pub fn move_to_recycle_bin(
         &mut self,
         view: &Entity<EditorView>,
         window: &mut Window,
@@ -556,7 +556,3 @@ impl RenderOnce for ErrorLine {
             .children(self.0.read(cx).clone())
     }
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/file_commands/tests.rs"]
-mod tests;

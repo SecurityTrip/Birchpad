@@ -289,7 +289,3 @@ fn platform_ansi() -> Option<Encoding> {
 fn platform_ansi() -> Option<Encoding> {
     None
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/encoding/tests.rs"]
-mod tests;

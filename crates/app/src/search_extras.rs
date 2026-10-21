@@ -21,9 +21,9 @@ use crate::theme::{paint, ui};
 use crate::workspace::Workspace;
 
 /// The highest code a character can have.
-const MAX_CODE: u32 = 0x10_FFFF;
+pub const MAX_CODE: u32 = 0x10_FFFF;
 
-pub(crate) fn register_commands(registry: &mut CommandRegistry) {
+pub fn register_commands(registry: &mut CommandRegistry) {
     for (id, forward) in [
         ("search.next-change", true),
         ("search.previous-change", false),
@@ -76,18 +76,18 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
 
 /// What Find Characters in Range looks for.
 #[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
-pub(crate) struct RangeArgs {
-    pub(crate) from: u32,
-    pub(crate) to: u32,
+pub struct RangeArgs {
+    pub from: u32,
+    pub to: u32,
     #[serde(default)]
-    pub(crate) backward: bool,
+    pub backward: bool,
     #[serde(default)]
-    pub(crate) wrap: bool,
+    pub wrap: bool,
 }
 
 impl RangeArgs {
     /// The codes, if the range is one.
-    pub(crate) fn codes(&self) -> Result<RangeInclusive<u32>> {
+    pub fn codes(&self) -> Result<RangeInclusive<u32>> {
         if self.from > self.to || self.to > MAX_CODE {
             bail!(
                 "{}",
@@ -103,7 +103,7 @@ impl RangeArgs {
 }
 
 /// A code as typed: decimal, or hexadecimal after `0x` or `U+`.
-pub(crate) fn parse_code(text: &str) -> Option<u32> {
+pub fn parse_code(text: &str) -> Option<u32> {
     let text = text.trim();
     let hex = text
         .strip_prefix("0x")
@@ -119,21 +119,21 @@ pub(crate) fn parse_code(text: &str) -> Option<u32> {
 
 /// The ranges the window offers.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum Range {
+pub enum Range {
     NonAscii,
     Ascii,
     Own,
 }
 
 /// Search > Find Characters in Range...
-pub(crate) struct RangeDialog {
+pub struct RangeDialog {
     workspace: WeakEntity<Workspace>,
-    pub(crate) range: Range,
-    from: Entity<InputState>,
-    to: Entity<InputState>,
-    pub(crate) backward: bool,
-    pub(crate) wrap: bool,
-    pub(crate) error: Option<String>,
+    pub range: Range,
+    pub from: Entity<InputState>,
+    pub to: Entity<InputState>,
+    pub backward: bool,
+    pub wrap: bool,
+    pub error: Option<String>,
 }
 
 fn open(workspace: WeakEntity<Workspace>, window: &mut Window, cx: &mut App) {
@@ -148,7 +148,7 @@ fn open(workspace: WeakEntity<Workspace>, window: &mut Window, cx: &mut App) {
 }
 
 impl RangeDialog {
-    pub(crate) fn new(
+    pub fn new(
         workspace: WeakEntity<Workspace>,
         window: &mut Window,
         cx: &mut Context<Self>,
@@ -165,7 +165,7 @@ impl RangeDialog {
     }
 
     /// The search the fields ask for.
-    pub(crate) fn args(&self, cx: &App) -> Result<RangeArgs> {
+    pub fn args(&self, cx: &App) -> Result<RangeArgs> {
         let (from, to) = match self.range {
             Range::NonAscii => (128, MAX_CODE),
             Range::Ascii => (0, 127),
@@ -193,7 +193,7 @@ impl RangeDialog {
     }
 
     /// Find: the next character of the range in the active document.
-    pub(crate) fn find(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+    pub fn find(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let result = self.args(cx).and_then(|args| {
             let invocation = Invocation::with_args(
                 "search.find-in-range",
@@ -287,7 +287,3 @@ impl Render for RangeDialog {
             )
     }
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/search_extras/tests.rs"]
-mod tests;

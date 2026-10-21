@@ -66,7 +66,7 @@ pub enum KeystrokeError {
 }
 
 /// Keys with names, as GPUI reports them. Single printable characters are keys too.
-const NAMED_KEYS: &[&str] = &[
+pub const NAMED_KEYS: &[&str] = &[
     "enter",
     "tab",
     "space",
@@ -244,11 +244,3 @@ impl fmt::Display for Keystroke {
         f.write_str(&self.key)
     }
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/keystroke/tests.rs"]
-mod tests;
-
-#[cfg(test)]
-#[path = "../tests/unit/keystroke/properties.rs"]
-mod properties;

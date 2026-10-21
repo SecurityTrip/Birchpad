@@ -317,7 +317,3 @@ fn check(text: &str, tokens: &[Token]) -> Result<(), SyntaxError> {
         _ => Err(SyntaxError::new(text.len(), t!("tools.json.not-closed"))),
     }
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/json/tests.rs"]
-mod tests;

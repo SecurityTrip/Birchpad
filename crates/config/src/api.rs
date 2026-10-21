@@ -147,7 +147,3 @@ impl ApiFile {
             .filter(|keyword| !keyword.overloads.is_empty())
     }
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/api/tests.rs"]
-mod tests;

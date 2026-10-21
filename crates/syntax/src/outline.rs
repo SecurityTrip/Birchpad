@@ -42,8 +42,8 @@ pub enum SymbolKind {
 }
 
 impl SymbolKind {
-    /// The kind a tags query capture names, if the outline shows it.
-    fn of_capture(name: &str) -> Option<Self> {
+    /// The kind a tags query capture names (`definition.function`), if the outline shows it.
+    pub fn of_capture(name: &str) -> Option<Self> {
         let kind = name.strip_prefix("definition.")?;
         Some(match kind {
             "class" | "struct" | "enum" | "union" | "object" => Self::Class,
@@ -135,6 +135,12 @@ fn tags(language: &'static Language) -> Option<Arc<Tags>> {
         .entry(language.id)
         .or_insert_with(|| compile(language).ok().map(Arc::new))
         .clone()
+}
+
+/// Why the outline of `language` cannot be shown: it has no tags query, or its query does not
+/// compile (a bug, which the tests look for).
+pub fn outline_query_error(language: &'static Language) -> Option<String> {
+    compile(language).err()
 }
 
 fn compile(language: &'static Language) -> Result<Tags, String> {
@@ -235,7 +241,3 @@ fn nest(mut symbols: Vec<Symbol>) -> Vec<Symbol> {
     }
     symbols
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/outline/tests.rs"]
-mod tests;

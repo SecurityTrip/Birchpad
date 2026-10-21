@@ -52,7 +52,7 @@ enum FileSource {
 
 /// How many files were skipped, and why.
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
-struct SkipCounts {
+pub struct SkipCounts {
     failed: usize,
     binary: usize,
     not_exact: usize,
@@ -60,7 +60,7 @@ struct SkipCounts {
 }
 
 impl SkipCounts {
-    fn add(&mut self, skipped: Skipped) {
+    pub fn add(&mut self, skipped: Skipped) {
         match skipped {
             Skipped::Failed => self.failed += 1,
             Skipped::Binary => self.binary += 1,
@@ -70,7 +70,7 @@ impl SkipCounts {
     }
 
     /// "; 2 binary files and 1 read-only file skipped", or nothing.
-    fn describe(&self) -> String {
+    pub fn describe(&self) -> String {
         let parts: Vec<String> = [
             (self.failed, "unreadable"),
             (self.binary, "binary"),
@@ -219,13 +219,13 @@ impl Workspace {
         });
     }
 
-    pub(crate) fn files_running(&self, cx: &App) -> bool {
+    pub fn files_running(&self, cx: &App) -> bool {
         self.find_bar.read(cx).files_running.is_some()
     }
 
     /// Follow current doc.: the Directory field becomes the folder of the active document. An
     /// empty field is filled in that way too.
-    pub(crate) fn follow_current_document(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+    pub fn follow_current_document(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let bar = self.find_bar.read(cx);
         if bar.tab != FindTab::FindInFiles
             || !(bar.folder.follow_current_document || bar.directory(cx).trim().is_empty())
@@ -243,12 +243,7 @@ impl Workspace {
     }
 
     /// Find in Files... from a folder (Folder as Workspace): the tab with that folder.
-    pub(crate) fn find_in_folder(
-        &mut self,
-        folder: &Path,
-        window: &mut Window,
-        cx: &mut Context<Self>,
-    ) {
+    pub fn find_in_folder(&mut self, folder: &Path, window: &mut Window, cx: &mut Context<Self>) {
         self.dispatch(
             &birchpad_commands::Invocation::new("search.find-in-files"),
             window,
@@ -262,7 +257,7 @@ impl Workspace {
     }
 
     /// The "..." button: the folder dialog, starting from the Directory field.
-    pub(crate) fn browse_folder(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+    pub fn browse_folder(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let typed = PathBuf::from(self.find_bar.read(cx).directory(cx).trim());
         let start = if typed.is_dir() {
             typed
@@ -283,7 +278,7 @@ impl Workspace {
     }
 
     /// Find All in the files of the folder: their matching lines go to the search results.
-    pub(crate) fn find_in_files(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+    pub fn find_in_files(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         const WHAT: &str = "Find in Files";
         if self.files_running(cx) {
             return;
@@ -299,7 +294,7 @@ impl Workspace {
 
     /// Search > Find in Projects: Find All in the files of the project panels chosen in the
     /// panel, read from their workspace files.
-    pub(crate) fn find_in_projects(&mut self, cx: &mut Context<Self>) {
+    pub fn find_in_projects(&mut self, cx: &mut Context<Self>) {
         const WHAT: &str = "Find in Projects";
         if self.files_running(cx) {
             return;
@@ -448,17 +443,13 @@ impl Workspace {
 
     /// Replace in Files, after asking: open documents are changed in their tabs, the other
     /// files on disk.
-    pub(crate) fn replace_in_files(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+    pub fn replace_in_files(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         self.replace_in_files_asking(true, window, cx);
     }
 
     /// Replace in Files as if the question had been answered Replace.
     #[cfg(feature = "e2e")]
-    pub(crate) fn replace_in_files_without_asking(
-        &mut self,
-        window: &mut Window,
-        cx: &mut Context<Self>,
-    ) {
+    pub fn replace_in_files_without_asking(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         self.replace_in_files_asking(false, window, cx);
     }
 
@@ -602,7 +593,3 @@ impl Workspace {
         .detach();
     }
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/find_in_files_tests.rs"]
-mod tests;

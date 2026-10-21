@@ -4,7 +4,7 @@
 
 A fast, extensible, cross-platform text editor in the spirit of Notepad++, written in Rust.
 
-> **Status: alpha (0.4).** A Notepad++-like editor: tabs and split views, encodings, syntax
+> **Status: alpha (0.5).** A Notepad++-like editor: tabs and split views, encodings, syntax
 > highlighting for 50 languages with folding, multi-cursor and column editing, bookmarks,
 > sessions that keep unsaved work, Find in Files, macros, themes, an interface in English,
 > German and Russian, plugins as WebAssembly components and scripts in Rhai, with Compare, JSON and XML
@@ -62,7 +62,7 @@ with > Change All.
 To uninstall, use Installed apps in Windows Settings for the installer and the MSI, or delete the
 folder of a portable copy.
 
-Nightly builds of the next version's branch (`v0.4.1` or `v0.5.0` after 0.4.0) are published as
+Nightly builds of the next version's branch (`v0.5.1` or `v0.6.0` after 0.5.0) are published as
 pre-releases; set `updates.channel = "nightly"` to get them as updates.
 
 ## Code signing policy
@@ -95,18 +95,26 @@ checks CI runs.
 
 ## Command line
 
-Birchpad accepts the Notepad++ options that make sense for it:
+Birchpad takes Notepad++'s options (Help > Command Line Arguments... lists them):
 
 ```text
-birchpad [-n<line>] [-c<column>] [-p<position>] [-l<language>] [-ro] [-multiInst]
-         [-nosession] [-openSession] [FILE]...
+birchpad [-n<line>] [-c<column>] [-p<position>] [-l<language>] [-udl="name"] [-ro]
+         [-monitor] [-r] [-multiInst] [-nosession] [-openSession] [-openFoldersAsWorkspace]
+         [-notabbar] [-alwaysOnTop] [-systemtray] [-x<left>] [-y<top>] [-titleAdd="text"]
+         [-settingsDir="folder"] [-loadingTime] [-quickPrint] [-qt="text"] [-qf="file"]
+         [-qSpeed<1-3>] [-nopluginsupport] [FILE]...
 ```
 
 A second launch opens its files as tabs in the running window and exits; `-multiInst` starts a
 separate instance instead, as do every launch, or a launch with `-openSession`, when
-Preferences > Multi-Instance says so (`instances.mode = "multi"` or `"session"`). `-l` takes Notepad++'s language names (`-lcpp`, `-lpython`,
-`-lnormal`), `-openSession` opens the files as sessions. Other Notepad++ options (`-x`, `-y`,
-`-notabbar`, ...) are accepted and ignored.
+Preferences > Multi-Instance says so (`instances.mode = "multi"` or `"session"`). `-l` takes
+Notepad++'s language names (`-lcpp`, `-lpython`, `-lnormal`), `-openSession` opens the files as
+sessions. File names with `*` and `?` open every file they match, in the folders below too with
+`-r`. `-quickPrint` prints the files on the default printer and quits; `-qt` and `-qf` type a
+text into a new document. The options of the window (`-notabbar`, `-alwaysOnTop`, `-x`, `-y`,
+`-titleAdd`, `-settingsDir`, ...) apply when Birchpad starts. `-systemtray` starts minimized, as
+there is no tray icon yet; `-qn` (Notepad++'s own easter eggs) and `-pluginMessage` are
+accepted and do nothing.
 
 ## Portable mode and the network
 

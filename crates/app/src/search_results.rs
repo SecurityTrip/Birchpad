@@ -34,7 +34,7 @@ const ROW_HEIGHT: f32 = 20.;
 
 /// Where a document with results is.
 #[derive(Clone)]
-pub(crate) enum ResultLocation {
+pub enum ResultLocation {
     /// An open document.
     Buffer(WeakEntity<Buffer>),
     /// A file on disk (Find in Files).
@@ -42,22 +42,17 @@ pub(crate) enum ResultLocation {
 }
 
 /// The results of one search in one document.
-pub(crate) struct FileResults {
-    pub(crate) location: ResultLocation,
+pub struct FileResults {
+    pub location: ResultLocation,
     /// The path, or the name of an untitled document.
-    pub(crate) name: String,
-    pub(crate) lines: Vec<LineHit>,
-    pub(crate) hits: usize,
+    pub name: String,
+    pub lines: Vec<LineHit>,
+    pub hits: usize,
     collapsed: bool,
 }
 
 impl FileResults {
-    pub(crate) fn new(
-        location: ResultLocation,
-        name: String,
-        lines: Vec<LineHit>,
-        hits: usize,
-    ) -> Self {
+    pub fn new(location: ResultLocation, name: String, lines: Vec<LineHit>, hits: usize) -> Self {
         Self {
             location,
             name,
@@ -69,16 +64,16 @@ impl FileResults {
 }
 
 /// One search: what was searched for, and its documents.
-pub(crate) struct SearchRun {
+pub struct SearchRun {
     pattern: String,
     /// How many documents were searched.
     searched: usize,
-    pub(crate) files: Vec<FileResults>,
+    pub files: Vec<FileResults>,
     collapsed: bool,
 }
 
 impl SearchRun {
-    pub(crate) fn new(pattern: &str, files: Vec<FileResults>, searched: usize) -> Self {
+    pub fn new(pattern: &str, files: Vec<FileResults>, searched: usize) -> Self {
         Self {
             pattern: pattern.to_owned(),
             searched,
@@ -89,7 +84,7 @@ impl SearchRun {
 
     /// Notepad++'s heading: `Search "foo" (3 hits in 2 files of 5 searched)`. Results removed
     /// from the list no longer count.
-    pub(crate) fn title(&self) -> String {
+    pub fn title(&self) -> String {
         let hits: usize = self.files.iter().map(|file| file.hits).sum();
         let count = crate::i18n::count;
         t!(
@@ -113,7 +108,7 @@ enum Row {
     Line(usize, usize, usize),
 }
 
-pub(crate) enum SearchResultsEvent {
+pub enum SearchResultsEvent {
     /// Go to a line's first match.
     Open {
         location: ResultLocation,
@@ -123,20 +118,20 @@ pub(crate) enum SearchResultsEvent {
     Close,
 }
 
-pub(crate) struct SearchResults {
-    pub(crate) visible: bool,
+pub struct SearchResults {
+    pub visible: bool,
     /// Long lines wrap (as rows of their own height) instead of being cut.
-    pub(crate) wrap: bool,
+    pub wrap: bool,
     /// Each new search clears the earlier ones.
-    pub(crate) purge: bool,
+    pub purge: bool,
     runs: Vec<SearchRun>,
     /// The rows shown: searches, documents and lines, without those inside folded rows.
     rows: Vec<Row>,
-    selected: Option<usize>,
+    pub selected: Option<usize>,
     scroll: UniformListScrollHandle,
     /// The rows' heights when long lines wrap.
     list_state: ListState,
-    focus_handle: FocusHandle,
+    pub focus_handle: FocusHandle,
 }
 
 impl EventEmitter<SearchResultsEvent> for SearchResults {}
@@ -148,7 +143,7 @@ impl Focusable for SearchResults {
 }
 
 impl SearchResults {
-    pub(crate) fn new(cx: &mut Context<Self>) -> Self {
+    pub fn new(cx: &mut Context<Self>) -> Self {
         let remembered = cx
             .try_global::<AppState>()
             .map(|state| state.state.search_results.clone())
@@ -167,7 +162,7 @@ impl SearchResults {
     }
 
     /// Shows a new search above the earlier ones, with its first line selected.
-    pub(crate) fn add(&mut self, run: SearchRun, cx: &mut Context<Self>) {
+    pub fn add(&mut self, run: SearchRun, cx: &mut Context<Self>) {
         self.visible = true;
         if self.purge {
             self.runs.clear();
@@ -179,7 +174,7 @@ impl SearchResults {
         cx.notify();
     }
 
-    pub(crate) fn clear(&mut self, cx: &mut Context<Self>) {
+    pub fn clear(&mut self, cx: &mut Context<Self>) {
         self.runs.clear();
         self.rebuild_rows();
         self.selected = None;
@@ -196,7 +191,7 @@ impl SearchResults {
     }
 
     /// Wrap Long Lines and Purge for Every Search, remembered for the next start.
-    pub(crate) fn set_switches(&mut self, wrap: bool, purge: bool, cx: &mut Context<Self>) {
+    pub fn set_switches(&mut self, wrap: bool, purge: bool, cx: &mut Context<Self>) {
         self.wrap = wrap;
         self.purge = purge;
         AppState::update_state(cx, |state, _| {
@@ -211,7 +206,7 @@ impl SearchResults {
 
     /// Open Selected Pathname: the document of row `index` at its first line found; Open All
     /// (`all`): every document of its search.
-    pub(crate) fn open_documents(&mut self, index: usize, all: bool, cx: &mut Context<Self>) {
+    pub fn open_documents(&mut self, index: usize, all: bool, cx: &mut Context<Self>) {
         let (r, only) = match self.rows.get(index).copied() {
             Some(Row::Run(r)) => (r, None),
             Some(Row::File(r, f) | Row::Line(r, f, _)) => (r, Some(f)),
@@ -237,7 +232,7 @@ impl SearchResults {
     /// Removes the search, document or line in row `index` from the list. A document without
     /// lines left goes too, and so does a search without documents left. The row that takes
     /// its place is selected.
-    pub(crate) fn remove(&mut self, index: usize, cx: &mut Context<Self>) {
+    pub fn remove(&mut self, index: usize, cx: &mut Context<Self>) {
         let Some(row) = self.rows.get(index).copied() else {
             return;
         };
@@ -281,7 +276,7 @@ impl SearchResults {
     }
 
     /// The text of the line in row `index`, without its "Line N:".
-    fn line_text(&self, index: usize) -> Option<SharedString> {
+    pub fn line_text(&self, index: usize) -> Option<SharedString> {
         match self.rows.get(index)? {
             Row::Line(r, f, l) => Some(self.runs[*r].files[*f].lines[*l].text.clone().into()),
             _ => None,
@@ -289,7 +284,7 @@ impl SearchResults {
     }
 
     /// The path, or untitled name, of the document in row `index` or of its line.
-    fn path_text(&self, index: usize) -> Option<String> {
+    pub fn path_text(&self, index: usize) -> Option<String> {
         match self.rows.get(index)? {
             Row::File(r, f) | Row::Line(r, f, _) => Some(self.runs[*r].files[*f].name.clone()),
             Row::Run(_) => None,
@@ -434,7 +429,7 @@ impl SearchResults {
 
     /// F4 / Shift+F4: the next or previous line, wrapping around. Returns false when there is
     /// none.
-    pub(crate) fn step(&mut self, forward: bool, cx: &mut Context<Self>) -> bool {
+    pub fn step(&mut self, forward: bool, cx: &mut Context<Self>) -> bool {
         let lines: Vec<usize> = (0..self.rows.len())
             .filter(|&i| matches!(self.rows[i], Row::Line(..)))
             .collect();
@@ -462,8 +457,8 @@ impl SearchResults {
     }
 
     /// The rows as text, indented by level: for tests.
-    #[cfg(any(test, feature = "e2e"))]
-    pub(crate) fn rows_text(&self) -> Vec<String> {
+    #[cfg(any(feature = "test-support", feature = "e2e"))]
+    pub fn rows_text(&self) -> Vec<String> {
         self.rows
             .iter()
             .map(|row| match *row {
@@ -681,7 +676,3 @@ impl Render for SearchResults {
             .child(list)
     }
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/search_results/tests.rs"]
-mod tests;

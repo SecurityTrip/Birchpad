@@ -106,7 +106,3 @@ impl<'de> Visitor<'de> for StyleVisitor {
         Ok(style)
     }
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/style/tests.rs"]
-mod tests;

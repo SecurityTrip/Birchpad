@@ -10,16 +10,16 @@ use gpui_kit::component::dialog::DialogFooter;
 use gpui_kit::component::input::{Input, InputState};
 use gpui_kit::{AppContext as _, AsyncWindowContext, PathPromptOptions, Window, prelude::*};
 
-#[cfg(test)]
+#[cfg(feature = "test-support")]
 thread_local! {
     /// Tests: the system's dialogs are not available, as on Linux without a portal.
-    pub(crate) static NO_SYSTEM_DIALOG: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+    pub static NO_SYSTEM_DIALOG: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
 }
 
 /// Why the system's dialogs are not there, before asking them; on a desktop they always are,
 /// and only their answer says otherwise.
 fn unavailable() -> Option<anyhow::Error> {
-    #[cfg(test)]
+    #[cfg(feature = "test-support")]
     if NO_SYSTEM_DIALOG.get() {
         return Some(anyhow::anyhow!("no desktop portal"));
     }
@@ -37,10 +37,7 @@ async fn answer<T>(
 }
 
 /// Asks for files to open. `None` if the user cancelled.
-pub(crate) async fn ask_open(
-    directory: PathBuf,
-    cx: &mut AsyncWindowContext,
-) -> Option<Vec<PathBuf>> {
+pub async fn ask_open(directory: PathBuf, cx: &mut AsyncWindowContext) -> Option<Vec<PathBuf>> {
     let platform = cx
         .update(|_, cx| {
             cx.prompt_for_paths(PathPromptOptions {
@@ -63,7 +60,7 @@ pub(crate) async fn ask_open(
 }
 
 /// Asks for a folder (Find in Files). `None` if the user cancelled.
-pub(crate) async fn ask_folder(directory: PathBuf, cx: &mut AsyncWindowContext) -> Option<PathBuf> {
+pub async fn ask_folder(directory: PathBuf, cx: &mut AsyncWindowContext) -> Option<PathBuf> {
     let platform = cx
         .update(|_, cx| {
             cx.prompt_for_paths(PathPromptOptions {
@@ -85,7 +82,7 @@ pub(crate) async fn ask_folder(directory: PathBuf, cx: &mut AsyncWindowContext) 
 }
 
 /// Asks where to save a file. `None` if the user cancelled.
-pub(crate) async fn ask_save(
+pub async fn ask_save(
     directory: PathBuf,
     suggested_name: String,
     cx: &mut AsyncWindowContext,
@@ -116,7 +113,7 @@ async fn ask_in_app(
 
 /// A dialog with a text field, such as a name; the button is labelled `title`. `None` if the
 /// user cancelled; an empty answer is not taken.
-pub(crate) async fn ask_text(
+pub async fn ask_text(
     title: &'static str,
     initial: String,
     cx: &mut AsyncWindowContext,
@@ -127,7 +124,7 @@ pub(crate) async fn ask_text(
     receiver.await.ok().flatten()
 }
 
-fn open_text_dialog(
+pub fn open_text_dialog(
     title: &'static str,
     initial: String,
     sender: oneshot::Sender<Option<String>>,
@@ -174,7 +171,3 @@ fn open_text_dialog(
         input.select_all(window, cx);
     });
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/path_dialog/tests.rs"]
-mod tests;

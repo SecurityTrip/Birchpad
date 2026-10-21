@@ -311,7 +311,3 @@ impl Selection {
         }
     }
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/selection/tests.rs"]
-mod tests;

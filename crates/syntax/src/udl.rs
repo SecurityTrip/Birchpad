@@ -833,7 +833,3 @@ fn comment_words(comment: &str) -> impl Iterator<Item = (usize, &str)> {
         .split_whitespace()
         .map(move |word| (word.as_ptr() as usize - comment.as_ptr() as usize, word))
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/udl/tests.rs"]
-mod tests;

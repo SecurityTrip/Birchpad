@@ -55,11 +55,13 @@ information (`CARGO_PROFILE_DEV_DEBUG=line-tables-only`), so test binaries link 
   ADR 0041 for the layers.
 - Positions in the text model are **byte offsets** into the rope. Convert to chars, UTF-16 or
   visual columns only at the edges (rendering, LSP, status bar).
-- No tests in `src`: a crate's tests are in its `tests` folder. Unit tests, which need the
-  crate's private items, are in `tests/unit`, at the place `src` has the code they test
-  (`src/pane.rs` → `tests/unit/pane/tests.rs`), and `src` includes them:
-  `#[cfg(test)] #[path = "../tests/unit/pane/tests.rs"] mod tests;`. Integration tests are the
-  files directly in `tests`. (Roadmap 6.36 turns the unit tests into integration tests.)
+- No tests in `src`: a crate's tests are in its `tests` folder and test it through its public
+  interface (ADR 0043). Most are in one test binary, `tests/integration`, whose `main.rs`
+  names a module for each part of `src` (`src/pane.rs` → `tests/integration/pane/tests.rs`);
+  the others (properties, timings, the end-to-end tests) are files directly in `tests`. What
+  only tests need is behind the crate's `test-support` feature, which its tests turn on; the
+  application is a library (`src/lib.rs`) and a program that runs it, so that its tests can
+  drive its parts.
 - Test fixtures under `tests/fixtures` are committed byte-for-byte (see `.gitattributes`);
   never let an editor "fix" their encoding or line endings.
 - No `unsafe` without a comment explaining why it is sound, and a reviewer who agrees.

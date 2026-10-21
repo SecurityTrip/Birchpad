@@ -8,7 +8,7 @@ use serde::Deserialize;
 
 use crate::commands::{CommandRegistry, Register as _};
 
-pub(crate) fn register_commands(registry: &mut CommandRegistry) {
+pub fn register_commands(registry: &mut CommandRegistry) {
     registry.editor("edit.insert-date-time", |this, args: DateArgs, _, cx| {
         let settings = crate::app_state::AppState::global(cx).settings.date.clone();
         let now = chrono::Local::now().naive_local();

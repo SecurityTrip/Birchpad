@@ -11,7 +11,7 @@ use crate::app_state::AppState;
 use crate::commands::{CommandRegistry, Register as _};
 use crate::workspace::{report_error, report_success};
 
-pub(crate) fn register_commands(registry: &mut CommandRegistry) {
+pub fn register_commands(registry: &mut CommandRegistry) {
     registry.workspace("settings.default-app", |_, (), window, cx| {
         set_up(window, cx)
     });
@@ -20,7 +20,7 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
 
 /// At startup: asks whether Birchpad should open text files, unless it does, the user said not
 /// to ask, or the platform leaves it to the user (macOS).
-pub(crate) fn offer(window: &mut Window, cx: &mut App) {
+pub fn offer(window: &mut Window, cx: &mut App) {
     let state = AppState::global(cx);
     if !state.settings.files.offer_default_app
         || state.state.default_app_declined
@@ -81,31 +81,28 @@ fn set_up(window: &mut Window, cx: &mut App) -> Result<()> {
 }
 
 /// The system's part; tests have one of their own.
-#[cfg(not(test))]
-mod system {
+#[cfg(not(feature = "test-support"))]
+pub mod system {
     use std::path::Path;
 
-    pub(super) fn supported() -> bool {
+    pub fn supported() -> bool {
         birchpad_cli::associations::supported()
     }
 
-    pub(super) fn is_default(extension: &str) -> bool {
+    pub fn is_default(extension: &str) -> bool {
         birchpad_cli::associations::is_default(extension)
     }
 
-    pub(super) fn register(exe: &Path) -> std::io::Result<()> {
+    pub fn register(exe: &Path) -> std::io::Result<()> {
         birchpad_cli::associations::register(exe)
     }
 
-    pub(super) fn open(page: &str, cx: &mut gpui_kit::App) {
+    pub fn open(page: &str, cx: &mut gpui_kit::App) {
         cx.open_url(page);
     }
 }
 
-#[cfg(test)]
-#[path = "../tests/unit/default_app/system.rs"]
-pub(crate) mod system;
-
-#[cfg(test)]
-#[path = "../tests/unit/default_app/tests.rs"]
-mod tests;
+/// The tests' system: it answers as they say, and notes what Birchpad asked of it.
+#[cfg(feature = "test-support")]
+#[path = "default_app/fake_system.rs"]
+pub mod system;

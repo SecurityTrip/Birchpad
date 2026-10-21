@@ -120,7 +120,3 @@ pub fn resolve(capture: &str) -> Option<Highlight> {
         name = &name[..name.rfind('.')?];
     }
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/highlight/tests.rs"]
-mod tests;

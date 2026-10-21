@@ -18,24 +18,24 @@ use crate::editor::EditorView;
 
 /// What the status bar shows about the active view.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct StatusInfo {
-    pub(crate) length: usize,
-    pub(crate) lines: usize,
+pub struct StatusInfo {
+    pub length: usize,
+    pub lines: usize,
     /// 1-based line and column of the primary caret; the column counts tab stops.
-    pub(crate) line: usize,
-    pub(crate) column: usize,
+    pub line: usize,
+    pub column: usize,
     /// 1-based position (byte offset + 1), as Notepad++ shows it.
-    pub(crate) pos: usize,
-    pub(crate) selected_chars: usize,
-    pub(crate) selected_lines: usize,
-    pub(crate) format: Format,
-    pub(crate) overwrite: bool,
+    pub pos: usize,
+    pub selected_chars: usize,
+    pub selected_lines: usize,
+    pub format: Format,
+    pub overwrite: bool,
     /// The language's description ("Rust file"), or `None` for normal text.
-    pub(crate) language: Option<String>,
+    pub language: Option<String>,
 }
 
 impl StatusInfo {
-    pub(crate) fn of(view: &mut EditorView, cx: &App) -> Self {
+    pub fn of(view: &mut EditorView, cx: &App) -> Self {
         let text = view.text(cx).clone();
         let primary = view.selection.primary();
         let head = primary.head;
@@ -71,7 +71,7 @@ impl StatusInfo {
     }
 
     /// The texts of the sections, in order, in the interface's language.
-    pub(crate) fn sections(&self) -> [String; 6] {
+    pub fn sections(&self) -> [String; 6] {
         [
             t!(
                 "status-bar.length",
@@ -100,7 +100,7 @@ impl StatusInfo {
     }
 }
 
-fn translated_line_ending(line_ending: LineEnding) -> String {
+pub fn translated_line_ending(line_ending: LineEnding) -> String {
     let key = match line_ending {
         LineEnding::CrLf => "status-bar.eol-crlf",
         LineEnding::Lf => "status-bar.eol-lf",
@@ -121,7 +121,7 @@ fn section(child: impl IntoElement) -> gpui_kit::Div {
         .child(child)
 }
 
-pub(crate) fn render<V: 'static>(
+pub fn render<V: 'static>(
     info: Option<StatusInfo>,
     ansi: Encoding,
     cx: &mut Context<V>,
@@ -284,7 +284,3 @@ fn add_items(
     }
     menu
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/status_bar/tests.rs"]
-mod tests;

@@ -8,6 +8,7 @@
 //!
 //! [`check`] never touches the network when `updates.mode` is `off`.
 
+pub mod component;
 pub mod install;
 mod keys;
 pub mod manifest;
@@ -31,7 +32,7 @@ pub const DEFAULT_MANIFEST: &str =
     "https://github.com/SecurityTrip/Birchpad/releases/download/updates/birchpad-updates.json";
 
 /// Manifests larger than this are rejected.
-const MAX_MANIFEST_SIZE: u64 = 1024 * 1024;
+pub const MAX_MANIFEST_SIZE: u64 = 1024 * 1024;
 /// Connecting, or waiting for the answer to begin, fails after this long.
 const TIMEOUT: Duration = Duration::from_secs(30);
 /// A body that receives nothing for this long fails as stalled. There is no limit on the time a
@@ -218,13 +219,33 @@ pub struct HttpTransport {
     stall: Duration,
 }
 
+/// The proxy `setting` names (`updates.proxy`: `http://host:port`, `socks5://host:port`,
+/// `host:port`), or when it is empty the one of `HTTPS_PROXY` or `ALL_PROXY` (on Windows, the
+/// system's too); `None` for none.
+pub fn proxy(setting: &str) -> Result<Option<ureq::Proxy>, String> {
+    let setting = setting.trim();
+    if setting.is_empty() {
+        return Ok(ureq::Proxy::try_from_env());
+    }
+    ureq::Proxy::new(setting)
+        .map(Some)
+        .map_err(|_| birchpad_i18n::t!("update.not-a-proxy", proxy = setting))
+}
+
 impl HttpTransport {
     /// Creating the transport does not touch the network.
     pub fn new(user_agent: &str) -> Self {
         Self::build(user_agent, ureq::Proxy::try_from_env(), STALL)
     }
 
-    fn build(user_agent: &str, proxy: Option<ureq::Proxy>, stall: Duration) -> Self {
+    /// A transport through the proxy `setting` names (see [`proxy`]).
+    pub fn with_proxy(user_agent: &str, setting: &str) -> Result<Self, String> {
+        Ok(Self::build(user_agent, proxy(setting)?, STALL))
+    }
+
+    /// A transport through `proxy` (`None`: direct) whose bodies fail as stalled when nothing
+    /// arrives for `stall`. Creating it does not touch the network.
+    pub fn build(user_agent: &str, proxy: Option<ureq::Proxy>, stall: Duration) -> Self {
         use ureq::tls::{RootCerts, TlsConfig, TlsProvider};
         use ureq::unversioned::resolver::DefaultResolver;
         use ureq::unversioned::transport::{Connector as _, DefaultConnector};
@@ -393,7 +414,3 @@ impl Transport for HttpTransport {
         file.sync_all().map_err(|error| error.to_string())
     }
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/tests.rs"]
-mod tests;

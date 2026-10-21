@@ -115,7 +115,3 @@ impl Transaction {
         self.format
     }
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/transaction/tests.rs"]
-mod tests;

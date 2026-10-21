@@ -55,7 +55,7 @@ thread_local! {
 }
 
 /// The folders dictionaries are looked for in, the user's first.
-pub(crate) fn folders(cx: &App) -> Vec<PathBuf> {
+pub fn folders(cx: &App) -> Vec<PathBuf> {
     let mut folders: Vec<PathBuf> = dictionaries_dir(cx).into_iter().collect();
     folders.extend(spell::system_folders());
     folders
@@ -69,7 +69,7 @@ fn dictionaries_dir(cx: &App) -> Option<PathBuf> {
 }
 
 /// The language checked: the one chosen, or the system's (`en_US`).
-pub(crate) fn language(cx: &App) -> String {
+pub fn language(cx: &App) -> String {
     AppState::global(cx)
         .state
         .spell_check
@@ -83,7 +83,7 @@ pub(crate) fn language(cx: &App) -> String {
         })
 }
 
-pub(crate) fn is_enabled(cx: &App) -> bool {
+pub fn is_enabled(cx: &App) -> bool {
     AppState::global(cx).state.spell_check.enabled
 }
 
@@ -197,7 +197,7 @@ fn find_misspelled(
 
 /// The misspelled words in `range` of `buffer`'s text, to underline: none when spell checking
 /// is off or has no dictionary.
-pub(crate) fn underlined(
+pub fn underlined(
     buffer: &Buffer,
     id: EntityId,
     range: Range<usize>,
@@ -250,7 +250,7 @@ struct LanguageArgs {
     language: String,
 }
 
-pub(crate) fn register_commands(registry: &mut CommandRegistry) {
+pub fn register_commands(registry: &mut CommandRegistry) {
     registry.workspace("spell.auto", |this, (), _, cx| {
         let on = !is_enabled(cx);
         if on {
@@ -336,7 +336,7 @@ pub(crate) fn register_commands(registry: &mut CommandRegistry) {
 }
 
 /// Whether a Spell Checker item shows a check mark.
-pub(crate) fn is_checked(invocation: &Invocation, enabled: bool, language: &str) -> Option<bool> {
+pub fn is_checked(invocation: &Invocation, enabled: bool, language: &str) -> Option<bool> {
     match invocation.command.as_str() {
         "spell.auto" => Some(enabled),
         "spell.language" => Some(
@@ -351,7 +351,7 @@ pub(crate) fn is_checked(invocation: &Invocation, enabled: bool, language: &str)
 }
 
 /// The languages of the dictionaries found, for the Language submenu.
-pub(crate) fn languages(cx: &App) -> Vec<String> {
+pub fn languages(cx: &App) -> Vec<String> {
     spell::languages(&folders(cx))
 }
 
@@ -404,7 +404,3 @@ fn go_to_misspelled(
     view.select_range(target.clone(), cx);
     Ok(())
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/spell_check/tests.rs"]
-mod tests;
