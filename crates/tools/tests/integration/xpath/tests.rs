@@ -154,3 +154,20 @@ fn ranges_cover_the_nodes() {
     assert!(nodes[0].label.ends_with('…'));
     assert_eq!(nodes[0].range.len(), 200);
 }
+
+#[test]
+fn double_slash_positions_count_among_siblings() {
+    // Nested elements of one name come between siblings in document order.
+    let doc = r#"<a><b id="1"><b id="2"/><b id="4"/></b><b id="3"/></a>"#;
+    let ids = |expression: &str| match evaluate(doc, expression).unwrap() {
+        XPathResult::Nodes(nodes) => nodes
+            .into_iter()
+            .map(|node| doc[node.range].to_owned())
+            .collect::<Vec<_>>(),
+        XPathResult::Value(value) => vec![value],
+    };
+    assert_eq!(ids("//b[1]/@id"), ["id=\"1\"", "id=\"2\""]);
+    assert_eq!(ids("//b[last()]/@id"), ["id=\"4\"", "id=\"3\""]);
+    // Past every parent's last: nothing.
+    assert!(ids("//b[3]/@id").is_empty());
+}

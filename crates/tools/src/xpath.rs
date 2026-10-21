@@ -742,28 +742,27 @@ fn select<'a, 'input>(
                 .into_iter()
                 .filter(|candidate| passes(&step.test, &step.axis, candidate))
                 .collect();
-            let mut kept = candidates;
-            for predicate in &step.predicates {
-                let size = kept.len();
-                let mut filtered = Vec::with_capacity(size);
-                for (index, candidate) in kept.into_iter().enumerate() {
-                    let inner = Context {
-                        item: candidate,
-                        position: index + 1,
-                        size,
+            if step.axis == Axis::Descendant {
+                // `//book[1]` is each parent's first book: positions count among siblings.
+                let mut groups: Vec<Vec<Item<'a, 'input>>> = Vec::new();
+                let mut group_of = std::collections::HashMap::new();
+                for candidate in candidates {
+                    let parent = match candidate {
+                        Item::Node(node) => node.parent().map(|parent| parent.id()),
+                        Item::Attribute(node, _) => Some(node.id()),
                     };
-                    let keep = match eval(predicate, &inner)? {
-                        // A number alone is a position.
-                        Value::Number(number) => number == (index + 1) as f64,
-                        other => other.truth(),
-                    };
-                    if keep {
-                        filtered.push(candidate);
-                    }
+                    let index = *group_of.entry(parent).or_insert_with(|| {
+                        groups.push(Vec::new());
+                        groups.len() - 1
+                    });
+                    groups[index].push(candidate);
                 }
-                kept = filtered;
+                for group in groups {
+                    next.extend(filter(&step.predicates, group)?);
+                }
+            } else {
+                next.extend(filter(&step.predicates, candidates)?);
             }
-            next.extend(kept);
             if next.len() > MAX_RESULTS {
                 break;
             }
@@ -772,6 +771,36 @@ fn select<'a, 'input>(
         current = next;
     }
     Ok(current)
+}
+
+/// The items of `items` that every predicate keeps, each predicate counting positions among
+/// what the one before kept.
+fn filter<'a, 'input>(
+    predicates: &[Expr],
+    items: Vec<Item<'a, 'input>>,
+) -> Result<Vec<Item<'a, 'input>>, XPathError> {
+    let mut kept = items;
+    for predicate in predicates {
+        let size = kept.len();
+        let mut filtered = Vec::with_capacity(size);
+        for (index, candidate) in kept.into_iter().enumerate() {
+            let inner = Context {
+                item: candidate,
+                position: index + 1,
+                size,
+            };
+            let keep = match eval(predicate, &inner)? {
+                // A number alone is a position.
+                Value::Number(number) => number == (index + 1) as f64,
+                other => other.truth(),
+            };
+            if keep {
+                filtered.push(candidate);
+            }
+        }
+        kept = filtered;
+    }
+    Ok(kept)
 }
 
 /// The nodes a step looks at from `item`, before its test.
