@@ -175,7 +175,9 @@ insert(out.reduce(|sum, w| if sum == () { w } else { sum + " " + w }));
 
 A script may declare commands, one comment line each: `// command: <function> <title>`. It
 then shows in Plugins > Scripts as a submenu: Run runs it from the top, as before, and each
-command runs it and then calls its function. Settings > Shortcut Mapper > Plugin Commands gives
+command runs it and then calls its function. Rhai's functions do not see the script's
+variables: what they share goes in functions, or in the document the script's top changes first.
+Settings > Shortcut Mapper > Plugin Commands gives
 keys to scripts and their commands, and to the plugins' commands.
 
 ```rhai

@@ -133,8 +133,8 @@ const WITH_COMMANDS: &str = r#"
 // command: 9bad Bad
 // command: notitle
 // command: with-dash Dash
-let suffix = "!";
-fn upper() { set_text(text().to_upper() + suffix); }
+set_text(text() + "!");
+fn upper() { set_text(text().to_upper()); }
 fn lower_all() { set_text(text().to_lower()); }
 fn _private() { message("private"); }
 "#;
@@ -173,8 +173,8 @@ fn after(outcome: Outcome, text: &str) -> String {
 #[test]
 fn runs_a_command_after_the_script() {
     let outcome = run_command("cases", WITH_COMMANDS, "lower_all", session("AbC", 0, 0)).unwrap();
-    assert_eq!(after(outcome, "AbC"), "abc");
-    // The function sees what the script set up.
+    assert_eq!(after(outcome, "AbC"), "abc!");
+    // The function sees what the script's top did first.
     let outcome = run_command("cases", WITH_COMMANDS, "upper", session("ab", 0, 0)).unwrap();
     assert_eq!(after(outcome, "ab"), "AB!");
     // On an empty document too.

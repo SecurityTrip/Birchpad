@@ -215,7 +215,7 @@ fn runs_the_commands_a_script_declares(cx: &mut TestAppContext) {
     script(
         &dir,
         "cases",
-        "// command: upper Upper Case\n// command: lower Lower Case\nlet mark = \"!\";\nfn upper() { set_text(text().to_upper() + mark); }\nfn lower() { set_text(text().to_lower()); }\n",
+        "// command: upper Upper Case\n// command: lower Lower Case\nfn mark() { \"!\" }\nfn upper() { set_text(text().to_upper() + mark()); }\nfn lower() { set_text(text().to_lower()); }\n",
     );
     script(&dir, "plain", "insert(\"x\");");
     let listed: Vec<(String, Vec<String>)> = cx.update(|_, cx| {
