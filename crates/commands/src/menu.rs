@@ -892,6 +892,7 @@ pub fn main_menu() -> Vec<Menu> {
                         "Language",
                         vec![Dynamic(Placeholder::SpellLanguages)],
                     )),
+                    cmd("spell.download-languages"),
                     cmd("spell.open-dictionaries-folder"),
                 ],
             )),

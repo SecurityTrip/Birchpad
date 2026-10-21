@@ -133,6 +133,10 @@ wasm-tools component new target/wasm32-unknown-unknown/release/word_count.wasm -
 
 ### Installing
 
+Plugins Admin also lists the plugins of Birchpad's online catalog (Refresh List,
+`packaging/catalog/catalog.json`), installs them and offers their updates; to have a plugin
+listed, open a pull request that adds it with its ZIP's address, size and SHA-256.
+
 Plugins > Plugins Admin... > Install... takes the plugin's `plugin.toml` and copies its folder
 into `plugins/<id>` next to the settings; Settings > Import > Import plugin(s)... takes several
 at once. Installing the same id again updates it and keeps its settings; removing it removes

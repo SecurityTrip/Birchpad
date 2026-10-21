@@ -639,8 +639,9 @@ Closing Phase 6.
 - [x] 6.46 DSpellCheck's options (several languages at once, ignore rules, words in code by
       style); a dictionary bundled for English under a license compatible with Birchpad's
       ([ADR 0050](adr/0050-spell-checker-options-and-built-in-dictionary.md): SCOWL's en_US)
-- [ ] 6.47 Online features under the `OnlineFeatures` policy: Plugins Admin's online list of
+- [x] 6.47 Online features under the `OnlineFeatures` policy: Plugins Admin's online list of
       plugins (available, updates, installed) with checksums; DSpellCheck's dictionary download
+      ([ADR 0051](adr/0051-online-catalog.md))
 
 - [ ] 6.48 Documentation in Russian: the user's and the contributor's documents (README,
       CONTRIBUTING, SECURITY, PRIVACY, the code of conduct, writing plugins and scripts, the

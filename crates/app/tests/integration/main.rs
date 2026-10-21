@@ -86,6 +86,9 @@ mod menus;
 #[path = "navigation_tests.rs"]
 mod navigation_tests;
 
+#[path = "online/tests.rs"]
+mod online;
+
 #[path = "pane/tests.rs"]
 mod pane;
 

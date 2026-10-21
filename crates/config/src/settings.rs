@@ -939,12 +939,15 @@ pub struct NetworkSettings {
     /// Features that talk to the network on their own (AI assistance, downloading language
     /// servers, the plugin catalog). Updates are controlled separately.
     pub online_features: bool,
+    /// The online catalog of plugins and dictionaries; empty for Birchpad's own.
+    pub catalog: String,
 }
 
 impl Default for NetworkSettings {
     fn default() -> Self {
         Self {
             online_features: true,
+            catalog: String::new(),
         }
     }
 }

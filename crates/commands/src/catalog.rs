@@ -477,6 +477,12 @@ pub const COMMANDS: &[CommandSpec] = &[
     workspace("plugin.install", "Install Plugin..."),
     workspace("plugin.uninstall", "Remove Plugin"),
     workspace("plugin.enable", "Turn Plugin On or Off"),
+    // The online catalog of plugins and dictionaries; plugin.install-online takes
+    // { "plugin": <id> }, spell.download { "language": "en_GB" }
+    workspace("catalog.refresh", "Refresh Online List"),
+    workspace("plugin.install-online", "Install Plugin from the List"),
+    workspace("spell.download", "Download Dictionary"),
+    workspace("spell.download-languages", "Download Languages..."),
     // plugin.allow-files takes { "plugin": <id>, "allowed": true }
     workspace("plugin.allow-files", "Allow Plugin to Use Files"),
     // Help

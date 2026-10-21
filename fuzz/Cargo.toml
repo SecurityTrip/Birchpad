@@ -209,3 +209,10 @@ path = "fuzz_targets/xml_schema.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "catalog"
+path = "fuzz_targets/catalog.rs"
+test = false
+doc = false
+bench = false

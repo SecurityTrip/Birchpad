@@ -8,6 +8,7 @@
 //!
 //! [`check`] never touches the network when `updates.mode` is `off`.
 
+pub mod catalog;
 pub mod component;
 pub mod install;
 mod keys;

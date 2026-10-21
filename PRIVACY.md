@@ -6,7 +6,8 @@ portable mode, the `data` folder next to it).
 
 ## Network requests
 
-Birchpad connects to the network only for updates, and to install PlantUML when you ask:
+Birchpad connects to the network only for updates, and to install PlantUML, plugins and
+dictionaries when you ask:
 
 - **Checking for updates**: once a day while Birchpad runs, and when you pick Help > Check for
   Updates, it downloads the update manifest from
@@ -22,6 +23,12 @@ Birchpad connects to the network only for updates, and to install PlantUML when 
   document (or View > Preview > Install PlantUML), Birchpad downloads PlantUML and the Java that
   runs it from a release of its repository on GitHub (`plantuml-*`), once. With
   `network.online-features = false` it does not.
+- **The online list of plugins and dictionaries**: when you click Refresh List in Plugins
+  Admin, or open Plugins > Spell Checker > Download Languages..., Birchpad reads the list from
+  `https://raw.githubusercontent.com/SecurityTrip/Birchpad/main/packaging/catalog/catalog.json`
+  (or the address in `network.catalog`); when you install a plugin or download a dictionary
+  from it, Birchpad downloads that plugin's or dictionary's files from the addresses the list
+  names, and checks them against it. With `network.online-features = false` it does neither.
 
 These go through the proxy of Help > Set Updater Proxy... (`updates.proxy`) when one is set, else
 through the one of `HTTPS_PROXY` or `ALL_PROXY` or, on Windows, the system's.

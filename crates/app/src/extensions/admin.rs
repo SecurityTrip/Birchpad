@@ -255,6 +255,46 @@ pub struct Row {
     /// Whether the plugin asks to use files, and whether the user let it.
     pub asks_for_files: bool,
     pub files_allowed: bool,
+    /// A newer version the online catalog offers.
+    pub update: Option<String>,
+}
+
+/// A plugin of the online catalog that is not installed.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Available {
+    pub id: String,
+    pub name: String,
+    pub version: String,
+    pub description: String,
+}
+
+/// The plugins of the online catalog not installed, in its order.
+pub fn available(cx: &App) -> Vec<Available> {
+    let installed: Vec<String> = cx
+        .try_global::<Plugins>()
+        .map(|plugins| {
+            plugins
+                .entries
+                .iter()
+                .map(|entry| entry.id().to_owned())
+                .collect()
+        })
+        .unwrap_or_default();
+    crate::online::catalog(cx)
+        .map(|catalog| {
+            catalog
+                .plugins
+                .iter()
+                .filter(|plugin| !installed.contains(&plugin.id))
+                .map(|plugin| Available {
+                    id: plugin.id.clone(),
+                    name: plugin.name.clone(),
+                    version: plugin.version.clone(),
+                    description: plugin.description.clone(),
+                })
+                .collect()
+        })
+        .unwrap_or_default()
 }
 
 /// What the dialog lists: the plugins, and the folders that hold none that reads.
@@ -265,6 +305,7 @@ pub fn rows(cx: &App) -> (Vec<Row>, Vec<String>) {
     let allowed = plugins_dir(cx)
         .map(|dir| manager::read_file_access(&dir))
         .unwrap_or_default();
+    let catalog = crate::online::catalog(cx);
     let rows = plugins
         .entries
         .iter()
@@ -285,6 +326,17 @@ pub fn rows(cx: &App) -> (Vec<Row>, Vec<String>) {
                 disabled: matches!(entry.state, State::Disabled),
                 asks_for_files: manifest.asks_for(Permission::Files),
                 files_allowed: allowed.contains(&manifest.id),
+                update: catalog
+                    .and_then(|catalog| {
+                        catalog
+                            .plugins
+                            .iter()
+                            .find(|plugin| plugin.id == manifest.id)
+                    })
+                    .filter(|offered| {
+                        birchpad_update::catalog::is_newer(&offered.version, &manifest.version)
+                    })
+                    .map(|offered| offered.version.clone()),
             }
         })
         .collect();
@@ -322,6 +374,28 @@ fn open(window: &mut Window, cx: &mut Context<Workspace>) {
             .footer(
                 DialogFooter::new()
                     .child(
+                        Button::new("plugin-refresh-catalog")
+                            .debug_selector(|| "plugin-refresh-catalog".into())
+                            .label(t!("extensions.admin.refresh-list"))
+                            .on_click({
+                                let workspace = install_from.clone();
+                                move |_, window, cx| {
+                                    workspace
+                                        .update(cx, |workspace, cx| {
+                                            let refresh = birchpad_commands::Invocation::new(
+                                                "catalog.refresh",
+                                            );
+                                            if let Err(error) =
+                                                workspace.dispatch(&refresh, window, cx)
+                                            {
+                                                report_error(&error, window, cx);
+                                            }
+                                        })
+                                        .ok();
+                                }
+                            }),
+                    )
+                    .child(
                         Button::new("plugin-install")
                             .label(t!("extensions.admin.install"))
                             .on_click(move |_, window, cx| {
@@ -352,6 +426,45 @@ impl PluginsAdmin {
 impl Render for PluginsAdmin {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let (rows, problems) = rows(cx);
+        let offered: Vec<_> = available(cx)
+            .into_iter()
+            .enumerate()
+            .map(|(index, plugin)| {
+                let invocation = birchpad_commands::Invocation::with_args(
+                    "plugin.install-online",
+                    serde_json::json!({ "plugin": plugin.id }),
+                );
+                div()
+                    .flex()
+                    .flex_row()
+                    .items_center()
+                    .gap_2()
+                    .py_1()
+                    .child(
+                        div()
+                            .flex_1()
+                            .min_w(px(0.))
+                            .flex()
+                            .flex_col()
+                            .child(format!("{} {}", plugin.name, plugin.version))
+                            .child(
+                                div()
+                                    .text_color(crate::theme::paint(crate::theme::ui().muted))
+                                    .child(plugin.description),
+                            ),
+                    )
+                    .child(
+                        Button::new(("plugin-install-online", index))
+                            .debug_selector(move || format!("plugin-install-online-{index}"))
+                            .small()
+                            .label(t!("extensions.admin.install"))
+                            .on_click(cx.listener(move |this, _, window, cx| {
+                                this.run(invocation.clone(), window, cx);
+                                cx.notify();
+                            })),
+                    )
+            })
+            .collect();
         let muted = crate::theme::paint(crate::theme::ui().muted);
         let error = crate::theme::paint(crate::theme::ui().error);
         let border = crate::theme::paint(crate::theme::ui().border);
@@ -380,6 +493,13 @@ impl Render for PluginsAdmin {
                 "extensions.admin.allow-files"
             };
             let asks_for_files = row.asks_for_files;
+            let update = row.update.clone().map(|version| {
+                let invocation = birchpad_commands::Invocation::with_args(
+                    "plugin.install-online",
+                    serde_json::json!({ "plugin": row.id }),
+                );
+                (version, invocation)
+            });
             div()
                 .id(("plugin-row", index))
                 .debug_selector(move || format!("plugin-row-{index}"))
@@ -406,6 +526,18 @@ impl Render for PluginsAdmin {
                         .child(div().text_color(muted).child(row.description))
                         .child(div().child(row.status)),
                 )
+                .when_some(update, |row, (version, invocation)| {
+                    row.child(
+                        Button::new(("plugin-update", index))
+                            .debug_selector(move || format!("plugin-update-{index}"))
+                            .small()
+                            .label(t!("extensions.admin.update-to", version = version))
+                            .on_click(cx.listener(move |this, _, window, cx| {
+                                this.run(invocation.clone(), window, cx);
+                                cx.notify();
+                            })),
+                    )
+                })
                 .when(asks_for_files, |row| {
                     row.child(
                         Button::new(("plugin-files", index))
@@ -466,5 +598,24 @@ impl Render for PluginsAdmin {
                     .into_iter()
                     .map(move |problem| div().text_color(error).child(problem)),
             )
+            .when(!offered.is_empty(), |list| {
+                list.child(
+                    div()
+                        .pt_2()
+                        .font_weight(FontWeight::SEMIBOLD)
+                        .child(t!("extensions.admin.available")),
+                )
+                .child(
+                    div()
+                        .id("plugin-available")
+                        .flex()
+                        .flex_col()
+                        .overflow_y_scroll()
+                        .children(offered),
+                )
+            })
+            .when_some(crate::online::status(cx), |list, status| {
+                list.child(div().text_color(muted).child(status))
+            })
     }
 }

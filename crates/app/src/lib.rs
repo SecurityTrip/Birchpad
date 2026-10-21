@@ -37,6 +37,7 @@ pub mod json_xml;
 pub mod macros;
 pub mod menus;
 pub mod navigation;
+pub mod online;
 pub mod pane;
 pub mod panels;
 pub mod path_dialog;

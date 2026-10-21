@@ -232,7 +232,7 @@ fn verify(path: &Path, package: &ComponentPackage) -> Result<(), String> {
 }
 
 /// Unpacks the ZIP at `archive` into `to`; names that leave `to` are refused.
-fn unpack(archive: &Path, to: &Path) -> Result<(), String> {
+pub(crate) fn unpack(archive: &Path, to: &Path) -> Result<(), String> {
     let file = File::open(archive).map_err(|error| error.to_string())?;
     let mut zip = zip::ZipArchive::new(file).map_err(|error| error.to_string())?;
     let mut unpacked = 0u64;

@@ -38,6 +38,10 @@ version's release notes from its section here.
   Preferences > Spell Checker checks several languages together, chooses which words are left
   alone (with digits, in capitals, with a capital inside or at the start, with underscores,
   single letters, addresses) and what of code is checked (comments, strings, both, or all).
+- Plugins Admin reads an online list of plugins (Refresh List): it installs those not installed
+  yet and offers updates of those that are, each download checked against the list's SHA-256.
+  Plugins > Spell Checker > Download Languages... downloads dictionaries from the same list.
+  Neither goes online while online features are turned off (`OnlineFeatures`).
 
 ### Changed
 

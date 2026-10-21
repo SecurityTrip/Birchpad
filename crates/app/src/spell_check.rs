@@ -71,7 +71,7 @@ pub fn folders(cx: &App) -> Vec<PathBuf> {
     folders
 }
 
-fn dictionaries_dir(cx: &App) -> Option<PathBuf> {
+pub fn dictionaries_dir(cx: &App) -> Option<PathBuf> {
     AppState::global(cx)
         .paths
         .user_config_dir()
@@ -200,7 +200,7 @@ fn load(languages: &str, cx: &App) -> Result<Speller> {
 }
 
 /// Reads the dictionary again (another language, a new file).
-fn forget(cx: &mut App) {
+pub fn forget(cx: &mut App) {
     SPELLING.with(|spelling| {
         let mut spelling = spelling.borrow_mut();
         spelling.loaded = None;

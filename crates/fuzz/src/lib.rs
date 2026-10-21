@@ -45,6 +45,7 @@ pub const TARGETS: &[(&str, Check)] = &[
     ("instance_message", instance_message),
     ("manifest", manifest),
     ("plugin_manifest", plugin_manifest),
+    ("catalog", catalog),
     ("json", json),
     ("json_tree", json_tree),
     ("xml", xml),
@@ -575,6 +576,35 @@ pub fn json(data: &[u8]) -> bool {
     assert_eq!(json::minify(&pretty).unwrap(), small);
     assert_eq!(json::minify(&small).unwrap(), small);
     assert_eq!(json::format(&pretty, layout).unwrap(), pretty);
+    true
+}
+
+/// The online catalog of plugins and dictionaries: one that reads names only https files of a
+/// size Birchpad downloads, with a SHA-256 each, and plugins and languages once.
+pub fn catalog(data: &[u8]) -> bool {
+    use birchpad_update::catalog::{MAX_FILE, parse};
+    let Ok(catalog) = parse(data) else {
+        return false;
+    };
+    let files = catalog.plugins.iter().map(|plugin| &plugin.file).chain(
+        catalog
+            .dictionaries
+            .iter()
+            .flat_map(|dictionary| [&dictionary.aff, &dictionary.dic]),
+    );
+    for file in files {
+        assert!(file.url.starts_with("https://"));
+        assert!(file.size > 0 && file.size <= MAX_FILE);
+        assert_eq!(file.sha256.len(), 64);
+    }
+    let mut ids: Vec<&str> = catalog
+        .plugins
+        .iter()
+        .map(|plugin| plugin.id.as_str())
+        .collect();
+    ids.sort_unstable();
+    ids.dedup();
+    assert_eq!(ids.len(), catalog.plugins.len());
     true
 }
 
