@@ -95,7 +95,8 @@ pub fn register_commands(registry: &mut CommandRegistry) {
     });
     registry.workspace("json.find-path", |this, args: PathArgs, window, cx| {
         let viewer = this.json_viewer(window, cx);
-        viewer.update(cx, |viewer, cx| viewer.find(&args.path, window, cx))
+        let view = this.active_view(cx);
+        viewer.update(cx, |viewer, cx| viewer.find(&args.path, view, window, cx))
     });
     for (id, what) in [
         ("json.copy-value", Copy::Value),
@@ -146,7 +147,8 @@ impl Workspace {
                 .view(PanelKind::JsonViewer)
                 .and_then(|view| view.clone().downcast::<JsonViewer>().ok())
         {
-            return viewer.update(cx, |viewer, cx| viewer.copied(what, cx));
+            let view = self.active_view(cx);
+            return viewer.update(cx, |viewer, cx| viewer.copied(what, view, cx));
         }
         let view = self
             .active_view(cx)

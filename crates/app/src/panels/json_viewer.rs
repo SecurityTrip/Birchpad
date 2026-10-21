@@ -149,7 +149,8 @@ impl JsonViewer {
             |this, path, event: &InputEvent, window, cx| {
                 if let InputEvent::PressEnter { .. } = event {
                     let typed = path.read(cx).value().to_string();
-                    if let Err(error) = this.find(&typed, window, cx) {
+                    let view = this.active_view(cx);
+                    if let Err(error) = this.find(&typed, view, window, cx) {
                         report_error(&error, window, cx);
                     }
                 }
@@ -176,9 +177,14 @@ impl JsonViewer {
 
     /// Reads the active document again if it changed.
     pub fn refresh(&mut self, cx: &App) {
-        self.parsed = self
-            .active_view(cx)
-            .map(|view| parse(&view, self.parsed.take(), cx));
+        let view = self.active_view(cx);
+        self.refresh_from(view, cx);
+    }
+
+    /// Reads `view`, the active document, again if it changed. The workspace's commands pass it,
+    /// as the viewer cannot read the workspace while it runs one.
+    fn refresh_from(&mut self, view: Option<Entity<EditorView>>, cx: &App) {
+        self.parsed = view.map(|view| parse(&view, self.parsed.take(), cx));
     }
 
     /// The tree and the text it was read from.
@@ -187,12 +193,13 @@ impl JsonViewer {
         Some((parsed.tree.as_ref().ok()?, parsed.text.as_str()))
     }
 
-    /// The value chosen: the one clicked or found, or the one at the caret.
-    pub fn target(&mut self, cx: &App) -> Option<usize> {
-        self.refresh(cx);
-        let caret = self
-            .active_view(cx)
+    /// The value chosen in `view`, the active document: the one clicked or found, or the one at
+    /// the caret.
+    pub fn target(&mut self, view: Option<Entity<EditorView>>, cx: &App) -> Option<usize> {
+        let caret = view
+            .as_ref()
             .map(|view| view.read(cx).selection.primary().head);
+        self.refresh_from(view, cx);
         let (tree, _) = self.tree()?;
         self.selected
             .as_ref()
@@ -202,6 +209,18 @@ impl JsonViewer {
 
     /// Selects value `index` in the tree and in the text.
     pub fn choose(&mut self, index: usize, window: &mut Window, cx: &mut Context<Self>) {
+        let view = self.active_view(cx);
+        self.choose_in(index, view, window, cx);
+    }
+
+    /// Selects value `index` in the tree and in `view`, the active document.
+    fn choose_in(
+        &mut self,
+        index: usize,
+        view: Option<Entity<EditorView>>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         let Some((tree, _)) = self.tree() else {
             return;
         };
@@ -218,15 +237,21 @@ impl JsonViewer {
             self.collapsed.remove(&path);
         }
         self.selected = Some(path);
-        if let Some(view) = self.active_view(cx) {
+        if let Some(view) = view {
             select_in(&view, range, window, cx);
         }
         cx.notify();
     }
 
-    /// Finds the value `path` names and chooses it.
-    pub fn find(&mut self, path: &str, window: &mut Window, cx: &mut Context<Self>) -> Result<()> {
-        self.refresh(cx);
+    /// Finds the value `path` names in `view`, the active document, and chooses it.
+    pub fn find(
+        &mut self,
+        path: &str,
+        view: Option<Entity<EditorView>>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Result<()> {
+        self.refresh_from(view.clone(), cx);
         let found = match &self.parsed {
             None => return Err(anyhow!("{}", t!("panels.json-viewer.no-document"))),
             Some(Parsed {
@@ -247,14 +272,20 @@ impl JsonViewer {
             }
             Some(Parsed { tree: Ok(tree), .. }) => tree.find(path)?,
         };
-        self.choose(found, window, cx);
+        self.choose_in(found, view, window, cx);
         Ok(())
     }
 
-    /// What Copy Value, Copy Key or Copy Path copies of the chosen value.
-    pub fn copied(&mut self, what: Copy, cx: &App) -> Result<String> {
+    /// What Copy Value, Copy Key or Copy Path copies of the value chosen in `view`, the active
+    /// document.
+    pub fn copied(
+        &mut self,
+        what: Copy,
+        view: Option<Entity<EditorView>>,
+        cx: &App,
+    ) -> Result<String> {
         let target = self
-            .target(cx)
+            .target(view, cx)
             .ok_or_else(|| anyhow!("{}", t!("panels.json-viewer.nothing-chosen")))?;
         let (tree, text) = self
             .tree()
@@ -360,12 +391,13 @@ impl Render for JsonViewer {
                 .small()
                 .ghost()
                 .label(label)
-                .on_click(
-                    cx.listener(move |this, _, window, cx| match this.copied(what, cx) {
+                .on_click(cx.listener(move |this, _, window, cx| {
+                    let view = this.active_view(cx);
+                    match this.copied(what, view, cx) {
                         Ok(text) => cx.write_to_clipboard(ClipboardItem::new_string(text)),
                         Err(error) => report_error(&error, window, cx),
-                    }),
-                )
+                    }
+                }))
         };
         let toolbar = div()
             .flex()
