@@ -442,6 +442,7 @@ pub const COMMANDS: &[CommandSpec] = &[
     // hex.find takes { "pattern": "4A 6F" or "\"text\"", "backward": false }, or goes to
     // the hex view's field
     workspace("hex.find", "Find in HEX"),
+    workspace("hex.switch-column", "Switch Between Hex and Text"),
     // Compare: the active document with the other view's, or with the tab before it
     workspace("compare.compare", "Compare"),
     workspace("compare.clear", "Clear Results"),

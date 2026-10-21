@@ -51,6 +51,13 @@ pub fn register_commands(registry: &mut CommandRegistry) {
         this.refresh_menus(cx);
         Ok(())
     });
+    registry.workspace("hex.switch-column", |this, (), _, cx| {
+        let editor = this
+            .active_hex_editor(cx)
+            .ok_or_else(|| anyhow!("{}", t!("hex-editor.not-in-hex")))?;
+        editor.update(cx, |editor, cx| editor.switch_column(cx));
+        Ok(())
+    });
     registry.workspace("hex.find", |this, args: FindArgs, window, cx| {
         let editor = this
             .active_hex_editor(cx)

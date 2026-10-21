@@ -360,3 +360,23 @@ fn keys_move_and_type(cx: &mut TestAppContext) {
     cx.simulate_keystrokes("pagedown");
     assert_eq!(caret(&editor, cx), (40, 40));
 }
+
+#[gpui_kit::test]
+fn tab_and_shift_tab_switch_columns_and_stay_in_the_editor(cx: &mut TestAppContext) {
+    let (workspace, cx) = open_workspace(cx);
+    type_text(&workspace, "abc", cx);
+    // Not in a hex view: nothing to switch.
+    let error = run(&workspace, Invocation::new("hex.switch-column"), cx).unwrap_err();
+    assert!(error.to_string().contains("not shown in HEX"), "{error}");
+    let editor = hex(&workspace, cx);
+    editor.update(cx, |editor, cx| editor.move_to(0, false, cx));
+    // Half a byte typed is dropped on the way to the text column.
+    cx.simulate_keystrokes("4 tab");
+    assert!(editor.read_with(cx, |editor, _| editor.in_text));
+    cx.simulate_keystrokes("shift-tab");
+    assert!(editor.read_with(cx, |editor, _| !editor.in_text));
+    // Neither key reached the document: no tab typed, no line outdented.
+    assert_eq!(active_text(&workspace, cx), "abc");
+    run(&workspace, Invocation::new("hex.switch-column"), cx).unwrap();
+    assert!(editor.read_with(cx, |editor, _| editor.in_text));
+}

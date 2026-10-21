@@ -201,6 +201,7 @@ command:
     apply: "Hex auf Dokument anwenden"
     editor: "In HEX anzeigen"
     find: "In HEX suchen"
+    switch-column: "Zwischen Hex und Text wechseln"
     view: "Hex-Dump in neuem Dokument"
   json:
     copy-key: "Schlüssel kopieren"

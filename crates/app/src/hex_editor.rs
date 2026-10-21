@@ -528,9 +528,7 @@ impl HexEditor {
                 Ok(())
             }
             "tab" => {
-                self.in_text = !self.in_text;
-                self.nibble = None;
-                cx.notify();
+                self.switch_column(cx);
                 Ok(())
             }
             "insert" => {
@@ -572,6 +570,13 @@ impl HexEditor {
             report_error(&error, window, cx);
         }
         cx.stop_propagation();
+    }
+
+    /// Goes between the hex digits and the text column (Tab), dropping a half-typed byte.
+    pub fn switch_column(&mut self, cx: &mut Context<Self>) {
+        self.in_text = !self.in_text;
+        self.nibble = None;
+        cx.notify();
     }
 
     /// A click on byte `byte`, in the text column or not.

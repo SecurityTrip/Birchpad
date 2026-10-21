@@ -203,6 +203,7 @@ command:
     apply: "Apply Hex to Document"
     editor: "View in HEX"
     find: "Find in HEX"
+    switch-column: "Switch Between Hex and Text"
     view: "Hex Dump in New Document"
   json:
     copy-key: "Copy Key"
