@@ -659,7 +659,7 @@ Closing Phase 6.
       outlines), Preferences > File Association (Birchpad registers as the default editor, 0.2.8)
       and the installer's own options (`/S`, `/D=`, `/noUpdater`, ...; Birchpad's installers
       take their own)
-- [ ] Release 0.6.0: the workspace version (0.6.0, set when its branch opens, so that nightly
+- [x] Release 0.6.0: the workspace version (0.6.0, set when its branch opens, so that nightly
       builds are its pre-releases), `CHANGELOG.md` and this roadmap updated; the
       [release checklist](release-checklist.md) gone through
 
