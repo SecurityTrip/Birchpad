@@ -87,20 +87,28 @@ pub const PLANTUML: Component = Component {
 
 /// The platform of this build, as components name it; `None` where there is no package.
 pub const fn platform() -> Option<&'static str> {
-    if cfg!(all(windows, target_arch = "x86_64")) {
-        Some("windows-x64")
-    } else if cfg!(all(windows, target_arch = "aarch64")) {
-        Some("windows-arm64")
-    } else if cfg!(all(target_os = "linux", target_arch = "x86_64")) {
-        Some("linux-x64")
-    } else if cfg!(all(target_os = "macos", target_arch = "aarch64")) {
-        Some("macos-arm64")
-    } else if cfg!(all(target_os = "macos", target_arch = "x86_64")) {
-        Some("macos-x64")
-    } else {
-        None
-    }
+    PLATFORM
 }
+
+#[cfg(all(windows, target_arch = "x86_64"))]
+const PLATFORM: Option<&str> = Some("windows-x64");
+#[cfg(all(windows, target_arch = "aarch64"))]
+const PLATFORM: Option<&str> = Some("windows-arm64");
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+const PLATFORM: Option<&str> = Some("linux-x64");
+#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+const PLATFORM: Option<&str> = Some("macos-arm64");
+#[cfg(all(target_os = "macos", target_arch = "x86_64"))]
+const PLATFORM: Option<&str> = Some("macos-x64");
+#[cfg(not(any(
+    all(windows, any(target_arch = "x86_64", target_arch = "aarch64")),
+    all(target_os = "linux", target_arch = "x86_64"),
+    all(
+        target_os = "macos",
+        any(target_arch = "x86_64", target_arch = "aarch64")
+    ),
+)))]
+const PLATFORM: Option<&str> = None;
 
 /// The file an installed component's folder has once it is whole.
 const INSTALLED: &str = ".installed";
