@@ -202,6 +202,6 @@ fn the_speller_finds_by_its_rules() {
         ignore_all_caps: false,
         ..Rules::default()
     });
-    assert_eq!(speller.rules().ignore_all_caps, false);
+    assert!(!speller.rules().ignore_all_caps);
     assert_eq!(wrong(&speller), ["wlak", "NASAA"]);
 }

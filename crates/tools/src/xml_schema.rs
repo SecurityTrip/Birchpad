@@ -415,7 +415,7 @@ impl Dtd {
             (particle, at)
         } else {
             let len = spec
-                .find(|c: char| matches!(c, ',' | '|' | ')' | '?' | '*' | '+'))
+                .find([',', '|', ')', '?', '*', '+'])
                 .unwrap_or(spec.len());
             if len == 0 {
                 return None;
@@ -1358,7 +1358,9 @@ fn builtin_problem(name: &str, value: &str) -> Option<String> {
                 && !value.starts_with(|c: char| c.is_ascii_digit() || c == '-' || c == '.')
                 && (name == "Name" || name == "QName" || !value.contains(':'))
         }
-        "hexBinary" => value.len() % 2 == 0 && value.bytes().all(|b| b.is_ascii_hexdigit()),
+        "hexBinary" => {
+            value.len().is_multiple_of(2) && value.bytes().all(|b| b.is_ascii_hexdigit())
+        }
         _ => true,
     };
     (!ok).then(|| t!("tools.xml-schema.not-of-type", value = value, kind = name))

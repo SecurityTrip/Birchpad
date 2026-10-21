@@ -320,9 +320,7 @@ pub fn grants(plugins_dir: &Path, installed: &Installed) -> Grants {
         }
     }
     let files = manifest.asks_for(Permission::Files)
-        && read_file_access(plugins_dir)
-            .iter()
-            .any(|known| *known == manifest.id);
+        && read_file_access(plugins_dir).contains(&manifest.id);
     Grants { settings, files }
 }
 

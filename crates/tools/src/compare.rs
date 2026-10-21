@@ -137,15 +137,14 @@ pub fn padding(differences: &[Difference]) -> [Vec<(usize, u32)>; 2] {
     sides
 }
 
+/// The byte ranges of the old line and of the new one that differ.
+pub type InlineRanges = (Vec<Range<usize>>, Vec<Range<usize>>);
+
 /// What differs within a changed line: the byte ranges of `old` and of `new` that the other
 /// does not have, character by character, as `options` sees them (spaces left out, letter case
 /// ignored). `None` when the lines have no character in common where they could match, or one
 /// is longer than [`MAX_INLINE`] characters: then the whole line is the difference.
-pub fn inline(
-    old: &str,
-    new: &str,
-    options: Options,
-) -> Option<(Vec<Range<usize>>, Vec<Range<usize>>)> {
+pub fn inline(old: &str, new: &str, options: Options) -> Option<InlineRanges> {
     let chars = |line: &str| -> Option<Vec<(char, Range<usize>)>> {
         if line.chars().count() > MAX_INLINE {
             return None;

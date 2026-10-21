@@ -1,3 +1,8 @@
+#![allow(
+    clippy::single_range_in_vec_init,
+    reason = "expected ranges written out"
+)]
+
 use birchpad_tools::compare::*;
 use std::ops::Range;
 
