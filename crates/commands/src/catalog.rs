@@ -412,6 +412,8 @@ pub const COMMANDS: &[CommandSpec] = &[
     ),
     workspace("settings.theme", "Theme"),
     workspace("settings.import-theme", "Import Style Themes..."),
+    // settings.import-plugins takes { "paths": [<plugin.toml>, ...] } or asks for them
+    workspace("settings.import-plugins", "Import plugin(s)..."),
     // Plugins: the built-in JSON Viewer and XML Tools work on the selection, or the whole text
     editor("json.format", "Format JSON"),
     editor("json.minify", "Compress JSON"),
@@ -437,7 +439,8 @@ pub const COMMANDS: &[CommandSpec] = &[
     editor("spell.add-word", "Add Word to Dictionary"),
     workspace("spell.language", "Dictionary Language"),
     workspace("spell.open-dictionaries-folder", "Open Dictionaries Folder"),
-    // Scripts; script.run takes { "name": <a script of the scripts folder, without .rhai> }
+    // Scripts; script.run takes { "name": <a script of the scripts folder, without .rhai> },
+    // and "command": <a function the script declares as a command> to run that after it
     workspace("script.run", "Run Script"),
     workspace("script.open-folder", "Open Scripts Folder"),
     workspace("script.reload", "Reload Scripts"),
@@ -445,12 +448,16 @@ pub const COMMANDS: &[CommandSpec] = &[
     workspace("plugin.run", "Run Plugin Command"),
     workspace("plugin.open-folder", "Open Plugins Folder"),
     workspace("plugin.reload", "Reload Plugins"),
+    // plugin.set-setting takes { "plugin": <id>, "key": <a setting>, "value": <text> }
+    workspace("plugin.set-setting", "Set Plugin Setting"),
     // Plugins Admin; plugin.install takes { "path": <a plugin.toml> } or asks for it,
     // plugin.uninstall { "plugin": <id> }, plugin.enable { "plugin": <id>, "enabled": true }
     workspace("plugin.admin", "Plugins Admin..."),
     workspace("plugin.install", "Install Plugin..."),
     workspace("plugin.uninstall", "Remove Plugin"),
     workspace("plugin.enable", "Turn Plugin On or Off"),
+    // plugin.allow-files takes { "plugin": <id>, "allowed": true }
+    workspace("plugin.allow-files", "Allow Plugin to Use Files"),
     // Help
     workspace("help.check-updates", "Check for Updates..."),
     // From the update dialogs and notifications.

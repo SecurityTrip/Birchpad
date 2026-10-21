@@ -6,7 +6,9 @@ use std::sync::OnceLock;
 use birchpad_commands::Invocation;
 use birchpad_core::{Range, Rope, Selection};
 use birchpad_plugin::wasm::Runtime;
-use birchpad_plugin::{DocumentState, Effect, EventKind, Outcome, Plugin, Session};
+use birchpad_plugin::{
+    Control, DocumentState, Effect, EventKind, Grants, Outcome, Plugin, Session,
+};
 use wasmtime::component::Component;
 
 const PROBE: &[u8] = include_bytes!("fixtures/probe.wasm");
@@ -61,10 +63,215 @@ fn lists_its_commands() {
             "bad-range",
             "spin",
             "trap",
-            "grow"
+            "grow",
+            "settings",
+            "files",
+            "controls",
+            "tasks"
         ]
     );
     assert_eq!(plugin.commands()[0].title, "Upper Case");
+    // Only Upper Case goes into the text's context menu.
+    let in_menu: Vec<&str> = plugin
+        .commands()
+        .iter()
+        .filter(|c| c.context_menu)
+        .map(|c| c.id.as_str())
+        .collect();
+    assert_eq!(in_menu, ["upper"]);
+}
+
+fn grants(settings: &[(&str, &str)], files: bool) -> Grants {
+    Grants {
+        settings: settings
+            .iter()
+            .map(|(key, value)| ((*key).to_owned(), (*value).to_owned()))
+            .collect(),
+        files,
+    }
+}
+
+#[test]
+fn reads_and_keeps_its_settings() {
+    let mut plugin = probe();
+    let outcome = plugin
+        .run(
+            "settings",
+            Session::empty().with_grants(grants(&[("greeting", "hi"), ("runs", "41")], false)),
+        )
+        .unwrap();
+    assert_eq!(
+        outcome.effects,
+        [
+            Effect::SetSetting {
+                key: "runs".into(),
+                value: "42".into()
+            },
+            Effect::Message("greeting hi, runs 42".into()),
+        ]
+    );
+    // None set yet: the plugin starts from nothing.
+    let outcome = plugin.run("settings", Session::empty()).unwrap();
+    assert_eq!(
+        outcome.effects[1],
+        Effect::Message("greeting (none), runs 1".into())
+    );
+}
+
+#[test]
+fn uses_files_only_when_allowed() {
+    let dir = tempfile::tempdir().unwrap();
+    let source = dir.path().join("source.txt");
+    let target = dir.path().join("target.txt");
+    std::fs::write(&source, "copy me").unwrap();
+    let paths = [
+        ("source", source.to_str().unwrap()),
+        ("target", target.to_str().unwrap()),
+    ];
+    let mut plugin = probe();
+
+    // Not allowed: refused, and nothing written.
+    let error = plugin
+        .run("files", Session::empty().with_grants(grants(&paths, false)))
+        .unwrap_err();
+    assert!(error.to_string().contains("may not use files"), "{error}");
+    assert!(!target.exists());
+
+    let outcome = plugin
+        .run("files", Session::empty().with_grants(grants(&paths, true)))
+        .unwrap();
+    assert_eq!(std::fs::read_to_string(&target).unwrap(), "COPY ME");
+    assert_eq!(outcome.effects, [Effect::OpenFile(target.clone())]);
+
+    // A file that is not there: the plugin's error says which.
+    std::fs::remove_file(&source).unwrap();
+    let error = plugin
+        .run("files", Session::empty().with_grants(grants(&paths, true)))
+        .unwrap_err();
+    assert!(error.to_string().contains("source.txt"), "{error}");
+}
+
+#[test]
+fn shows_controls_and_hears_them() {
+    let mut plugin = probe();
+    let outcome = plugin.run("controls", Session::empty()).unwrap();
+    assert_eq!(
+        outcome.effects,
+        [Effect::Controls {
+            title: "Probe controls".into(),
+            controls: vec![
+                Control::Label("A label".into()),
+                Control::Button {
+                    id: "go".into(),
+                    title: "Go".into()
+                },
+                Control::Separator,
+                Control::TextField {
+                    id: "name".into(),
+                    value: "typed".into()
+                },
+                Control::Checkbox {
+                    id: "loud".into(),
+                    title: "Loud".into(),
+                    checked: true
+                },
+            ]
+        }]
+    );
+    let outcome = plugin.control("loud", "false", Session::empty()).unwrap();
+    assert_eq!(
+        outcome.effects,
+        [Effect::Message("control loud = false".into())]
+    );
+    // An empty value, as a button gives.
+    let outcome = plugin.control("go", "", Session::empty()).unwrap();
+    assert_eq!(outcome.effects, [Effect::Message("control go = ".into())]);
+}
+
+#[test]
+fn hears_the_command_line_message() {
+    let mut plugin = probe();
+    for message in ["open the log", "", "мир"] {
+        let outcome = plugin.message(message, Session::empty()).unwrap();
+        assert_eq!(
+            outcome.effects,
+            [Effect::Message(format!("message {message}"))]
+        );
+    }
+    // The message is no event of on-event.
+    let error = plugin
+        .event(EventKind::Message, Session::empty())
+        .unwrap_err();
+    assert!(error.to_string().contains("on-message"), "{error}");
+}
+
+#[test]
+fn starts_tasks_that_run_apart() {
+    let mut plugin = probe();
+    let outcome = plugin.run("tasks", session("sum fail", &[(0, 0)])).unwrap();
+    assert_eq!(
+        outcome.effects,
+        [
+            Effect::StartTask {
+                task: "sum".into(),
+                input: "2 3 4".into()
+            },
+            Effect::StartTask {
+                task: "fail".into(),
+                input: "2 3 4".into()
+            },
+        ]
+    );
+    let runner = plugin.task_runner();
+    // On another thread, as Birchpad runs it, with no document.
+    let (returned, outcome) =
+        std::thread::spawn(move || runner.run("sum", "2 3 4", Session::empty()))
+            .join()
+            .unwrap()
+            .unwrap();
+    assert_eq!(returned, Ok("9".to_owned()));
+    assert_eq!(
+        outcome.effects,
+        [Effect::Message("summing, document of 0 bytes".into())]
+    );
+    let runner = plugin.task_runner();
+    let (returned, _) = runner.run("fail", "", Session::empty()).unwrap();
+    assert_eq!(returned, Err("the task failed on purpose".to_owned()));
+
+    // What it returned goes back to the plugin.
+    let outcome = plugin
+        .task_done("sum", &Ok("9".to_owned()), Session::empty())
+        .unwrap();
+    assert_eq!(outcome.effects, [Effect::Message("task sum gave 9".into())]);
+    let outcome = plugin
+        .task_done("fail", &Err("no".to_owned()), Session::empty())
+        .unwrap();
+    assert_eq!(
+        outcome.effects,
+        [Effect::Message("task fail failed: no".into())]
+    );
+}
+
+#[test]
+fn stops_a_task_that_runs_too_long() {
+    let plugin = probe();
+    let error = plugin
+        .task_runner()
+        .run("spin", "", Session::empty())
+        .err()
+        .unwrap();
+    assert_eq!(error.to_string(), "the plugin ran too long and was stopped");
+}
+
+#[test]
+fn starts_no_more_tasks_than_a_call_may() {
+    let mut plugin = probe();
+    let names = vec!["sum"; birchpad_plugin::session::MAX_TASKS + 1].join(" ");
+    let error = plugin.run("tasks", session(&names, &[(0, 0)])).unwrap_err();
+    assert!(error.to_string().contains("at most"), "{error}");
+    let names = vec!["sum"; birchpad_plugin::session::MAX_TASKS].join(" ");
+    let outcome = plugin.run("tasks", session(&names, &[(0, 0)])).unwrap();
+    assert_eq!(outcome.effects.len(), birchpad_plugin::session::MAX_TASKS);
 }
 
 #[test]
@@ -127,6 +334,8 @@ fn hears_events() {
         (EventKind::Saved, "Saved"),
         (EventKind::Closed, "Closed"),
         (EventKind::Activated, "Activated"),
+        (EventKind::Changed, "Changed"),
+        (EventKind::SelectionChanged, "SelectionChanged"),
     ] {
         let outcome = plugin.event(event, Session::empty()).unwrap();
         assert_eq!(

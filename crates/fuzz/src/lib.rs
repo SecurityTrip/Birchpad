@@ -717,10 +717,11 @@ pub fn search_query(data: &[u8]) -> bool {
 /// The calls a plugin makes into the host, with any arguments: the text up to the first NUL
 /// byte is the document, each byte after it chooses a call and the bytes after it its
 /// arguments. Every call is done or refused; the document stays text; what the calls did,
-/// applied to the document as it was, gives the text they left.
+/// applied to the document as it was, gives the text they left; a setting set reads back;
+/// files stay out of reach of a plugin the user did not allow them.
 pub fn plugin_calls(data: &[u8]) -> bool {
     use birchpad_core::{Rope, Selection};
-    use birchpad_plugin::{DocumentState, Session};
+    use birchpad_plugin::{Control, DocumentState, Session};
 
     let (document, calls) = match data.iter().position(|&byte| byte == 0) {
         Some(at) => (&data[..at], &data[at + 1..]),
@@ -747,7 +748,7 @@ pub fn plugin_calls(data: &[u8]) -> bool {
     };
     let mut done = 0;
     while let Some(call) = bytes.next() {
-        let accepted = match call % 9 {
+        let accepted = match call % 13 {
             0 => {
                 let (start, end) = (number(&mut bytes), number(&mut bytes));
                 session.text_range(start, end).is_ok()
@@ -781,6 +782,38 @@ pub fn plugin_calls(data: &[u8]) -> bool {
             7 => {
                 let lines = vec![word(&mut bytes), word(&mut bytes)];
                 session.show_panel(&word(&mut bytes), lines);
+                true
+            }
+            8 => {
+                let (key, value) = (word(&mut bytes), word(&mut bytes));
+                let set = session.set_setting(&key, &value).is_ok();
+                if set {
+                    assert_eq!(session.setting(&key).as_deref(), Some(value.as_str()));
+                }
+                set
+            }
+            9 => {
+                let controls = vec![
+                    Control::Button {
+                        id: word(&mut bytes),
+                        title: word(&mut bytes),
+                    },
+                    Control::TextField {
+                        id: word(&mut bytes),
+                        value: word(&mut bytes),
+                    },
+                    Control::Label(word(&mut bytes)),
+                ];
+                session.show_controls(&word(&mut bytes), controls).is_ok()
+            }
+            10 => session
+                .start_task(&word(&mut bytes), &word(&mut bytes))
+                .is_ok(),
+            11 => {
+                let path = word(&mut bytes);
+                assert!(session.read_file(&path).is_err(), "{path:?}");
+                assert!(session.write_file(&path, "x").is_err(), "{path:?}");
+                assert!(session.open_file(&path).is_err(), "{path:?}");
                 true
             }
             _ => {

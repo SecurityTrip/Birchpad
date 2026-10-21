@@ -619,10 +619,11 @@ floors in `.github/coverage-floors.toml` with its tests.
 
 Closing Phase 6.
 
-- [ ] 6.42 A wider plugin API: settings of their own, files opened with the user's permission,
+- [x] 6.42 A wider plugin API: settings of their own, files opened with the user's permission,
       a panel of their own controls, items in the text's context menu, events while typing and
-      when the selection changes, the command line's -pluginMessage, work in the background; scripts' own commands and keys;
-      Settings > Import plugin(s)
+      when the selection changes, the command line's -pluginMessage, work in the background;
+      scripts' own commands and keys; Settings > Import plugin(s)
+      ([ADR 0046](adr/0046-plugin-api-0-2.md))
 - [ ] 6.43 Compare as ComparePlus: lines padded to stay aligned side by side, differences
       within a line, comparing with the last save, the clipboard or Git; a navigation bar of the
       differences

@@ -208,3 +208,57 @@ fn an_edit_needs_a_document(cx: &mut TestAppContext) {
         assert!(error.to_string().contains("no document"));
     });
 }
+
+#[gpui_kit::test]
+fn runs_the_commands_a_script_declares(cx: &mut TestAppContext) {
+    let (workspace, cx, dir) = setup(cx);
+    script(
+        &dir,
+        "cases",
+        "// command: upper Upper Case\n// command: lower Lower Case\nlet mark = \"!\";\nfn upper() { set_text(text().to_upper() + mark); }\nfn lower() { set_text(text().to_lower()); }\n",
+    );
+    script(&dir, "plain", "insert(\"x\");");
+    let listed: Vec<(String, Vec<String>)> = cx.update(|_, cx| {
+        scripts::scripts(cx)
+            .into_iter()
+            .map(|(name, commands)| {
+                (
+                    name,
+                    commands.into_iter().map(|command| command.title).collect(),
+                )
+            })
+            .collect()
+    });
+    assert_eq!(
+        listed,
+        [
+            (
+                "cases".to_owned(),
+                vec!["Upper Case".to_owned(), "Lower Case".to_owned()]
+            ),
+            ("plain".to_owned(), Vec::new()),
+        ]
+    );
+    run(
+        &workspace,
+        Invocation::with_args("edit.insert-text", json!({ "text": "Mixed" })),
+        cx,
+    )
+    .unwrap();
+    let command = |name: &str, command: &str| {
+        Invocation::with_args("script.run", json!({ "name": name, "command": command }))
+    };
+    run(&workspace, command("cases", "upper"), cx).unwrap();
+    assert_eq!(active_text(&workspace, cx), "MIXED!");
+    run(&workspace, command("cases", "lower"), cx).unwrap();
+    assert_eq!(active_text(&workspace, cx), "mixed!");
+    // Without a command, the script runs as it always did: here, it only defines.
+    run_script(&workspace, "cases", cx).unwrap();
+    assert_eq!(active_text(&workspace, cx), "mixed!");
+    // A command the script does not declare.
+    let error = run(&workspace, command("cases", "title"), cx).unwrap_err();
+    assert!(error.to_string().contains("no command title"), "{error}");
+    let error = run(&workspace, command("plain", "upper"), cx).unwrap_err();
+    assert!(error.to_string().contains("no command upper"), "{error}");
+    assert_eq!(active_text(&workspace, cx), "mixed!");
+}

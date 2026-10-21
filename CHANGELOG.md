@@ -6,6 +6,23 @@ version's release notes from its section here.
 
 ## [Unreleased]
 
+### Added
+
+- Plugins can keep settings of their own, shown in Preferences > Plugins; read, write and open
+  files once you allow them in Plugins Admin (Allow Files); fill their panel with buttons, text
+  fields and check boxes; add items to the text's context menu; hear the text change and the
+  selection move; receive the command line's `-pluginMessage`; and work in the background
+  without holding up the window.
+- Scripts can declare commands (`// command: <function> <title>`): Plugins > Scripts shows them
+  in a submenu of the script, and Settings > Shortcut Mapper > Plugin Commands gives them keys,
+  as it does the plugins' commands.
+- Settings > Import > Import plugin(s)... installs several plugins at once.
+
+### Changed
+
+- The plugin API is version 0.2 (`api = "0.2"`): plugins built for 0.1 must be rebuilt against
+  the new `birchpad.wit`, where what 0.1 had is unchanged.
+
 ## [0.5.0] - 2026-10-21
 
 ### Added

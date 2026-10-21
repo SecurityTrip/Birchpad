@@ -32,7 +32,7 @@ fn download(dir: &tempfile::TempDir, id: &str) -> PathBuf {
     std::fs::write(
         folder.join("plugin.toml"),
         format!(
-            "id = \"{id}\"\nname = \"Probe\"\nversion = \"2.1\"\ndescription = \"Probes.\"\napi = \"0.1\"\n"
+            "id = \"{id}\"\nname = \"Probe\"\nversion = \"2.1\"\ndescription = \"Probes.\"\napi = \"0.2\"\n"
         ),
     )
     .unwrap();
@@ -197,4 +197,102 @@ fn install_asks_for_the_plugins_manifest(cx: &mut TestAppContext) {
     cx.run_until_parked();
     assert_eq!(listed(cx).len(), 1);
     assert_eq!(listed(cx)[0].0, "probe");
+}
+
+#[gpui_kit::test]
+fn imports_several_plugins_from_the_settings_menu(cx: &mut TestAppContext) {
+    let (workspace, cx, dir) = setup(cx);
+    let first = download(&dir, "first");
+    let second = download(&dir, "second");
+    run(
+        &workspace,
+        Invocation::with_args(
+            "settings.import-plugins",
+            json!({ "paths": [first, second] }),
+        ),
+        cx,
+    )
+    .unwrap();
+    let ids: Vec<String> = listed(cx).into_iter().map(|(id, _, _)| id).collect();
+    assert_eq!(ids, ["first", "second"]);
+
+    // One that cannot be installed is the error; the others are installed anyway.
+    let third = download(&dir, "third");
+    let missing = dir.path().join("downloads/missing/plugin.toml");
+    let error = run(
+        &workspace,
+        Invocation::with_args(
+            "settings.import-plugins",
+            json!({ "paths": [missing, third] }),
+        ),
+        cx,
+    )
+    .unwrap_err();
+    assert!(format!("{error:#}").contains("missing"), "{error:#}");
+    assert!(listed(cx).iter().any(|(id, _, _)| id == "third"));
+}
+
+#[gpui_kit::test]
+fn lists_and_gives_the_file_permission(cx: &mut TestAppContext) {
+    let (workspace, cx, dir) = setup(cx);
+    let asks = download(&dir, "asks");
+    let manifest = std::fs::read_to_string(&asks).unwrap();
+    std::fs::write(&asks, format!("{manifest}permissions = [\"files\"]\n")).unwrap();
+    let plain = download(&dir, "plain");
+    for path in [&asks, &plain] {
+        run(
+            &workspace,
+            Invocation::with_args("plugin.install", json!({ "path": path })),
+            cx,
+        )
+        .unwrap();
+    }
+    let files = |cx: &mut VisualTestContext| -> Vec<(String, bool, bool)> {
+        cx.update(|_, cx| {
+            rows(cx)
+                .0
+                .into_iter()
+                .map(|row| (row.id, row.asks_for_files, row.files_allowed))
+                .collect()
+        })
+    };
+    assert_eq!(
+        files(cx),
+        [
+            ("asks".to_owned(), true, false),
+            ("plain".to_owned(), false, false)
+        ]
+    );
+    run(
+        &workspace,
+        Invocation::with_args(
+            "plugin.allow-files",
+            json!({ "plugin": "asks", "allowed": true }),
+        ),
+        cx,
+    )
+    .unwrap();
+    assert_eq!(files(cx)[0], ("asks".to_owned(), true, true));
+    // The dialog shows the button for the plugin that asks only.
+    run(&workspace, Invocation::new("plugin.admin"), cx).unwrap();
+    cx.run_until_parked();
+    assert!(cx.debug_bounds("plugin-files-0").is_some());
+    assert!(cx.debug_bounds("plugin-files-1").is_none());
+}
+
+#[gpui_kit::test]
+fn import_asks_for_the_plugins(cx: &mut TestAppContext) {
+    let (workspace, cx, dir) = setup(cx);
+    let first = download(&dir, "first");
+    let second = download(&dir, "second");
+    run(&workspace, Invocation::new("settings.import-plugins"), cx).unwrap();
+    assert!(cx.did_prompt_for_paths());
+    cx.simulate_path_prompt_response(move |_| Some(vec![first, second]));
+    cx.run_until_parked();
+    assert_eq!(listed(cx).len(), 2);
+    // Cancelled: nothing more.
+    run(&workspace, Invocation::new("settings.import-plugins"), cx).unwrap();
+    cx.simulate_path_prompt_response(|_| None);
+    cx.run_until_parked();
+    assert_eq!(listed(cx).len(), 2);
 }

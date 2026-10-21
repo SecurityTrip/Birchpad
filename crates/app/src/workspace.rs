@@ -234,7 +234,7 @@ pub struct Workspace {
     pub quick_prints: Vec<gpui_kit::Task<()>>,
     buffer_subscriptions: HashMap<EntityId, Subscription>,
     /// Focus and scroll events of each view, and its changes for the navigation history.
-    view_subscriptions: HashMap<EntityId, [Subscription; 3]>,
+    view_subscriptions: HashMap<EntityId, [Subscription; 4]>,
     pub session_state: SessionState,
     pub disk_state: DiskState,
     /// Go Back and Go Forward.
@@ -349,6 +349,7 @@ impl Workspace {
                 self.refresh_menus(cx);
                 cx.notify();
                 cx.defer_in(window, |this, window, cx| {
+                    this.note_seen_by_plugins(cx);
                     if let Some(view) = this.active_view(cx) {
                         this.plugin_event(birchpad_plugin::EventKind::Activated, &view, window, cx);
                     }
@@ -473,8 +474,12 @@ impl Workspace {
         let events = cx.subscribe_in(view, window, Self::on_editor_event);
         // Wherever its caret goes, for Go Back.
         let changes = cx.observe(view, |this, _, cx| this.note_place(cx));
+        // Its typing and its selection, for the plugins that hear about them.
+        let watched = cx.observe_in(view, window, |this, _, window, cx| {
+            this.watch_for_plugins(window, cx);
+        });
         self.view_subscriptions
-            .insert(view.entity_id(), [focused, events, changes]);
+            .insert(view.entity_id(), [focused, events, changes, watched]);
     }
 
     /// View > Move/Clone Current Document.
@@ -605,8 +610,7 @@ impl Workspace {
             self.ghost_type(ghost, window, cx);
         }
         if let Some(message) = &command_line.plugin_message {
-            // Plugins have no event for it yet (roadmap 6.42).
-            eprintln!("-pluginMessage={message}: plugins hear no command line messages yet");
+            self.deliver_plugin_message(message, window, cx);
         }
         if command_line.quick_print {
             for view in &views {
@@ -1136,7 +1140,7 @@ impl Workspace {
             .unwrap_or_default();
         let user_languages = crate::user_languages::names(cx);
         let spell_languages = crate::spell_check::languages(cx);
-        let scripts = crate::extensions::scripts::names(cx);
+        let scripts = crate::extensions::scripts::scripts(cx);
         let plugin_menus = crate::extensions::plugins::menus(cx);
         let (documents, active_document) = crate::window_menu::menu_documents(self, cx);
         let state = MenuState {

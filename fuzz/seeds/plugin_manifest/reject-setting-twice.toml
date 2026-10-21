@@ -1,0 +1,14 @@
+id = "twice"
+name = "Twice"
+version = "1"
+api = "0.2"
+
+[[settings]]
+key = "a"
+title = "A"
+kind = "text"
+
+[[settings]]
+key = "a"
+title = "A again"
+kind = "bool"

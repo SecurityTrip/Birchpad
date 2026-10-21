@@ -25,7 +25,7 @@
 //!   -qt="text" -qf="file" -qSpeed<1-3>  type the text (or the file's) into a new document
 //!   -qn="name"    Notepad++'s easter eggs, which Birchpad does not have
 //!   -nopluginsupport  start without plugins
-//!   -pluginMessage="text"  a message for plugins (not delivered yet)
+//!   -pluginMessage="text"  a message for the plugins that ask for it (`on-message`)
 //!   --            everything after is a file name, even if it starts with "-"
 //! ```
 //!

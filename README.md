@@ -102,7 +102,7 @@ birchpad [-n<line>] [-c<column>] [-p<position>] [-l<language>] [-udl="name"] [-r
          [-monitor] [-r] [-multiInst] [-nosession] [-openSession] [-openFoldersAsWorkspace]
          [-notabbar] [-alwaysOnTop] [-systemtray] [-x<left>] [-y<top>] [-titleAdd="text"]
          [-settingsDir="folder"] [-loadingTime] [-quickPrint] [-qt="text"] [-qf="file"]
-         [-qSpeed<1-3>] [-nopluginsupport] [FILE]...
+         [-qSpeed<1-3>] [-nopluginsupport] [-pluginMessage="text"] [FILE]...
 ```
 
 A second launch opens its files as tabs in the running window and exits; `-multiInst` starts a
@@ -113,8 +113,8 @@ sessions. File names with `*` and `?` open every file they match, in the folders
 `-r`. `-quickPrint` prints the files on the default printer and quits; `-qt` and `-qf` type a
 text into a new document. The options of the window (`-notabbar`, `-alwaysOnTop`, `-x`, `-y`,
 `-titleAdd`, `-settingsDir`, ...) apply when Birchpad starts. `-systemtray` starts minimized, as
-there is no tray icon yet; `-qn` (Notepad++'s own easter eggs) and `-pluginMessage` are
-accepted and do nothing.
+there is no tray icon yet; `-pluginMessage` hands its text to the plugins that ask for it;
+`-qn` (Notepad++'s own easter eggs) is accepted and does nothing.
 
 ## Portable mode and the network
 

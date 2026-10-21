@@ -612,7 +612,7 @@ dependencies = [
 
 [[package]]
 name = "birchpad-cli"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "interprocess",
  "serde",
@@ -623,7 +623,7 @@ dependencies = [
 
 [[package]]
 name = "birchpad-commands"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "birchpad-i18n",
  "proptest",
@@ -712,7 +712,7 @@ dependencies = [
 
 [[package]]
 name = "birchpad-i18n"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "anyhow",
  "sys-locale",
@@ -742,7 +742,7 @@ dependencies = [
 
 [[package]]
 name = "birchpad-plugin"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "anyhow",
  "birchpad-commands",

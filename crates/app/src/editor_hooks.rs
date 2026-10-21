@@ -23,14 +23,15 @@ fn open_link(url: String, cx: &mut App) {
 }
 
 /// The editor's right-click menu: `contextMenu.toml`, or the default, with what is wrong with
-/// the file on top.
+/// the file on top, and the commands plugins add to it at the bottom.
 fn context_menu(
     menu: PopupMenu,
     view: &WeakEntity<EditorView>,
     window: &mut Window,
     cx: &mut Context<PopupMenu>,
 ) -> PopupMenu {
-    let (nodes, problem) = crate::context_menu::load(cx);
+    let (mut nodes, problem) = crate::context_menu::load(cx);
+    nodes.extend(crate::context_menu::plugin_items(cx));
     let menu = match problem {
         Some(problem) => menu
             .item(PopupMenuItem::new(problem).disabled(true))

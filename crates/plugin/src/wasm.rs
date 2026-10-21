@@ -1,11 +1,12 @@
 //! Running plugins: WebAssembly components of the `plugin` world in `wit/birchpad.wit`, in
-//! Wasmtime (ADR 0036).
+//! Wasmtime (ADR 0036, ADR 0046).
 //!
-//! A plugin sees nothing but the host interface: no files, no network, no clock. Each call
-//! runs on a budget of fuel (about one unit an instruction) and in at most
-//! [`MEMORY_LIMIT`] bytes of memory, so a plugin that loops or grows without end stops with an
-//! error instead of hanging Birchpad. A plugin that traps is instantiated afresh on its next
-//! call.
+//! A plugin sees nothing but the host interface: no network, no clock, and files only through
+//! it once the user allowed them. Each call runs on a budget of fuel (about one unit an
+//! instruction) and in at most [`MEMORY_LIMIT`] bytes of memory, so a plugin that loops or
+//! grows without end stops with an error instead of hanging Birchpad. A plugin that traps is
+//! instantiated afresh on its next call. Its background tasks run in instances of their own
+//! ([`TaskRunner`]), on [`TASK_FUEL_FACTOR`] times the fuel of a call.
 
 use anyhow::{Context as _, Result, anyhow};
 use birchpad_i18n::t;
@@ -13,7 +14,7 @@ use wasmtime::component::{Component, HasSelf, Linker};
 use wasmtime::{Config, Engine, Store, StoreLimits, StoreLimitsBuilder};
 
 use crate::manifest::{EventKind, is_valid_id};
-use crate::session::{Outcome, Session};
+use crate::session::{Control, Outcome, Session};
 
 mod bindings {
     wasmtime::component::bindgen!({
@@ -32,12 +33,16 @@ pub const DEFAULT_FUEL: u64 = 5_000_000_000;
 pub const MEMORY_LIMIT: usize = 256 << 20;
 /// The most commands a plugin may add.
 pub const MAX_COMMANDS: usize = 200;
+/// How many times the fuel of a call a background task may burn.
+pub const TASK_FUEL_FACTOR: u64 = 12;
 
 /// A command of a plugin.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PluginCommand {
     pub id: String,
     pub title: String,
+    /// Also in the text's context menu.
+    pub context_menu: bool,
 }
 
 /// What a plugin's store holds: the session of the call under way.
@@ -94,6 +99,7 @@ impl Runtime {
             .map(|command| PluginCommand {
                 id: command.id,
                 title: command.title,
+                context_menu: command.context_menu,
             })
             .collect();
         plugin.commands = check_commands(commands)?;
@@ -132,6 +138,7 @@ pub fn check_commands(commands: Vec<PluginCommand>) -> Result<Vec<PluginCommand>
         checked.push(PluginCommand {
             id: command.id,
             title: title.to_owned(),
+            context_menu: command.context_menu,
         });
     }
     Ok(checked)
@@ -153,27 +160,15 @@ impl Plugin {
     }
 
     fn instantiate(&self) -> Result<(Store<State>, Bindings)> {
-        let mut linker = Linker::<State>::new(&self.runtime.engine);
-        host::add_to_linker::<State, HasSelf<State>>(&mut linker, |state| state)
-            .map_err(|error| anyhow!("{error}"))?;
-        let state = State {
-            session: Session::empty(),
-            limits: StoreLimitsBuilder::new()
-                .memory_size(MEMORY_LIMIT)
-                .instances(16)
-                .tables(16)
-                .memories(4)
-                .build(),
-        };
-        let mut store = Store::new(&self.runtime.engine, state);
-        store.limiter(|state| &mut state.limits);
-        store
-            .set_fuel(self.runtime.fuel)
-            .map_err(|error| anyhow!("{error}"))?;
-        let bindings = Bindings::instantiate(&mut store, &self.component, &linker)
-            .map_err(|error| anyhow!("{error:#}"))
-            .with_context(|| t!("plugin.does-not-start"))?;
-        Ok((store, bindings))
+        instantiate(&self.runtime, &self.component, self.runtime.fuel)
+    }
+
+    /// What runs the plugin's background tasks, on another thread.
+    pub fn task_runner(&self) -> TaskRunner {
+        TaskRunner {
+            runtime: self.runtime.clone(),
+            component: self.component.clone(),
+        }
     }
 
     /// Calls into the plugin with `session`, and gives back what the call returned with what
@@ -221,6 +216,10 @@ impl Plugin {
             EventKind::Saved => types::Event::Saved,
             EventKind::Closed => types::Event::Closed,
             EventKind::Activated => types::Event::Activated,
+            EventKind::Changed => types::Event::Changed,
+            EventKind::SelectionChanged => types::Event::SelectionChanged,
+            // Heard through `on-message`, with the message.
+            EventKind::Message => anyhow::bail!("{}", t!("plugin.message-is-no-event")),
         };
         let ((), outcome) = self.call(session, |bindings, store| {
             bindings.call_on_event(store, event)
@@ -235,6 +234,91 @@ impl Plugin {
         })?;
         Ok(outcome)
     }
+
+    /// Tells the plugin that the control `id` of its panel was used, with its `value`.
+    pub fn control(&mut self, id: &str, value: &str, session: Session) -> Result<Outcome> {
+        let ((), outcome) = self.call(session, |bindings, store| {
+            bindings.call_on_control(store, id, value)
+        })?;
+        Ok(outcome)
+    }
+
+    /// Hands the plugin the command line's `-pluginMessage`.
+    pub fn message(&mut self, message: &str, session: Session) -> Result<Outcome> {
+        let ((), outcome) = self.call(session, |bindings, store| {
+            bindings.call_on_message(store, message)
+        })?;
+        Ok(outcome)
+    }
+
+    /// Tells the plugin what its task `task` returned.
+    pub fn task_done(
+        &mut self,
+        task: &str,
+        result: &Result<String, String>,
+        session: Session,
+    ) -> Result<Outcome> {
+        let ((), outcome) = self.call(session, |bindings, store| {
+            bindings.call_on_task_done(store, task, result.as_deref().map_err(String::as_str))
+        })?;
+        Ok(outcome)
+    }
+}
+
+/// Runs a plugin's background tasks: each in an instance of its own, so that they neither
+/// wait for the plugin's calls nor see its state. It can be sent to another thread.
+#[derive(Clone)]
+pub struct TaskRunner {
+    runtime: Runtime,
+    component: Component,
+}
+
+impl TaskRunner {
+    /// Runs the task `task` with `input` over `session` (which has no document): what the task
+    /// returned, and what it did. A task that traps or runs out of fuel is an error.
+    pub fn run(
+        &self,
+        task: &str,
+        input: &str,
+        session: Session,
+    ) -> Result<(Result<String, String>, Outcome)> {
+        let fuel = self.runtime.fuel.saturating_mul(TASK_FUEL_FACTOR);
+        let (mut store, bindings) = instantiate(&self.runtime, &self.component, fuel)?;
+        store.data_mut().session = session;
+        let result = bindings.call_run_task(&mut store, task, input);
+        let session = std::mem::take(&mut store.data_mut().session);
+        match result {
+            Ok(value) => Ok((value, session.finish())),
+            Err(error) => Err(describe_trap(&error)),
+        }
+    }
+}
+
+/// A fresh instance of `component` with `fuel` to burn.
+fn instantiate(
+    runtime: &Runtime,
+    component: &Component,
+    fuel: u64,
+) -> Result<(Store<State>, Bindings)> {
+    let mut linker = Linker::<State>::new(&runtime.engine);
+    host::add_to_linker::<State, HasSelf<State>>(&mut linker, |state| state)
+        .map_err(|error| anyhow!("{error}"))?;
+    let state = State {
+        session: Session::empty(),
+        limits: StoreLimitsBuilder::new()
+            .memory_size(MEMORY_LIMIT)
+            .instances(16)
+            .tables(16)
+            .memories(4)
+            .build(),
+    };
+    let mut store = Store::new(&runtime.engine, state);
+    store.limiter(|state| &mut state.limits);
+    store.set_fuel(fuel).map_err(|error| anyhow!("{error}"))?;
+    let bindings = Bindings::instantiate(&mut store, component, &linker)
+        .map_err(|error| anyhow!("{error:#}"))
+        .with_context(|| t!("plugin.does-not-start"))?;
+    Ok((store, bindings))
 }
 
 fn describe_trap(error: &wasmtime::Error) -> anyhow::Error {
@@ -311,5 +395,56 @@ impl host::Host for State {
 
     fn show_panel(&mut self, title: String, lines: Vec<String>) {
         self.session.show_panel(&title, lines);
+    }
+
+    fn show_controls(&mut self, title: String, controls: Vec<types::Control>) {
+        let controls = controls
+            .into_iter()
+            .map(|control| match control {
+                types::Control::Label(text) => Control::Label(text),
+                types::Control::Button(button) => Control::Button {
+                    id: button.id,
+                    title: button.title,
+                },
+                types::Control::TextField(field) => Control::TextField {
+                    id: field.id,
+                    value: field.value,
+                },
+                types::Control::Checkbox(check) => Control::Checkbox {
+                    id: check.id,
+                    title: check.title,
+                    checked: check.checked,
+                },
+                types::Control::Separator => Control::Separator,
+            })
+            .collect();
+        // The function returns nothing: a panel that cannot show is told as a message.
+        if let Err(why) = self.session.show_controls(&title, controls) {
+            self.session.message(&why);
+        }
+    }
+
+    fn setting(&mut self, key: String) -> Option<String> {
+        self.session.setting(&key)
+    }
+
+    fn set_setting(&mut self, key: String, value: String) -> Result<(), String> {
+        self.session.set_setting(&key, &value)
+    }
+
+    fn read_file(&mut self, path: String) -> Result<String, String> {
+        self.session.read_file(&path)
+    }
+
+    fn write_file(&mut self, path: String, text: String) -> Result<(), String> {
+        self.session.write_file(&path, &text)
+    }
+
+    fn open_file(&mut self, path: String) -> Result<(), String> {
+        self.session.open_file(&path)
+    }
+
+    fn start_task(&mut self, task: String, input: String) -> Result<(), String> {
+        self.session.start_task(&task, &input)
     }
 }

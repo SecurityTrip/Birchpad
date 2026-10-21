@@ -1,15 +1,15 @@
 //! Plugins > Plugins Admin... (ADR 0038): the installed plugins with their version, state and
-//! description; installing one from its `plugin.toml`, removing one, turning one on or off.
-//! Each change reloads the plugins.
+//! description; installing one from its `plugin.toml`, removing one, turning one on or off,
+//! and letting one that asks for it use files (ADR 0046). Each change reloads the plugins.
 //!
-//! The dialog's buttons run commands (`plugin.install`, `plugin.uninstall`, `plugin.enable`),
-//! so they can be bound to keys and used by scripts too.
+//! The dialog's buttons run commands (`plugin.install`, `plugin.uninstall`, `plugin.enable`,
+//! `plugin.allow-files`), so they can be bound to keys and used by scripts too.
 
 use std::path::PathBuf;
 
 use anyhow::{Result, anyhow};
 use birchpad_config::PluginInstall;
-use birchpad_plugin::manager;
+use birchpad_plugin::{Permission, manager};
 use gpui_kit::component::Sizable as _;
 use gpui_kit::component::WindowExt as _;
 use gpui_kit::component::button::{Button, ButtonVariants as _};
@@ -37,9 +37,22 @@ struct PluginArgs {
 }
 
 #[derive(Deserialize)]
+struct ImportArgs {
+    /// The plugins' `plugin.toml` files; none asks for them.
+    #[serde(default)]
+    paths: Vec<PathBuf>,
+}
+
+#[derive(Deserialize)]
 struct EnableArgs {
     plugin: String,
     enabled: bool,
+}
+
+#[derive(Deserialize)]
+struct AllowFilesArgs {
+    plugin: String,
+    allowed: bool,
 }
 
 pub fn register_commands(registry: &mut CommandRegistry) {
@@ -55,6 +68,17 @@ pub fn register_commands(registry: &mut CommandRegistry) {
                 this.ask_plugin_to_install(window, cx);
                 Ok(())
             }
+        },
+    );
+    // Settings > Import > Import plugin(s)...: Install... for several plugins at once.
+    registry.workspace(
+        "settings.import-plugins",
+        |this, args: ImportArgs, window, cx| {
+            if args.paths.is_empty() {
+                this.ask_plugins_to_import(window, cx);
+                return Ok(());
+            }
+            this.import_plugins(&args.paths, window, cx)
         },
     );
     registry.workspace("plugin.uninstall", |this, args: PluginArgs, window, cx| {
@@ -86,6 +110,38 @@ pub fn register_commands(registry: &mut CommandRegistry) {
         this.load_plugins(window, cx);
         Ok(())
     });
+    registry.workspace("plugin.allow-files", |this, args: AllowFilesArgs, _, cx| {
+        let dir = plugins_dir(cx)
+            .ok_or_else(|| anyhow!("{}", t!("extensions.admin.there-is-no-settings-folder")))?;
+        let asks = cx.try_global::<Plugins>().and_then(|plugins| {
+            plugins
+                .entries
+                .iter()
+                .find(|entry| entry.id() == args.plugin)
+                .map(|entry| entry.installed.manifest.asks_for(Permission::Files))
+        });
+        match asks {
+            None => anyhow::bail!(
+                "{}",
+                t!(
+                    "extensions.admin.the-plugin-is-not-installed",
+                    plugin = args.plugin
+                )
+            ),
+            // Only what the plugin asked for can be given.
+            Some(false) if args.allowed => anyhow::bail!(
+                "{}",
+                t!(
+                    "extensions.admin.the-plugin-does-not-ask-for-files",
+                    plugin = args.plugin
+                )
+            ),
+            Some(_) => {}
+        }
+        manager::set_file_access(&dir, &args.plugin, args.allowed)?;
+        this.refresh_menus(cx);
+        Ok(())
+    });
 }
 
 impl Workspace {
@@ -110,6 +166,59 @@ impl Workspace {
             cx,
         );
         Ok(())
+    }
+
+    /// Installs the plugins of `manifests`; the first that cannot be installed is the error,
+    /// the others are installed anyway.
+    fn import_plugins(
+        &mut self,
+        manifests: &[PathBuf],
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Result<()> {
+        let dir = plugins_dir(cx)
+            .ok_or_else(|| anyhow!("{}", t!("extensions.admin.there-is-no-settings-folder")))?;
+        let settings = AppState::global(cx).settings.plugins.clone();
+        let mut installed = Vec::new();
+        let mut failed = None;
+        for manifest in manifests {
+            match manager::install(manifest, &dir, &settings) {
+                Ok(plugin) => installed.push(plugin.manifest.name),
+                Err(error) => {
+                    failed.get_or_insert(error.context(manifest.display().to_string()));
+                }
+            }
+        }
+        self.load_plugins(window, cx);
+        if !installed.is_empty() {
+            crate::workspace::report_success(
+                format!(
+                    "{} {}",
+                    t!("extensions.admin.installed"),
+                    installed.join(", ")
+                ),
+                window,
+                cx,
+            );
+        }
+        failed.map_or(Ok(()), Err)
+    }
+
+    /// Import plugin(s)...: asks for plugins' `plugin.toml` files.
+    pub fn ask_plugins_to_import(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let start = self.default_directory(cx);
+        cx.spawn_in(window, async move |this, cx| {
+            let Some(paths) = crate::path_dialog::ask_open(start, cx).await else {
+                return;
+            };
+            this.update_in(cx, |this, window, cx| {
+                if let Err(error) = this.import_plugins(&paths, window, cx) {
+                    report_error(&error, window, cx);
+                }
+            })
+            .ok();
+        })
+        .detach();
     }
 
     /// Install...: asks for a plugin's `plugin.toml`.
@@ -143,6 +252,9 @@ pub struct Row {
     pub status: String,
     /// Whether the plugin is turned off (or would be, were it allowed).
     pub disabled: bool,
+    /// Whether the plugin asks to use files, and whether the user let it.
+    pub asks_for_files: bool,
+    pub files_allowed: bool,
 }
 
 /// What the dialog lists: the plugins, and the folders that hold none that reads.
@@ -150,6 +262,9 @@ pub fn rows(cx: &App) -> (Vec<Row>, Vec<String>) {
     let Some(plugins) = cx.try_global::<Plugins>() else {
         return (Vec::new(), Vec::new());
     };
+    let allowed = plugins_dir(cx)
+        .map(|dir| manager::read_file_access(&dir))
+        .unwrap_or_default();
     let rows = plugins
         .entries
         .iter()
@@ -168,6 +283,8 @@ pub fn rows(cx: &App) -> (Vec<Row>, Vec<String>) {
                 description: manifest.description.clone(),
                 status,
                 disabled: matches!(entry.state, State::Disabled),
+                asks_for_files: manifest.asks_for(Permission::Files),
+                files_allowed: allowed.contains(&manifest.id),
             }
         })
         .collect();
@@ -253,6 +370,16 @@ impl Render for PluginsAdmin {
             } else {
                 "extensions.admin.turn-off"
             };
+            let files = birchpad_commands::Invocation::with_args(
+                "plugin.allow-files",
+                serde_json::json!({ "plugin": row.id, "allowed": !row.files_allowed }),
+            );
+            let files_label = if row.files_allowed {
+                "extensions.admin.deny-files"
+            } else {
+                "extensions.admin.allow-files"
+            };
+            let asks_for_files = row.asks_for_files;
             div()
                 .id(("plugin-row", index))
                 .debug_selector(move || format!("plugin-row-{index}"))
@@ -279,6 +406,18 @@ impl Render for PluginsAdmin {
                         .child(div().text_color(muted).child(row.description))
                         .child(div().child(row.status)),
                 )
+                .when(asks_for_files, |row| {
+                    row.child(
+                        Button::new(("plugin-files", index))
+                            .debug_selector(move || format!("plugin-files-{index}"))
+                            .small()
+                            .label(t!(files_label))
+                            .on_click(cx.listener(move |this, _, window, cx| {
+                                this.run(files.clone(), window, cx);
+                                cx.notify();
+                            })),
+                    )
+                })
                 .child(
                     Button::new(("plugin-toggle", index))
                         .small()

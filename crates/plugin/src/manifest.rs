@@ -6,20 +6,29 @@
 //! version = "1.0.0"
 //! description = "Counts the words of the document or the selection."
 //! author = "Jane Doe"
-//! api = "0.1"
+//! api = "0.2"
 //! events = ["saved"]
+//! permissions = ["files"]
+//!
+//! [[settings]]
+//! key = "count-numbers"
+//! title = "Count numbers as words"
+//! kind = "bool"
+//! default = "true"
 //! ```
 
 use serde::{Deserialize, Serialize};
 
 /// The version of the plugin API (the WIT package `birchpad:plugin`) this Birchpad provides,
 /// as major and minor.
-pub const API_VERSION: &str = "0.1";
+pub const API_VERSION: &str = "0.2";
 
 /// The longest plugin id accepted, in bytes.
 pub const MAX_ID: usize = 64;
 /// The longest plugin name accepted, in characters.
 pub const MAX_NAME: usize = 100;
+/// The most settings a manifest may declare.
+pub const MAX_DECLARED_SETTINGS: usize = 64;
 
 /// An event a plugin may ask to hear about.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -29,6 +38,55 @@ pub enum EventKind {
     Saved,
     Closed,
     Activated,
+    /// The text changed (`on-event`).
+    Changed,
+    /// The selections moved (`on-event`).
+    SelectionChanged,
+    /// The command line's `-pluginMessage` (`on-message`).
+    Message,
+}
+
+/// What a plugin may ask the user to let it do.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum Permission {
+    /// Read and write files, and open them in tabs.
+    Files,
+}
+
+/// How Preferences > Plugins edits a setting.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum SettingKind {
+    /// A check box: `true` or `false`.
+    Bool,
+    /// A whole number.
+    Number,
+    Text,
+}
+
+/// A setting a plugin shows in Preferences > Plugins.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SettingSpec {
+    pub key: String,
+    /// Its label.
+    pub title: String,
+    pub kind: SettingKind,
+    /// Its value until the user or the plugin sets it.
+    #[serde(default)]
+    pub default: String,
+}
+
+impl SettingSpec {
+    /// Whether `value` is one the setting can take.
+    pub fn accepts(&self, value: &str) -> bool {
+        match self.kind {
+            SettingKind::Bool => matches!(value, "true" | "false"),
+            SettingKind::Number => value.parse::<i64>().is_ok(),
+            SettingKind::Text => !value.contains(['\n', '\r']),
+        }
+    }
 }
 
 /// A plugin's `plugin.toml`.
@@ -50,9 +108,15 @@ pub struct Manifest {
     /// The component's file, next to `plugin.toml`.
     #[serde(default = "default_entry")]
     pub entry: String,
-    /// The events the plugin's `on-event` is called for.
+    /// The events the plugin's `on-event` (and `on-message`) is called for.
     #[serde(default)]
     pub events: Vec<EventKind>,
+    /// What the plugin asks the user to let it do.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub permissions: Vec<Permission>,
+    /// The settings Preferences > Plugins shows.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub settings: Vec<SettingSpec>,
 }
 
 fn default_entry() -> String {
@@ -122,7 +186,58 @@ impl Manifest {
                 "the entry {entry:?} must be a .wasm file next to plugin.toml"
             ));
         }
+        if self.settings.len() > MAX_DECLARED_SETTINGS {
+            return invalid(format!(
+                "the plugin {} declares {} settings, more than {MAX_DECLARED_SETTINGS}",
+                self.id,
+                self.settings.len()
+            ));
+        }
+        for (index, setting) in self.settings.iter().enumerate() {
+            if !crate::session::is_setting_key(&setting.key) {
+                return invalid(format!(
+                    "{:?} is not a setting key: use lower-case letters, digits, dashes, dots and underscores",
+                    setting.key
+                ));
+            }
+            if self.settings[..index]
+                .iter()
+                .any(|other| other.key == setting.key)
+            {
+                return invalid(format!("the setting {} comes twice", setting.key));
+            }
+            let title = setting.title.trim();
+            if title.is_empty() || title.contains(char::is_control) {
+                return invalid(format!(
+                    "the setting {} needs a title of one line",
+                    setting.key
+                ));
+            }
+            let default_fits = match setting.kind {
+                // An unset number or switch starts empty: 0 or off.
+                SettingKind::Bool | SettingKind::Number => {
+                    setting.default.is_empty() || setting.accepts(&setting.default)
+                }
+                SettingKind::Text => setting.accepts(&setting.default),
+            };
+            if !default_fits {
+                return invalid(format!(
+                    "the default {:?} of the setting {} is not a value it takes",
+                    setting.default, setting.key
+                ));
+            }
+        }
         Ok(())
+    }
+
+    /// Whether the plugin asks for `permission`.
+    pub fn asks_for(&self, permission: Permission) -> bool {
+        self.permissions.contains(&permission)
+    }
+
+    /// The setting `key` the manifest declares.
+    pub fn setting(&self, key: &str) -> Option<&SettingSpec> {
+        self.settings.iter().find(|setting| setting.key == key)
     }
 
     /// Writes the manifest back as TOML.

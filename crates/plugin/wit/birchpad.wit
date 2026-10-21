@@ -1,10 +1,10 @@
-/// The Birchpad plugin API (ADR 0036).
+/// The Birchpad plugin API (ADR 0036, ADR 0046).
 ///
 /// A plugin is a WebAssembly component of the `plugin` world. It sees the document it works on
 /// through the `host` interface: positions are byte offsets into the UTF-8 text. Its edits
-/// during one call are one undo step; the commands it runs and the messages it shows take
-/// effect once the call returns.
-package birchpad:plugin@0.1.0;
+/// during one call are one undo step; the commands it runs, the messages it shows, the panel it
+/// fills and the tasks it starts take effect once the call returns.
+package birchpad:plugin@0.2.0;
 
 interface types {
     /// A command a plugin adds to its submenu of the Plugins menu.
@@ -13,6 +13,8 @@ interface types {
         id: string,
         /// The menu item's title.
         title: string,
+        /// Whether the command is also an item of the text's context menu.
+        context-menu: bool,
     }
 
     /// A selection range: the anchor stays, the head is where the caret is.
@@ -27,11 +29,44 @@ interface types {
         saved,
         closed,
         activated,
+        /// The text changed: typing, a command, an undo. Sent once the change is done, at most
+        /// once a frame.
+        changed,
+        /// The selections or the caret moved without the text changing.
+        selection-changed,
+    }
+
+    /// A button of the plugin's panel; a click calls `on-control` with an empty value.
+    record button-control {
+        id: string,
+        title: string,
+    }
+
+    /// A text field of the plugin's panel; Enter calls `on-control` with its text.
+    record text-control {
+        id: string,
+        value: string,
+    }
+
+    /// A check box of the plugin's panel; a click calls `on-control` with `true` or `false`.
+    record check-control {
+        id: string,
+        title: string,
+        checked: bool,
+    }
+
+    /// A control of the plugin's panel, top to bottom.
+    variant control {
+        label(string),
+        button(button-control),
+        text-field(text-control),
+        checkbox(check-control),
+        separator,
     }
 }
 
 interface host {
-    use types.{selection};
+    use types.{selection, control};
 
     /// The whole text of the document.
     text: func() -> string;
@@ -58,6 +93,26 @@ interface host {
     message: func(text: string);
     /// Shows the plugin's panel with these lines; clicking a line calls `on-panel-click`.
     show-panel: func(title: string, lines: list<string>);
+    /// Shows the plugin's panel with these controls; using one calls `on-control`.
+    show-controls: func(title: string, controls: list<control>);
+
+    /// The plugin's setting `key`: what Preferences > Plugins or `set-setting` left, or the
+    /// default its manifest gives.
+    setting: func(key: string) -> option<string>;
+    /// Sets the plugin's setting `key`; it is kept between runs of Birchpad.
+    set-setting: func(key: string, value: string) -> result<_, string>;
+
+    /// The UTF-8 text of the file at the absolute path `path`. Only for a plugin that asks for
+    /// the `files` permission and that the user allowed to use files.
+    read-file: func(path: string) -> result<string, string>;
+    /// Writes `text` into the file at `path`, replacing it. As `read-file`.
+    write-file: func(path: string, text: string) -> result<_, string>;
+    /// Opens the file at `path` in a tab, once the call returns. As `read-file`.
+    open-file: func(path: string) -> result<_, string>;
+
+    /// Starts `run-task` with `task` and `input` in the background, once the call returns; its
+    /// result comes back through `on-task-done`. A task sees no document.
+    start-task: func(task: string, input: string) -> result<_, string>;
 }
 
 world plugin {
@@ -72,4 +127,13 @@ world plugin {
     export on-event: func(event: event);
     /// Called when a line of the plugin's panel is clicked (0-based).
     export on-panel-click: func(line: u32);
+    /// Called when a control of the plugin's panel is used: its id, and its value.
+    export on-control: func(id: string, value: string);
+    /// Called with the command line's `-pluginMessage`, if the manifest asks for `message`.
+    export on-message: func(message: string);
+    /// Does the work of a task `start-task` started, away from the window: it sees no
+    /// document, and may work longer than a call.
+    export run-task: func(task: string, input: string) -> result<string, string>;
+    /// Called with what a task returned, on the active document.
+    export on-task-done: func(task: string, outcome: result<string, string>);
 }

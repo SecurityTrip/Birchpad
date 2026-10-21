@@ -1,0 +1,10 @@
+id = "default"
+name = "Default"
+version = "1"
+api = "0.2"
+
+[[settings]]
+key = "count"
+title = "Count"
+kind = "number"
+default = "many"
