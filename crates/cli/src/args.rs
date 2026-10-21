@@ -24,12 +24,16 @@
 //!   -quickPrint   print the files on the default printer and quit
 //!   -qt="text" -qf="file" -qSpeed<1-3>  type the text (or the file's) into a new document
 //!   -qn="name"    Notepad++'s easter eggs, which Birchpad does not have
-//!   -nopluginsupport  start without plugins
+//!   -noPlugin     start without plugins (`-nopluginsupport` too)
+//!   -L<code>      the interface in that language this time (`-Lde`, `-Lru`)
+//!   -notepadStyleCmdline  the file names after it are one name with spaces, as Notepad reads it
+//!   -z <argument> the argument after it is ignored (Notepad's path, when Birchpad replaces it)
+//!   --help        Help > Command Line Arguments... at start
 //!   -pluginMessage="text"  a message for the plugins that ask for it (`on-message`)
 //!   --            everything after is a file name, even if it starts with "-"
 //! ```
 //!
-//! Options are case-insensitive. File names with `*` and `?` are wildcards, matched in their
+//! Options are case-insensitive, except `-L`, which `-l` would otherwise be. File names with `*` and `?` are wildcards, matched in their
 //! folder (and below it, with `-r`). Unknown options produce a warning and are ignored, so
 //! scripts that pass other options keep working.
 
@@ -82,8 +86,12 @@ pub struct CommandLine {
     pub quick_print: bool,
     /// Ghost typing (`-qt`, `-qf`, `-qn`, `-qSpeed`): text typed into a new document.
     pub ghost: Option<Ghost>,
-    /// `-nopluginsupport`: no plugins this time.
+    /// `-noPlugin` (or `-nopluginsupport`): no plugins this time.
     pub no_plugins: bool,
+    /// `-L<code>`: the interface's language this time, whatever the settings say.
+    pub interface_language: Option<String>,
+    /// `--help`: Help > Command Line Arguments... once the window opens.
+    pub help: bool,
     /// `-pluginMessage="text"`: a message for the plugins.
     pub plugin_message: Option<String>,
     /// Problems with the arguments; they are reported, not fatal.
@@ -183,7 +191,20 @@ pub const OPTIONS: &[CliOption] = &[
         "-qSpeed<1-3>",
         "How fast -qt and -qf type: 1 slow, 2 fast, 3 at once",
     ),
-    option("-nopluginsupport", "Start without plugins"),
+    option("-noPlugin", "Start without plugins"),
+    option(
+        "-L<code>",
+        "Show the interface in that language this time (-Lde, -Lru)",
+    ),
+    option(
+        "-notepadStyleCmdline",
+        "The file names after it are one name with spaces, as Notepad reads them",
+    ),
+    option(
+        "-z",
+        "Ignore the argument after it (Notepad's path, when Birchpad stands in for Notepad)",
+    ),
+    option("--help", "Show these options"),
     option(
         "--",
         "Everything after it is a file, even if it starts with a dash",
@@ -280,14 +301,31 @@ impl CommandLine {
         let mut line = Self::default();
         let mut args = args.into_iter().peekable();
         let mut files_only = false;
+        // `-notepadStyleCmdline`: the words of the one file name, joined at the end.
+        let mut notepad_style: Option<Vec<OsString>> = None;
         while let Some(arg) = args.next() {
             let text = arg.to_string_lossy();
             if files_only || !text.starts_with('-') || text == "-" {
-                line.files.push(cwd.join(PathBuf::from(&arg)));
+                match &mut notepad_style {
+                    Some(words) => words.push(arg),
+                    None => line.files.push(cwd.join(PathBuf::from(&arg))),
+                }
                 continue;
             }
             if text == "--" {
                 files_only = true;
+                continue;
+            }
+            if text == "--help" {
+                line.help = true;
+                continue;
+            }
+            if text.eq_ignore_ascii_case("-z") {
+                args.next();
+                continue;
+            }
+            if text.eq_ignore_ascii_case("-notepadStyleCmdline") {
+                notepad_style.get_or_insert_with(Vec::new);
                 continue;
             }
             if text == "--generate" {
@@ -299,6 +337,16 @@ impl CommandLine {
                 continue;
             }
             line.option(&text, cwd);
+        }
+        if let Some(words) = notepad_style.filter(|words| !words.is_empty()) {
+            let mut name = OsString::new();
+            for (index, word) in words.iter().enumerate() {
+                if index > 0 {
+                    name.push(" ");
+                }
+                name.push(word);
+            }
+            line.files.push(cwd.join(PathBuf::from(name)));
         }
         line
     }
@@ -340,7 +388,7 @@ impl CommandLine {
             "-loadingtime" => self.loading_time = true,
             "-quickprint" => self.quick_print = true,
             "-openfoldersasworkspace" => self.open_folders_as_workspace = true,
-            "-nopluginsupport" => self.no_plugins = true,
+            "-noplugin" | "-nopluginsupport" => self.no_plugins = true,
             _ => self.valued_option(arg, &lower, cwd),
         }
     }
@@ -400,7 +448,14 @@ impl CommandLine {
             Ok(value) => *slot = Some(value),
             Err(_) => warnings.push(format!("{arg}: expected a number after {prefix}")),
         };
-        if lower.starts_with("-n") {
+        if let Some(code) = arg.strip_prefix("-L") {
+            if code.is_empty() {
+                self.warnings
+                    .push(format!("{arg}: expected a language code after -L"));
+            } else {
+                self.interface_language = Some(code.to_owned());
+            }
+        } else if lower.starts_with("-n") {
             number("-n", &mut self.line, &mut self.warnings);
         } else if lower.starts_with("-c") {
             number("-c", &mut self.column, &mut self.warnings);

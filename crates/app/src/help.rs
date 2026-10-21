@@ -70,7 +70,7 @@ pub fn command_line_rows() -> Vec<(&'static str, String)> {
         .collect()
 }
 
-fn show_command_line(window: &mut Window, cx: &mut App) {
+pub(crate) fn show_command_line(window: &mut Window, cx: &mut App) {
     let rows = command_line_rows();
     window.open_dialog(cx, move |dialog, _, _| {
         let table = div()

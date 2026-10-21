@@ -106,7 +106,8 @@ birchpad [-n<line>] [-c<column>] [-p<position>] [-l<language>] [-udl="name"] [-r
          [-monitor] [-r] [-multiInst] [-nosession] [-openSession] [-openFoldersAsWorkspace]
          [-notabbar] [-alwaysOnTop] [-systemtray] [-x<left>] [-y<top>] [-titleAdd="text"]
          [-settingsDir="folder"] [-loadingTime] [-quickPrint] [-qt="text"] [-qf="file"]
-         [-qSpeed<1-3>] [-nopluginsupport] [-pluginMessage="text"] [FILE]...
+         [-qSpeed<1-3>] [-noPlugin] [-pluginMessage="text"] [-L<code>]
+         [-notepadStyleCmdline] [-z <argument>] [--help] [FILE]...
 ```
 
 Второй запуск открывает свои файлы вкладками в уже открытом окне и завершается; `-multiInst`
@@ -119,7 +120,10 @@ birchpad [-n<line>] [-c<column>] [-p<position>] [-l<language>] [-udl="name"] [-r
 `-alwaysOnTop`, `-x`, `-y`, `-titleAdd`, `-settingsDir`, ...) действуют при запуске Birchpad.
 `-systemtray` запускает свёрнутым, так как значка в области уведомлений пока нет;
 `-pluginMessage` передаёт свой текст плагинам, которые его просят; `-qn` (пасхалки самого
-Notepad++) принимается и ничего не делает.
+Notepad++) принимается и ничего не делает. `-L` (единственный параметр, где важен регистр)
+показывает интерфейс на другом языке в этот раз (`-Lde`, `-Lru`). Чтобы заменить Блокнот
+Windows, `-notepadStyleCmdline -z` пропускает путь к Блокноту и читает остальное как одно имя
+файла с пробелами.
 
 ## Переносной режим и сеть
 

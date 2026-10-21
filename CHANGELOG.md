@@ -45,6 +45,10 @@ version's release notes from its section here.
 - Documentation in Russian: README, CONTRIBUTING, SECURITY, PRIVACY, the code of conduct,
   writing plugins and scripts, the release checklist and the roadmap as `*.ru.md` beside the
   English ones, each linking to the other.
+- Notepad++ 8's command-line options `-noPlugin` (as `-nopluginsupport`), `-L<code>` (the
+  interface in that language this time: `-Lde`, `-Lru`), `-notepadStyleCmdline` and `-z` (to
+  stand in for Windows Notepad: Notepad's path is skipped and the rest is one file name with
+  spaces), and `--help` (Help > Command Line Arguments... at start).
 
 ### Changed
 

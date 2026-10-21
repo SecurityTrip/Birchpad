@@ -105,7 +105,8 @@ birchpad [-n<line>] [-c<column>] [-p<position>] [-l<language>] [-udl="name"] [-r
          [-monitor] [-r] [-multiInst] [-nosession] [-openSession] [-openFoldersAsWorkspace]
          [-notabbar] [-alwaysOnTop] [-systemtray] [-x<left>] [-y<top>] [-titleAdd="text"]
          [-settingsDir="folder"] [-loadingTime] [-quickPrint] [-qt="text"] [-qf="file"]
-         [-qSpeed<1-3>] [-nopluginsupport] [-pluginMessage="text"] [FILE]...
+         [-qSpeed<1-3>] [-noPlugin] [-pluginMessage="text"] [-L<code>]
+         [-notepadStyleCmdline] [-z <argument>] [--help] [FILE]...
 ```
 
 A second launch opens its files as tabs in the running window and exits; `-multiInst` starts a
@@ -117,7 +118,10 @@ sessions. File names with `*` and `?` open every file they match, in the folders
 text into a new document. The options of the window (`-notabbar`, `-alwaysOnTop`, `-x`, `-y`,
 `-titleAdd`, `-settingsDir`, ...) apply when Birchpad starts. `-systemtray` starts minimized, as
 there is no tray icon yet; `-pluginMessage` hands its text to the plugins that ask for it;
-`-qn` (Notepad++'s own easter eggs) is accepted and does nothing.
+`-qn` (Notepad++'s own easter eggs) is accepted and does nothing. `-L` (the one option whose case
+counts) shows the interface in a language this time (`-Lde`, `-Lru`). To stand in for Windows
+Notepad, `-notepadStyleCmdline -z` skips Notepad's path and reads the rest as one file name with
+spaces.
 
 ## Portable mode and the network
 

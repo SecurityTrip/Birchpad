@@ -613,6 +613,9 @@ impl Workspace {
         if let Some(message) = &command_line.plugin_message {
             self.deliver_plugin_message(message, window, cx);
         }
+        if command_line.help {
+            crate::help::show_command_line(window, cx);
+        }
         if command_line.quick_print {
             for view in &views {
                 self.activate_view(view, window, cx);
