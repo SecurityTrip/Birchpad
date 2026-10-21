@@ -100,6 +100,7 @@ Everything that reads input from outside (files and their encodings, settings, t
 sessions and Notepad++'s `session.xml`, `.workspace` files, the keymap, the text's context menu
 (`context-menu.toml`), the command line and the message that hands it to a running instance, the
 update manifest, plugins' `plugin.toml`, the JSON, XML and hex dumps the built-in tools read,
+JSON paths, XPath expressions, DTDs and XML Schemas,
 Hunspell dictionaries, search queries and Find in Files' filters, the calls plugins make into
 Birchpad, and Rhai scripts) is fuzzed. The checks live in `crates/fuzz`: each takes any bytes and checks more than "no
 panic" (what reads cleanly writes back the same). `cargo test -p birchpad-fuzz` runs them over

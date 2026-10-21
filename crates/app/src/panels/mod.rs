@@ -16,6 +16,7 @@ pub mod folder_workspace;
 #[cfg_attr(feature = "test-support", allow(unused_imports))]
 pub use folder_workspace::open_terminal;
 pub mod function_list;
+pub mod json_viewer;
 pub mod plugin_panel;
 pub mod project;
 
@@ -40,6 +41,7 @@ pub use document_list::DocumentList;
 pub use document_map::DocumentMap;
 pub use folder_workspace::FolderWorkspace;
 pub use function_list::FunctionList;
+pub use json_viewer::JsonViewer;
 pub use plugin_panel::PluginPanel;
 pub use project::ProjectPanel;
 
@@ -66,10 +68,12 @@ pub enum PanelKind {
     DocumentMap,
     /// What a plugin or a script shows.
     PluginPanel,
+    /// Plugins > JSON Viewer's tree.
+    JsonViewer,
 }
 
 impl PanelKind {
-    pub const ALL: [Self; 10] = [
+    pub const ALL: [Self; 11] = [
         Self::FolderWorkspace,
         Self::Project(1),
         Self::Project(2),
@@ -80,6 +84,7 @@ impl PanelKind {
         Self::FunctionList,
         Self::DocumentMap,
         Self::PluginPanel,
+        Self::JsonViewer,
     ];
 
     /// The name kept in `state.toml`.
@@ -95,6 +100,7 @@ impl PanelKind {
             Self::FunctionList => "function-list",
             Self::DocumentMap => "document-map",
             Self::PluginPanel => "plugin-panel",
+            Self::JsonViewer => "json-viewer",
         }
     }
 
@@ -114,12 +120,15 @@ impl PanelKind {
             Self::FunctionList => "Function List",
             Self::DocumentMap => "Document Map",
             Self::PluginPanel => "Plugin Panel",
+            Self::JsonViewer => "JSON Viewer",
         }
     }
 
     pub fn side(self) -> Side {
         match self {
-            Self::FunctionList | Self::DocumentMap | Self::PluginPanel => Side::Right,
+            Self::FunctionList | Self::DocumentMap | Self::PluginPanel | Self::JsonViewer => {
+                Side::Right
+            }
             _ => Side::Left,
         }
     }
@@ -140,6 +149,7 @@ impl PanelKind {
             Self::FunctionList => "panel.function-list",
             Self::DocumentMap => "panel.document-map",
             Self::PluginPanel => "panel.plugin",
+            Self::JsonViewer => "panel.json-viewer",
         }
     }
 
@@ -327,6 +337,7 @@ impl Workspace {
                 .new(|cx| CharacterPanel::new(workspace, window, cx))
                 .into(),
             PanelKind::PluginPanel => cx.new(|cx| PluginPanel::new(workspace, window, cx)).into(),
+            PanelKind::JsonViewer => cx.new(|cx| JsonViewer::new(workspace, window, cx)).into(),
             PanelKind::Project(panel) => cx
                 .new(|cx| ProjectPanel::new(panel, workspace, window, cx))
                 .into(),

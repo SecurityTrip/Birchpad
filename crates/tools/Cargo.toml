@@ -13,6 +13,7 @@ birchpad-core.workspace = true
 birchpad-i18n.workspace = true
 birchpad-theme.workspace = true
 chrono = { version = "0.4", default-features = false, features = ["std"] }
+fancy-regex = "0.19"
 roxmltree = "0.21"
 similar.workspace = true
 spellbook = "0.4"

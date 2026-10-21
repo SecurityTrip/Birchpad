@@ -266,6 +266,7 @@ pub const COMMANDS: &[CommandSpec] = &[
     workspace("panel.function-list", "Function List"),
     workspace("panel.clipboard-history", "Clipboard History"),
     workspace("panel.character-panel", "Character Panel"),
+    workspace("panel.json-viewer", "Show JSON Viewer"),
     // View > Preview: a Markdown or PlantUML document's text, its preview beside it, or the
     // preview alone
     workspace("view.preview-editor", "Editor Only"),
@@ -418,9 +419,22 @@ pub const COMMANDS: &[CommandSpec] = &[
     editor("json.format", "Format JSON"),
     editor("json.minify", "Compress JSON"),
     editor("json.validate", "Validate JSON"),
+    editor("json.sort-keys", "Sort JSON Keys"),
+    // json.find-path takes { "path": "$.store.book[0]" }
+    workspace("json.find-path", "Find JSON Path"),
+    workspace("json.copy-value", "Copy Value"),
+    workspace("json.copy-key", "Copy Key"),
+    workspace("json.copy-path", "Copy Path"),
     editor("xml.pretty-print", "Pretty Print XML"),
     editor("xml.linearize", "Linearize XML"),
     editor("xml.check", "Check XML Syntax"),
+    // xml.validate takes { "schema": <an .xsd> } or validates as the document says
+    workspace("xml.validate", "Validate Now"),
+    // xml.xpath takes { "expression": "//item" } or opens its dialog
+    workspace("xml.xpath", "Evaluate XPath Expression..."),
+    editor("xml.escape", "Escape Selected Text"),
+    editor("xml.unescape", "Unescape Selected Text"),
+    workspace("xml.tag-auto-close", "Tag Auto-Close"),
     // Hex Editor: the active document's bytes in a new document, and back
     workspace("hex.view", "View in Hex"),
     workspace("hex.apply", "Apply Hex to Document"),

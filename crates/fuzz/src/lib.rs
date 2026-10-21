@@ -46,7 +46,10 @@ pub const TARGETS: &[(&str, Check)] = &[
     ("manifest", manifest),
     ("plugin_manifest", plugin_manifest),
     ("json", json),
+    ("json_tree", json_tree),
     ("xml", xml),
+    ("xpath", xpath),
+    ("xml_schema", xml_schema),
     ("hex_dump", hex_dump),
     ("spell_dictionary", spell_dictionary),
     ("search_query", search_query),
@@ -573,6 +576,94 @@ pub fn json(data: &[u8]) -> bool {
     assert_eq!(json::minify(&small).unwrap(), small);
     assert_eq!(json::format(&pretty, layout).unwrap(), pretty);
     true
+}
+
+/// JSON read as JSON Viewer's tree: a text is a tree exactly when it is JSON; every value lies
+/// within its parent; the path of a value finds a value of that path; and the text with its
+/// keys sorted is JSON with the same values, which sorting again leaves as it is.
+pub fn json_tree(data: &[u8]) -> bool {
+    use birchpad_tools::json;
+    use birchpad_tools::json_tree::{self, JsonTree};
+    let Ok(text) = std::str::from_utf8(data) else {
+        return false;
+    };
+    let layout = birchpad_tools::Layout::default();
+    let Ok(tree) = JsonTree::parse(text) else {
+        assert!(json::validate(text).is_err());
+        assert!(json_tree::sort_keys(text, layout).is_err());
+        return false;
+    };
+    assert!(json::validate(text).is_ok());
+    for (index, node) in tree.nodes.iter().enumerate() {
+        assert!(node.range.start < node.range.end && node.range.end <= text.len());
+        if let Some(parent) = node.parent {
+            let outer = &tree.nodes[parent].range;
+            assert!(outer.start < node.range.start && node.range.end < outer.end);
+            assert!(tree.nodes[parent].children.contains(&index));
+        }
+        if index < 200 {
+            let path = tree.path(index);
+            let found = tree.find(&path).unwrap();
+            assert_eq!(tree.path(found), path);
+        }
+    }
+    let sorted = json_tree::sort_keys(text, layout).unwrap();
+    let again = JsonTree::parse(&sorted).unwrap();
+    assert_eq!(again.nodes.len(), tree.nodes.len());
+    assert_eq!(json_tree::sort_keys(&sorted, layout).unwrap(), sorted);
+    true
+}
+
+/// An XPath expression over a document: the bytes up to the first NUL are the document, the
+/// rest the expression. It is evaluated or refused; the nodes it gives are in the document,
+/// in order.
+pub fn xpath(data: &[u8]) -> bool {
+    use birchpad_tools::xpath::{XPathResult, evaluate};
+    let Ok(text) = std::str::from_utf8(data) else {
+        return false;
+    };
+    let (document, expression) = text.split_once('\0').unwrap_or((text, "/*"));
+    match evaluate(document, expression) {
+        Ok(XPathResult::Nodes(nodes)) => {
+            for node in &nodes {
+                assert!(node.range.start <= node.range.end && node.range.end <= document.len());
+                assert!(document.is_char_boundary(node.range.start));
+                assert!(document.is_char_boundary(node.range.end));
+            }
+            true
+        }
+        Ok(XPathResult::Value(_)) => true,
+        Err(_) => false,
+    }
+}
+
+/// A document validated against a DTD or an XML Schema: the bytes up to the first NUL are the
+/// document, the rest the external DTD, or the schema when it is one. Validation ends with a
+/// list of problems in the document, or refuses what is not XML.
+pub fn xml_schema(data: &[u8]) -> bool {
+    use birchpad_tools::xml_schema::{doctype, schema_location, validate_dtd, validate_xsd};
+    let Ok(text) = std::str::from_utf8(data) else {
+        return false;
+    };
+    let (document, other) = text.split_once('\0').unwrap_or((text, ""));
+    let _ = schema_location(document);
+    let result = if other.contains("schema") {
+        validate_xsd(document, other)
+    } else if doctype(document).is_some() {
+        validate_dtd(document, (!other.is_empty()).then_some(other))
+    } else {
+        return false;
+    };
+    match result {
+        Ok(problems) => {
+            assert!(problems.len() <= birchpad_tools::xml_schema::MAX_PROBLEMS);
+            for problem in &problems {
+                assert!(problem.offset <= document.len());
+            }
+            true
+        }
+        Err(_) => false,
+    }
 }
 
 /// A document checked, pretty printed and linearized as XML: what is well formed stays well

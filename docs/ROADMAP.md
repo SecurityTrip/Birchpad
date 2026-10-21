@@ -628,8 +628,10 @@ Closing Phase 6.
       within a line, comparing with the last save, the clipboard or Git; a navigation bar of the
       differences ([ADR 0047](adr/0047-compare-as-compareplus.md)): the navigation bar is the
       vertical scrollbar's track, marked where the differences are
-- [ ] 6.44 JSON Viewer's tree panel (find a path, copy a value), sorting keys; XML Tools'
+- [x] 6.44 JSON Viewer's tree panel (find a path, copy a value), sorting keys; XML Tools'
       XPath, XSD and DTD validation, escaping and unescaping, closing tags as typed
+      ([ADR 0048](adr/0048-json-viewer-and-xml-tools.md)): XPath and schemas as far as the ADR
+      lists; Tag Auto-Close is the Auto-Completion setting that closes tags
 - [ ] 6.45 Hex Editor in place: the bytes edited in a hex view of the document itself
       (overwrite, insert, the caret shared with the text), columns and grouping, Find in hex
 - [ ] 6.46 DSpellCheck's options (several languages at once, ignore rules, words in code by

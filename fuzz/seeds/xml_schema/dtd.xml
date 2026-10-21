@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<!DOCTYPE list [
+<!ELEMENT list (item+, note?)>
+<!ELEMENT item (#PCDATA|b)*>
+<!ELEMENT b (#PCDATA)>
+<!ELEMENT note EMPTY>
+<!ATTLIST item id ID #REQUIRED kind (a|b) "a">
+<!ATTLIST note ref IDREF #IMPLIED>
+]>
+<list><item id="i1">x<b>y</b></item><item id="i2" kind="c"/><note ref="i3"/></list>

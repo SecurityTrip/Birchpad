@@ -858,6 +858,7 @@ dependencies = [
  "birchpad-i18n",
  "birchpad-theme",
  "chrono",
+ "fancy-regex",
  "proptest",
  "roxmltree 0.21.1",
  "similar",

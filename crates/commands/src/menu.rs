@@ -823,10 +823,17 @@ pub fn main_menu() -> Vec<Menu> {
             Submenu(Menu::new(
                 "JSON Viewer",
                 vec![
+                    cmd("panel.json-viewer"),
+                    Separator,
                     cmd("json.format"),
                     cmd("json.minify"),
+                    cmd("json.sort-keys"),
                     Separator,
                     cmd("json.validate"),
+                    Separator,
+                    cmd("json.copy-value"),
+                    cmd("json.copy-key"),
+                    cmd("json.copy-path"),
                 ],
             )),
             Submenu(Menu::new(
@@ -836,6 +843,13 @@ pub fn main_menu() -> Vec<Menu> {
                     cmd("xml.linearize"),
                     Separator,
                     cmd("xml.check"),
+                    cmd("xml.validate"),
+                    cmd("xml.xpath"),
+                    Separator,
+                    cmd("xml.escape"),
+                    cmd("xml.unescape"),
+                    Separator,
+                    cmd("xml.tag-auto-close"),
                 ],
             )),
             Submenu(Menu::new(

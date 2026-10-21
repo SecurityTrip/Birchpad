@@ -19,6 +19,9 @@ mod html;
 #[path = "json/tests.rs"]
 mod json;
 
+#[path = "json_tree/tests.rs"]
+mod json_tree;
+
 #[path = "print/tests.rs"]
 mod print;
 
@@ -30,3 +33,9 @@ mod lib_tests;
 
 #[path = "xml/tests.rs"]
 mod xml;
+
+#[path = "xml_schema/tests.rs"]
+mod xml_schema;
+
+#[path = "xpath/tests.rs"]
+mod xpath;

@@ -23,6 +23,13 @@ version's release notes from its section here.
   since Last Save, Compare to Clipboard and Diff to Git HEAD compare the document with its
   file, the clipboard or Git's last commit. Preferences > Compare turns each of these on or
   off.
+- Plugins > JSON Viewer > Show JSON Viewer: the document's JSON as a tree beside it. A click
+  selects a value in the text; a path (`$.store.book[0].title`) finds one; Copy Value, Copy Key
+  and Copy Path copy it (with the panel closed, the value at the caret). Sort JSON Keys formats
+  the JSON with every object's keys in order.
+- Plugins > XML Tools: Evaluate XPath Expression... lists the nodes an expression selects;
+  Validate Now checks the document against its DTD or XML Schema (the one it names, or one
+  you choose) and goes to the first problem; Escape and Unescape Selected Text; Tag Auto-Close.
 
 ### Changed
 
