@@ -1058,6 +1058,7 @@ impl Workspace {
             .active_view(cx)
             .is_some_and(|view| view.read(cx).buffer.read(cx).requested_read_only());
         let close_tags = AppState::global(cx).settings.completion.close_tags;
+        let hex_shown = self.active_hex_editor(cx).is_some();
         let checked = |invocation: &Invocation| {
             if let Some(on) = crate::pane::is_checked(invocation, tab_marks) {
                 return on;
@@ -1113,6 +1114,9 @@ impl Workspace {
             }
             if invocation.command == "xml.tag-auto-close" {
                 return close_tags;
+            }
+            if invocation.command == "hex.editor" {
+                return hex_shown;
             }
             let Some(format) = format else {
                 return false;

@@ -694,6 +694,11 @@ pub fn hex_dump(data: &[u8]) -> bool {
     let Ok(text) = std::str::from_utf8(data) else {
         return false;
     };
+    // The same text as a pattern of View in HEX's Find: two digits a byte.
+    if let Ok(pattern) = hex::parse_pattern(text) {
+        let digits = text.chars().filter(|c| !c.is_whitespace()).count();
+        assert_eq!(pattern.len() * 2, digits);
+    }
     let Ok(bytes) = hex::parse(text) else {
         return false;
     };

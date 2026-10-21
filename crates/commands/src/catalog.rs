@@ -436,8 +436,12 @@ pub const COMMANDS: &[CommandSpec] = &[
     editor("xml.unescape", "Unescape Selected Text"),
     workspace("xml.tag-auto-close", "Tag Auto-Close"),
     // Hex Editor: the active document's bytes in a new document, and back
-    workspace("hex.view", "View in Hex"),
+    workspace("hex.view", "Hex Dump in New Document"),
     workspace("hex.apply", "Apply Hex to Document"),
+    workspace("hex.editor", "View in HEX"),
+    // hex.find takes { "pattern": "4A 6F" or "\"text\"", "backward": false }, or goes to
+    // the hex view's field
+    workspace("hex.find", "Find in HEX"),
     // Compare: the active document with the other view's, or with the tab before it
     workspace("compare.compare", "Compare"),
     workspace("compare.clear", "Clear Results"),

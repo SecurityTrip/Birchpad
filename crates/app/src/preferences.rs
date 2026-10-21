@@ -606,6 +606,24 @@ pub const ENTRIES: &[Entry] = &[
         Kind::Number { min: 1, max: 3600 },
     ),
     entry(
+        "Hex Editor",
+        "hex.columns",
+        "Bytes in a row",
+        Kind::Number { min: 1, max: 64 },
+    ),
+    entry(
+        "Hex Editor",
+        "hex.group",
+        "Bytes in a group",
+        Kind::Number { min: 1, max: 64 },
+    ),
+    entry(
+        "Hex Editor",
+        "hex.uppercase",
+        "Hexadecimal digits in capitals",
+        Kind::Bool,
+    ),
+    entry(
         "Compare",
         "compare.align",
         "Align the lines both documents have",

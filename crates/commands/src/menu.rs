@@ -854,7 +854,13 @@ pub fn main_menu() -> Vec<Menu> {
             )),
             Submenu(Menu::new(
                 "Hex Editor",
-                vec![cmd("hex.view"), cmd("hex.apply")],
+                vec![
+                    cmd("hex.editor"),
+                    cmd("hex.find"),
+                    Separator,
+                    cmd("hex.view"),
+                    cmd("hex.apply"),
+                ],
             )),
             Submenu(Menu::new(
                 "Compare",

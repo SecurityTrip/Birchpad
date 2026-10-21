@@ -30,9 +30,14 @@ version's release notes from its section here.
 - Plugins > XML Tools: Evaluate XPath Expression... lists the nodes an expression selects;
   Validate Now checks the document against its DTD or XML Schema (the one it names, or one
   you choose) and goes to the first problem; Escape and Unescape Selected Text; Tag Auto-Close.
+- Plugins > Hex Editor > View in HEX shows the document's bytes in place of its text and edits
+  them there: two digits a byte, over the caret or before it (Insert), characters in the text
+  column, the caret shared with the text. Find in HEX finds bytes or text in quotes.
+  Preferences > Hex Editor sets the bytes in a row, the groups and capitals.
 
 ### Changed
 
+- Plugins > Hex Editor > View in Hex is now Hex Dump in New Document.
 - The plugin API is version 0.2 (`api = "0.2"`): plugins built for 0.1 must be rebuilt against
   the new `birchpad.wit`, where what 0.1 had is unchanged.
 

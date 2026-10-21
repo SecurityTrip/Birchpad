@@ -31,6 +31,37 @@ pub struct Settings {
     pub preview: PreviewSettings,
     pub print: PrintSettings,
     pub compare: CompareSettings,
+    pub hex: HexSettings,
+}
+
+/// Plugins > Hex Editor's view of a document's bytes.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, rename_all = "kebab-case")]
+pub struct HexSettings {
+    /// Bytes a row shows, from 1 to 64.
+    pub columns: u8,
+    /// Bytes put together without a space between them, from 1 to the columns.
+    pub group: u8,
+    /// `A` to `F` in capitals.
+    pub uppercase: bool,
+}
+
+impl Default for HexSettings {
+    fn default() -> Self {
+        Self {
+            columns: 16,
+            group: 1,
+            uppercase: true,
+        }
+    }
+}
+
+impl HexSettings {
+    /// The bytes a row shows and how many make a group, within their limits.
+    pub fn layout(&self) -> (usize, usize) {
+        let columns = usize::from(self.columns).clamp(1, 64);
+        (columns, usize::from(self.group).clamp(1, columns))
+    }
 }
 
 /// Plugins > Compare, as ComparePlus's settings.

@@ -96,3 +96,42 @@ fn replacing_with_the_same_text_changes_nothing() {
         assert!(transaction.changes().is_identity(), "{text:?}");
     }
 }
+
+#[test]
+fn reads_patterns_of_bytes() {
+    assert_eq!(parse_pattern("4A 6f20").unwrap(), [0x4A, 0x6F, 0x20]);
+    assert_eq!(parse_pattern(" ff\t00\n").unwrap(), [0xFF, 0x00]);
+    assert_eq!(parse_pattern("00").unwrap(), [0]);
+    for wrong in ["", "   ", "4", "4A 6", "zz", "0x41", "4A-6F"] {
+        assert!(parse_pattern(wrong).is_err(), "{wrong:?}");
+    }
+}
+
+#[test]
+fn finds_bytes_going_round() {
+    let bytes = b"abcabc";
+    assert_eq!(find(bytes, b"bc", 0, false), Some(1));
+    assert_eq!(find(bytes, b"bc", 2, false), Some(4));
+    // Past the last: round to the first.
+    assert_eq!(find(bytes, b"bc", 5, false), Some(1));
+    assert_eq!(find(bytes, b"bc", 99, false), Some(1));
+    // Backward: the last that starts before, then round from the end.
+    assert_eq!(find(bytes, b"bc", 4, true), Some(1));
+    assert_eq!(find(bytes, b"bc", 1, true), Some(4));
+    assert_eq!(find(bytes, b"abcabc", 0, false), Some(0));
+    assert_eq!(find(bytes, b"abcabc", 3, true), Some(0));
+    assert_eq!(find(bytes, b"x", 0, false), None);
+    assert_eq!(find(bytes, b"", 0, false), None);
+    assert_eq!(find(bytes, b"abcabca", 0, false), None);
+    assert_eq!(find(b"", b"a", 0, true), None);
+}
+
+#[test]
+fn shows_printable_bytes_as_themselves() {
+    assert_eq!(printable(b'A'), 'A');
+    assert_eq!(printable(b' '), ' ');
+    assert_eq!(printable(b'~'), '~');
+    for byte in [0u8, b'\n', 0x7F, 0x80, 0xFF] {
+        assert_eq!(printable(byte), '.', "{byte}");
+    }
+}

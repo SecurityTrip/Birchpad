@@ -28,3 +28,25 @@ fn compare_reads_from_settings_and_refuses_what_is_not_a_switch() {
     }
     assert!(check_setting("compare.colors", &toml::Value::Boolean(true)).is_err());
 }
+
+#[test]
+fn hex_rows_stay_within_their_limits() {
+    let hex = HexSettings::default();
+    assert_eq!((hex.columns, hex.group, hex.uppercase), (16, 1, true));
+    assert_eq!(hex.layout(), (16, 1));
+    for (columns, group, expected) in [
+        (0, 0, (1, 1)),
+        (1, 1, (1, 1)),
+        (64, 64, (64, 64)),
+        (65, 8, (64, 8)),
+        (8, 16, (8, 8)),
+        (255, 255, (64, 64)),
+    ] {
+        let hex = HexSettings {
+            columns,
+            group,
+            uppercase: false,
+        };
+        assert_eq!(hex.layout(), expected, "{columns} {group}");
+    }
+}

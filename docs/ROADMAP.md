@@ -632,8 +632,10 @@ Closing Phase 6.
       XPath, XSD and DTD validation, escaping and unescaping, closing tags as typed
       ([ADR 0048](adr/0048-json-viewer-and-xml-tools.md)): XPath and schemas as far as the ADR
       lists; Tag Auto-Close is the Auto-Completion setting that closes tags
-- [ ] 6.45 Hex Editor in place: the bytes edited in a hex view of the document itself
+- [x] 6.45 Hex Editor in place: the bytes edited in a hex view of the document itself
       (overwrite, insert, the caret shared with the text), columns and grouping, Find in hex
+      ([ADR 0049](adr/0049-hex-editor-in-place.md)): bytes that are not text in the document's
+      encoding wait for the rest of their character, since the document is text
 - [ ] 6.46 DSpellCheck's options (several languages at once, ignore rules, words in code by
       style); a dictionary bundled for English under a license compatible with Birchpad's
 - [ ] 6.47 Online features under the `OnlineFeatures` policy: Plugins Admin's online list of

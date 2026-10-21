@@ -121,3 +121,60 @@ pub fn replace_differing(old: &Rope, new: &str) -> Result<Transaction, InvalidEd
             .with_selection(Selection::point(range.start + inserted.len())),
     )
 }
+
+/// A pattern of bytes to find, written in hexadecimal: pairs of digits, spaces between them
+/// or not (`4A 6f20`). An odd digit, or anything else, does not read.
+pub fn parse_pattern(text: &str) -> Result<Vec<u8>, HexError> {
+    let digits: Vec<char> = text.chars().filter(|c| !c.is_whitespace()).collect();
+    let error = |message: String| HexError { line: 1, message };
+    if digits.is_empty() {
+        return Err(error(birchpad_i18n::t!("tools.hex.empty-pattern")));
+    }
+    if let Some(wrong) = digits.iter().find(|c| !c.is_ascii_hexdigit()) {
+        return Err(error(birchpad_i18n::t!(
+            "tools.hex.not-a-byte",
+            text = format!("{wrong:?}")
+        )));
+    }
+    if digits.len() % 2 == 1 {
+        return Err(error(birchpad_i18n::t!("tools.hex.odd-digits")));
+    }
+    Ok(digits
+        .chunks(2)
+        .map(|pair| {
+            let text: String = pair.iter().collect();
+            u8::from_str_radix(&text, 16).unwrap_or_default()
+        })
+        .collect())
+}
+
+/// Where `needle` is next in `haystack`: from `from` on (or, `backward`, the last that starts
+/// before `from`), going round past the end (or the start). `None` for an empty needle or none
+/// found.
+pub fn find(haystack: &[u8], needle: &[u8], from: usize, backward: bool) -> Option<usize> {
+    if needle.is_empty() || needle.len() > haystack.len() {
+        return None;
+    }
+    let last = haystack.len() - needle.len();
+    let at = |start: usize| haystack[start..start + needle.len()] == *needle;
+    let from = from.min(haystack.len());
+    if backward {
+        (0..from.min(last + 1))
+            .rev()
+            .chain((from.min(last + 1)..=last).rev())
+            .find(|&start| at(start))
+    } else {
+        (from.min(last + 1)..=last)
+            .chain(0..from.min(last + 1))
+            .find(|&start| at(start))
+    }
+}
+
+/// How the text column shows a byte: itself if it is printable ASCII, else a dot.
+pub fn printable(byte: u8) -> char {
+    if byte.is_ascii_graphic() || byte == b' ' {
+        char::from(byte)
+    } else {
+        '.'
+    }
+}
