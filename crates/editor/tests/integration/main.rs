@@ -52,6 +52,9 @@ mod smart_highlight;
 #[path = "symbols/tests.rs"]
 mod symbols;
 
+#[path = "syntax_selection/tests.rs"]
+mod syntax_selection;
+
 #[path = "test_support.rs"]
 mod test_support;
 

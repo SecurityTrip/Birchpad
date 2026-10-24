@@ -16,6 +16,12 @@ version's release notes from its section here.
   recent file, by parts of its path (`app work` finds `crates/app/src/workspace.rs`); Enter
   opens it. Preferences > Go to File chooses the files listed (by default not those in `.git`,
   `node_modules` and `target`), hidden ones too, and how many at most.
+- Edit > Expand Selection (Ctrl+Alt+Up) grows the selection to the piece of syntax around it:
+  a word, a string's text, the string, what is between brackets, the brackets, the statement,
+  the function; Shrink Selection (Ctrl+Alt+Down) goes back. In plain text it grows to the
+  word, the line, then everything.
+- Sticky scroll, in Preferences > Editing: the first lines of the blocks around the top of the
+  view stay there while you scroll, five at most by default; a click on one goes to it.
 
 ## [0.6.0] - 2026-10-22
 

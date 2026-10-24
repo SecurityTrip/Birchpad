@@ -8,6 +8,7 @@ mod folds;
 mod highlight;
 mod language;
 mod outline;
+mod selection;
 mod syntax;
 mod udl;
 
@@ -16,6 +17,7 @@ pub use folds::{fold_ranges, indent_fold_ranges};
 pub use highlight::{HIGHLIGHT_NAMES, Highlight, resolve};
 pub use language::{LANGUAGES, Language, all as all_languages, by_id, detect, injected};
 pub use outline::{Symbol, SymbolKind, has_outline, outline, outline_query_error};
+pub use selection::expand_selection;
 pub use syntax::{
     LanguageConfig, Layer, MAX_DEPTH, ParseJob, Parsed, Syntax, config, lua_matches_to_regex,
     lua_pattern_to_regex,

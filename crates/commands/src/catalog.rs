@@ -126,6 +126,9 @@ pub const COMMANDS: &[CommandSpec] = &[
     // Esc: back to one caret (the primary selection), or out of a rectangular selection
     editor("edit.cancel-selection", "Cancel Multiple Selection"),
     editor("edit.begin-end-select", "Begin/End Select"),
+    // By the syntax tree (else word, line, all), and back the way it grew
+    editor("edit.expand-selection", "Expand Selection"),
+    editor("edit.shrink-selection", "Shrink Selection"),
     editor(
         "edit.begin-end-select-column",
         "Begin/End Select in Column Mode",

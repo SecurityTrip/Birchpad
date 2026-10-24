@@ -248,6 +248,7 @@ impl Element for EditorElement {
                 }
             },
         );
+        paint_sticky(&layout, window, cx);
         for bar in [&layout.vertical_bar, &layout.horizontal_bar]
             .into_iter()
             .flatten()
@@ -265,6 +266,59 @@ impl Element for EditorElement {
 
         self.view.update(cx, |view, _| view.layout = Some(layout));
     }
+}
+
+/// Sticky scroll's lines over the top rows, across the margins and the text, with a line under
+/// them.
+fn paint_sticky(layout: &super::layout::Layout, window: &mut Window, cx: &mut App) {
+    let Some(last) = layout.sticky.last() else {
+        return;
+    };
+    let line_height = layout.metrics.line_height;
+    let gutter = layout.margins.gutter;
+    let text = layout.text_bounds;
+    let bottom = last.y + line_height;
+    window.paint_quad(fill(
+        Bounds::from_corners(
+            point(gutter.left(), text.top()),
+            point(gutter.right(), bottom),
+        ),
+        theme::paint(theme::editor().gutter_background),
+    ));
+    window.paint_quad(fill(
+        Bounds::from_corners(point(text.left(), text.top()), point(text.right(), bottom)),
+        theme::paint(theme::editor().background),
+    ));
+    window.with_content_mask(Some(ContentMask { bounds: gutter }), |window| {
+        for row in &layout.sticky {
+            if let Some((origin, number)) = &row.number {
+                number
+                    .paint(*origin, line_height, TextAlign::Left, None, window, cx)
+                    .ok();
+            }
+        }
+    });
+    window.with_content_mask(Some(ContentMask { bounds: text }), |window| {
+        for row in &layout.sticky {
+            row.shaped
+                .paint(
+                    point(row.x, row.y),
+                    line_height,
+                    TextAlign::Left,
+                    None,
+                    window,
+                    cx,
+                )
+                .ok();
+        }
+    });
+    window.paint_quad(fill(
+        Bounds::from_corners(
+            point(gutter.left().min(text.left()), bottom),
+            point(gutter.right().max(text.right()), bottom + px(1.)),
+        ),
+        theme::paint(theme::editor().gutter_border),
+    ));
 }
 
 /// A fold box: a square with a minus (expanded) or a plus (collapsed), as Notepad++ draws them.

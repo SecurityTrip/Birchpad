@@ -122,3 +122,30 @@ fn hidden_lines_merge_nested_folds() {
     assert_eq!(hidden_lines(&folds, &[1, 0, 8]), [1..8, 9..10]);
     assert!(hidden_lines(&folds, &[2]).is_empty(), "not a fold point");
 }
+
+#[test]
+fn sticky_headers_are_the_folds_around_the_line_under_them() {
+    let folds = folds();
+    let from = |top: usize| (top..10).collect::<Vec<_>>();
+    // At a header, or outside every fold: none.
+    assert!(sticky_headers(&folds, &from(0), 5).is_empty());
+    // Two headers cover two rows: the folds around line 3, the third shown.
+    assert_eq!(sticky_headers(&folds, &from(1), 5), [0, 1]);
+    // Two would cover lines 5 and 6, and line 7 is in the outer fold only.
+    assert_eq!(sticky_headers(&folds, &from(5), 5), [0]);
+    // The last line of a fold is still in it.
+    assert_eq!(sticky_headers(&folds, &from(9), 5), [8]);
+}
+
+#[test]
+fn sticky_headers_keep_to_their_limit_and_the_lines_shown() {
+    let folds = folds();
+    assert_eq!(sticky_headers(&folds, &[1, 2, 3, 4], 1), [0]);
+    assert!(sticky_headers(&folds, &[2, 3], 0).is_empty());
+    assert!(sticky_headers(&folds, &[], 5).is_empty());
+    assert!(sticky_headers(&[], &[1, 2, 3], 5).is_empty());
+    // Lines hidden in a collapsed fold are not shown: 1 then 4.
+    assert_eq!(sticky_headers(&folds, &[1, 4, 5, 6], 5), [0]);
+    // Fewer lines shown than headers: as far as they go.
+    assert_eq!(sticky_headers(&folds, &[2], 5), [0, 1]);
+}

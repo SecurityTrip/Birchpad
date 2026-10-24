@@ -59,3 +59,28 @@ fn go_to_file_s_limit_stays_within_its_bounds() {
     assert!(check_setting("finder.max-files", &toml::Value::Integer(-1)).is_err());
     assert!(check_setting("finder.hidden", &toml::Value::Integer(1)).is_err());
 }
+
+#[test]
+fn sticky_scroll_is_off_and_keeps_five_lines_by_default() {
+    let editor = EditorSettings::default();
+    assert!(!editor.sticky_scroll);
+    assert_eq!(editor.sticky_lines(), 5);
+    for (set, lines) in [(0, 1), (1, 1), (10, 10), (11, 10), (255, 10)] {
+        let editor = EditorSettings {
+            sticky_scroll_lines: set,
+            ..EditorSettings::default()
+        };
+        assert_eq!(editor.sticky_lines(), lines, "{set}");
+    }
+    let settings: Settings = toml::from_str(
+        "[editor]
+sticky-scroll = true
+sticky-scroll-lines = 3
+",
+    )
+    .unwrap();
+    assert!(settings.editor.sticky_scroll);
+    assert_eq!(settings.editor.sticky_lines(), 3);
+    assert!(check_setting("editor.sticky-scroll", &toml::Value::Integer(1)).is_err());
+    assert!(check_setting("editor.sticky-scroll-lines", &toml::Value::Integer(-1)).is_err());
+}

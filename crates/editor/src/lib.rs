@@ -25,6 +25,7 @@ pub mod multi;
 pub mod operations;
 pub mod smart_highlight;
 pub mod symbols;
+pub mod syntax_selection;
 pub mod theme;
 
 pub use hooks::{ActiveFindOptions, EditorHooks, Ranges};
@@ -225,6 +226,14 @@ pub fn register_commands(registry: &mut CommandRegistry) {
         this.delete_with(cx, motion::word_right);
         Ok(())
     });
+    registry.editor("edit.expand-selection", |this, (), _, cx| {
+        this.expand_selection(cx);
+        Ok(())
+    });
+    registry.editor("edit.shrink-selection", |this, (), _, cx| {
+        this.shrink_selection(cx);
+        Ok(())
+    });
     registry.editor("edit.select-all", |this, (), _, cx| {
         this.select_all(cx);
         Ok(())
@@ -397,6 +406,8 @@ pub struct ViewSettings {
     pub current_line_frame_width: Pixels,
     pub edge: Edge,
     pub edge_columns: Vec<usize>,
+    /// Sticky scroll, and the most lines it keeps.
+    pub sticky_scroll: Option<usize>,
 }
 
 impl ViewSettings {
@@ -434,6 +445,7 @@ impl ViewSettings {
                 .iter()
                 .map(|&c| usize::from(c))
                 .collect(),
+            sticky_scroll: editor.sticky_scroll.then(|| editor.sticky_lines()),
         }
     }
 
@@ -551,6 +563,9 @@ pub struct EditorView {
     /// The order in which Multi-select added ranges, valid while `selection` is still the one
     /// they make.
     multi_order: Option<(Vec<Range>, Selection)>,
+    /// The selections Expand Selection grew from, the last one last, valid while `selection`
+    /// is still the one it made.
+    expansions: Option<(Vec<Selection>, Selection)>,
     /// Begin/End Select: where the first invocation put the start, and in which mode.
     begin_select: Option<multi::BeginSelect>,
     /// The scroll position of the last frame, to report scrolling.
@@ -673,6 +688,7 @@ impl EditorView {
             fold_cache: None,
             block: None,
             multi_order: None,
+            expansions: None,
             begin_select: None,
             last_scroll: None,
             synced_scroll: false,
@@ -1574,6 +1590,23 @@ impl EditorView {
             };
             self.drag = Some(Drag::HorizontalThumb { grab });
             self.drag_scrollbar(event.position, cx);
+            return;
+        }
+        // A click on a line sticky scroll keeps goes there, shown under the lines above it.
+        if let Some(line) = layout.sticky_at(event.position.y)
+            && (layout.text_bounds.contains(&event.position)
+                || layout.margins.gutter.contains(&event.position))
+        {
+            let above = layout
+                .sticky
+                .iter()
+                .position(|row| row.line == line)
+                .unwrap_or(0);
+            let text = self.text(cx).clone();
+            self.go_to(birchpad_core::motion::line_range(&text, line).start, cx);
+            self.scroll_to_line(line, cx);
+            self.scroll_top = (self.scroll_top - above as f64).max(0.);
+            self.autoscroll = false;
             return;
         }
         // A click in the margins of a line with hidden lines below shows them again.

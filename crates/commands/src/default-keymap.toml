@@ -1181,6 +1181,19 @@ command = "view.command-palette"
 keys = "secondary-shift-o"
 command = "search.go-to-file"
 
+# --- Expand and Shrink Selection ----------------------------------------------------------------
+# Not Notepad++'s; Alt+Shift+arrows, other editors' keys for them, select columns here.
+
+[[binding]]
+keys = "secondary-alt-up"
+command = "edit.expand-selection"
+context = "Editor"
+
+[[binding]]
+keys = "secondary-alt-down"
+command = "edit.shrink-selection"
+context = "Editor"
+
 # --- Macro --------------------------------------------------------------------------------------
 
 [[binding]]

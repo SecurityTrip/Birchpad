@@ -677,8 +677,10 @@ each with its tests, docs and a `CHANGELOG.md` entry, its options in Preferences
 - [x] 7.2 Fuzzy file finder: the files of the workspace's folders and of the recent files, by
       parts of their path ([ADR 0052](adr/0052-command-palette.md)): Search > Go to File...
       (Ctrl+Shift+O, as Ctrl+P is Print), with Preferences > Go to File
-- [ ] 7.3 Syntax-aware selection (expand and shrink by the syntax tree) and sticky scroll (the
+- [x] 7.3 Syntax-aware selection (expand and shrink by the syntax tree) and sticky scroll (the
       enclosing scopes' first lines kept at the top)
+      ([ADR 0053](adr/0053-syntax-selection-and-sticky-scroll.md)): Edit > Expand Selection
+      and Shrink Selection (Ctrl+Alt+Up and Down); sticky scroll in Preferences > Editing
 - [ ] 7.4 Minimize to the system tray (Notepad++'s Preferences > MISC), once GPUI has a tray
       icon; until then, written down why not
 - [ ] 7.4a Menus left from Notepad++ 8 (6.49): Edit > Auto-Completion (the completion commands

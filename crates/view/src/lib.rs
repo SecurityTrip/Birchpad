@@ -21,6 +21,7 @@ pub use cells::{
 pub use display_map::{DisplayMap, LayoutConfig, LongLines, Row};
 pub use folding::{
     Fold, fold_at, folds_from_ranges, hidden_lines, innermost_containing, shift_folds,
+    sticky_headers,
 };
 pub use guides::{indent_guides, indentation};
 pub use wrap::{row_count, wrap_line};

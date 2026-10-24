@@ -335,6 +335,18 @@ pub const ENTRIES: &[Entry] = &[
         Kind::Number { min: 1, max: 6 },
     ),
     entry(
+        "Editing",
+        "editor.sticky-scroll",
+        "Sticky scroll: the first lines of the blocks around the top stay there",
+        Kind::Bool,
+    ),
+    entry(
+        "Editing",
+        "editor.sticky-scroll-lines",
+        "Sticky scroll lines at most",
+        Kind::Number { min: 1, max: 10 },
+    ),
+    entry(
         "Auto-Completion",
         "completion.api",
         "Function completion",

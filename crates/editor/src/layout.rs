@@ -6,7 +6,7 @@
 
 use std::ops::Range as ByteRange;
 
-use birchpad_core::motion::line_count;
+use birchpad_core::motion::{line_count, line_range};
 use birchpad_core::{LineChange, Rope};
 use birchpad_view::{BlockPoint, DisplayMap, DisplayText, LayoutConfig, Row};
 use gpui_kit::{
@@ -189,6 +189,18 @@ impl Margins {
     }
 }
 
+/// A line sticky scroll keeps at the top of the view.
+pub struct StickyRow {
+    pub line: usize,
+    /// Top of the row, in window coordinates.
+    pub y: Pixels,
+    /// Where its text starts.
+    pub x: Pixels,
+    pub shaped: ShapedLine,
+    /// Its number in the line number margin.
+    pub number: Option<(Point<Pixels>, ShapedLine)>,
+}
+
 pub struct Layout {
     pub metrics: Metrics,
     pub margins: Margins,
@@ -221,6 +233,8 @@ pub struct Layout {
     pub total_rows: usize,
     /// Rows that fit completely.
     pub full_rows: usize,
+    /// Sticky scroll's lines, from the top.
+    pub sticky: Vec<StickyRow>,
 }
 
 impl EditorView {
@@ -375,7 +389,29 @@ impl EditorView {
             // Searching continues in the next frame.
             window.request_animation_frame();
         }
-        let styles = self.frame_styles(&shown, &text, cx);
+        // Sticky scroll: the headers of the folds around the top, highlighted with the rest.
+        let sticky_lines = match settings.sticky_scroll {
+            Some(max) if !self.rtl && self.scroll_top > 0. => {
+                let mut lines: Vec<usize> = pending.iter().map(|(row, ..)| row.line).collect();
+                lines.dedup();
+                let folds = self.folds(cx).to_vec();
+                birchpad_view::sticky_headers(&folds, &lines, max.min(full_rows / 2))
+            }
+            _ => Vec::new(),
+        };
+        let sticky_ranges: Vec<ByteRange<usize>> = sticky_lines
+            .iter()
+            .map(|&line| {
+                let range = line_range(&text, line);
+                let end = text.floor_char_boundary(range.end.min(range.start + LONG_ROW));
+                range.start..end
+            })
+            .collect();
+        let styles = if sticky_ranges.is_empty() {
+            self.frame_styles(&shown, &text, cx)
+        } else {
+            self.frame_styles(&[sticky_ranges.clone(), shown.clone()].concat(), &text, cx)
+        };
         let mut rows = Vec::with_capacity(pending.len());
         for (row, y, mut x, display) in pending {
             // Rows shaped only in part (very long ones) reorder the part shown.
@@ -399,6 +435,33 @@ impl EditorView {
                 display,
                 shaped,
                 bidi,
+            });
+        }
+        let mut sticky = Vec::with_capacity(sticky_lines.len());
+        for (index, (line, range)) in sticky_lines.into_iter().zip(sticky_ranges).enumerate() {
+            let display = DisplayText::new(&text, range, 0, settings.tab_width);
+            let shaped = self.shape_row(&display, &metrics, &styles, window);
+            let y = text_bounds.top() + line_height * index as f32;
+            let x = if wrap_width.is_some() {
+                text_bounds.left() + TEXT_PADDING
+            } else {
+                column_zero
+            };
+            let number = margins.line_numbers.map(|margin| {
+                let shaped = shape(
+                    window,
+                    &(line + 1).to_string(),
+                    &metrics,
+                    theme::paint(theme::editor().gutter_text).into(),
+                );
+                (point(margin.right() - cell - shaped.width(), y), shaped)
+            });
+            sticky.push(StickyRow {
+                line,
+                y,
+                x,
+                shaped,
+                number,
             });
         }
         if wrap_width.is_none() {
@@ -428,6 +491,7 @@ impl EditorView {
             symbols: Symbols::default(),
             total_rows,
             full_rows,
+            sticky,
         };
         layout.bookmarks = self.bookmark_symbols(&layout, &text, cx);
         layout.change_bars = self.change_bars(&layout, &text, cx);
@@ -1243,6 +1307,15 @@ impl Layout {
     pub fn text_columns(&self) -> usize {
         let usable = self.text_bounds.size.width - TEXT_PADDING * 2.;
         ((usable / self.metrics.cell).floor() as usize).max(1)
+    }
+
+    /// The line of the sticky row at `y`, if one is there.
+    pub fn sticky_at(&self, y: Pixels) -> Option<usize> {
+        let height = self.metrics.line_height;
+        self.sticky
+            .iter()
+            .find(|row| row.y <= y && y < row.y + height)
+            .map(|row| row.line)
     }
 
     /// The visible row at window y, if any.

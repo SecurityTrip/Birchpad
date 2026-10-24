@@ -286,6 +286,17 @@ pub struct EditorSettings {
     /// Split Lines breaks lines at the first one while the edge is shown, else at the width of
     /// the view.
     pub edge_columns: Vec<u16>,
+    /// Sticky scroll: the first lines of the folds around the top of the view stay at its top.
+    pub sticky_scroll: bool,
+    /// The most lines sticky scroll keeps, from 1 to 10.
+    pub sticky_scroll_lines: u8,
+}
+
+impl EditorSettings {
+    /// [`Self::sticky_scroll_lines`] within its limits.
+    pub fn sticky_lines(&self) -> usize {
+        usize::from(self.sticky_scroll_lines.clamp(1, 10))
+    }
 }
 
 /// Where Notepad++'s change history shows changed lines: orange while they differ from the
@@ -356,6 +367,8 @@ impl Default for EditorSettings {
             current_line_frame_width: 1,
             edge: Edge::default(),
             edge_columns: vec![80],
+            sticky_scroll: false,
+            sticky_scroll_lines: 5,
         }
     }
 }
