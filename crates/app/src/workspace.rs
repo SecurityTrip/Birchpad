@@ -169,6 +169,7 @@ pub fn register_commands(registry: &mut CommandRegistry) {
     crate::user_languages::register_commands(registry);
     crate::print::register_commands(registry);
     crate::pane::register_commands(registry);
+    crate::palette::register_commands(registry);
     crate::preview::register_commands(registry);
     crate::plantuml::register_commands(registry);
     crate::window_menu::register_commands(registry);

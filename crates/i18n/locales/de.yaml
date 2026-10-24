@@ -341,6 +341,7 @@ command:
   view:
     always-on-top: "Immer im Vordergrund"
     clone-to-other-view: "In andere Ansicht klonen"
+    command-palette: "Befehlspalette..."
     distraction-free: "Ablenkungsfreier Modus"
     focus-other-view: "Andere Ansicht fokussieren"
     fold-all: "Alle einklappen"
@@ -851,6 +852,10 @@ online:
   nothing-listed: "Noch ist nichts gelistet."
   other-api: "{id} ist für Plugin-API {api} gebaut, und Birchpad bietet {known}"
   turned-off: "Online-Funktionen sind von Ihrem Administrator ausgeschaltet (OnlineFeatures)"
+palette:
+  command-palette: "Befehlspalette"
+  no-command-matches: "Kein Befehl passt"
+  type-a-command: "Einen Teil des Befehlsnamens eingeben"
 pane:
   tabs-are-counted-from-1: "Tabs werden ab 1 gezählt"
   there-is-no-tab-color: "es gibt keine Tabfarbe {color}; die Farben gehen von 1 bis {last}"
@@ -984,6 +989,7 @@ preferences:
   close-html-and-xml-tags: "HTML- und XML-Tags schließen"
   cloud-link: "Cloud & Link"
   colors: "Farben"
+  command-palette: "Befehlspalette"
   comments: "Kommentare"
   comments-and-strings: "Kommentare und Zeichenketten"
   compare: "Vergleichen"
@@ -1090,6 +1096,7 @@ preferences:
   print: "Drucken"
   print-line-numbers: "Zeilennummern drucken"
   recent-files: "Zuletzt geöffnete Dateien"
+  recently-used-commands-listed-first: "Zuletzt verwendete Befehle zuerst"
   reduce: "Verkleinern"
   reload-without-asking: "Ohne Nachfrage neu laden"
   remember-inaccessible-files: "Nicht erreichbare Dateien merken"

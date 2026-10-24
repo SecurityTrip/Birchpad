@@ -32,7 +32,6 @@ pub struct Row {
 /// Every command of the catalog, then the menu items and bindings that run one with arguments
 /// (Convert Case to UPPERCASE), each once.
 pub fn rows(keymap: &Keymap) -> Vec<Row> {
-    let category = |id: &str| id.split('.').next().unwrap_or_default().to_owned();
     let mut rows: Vec<Row> = birchpad_commands::COMMANDS
         .iter()
         .map(|spec| Row {
@@ -41,45 +40,55 @@ pub fn rows(keymap: &Keymap) -> Vec<Row> {
             category: category(spec.id),
         })
         .collect();
-    let mut with_args = Vec::new();
-    fn walk(items: &[MenuItem], parent: &str, out: &mut Vec<(Invocation, String)>) {
-        for item in items {
-            match item {
-                MenuItem::Command { invocation, .. } if !invocation.args.is_null() => {
-                    let parent = crate::i18n::get_or(&crate::menus::menu_key(parent), parent);
-                    out.push((
-                        invocation.clone(),
-                        format!("{parent}: {}", crate::menus::menu_label(item)),
-                    ));
-                }
-                MenuItem::Submenu(menu) => walk(&menu.items, &menu.title, out),
-                _ => {}
-            }
-        }
-    }
-    for menu in birchpad_commands::main_menu() {
-        walk(&menu.items, &menu.title, &mut with_args);
-    }
+    let mut with_args = menu_rows();
     for binding in keymap.bindings() {
         if !binding.invocation.args.is_null() {
             let title = birchpad_commands::find(&binding.invocation.command)
                 .map_or(binding.invocation.command.clone(), |spec| {
                     crate::menus::command_title(spec.id)
                 });
-            with_args.push((
-                binding.invocation.clone(),
-                format!("{title} {}", binding.invocation.args),
-            ));
-        }
-    }
-    for (invocation, name) in with_args {
-        if !rows.iter().any(|row| row.invocation == invocation) {
-            rows.push(Row {
-                category: category(&invocation.command),
-                invocation,
-                name,
+            with_args.push(Row {
+                category: category(&binding.invocation.command),
+                invocation: binding.invocation.clone(),
+                name: format!("{title} {}", binding.invocation.args),
             });
         }
+    }
+    for row in with_args {
+        if !rows.iter().any(|known| known.invocation == row.invocation) {
+            rows.push(row);
+        }
+    }
+    rows
+}
+
+/// The group of a command's id: `file`, `edit`, ...
+fn category(id: &str) -> String {
+    id.split('.').next().unwrap_or_default().to_owned()
+}
+
+/// The items of the main menu that run a command with arguments, named after their submenu
+/// and themselves (Convert Case to: UPPERCASE), in the menu's order.
+pub fn menu_rows() -> Vec<Row> {
+    fn walk(items: &[MenuItem], parent: &str, out: &mut Vec<Row>) {
+        for item in items {
+            match item {
+                MenuItem::Command { invocation, .. } if !invocation.args.is_null() => {
+                    let parent = crate::i18n::get_or(&crate::menus::menu_key(parent), parent);
+                    out.push(Row {
+                        invocation: invocation.clone(),
+                        name: format!("{parent}: {}", crate::menus::menu_label(item)),
+                        category: category(&invocation.command),
+                    });
+                }
+                MenuItem::Submenu(menu) => walk(&menu.items, &menu.title, out),
+                _ => {}
+            }
+        }
+    }
+    let mut rows = Vec::new();
+    for menu in birchpad_commands::main_menu() {
+        walk(&menu.items, &menu.title, &mut rows);
     }
     rows
 }

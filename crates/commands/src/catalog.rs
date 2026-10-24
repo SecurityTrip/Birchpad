@@ -338,6 +338,8 @@ pub const COMMANDS: &[CommandSpec] = &[
     editor("view.hide-lines", "Hide Lines"),
     editor("view.show-hidden-lines", "Show Hidden Lines"),
     workspace("view.summary", "Summary..."),
+    // Every command by its name, the recently used first
+    workspace("view.command-palette", "Command Palette..."),
     workspace("view.always-on-top", "Always on Top"),
     workspace("view.full-screen", "Toggle Full Screen Mode"),
     workspace("view.post-it", "Post-It"),

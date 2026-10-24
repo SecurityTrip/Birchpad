@@ -41,6 +41,8 @@ struct Entry {
     target: TypeId,
     /// An `Rc<Handler<T>>` for the target `T`.
     handler: Rc<dyn Any>,
+    /// The command runs without arguments: its arguments decode from none.
+    bare: bool,
 }
 
 #[derive(Default)]
@@ -81,6 +83,7 @@ impl CommandRegistry {
         let entry = Entry {
             target: TypeId::of::<T>(),
             handler: Rc::new(handler),
+            bare: Invocation::new(id).args::<A>().is_ok(),
         };
         let previous = self.handlers.insert(id, entry);
         assert!(previous.is_none(), "command {id} is registered twice");
@@ -98,6 +101,12 @@ impl CommandRegistry {
     /// Whether `id` has a handler.
     pub fn contains(&self, id: &str) -> bool {
         self.handlers.contains_key(id)
+    }
+
+    /// Whether `id` has a handler that runs it without arguments, as the command palette does
+    /// with the commands it lists by their title alone.
+    pub fn runs_bare(&self, id: &str) -> bool {
+        self.handlers.get(id).is_some_and(|entry| entry.bare)
     }
 
     /// Marks a catalog command as not implemented yet.

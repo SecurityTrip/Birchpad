@@ -606,6 +606,12 @@ pub const ENTRIES: &[Entry] = &[
         Kind::Number { min: 1, max: 3600 },
     ),
     entry(
+        "Command Palette",
+        "palette.recent-commands",
+        "Recently used commands listed first",
+        Kind::Number { min: 0, max: 50 },
+    ),
+    entry(
         "Spell Checker",
         "spell.languages",
         "Languages checked together",

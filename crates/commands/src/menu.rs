@@ -587,6 +587,8 @@ pub fn main_menu() -> Vec<Menu> {
     let view = Menu::new(
         "View",
         vec![
+            cmd("view.command-palette"),
+            Separator,
             cmd("view.always-on-top"),
             cmd("view.full-screen"),
             cmd("view.post-it"),

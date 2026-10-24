@@ -342,6 +342,7 @@ command:
   view:
     always-on-top: "Поверх всех окон"
     clone-to-other-view: "Клонировать в другое окно"
+    command-palette: "Палитра команд..."
     distraction-free: "Режим без отвлечений"
     focus-other-view: "Перейти в другое окно"
     fold-all: "Свернуть все"
@@ -852,6 +853,10 @@ online:
   nothing-listed: "В списке пока ничего нет."
   other-api: "{id} собран для API плагинов {api}, а Birchpad предоставляет {known}"
   turned-off: "онлайн-функции отключены администратором (OnlineFeatures)"
+palette:
+  command-palette: "Палитра команд"
+  no-command-matches: "Нет подходящих команд"
+  type-a-command: "Введите часть названия команды"
 pane:
   tabs-are-counted-from-1: "вкладки нумеруются с 1"
   there-is-no-tab-color: "нет цвета вкладки {color}; цвета нумеруются от 1 до {last}"
@@ -998,6 +1003,7 @@ preferences:
   close-html-and-xml-tags: "Закрывать теги HTML и XML"
   cloud-link: "Облако и ссылки"
   colors: "Цвета"
+  command-palette: "Палитра команд"
   comments: "Комментарии"
   comments-and-strings: "Комментарии и строки"
   compare: "Сравнение"
@@ -1104,6 +1110,7 @@ preferences:
   print: "Печать"
   print-line-numbers: "Печатать номера строк"
   recent-files: "Недавние файлы"
+  recently-used-commands-listed-first: "Недавние команды первыми"
   reduce: "Уменьшить"
   reload-without-asking: "Перезагружать без вопроса"
   remember-inaccessible-files: "Запоминать недоступные файлы"

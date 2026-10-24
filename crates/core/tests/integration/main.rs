@@ -25,6 +25,9 @@ mod document;
 #[path = "format/tests.rs"]
 mod format;
 
+#[path = "fuzzy/tests.rs"]
+mod fuzzy;
+
 #[path = "hash/tests.rs"]
 mod hash;
 

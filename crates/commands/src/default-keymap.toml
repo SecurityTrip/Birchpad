@@ -1169,6 +1169,13 @@ command = "edit.block-comment"
 context = "Editor"
 platforms = ["macos"]
 
+# --- Command palette ----------------------------------------------------------------------------
+# Not Notepad++'s, which has no palette: Ctrl+Shift+P is its macro playback.
+
+[[binding]]
+keys = "secondary-shift-a"
+command = "view.command-palette"
+
 # --- Macro --------------------------------------------------------------------------------------
 
 [[binding]]

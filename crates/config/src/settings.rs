@@ -33,6 +33,29 @@ pub struct Settings {
     pub compare: CompareSettings,
     pub hex: HexSettings,
     pub spell: SpellSettings,
+    pub palette: PaletteSettings,
+}
+
+/// View > Command Palette...
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, rename_all = "kebab-case")]
+pub struct PaletteSettings {
+    /// How many of the commands last run from the palette it lists first, from 0 (none, and
+    /// none remembered) to 50.
+    pub recent_commands: u8,
+}
+
+impl Default for PaletteSettings {
+    fn default() -> Self {
+        Self { recent_commands: 8 }
+    }
+}
+
+impl PaletteSettings {
+    /// [`Self::recent_commands`] within its limit.
+    pub fn recent_limit(&self) -> usize {
+        usize::from(self.recent_commands).min(crate::state::MAX_RECENT_COMMANDS)
+    }
 }
 
 /// Plugins > Spell Checker, as DSpellCheck's settings.

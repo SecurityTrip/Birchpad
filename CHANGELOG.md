@@ -6,6 +6,13 @@ version's release notes from its section here.
 
 ## [Unreleased]
 
+### Added
+
+- View > Command Palette... (Ctrl+Shift+A) finds any command by a few letters of its name:
+  the commands of the menus, the macros, the Run menu's command lines and the plugins' and
+  scripts' commands, each with its shortcut. The commands you ran from it last come first;
+  Preferences > Command Palette sets how many.
+
 ## [0.6.0] - 2026-10-22
 
 ### Added

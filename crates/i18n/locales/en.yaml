@@ -343,6 +343,7 @@ command:
   view:
     always-on-top: "Always on Top"
     clone-to-other-view: "Clone to Other View"
+    command-palette: "Command Palette..."
     distraction-free: "Distraction Free Mode"
     focus-other-view: "Focus on Another View"
     fold-all: "Fold All"
@@ -853,6 +854,10 @@ online:
   nothing-listed: "Nothing is listed yet."
   other-api: "{id} is built for plugin API {api}, and Birchpad provides {known}"
   turned-off: "online features are turned off by your administrator (OnlineFeatures)"
+palette:
+  command-palette: "Command Palette"
+  no-command-matches: "No command matches"
+  type-a-command: "Type a part of a command's name"
 pane:
   tabs-are-counted-from-1: "tabs are counted from 1"
   there-is-no-tab-color: "there is no tab color {color}; the colors go from 1 to {last}"
@@ -986,6 +991,7 @@ preferences:
   close-html-and-xml-tags: "Close HTML and XML tags"
   cloud-link: "Cloud & Link"
   colors: "Colors"
+  command-palette: "Command Palette"
   comments: "Comments"
   comments-and-strings: "Comments and strings"
   compare: "Compare"
@@ -1092,6 +1098,7 @@ preferences:
   print: "Print"
   print-line-numbers: "Print line numbers"
   recent-files: "Recent files"
+  recently-used-commands-listed-first: "Recently used commands listed first"
   reduce: "Reduce"
   reload-without-asking: "Reload without asking"
   remember-inaccessible-files: "Remember inaccessible files"

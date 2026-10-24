@@ -38,14 +38,14 @@ pub use settings::{
     CompareSettings, CompletionSettings, CurrentLine, DEFAULT_TOOLBAR, DateSettings,
     DefaultDirectory, DelimiterSettings, DiagnosticsSettings, Edge, EditorSettings, FileSettings,
     HexSettings, HighlightingSettings, InstanceMode, InstanceSettings, InterfaceMode,
-    LanguageSettings, LinkSettings, NetworkSettings, NewDocumentSettings, Paper, PluginInstall,
-    PluginSettings, PreviewSettings, PrintColors, PrintSettings, SearchEngine,
+    LanguageSettings, LinkSettings, NetworkSettings, NewDocumentSettings, PaletteSettings, Paper,
+    PluginInstall, PluginSettings, PreviewSettings, PrintColors, PrintSettings, SearchEngine,
     SearchEngineSettings, SessionSettings, Settings, SmartHighlighting, SpellScope, SpellSettings,
     TabSettings, TokenMatching, ToolbarSettings, ToolbarSize, UpdateChannel, UpdateMode,
     UpdateSettings,
 };
 pub use state::{
-    FindInFilesState, MAX_RECENT_FILES, PanelsState, PreviewMode, SearchResultsState,
-    SpellCheckState, SplitOrientation, UpdateState, UserState,
+    FindInFilesState, MAX_RECENT_COMMANDS, MAX_RECENT_FILES, PanelsState, PreviewMode,
+    SearchResultsState, SpellCheckState, SplitOrientation, UpdateState, UserState,
 };
 pub use write::{SettingError, check_setting, edit_settings, write_setting};

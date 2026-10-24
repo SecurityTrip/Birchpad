@@ -671,8 +671,9 @@ each with its tests, docs and a `CHANGELOG.md` entry, its options in Preferences
 
 ### Release 0.7.0: finding your way
 
-- [ ] 7.1 Command palette: every command of the catalog by its name, with its shortcut, the
-      recently used first
+- [x] 7.1 Command palette: every command of the catalog by its name, with its shortcut, the
+      recently used first ([ADR 0052](adr/0052-command-palette.md)): View > Command
+      Palette... (Ctrl+Shift+A, as Ctrl+Shift+P is Notepad++'s macro playback)
 - [ ] 7.2 Fuzzy file finder: the files of the workspace's folders and of the recent files, by
       parts of their path
 - [ ] 7.3 Syntax-aware selection (expand and shrink by the syntax tree) and sticky scroll (the

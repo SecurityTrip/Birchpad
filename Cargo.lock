@@ -623,7 +623,7 @@ dependencies = [
 
 [[package]]
 name = "birchpad-commands"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "birchpad-i18n",
  "proptest",
@@ -636,7 +636,7 @@ dependencies = [
 
 [[package]]
 name = "birchpad-config"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "birchpad-core",
  "birchpad-i18n",
@@ -651,7 +651,7 @@ dependencies = [
 
 [[package]]
 name = "birchpad-core"
-version = "0.5.0"
+version = "0.7.0"
 dependencies = [
  "base64 0.23.1",
  "birchpad-i18n",
@@ -868,7 +868,7 @@ dependencies = [
 
 [[package]]
 name = "birchpad-ui"
-version = "0.5.0"
+version = "0.7.0"
 dependencies = [
  "anyhow",
  "birchpad-commands",

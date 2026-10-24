@@ -22,6 +22,24 @@ fn recent_files_are_most_recent_first_and_limited() {
 }
 
 #[test]
+fn recent_commands_are_most_recent_first_and_limited() {
+    let mut state = UserState::default();
+    for key in ["a", "b", "c", "b"] {
+        state.add_recent_command(key, 3);
+    }
+    assert_eq!(state.recent_commands, ["b", "c", "a"]);
+    state.add_recent_command("d", 2);
+    assert_eq!(state.recent_commands, ["d", "b"]);
+    state.add_recent_command("e", 0);
+    assert!(state.recent_commands.is_empty());
+    for index in 0..=MAX_RECENT_COMMANDS {
+        state.add_recent_command(&index.to_string(), usize::MAX);
+    }
+    assert_eq!(state.recent_commands.len(), MAX_RECENT_COMMANDS);
+    assert_eq!(state.recent_commands[0], MAX_RECENT_COMMANDS.to_string());
+}
+
+#[test]
 fn round_trips_and_survives_damage() {
     let dir = std::env::temp_dir().join(format!("birchpad-state-{}", std::process::id()));
     let path = dir.join("state.toml");
@@ -35,6 +53,7 @@ fn round_trips_and_survives_damage() {
         ..UserState::default()
     };
     state.add_recent(Path::new("/tmp/x y.txt"), 10);
+    state.add_recent_command(r#"{"command":"file.save"}"#, 8);
     state.save(&path).unwrap();
     assert_eq!(UserState::load(&path), state);
 
