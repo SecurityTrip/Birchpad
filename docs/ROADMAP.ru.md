@@ -710,7 +710,13 @@ CONTRIBUTING.md (неудачные чтение и запись, отклонё
       ([ADR 0053](adr/0053-syntax-selection-and-sticky-scroll.md)): Edit > Expand Selection и
       Shrink Selection (Ctrl+Alt+Up и Down); липкая прокрутка в Preferences > Editing
 - [ ] 7.4 Сворачивание в область уведомлений (Preferences > MISC в Notepad++), когда у GPUI
-      появится значок в области уведомлений; до тех пор записано, почему нет
+      появится значок в области уведомлений; до тех пор записано, почему нет. Не в 0.7.0: у
+      GPUI (gpui-pre 0.3.9, на котором построены и gpui-kit 0.7, и 0.8, проверено 2026-10-25)
+      нет значка в области уведомлений или строке состояния ни на одной платформе, и нельзя
+      убрать окно с панели задач и вернуть его извне; свёрнутое туда окно не смогло бы
+      вернуться. Собственный значок Birchpad — это нативный код трёх платформ рядом с циклом
+      событий GPUI (окно сообщений Windows, NSStatusItem, StatusNotifierItem по D-Bus), то есть
+      то, что должен давать GPUI. `-systemtray` по-прежнему запускает свёрнутым (6.40)
 - [ ] 7.4a Пункты меню, оставшиеся от Notepad++ 8 (6.49): Edit > Auto-Completion (команды
       дополнения есть, подменю нет), сортировка Line Operations в порядке локали, Redact
       Selection и Change Search Engine... в On Selection, Column Mode..., Read-Only in Notepad++

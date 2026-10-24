@@ -682,7 +682,13 @@ each with its tests, docs and a `CHANGELOG.md` entry, its options in Preferences
       ([ADR 0053](adr/0053-syntax-selection-and-sticky-scroll.md)): Edit > Expand Selection
       and Shrink Selection (Ctrl+Alt+Up and Down); sticky scroll in Preferences > Editing
 - [ ] 7.4 Minimize to the system tray (Notepad++'s Preferences > MISC), once GPUI has a tray
-      icon; until then, written down why not
+      icon; until then, written down why not. Not in 0.7.0: GPUI (gpui-pre 0.3.9, which
+      gpui-kit 0.7 and 0.8 both build on, checked on 2026-10-25) has no tray or status-bar
+      icon on any platform, nor a way to hide a window from the taskbar and bring it back from
+      outside it; a window minimized there could not come back. A tray icon of Birchpad's own
+      would be three platforms' native code beside GPUI's event loop (a Windows message window,
+      an NSStatusItem, a D-Bus StatusNotifierItem), which is what GPUI should provide.
+      `-systemtray` keeps starting minimized (6.40)
 - [ ] 7.4a Menus left from Notepad++ 8 (6.49): Edit > Auto-Completion (the completion commands
       exist, the submenu does not), Line Operations' Sort in Locale Order, On Selection's Redact
       Selection and Change Search Engine..., Column Mode..., Read-Only in Notepad++ (on the
