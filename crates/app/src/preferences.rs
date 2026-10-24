@@ -606,6 +606,27 @@ pub const ENTRIES: &[Entry] = &[
         Kind::Number { min: 1, max: 3600 },
     ),
     entry(
+        "Go to File",
+        "finder.filters",
+        "Files listed (Find in Files' filters)",
+        Kind::Text,
+    ),
+    entry(
+        "Go to File",
+        "finder.hidden",
+        "Hidden files too",
+        Kind::Bool,
+    ),
+    entry(
+        "Go to File",
+        "finder.max-files",
+        "Files listed at most",
+        Kind::Number {
+            min: 1000,
+            max: 1_000_000,
+        },
+    ),
+    entry(
         "Command Palette",
         "palette.recent-commands",
         "Recently used commands listed first",

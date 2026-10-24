@@ -130,6 +130,15 @@ impl QuickPick {
         &self.items
     }
 
+    /// What is shown when no item matches, or there is none.
+    pub fn empty(&self) -> &str {
+        &self.empty
+    }
+
+    pub fn set_empty(&mut self, empty: String) {
+        self.empty = empty;
+    }
+
     /// Takes new items (Go to File's, as its folders are read), keeping what is typed and
     /// the item chosen if it is still there.
     pub fn set_items(&mut self, items: Vec<PickItem>, recent: usize, cx: &mut Context<Self>) {

@@ -340,6 +340,8 @@ pub const COMMANDS: &[CommandSpec] = &[
     workspace("view.summary", "Summary..."),
     // Every command by its name, the recently used first
     workspace("view.command-palette", "Command Palette..."),
+    // The files of the workspace's folders and the recent files, by parts of their path
+    workspace("search.go-to-file", "Go to File..."),
     workspace("view.always-on-top", "Always on Top"),
     workspace("view.full-screen", "Toggle Full Screen Mode"),
     workspace("view.post-it", "Post-It"),

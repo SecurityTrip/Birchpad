@@ -1169,12 +1169,17 @@ command = "edit.block-comment"
 context = "Editor"
 platforms = ["macos"]
 
-# --- Command palette ----------------------------------------------------------------------------
+# --- Command palette and Go to File -------------------------------------------------------------
 # Not Notepad++'s, which has no palette: Ctrl+Shift+P is its macro playback.
 
 [[binding]]
 keys = "secondary-shift-a"
 command = "view.command-palette"
+
+# Not Notepad++'s either; Ctrl+P, other editors' key for it, is Print.
+[[binding]]
+keys = "secondary-shift-o"
+command = "search.go-to-file"
 
 # --- Macro --------------------------------------------------------------------------------------
 

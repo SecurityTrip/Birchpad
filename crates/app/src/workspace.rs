@@ -146,6 +146,7 @@ pub fn register_commands(registry: &mut CommandRegistry) {
     crate::encoding_ui::register_commands(registry);
     crate::file_ops::register_commands(registry);
     crate::find::register_commands(registry);
+    crate::finder::register_commands(registry);
     crate::compare::register_commands(registry);
     crate::help::register_commands(registry);
     crate::hex_view::register_commands(registry);

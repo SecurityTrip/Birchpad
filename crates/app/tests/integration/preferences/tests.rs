@@ -59,6 +59,7 @@ fn every_entry_is_a_setting_with_valid_choices() {
             "Print",
             "Files",
             "Backup",
+            "Go to File",
             "Command Palette",
             "Spell Checker",
             "Hex Editor",

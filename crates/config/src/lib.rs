@@ -37,12 +37,12 @@ pub use settings::{
     AppearanceSettings, AutoIndent, BackupOnSave, ChangeDetection, ChangeHistory, CloudSettings,
     CompareSettings, CompletionSettings, CurrentLine, DEFAULT_TOOLBAR, DateSettings,
     DefaultDirectory, DelimiterSettings, DiagnosticsSettings, Edge, EditorSettings, FileSettings,
-    HexSettings, HighlightingSettings, InstanceMode, InstanceSettings, InterfaceMode,
-    LanguageSettings, LinkSettings, NetworkSettings, NewDocumentSettings, PaletteSettings, Paper,
-    PluginInstall, PluginSettings, PreviewSettings, PrintColors, PrintSettings, SearchEngine,
-    SearchEngineSettings, SessionSettings, Settings, SmartHighlighting, SpellScope, SpellSettings,
-    TabSettings, TokenMatching, ToolbarSettings, ToolbarSize, UpdateChannel, UpdateMode,
-    UpdateSettings,
+    FinderSettings, HexSettings, HighlightingSettings, InstanceMode, InstanceSettings,
+    InterfaceMode, LanguageSettings, LinkSettings, NetworkSettings, NewDocumentSettings,
+    PaletteSettings, Paper, PluginInstall, PluginSettings, PreviewSettings, PrintColors,
+    PrintSettings, SearchEngine, SearchEngineSettings, SessionSettings, Settings,
+    SmartHighlighting, SpellScope, SpellSettings, TabSettings, TokenMatching, ToolbarSettings,
+    ToolbarSize, UpdateChannel, UpdateMode, UpdateSettings,
 };
 pub use state::{
     FindInFilesState, MAX_RECENT_COMMANDS, MAX_RECENT_FILES, PanelsState, PreviewMode,

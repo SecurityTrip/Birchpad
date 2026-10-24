@@ -12,6 +12,10 @@ version's release notes from its section here.
   the commands of the menus, the macros, the Run menu's command lines and the plugins' and
   scripts' commands, each with its shortcut. The commands you ran from it last come first;
   Preferences > Command Palette sets how many.
+- Search > Go to File... (Ctrl+Shift+O) finds a file of the folders open as workspace, or a
+  recent file, by parts of its path (`app work` finds `crates/app/src/workspace.rs`); Enter
+  opens it. Preferences > Go to File chooses the files listed (by default not those in `.git`,
+  `node_modules` and `target`), hidden ones too, and how many at most.
 
 ## [0.6.0] - 2026-10-22
 

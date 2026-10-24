@@ -28,6 +28,7 @@ pub mod file_commands;
 pub mod file_ops;
 pub mod find;
 pub mod find_in_files;
+pub mod finder;
 pub mod help;
 pub mod hex_editor;
 pub mod hex_view;

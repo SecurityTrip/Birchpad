@@ -46,6 +46,9 @@ mod file_ops;
 #[path = "find/tests.rs"]
 mod find;
 
+#[path = "finder/tests.rs"]
+mod finder;
+
 #[path = "find_in_files_tests.rs"]
 mod find_in_files_tests;
 

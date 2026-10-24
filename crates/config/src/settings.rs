@@ -34,6 +34,37 @@ pub struct Settings {
     pub hex: HexSettings,
     pub spell: SpellSettings,
     pub palette: PaletteSettings,
+    pub finder: FinderSettings,
+}
+
+/// Search > Go to File...
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, rename_all = "kebab-case")]
+pub struct FinderSettings {
+    /// Which files of the workspace's folders are listed, written as Find in Files' filters:
+    /// `!+\target` leaves out every folder `target`, `!*.bak` the backups.
+    pub filters: String,
+    /// Hidden files and folders are listed too.
+    pub hidden: bool,
+    /// The most files listed, from 1000 to 1000000: the rest of a large folder is left out.
+    pub max_files: u32,
+}
+
+impl Default for FinderSettings {
+    fn default() -> Self {
+        Self {
+            filters: r"!+\.git !+\node_modules !+\target".to_owned(),
+            hidden: false,
+            max_files: 50_000,
+        }
+    }
+}
+
+impl FinderSettings {
+    /// [`Self::max_files`] within its limits.
+    pub fn file_limit(&self) -> usize {
+        self.max_files.clamp(1000, 1_000_000) as usize
+    }
 }
 
 /// View > Command Palette...

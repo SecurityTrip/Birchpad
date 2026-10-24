@@ -1,4 +1,4 @@
-# ADR 0052: Command palette and fuzzy matching
+# ADR 0052: Command palette, Go to File and fuzzy matching
 
 - Status: accepted
 - Date: 2026-10-24
@@ -36,6 +36,13 @@ the same list and the same matching for files.
 - **Recently used** commands are those run from the palette, kept in `state.toml`
   (`recent-commands`, each an invocation as JSON), as many as Preferences > Command Palette
   says (`palette.recent-commands`, 8 by default, 50 at most; 0 keeps none).
+- **Go to File** (`search.go-to-file`, Ctrl+Shift+O; Ctrl+P is Print) lists the recent
+  files that still exist, first and marked, then the files of the folders of Folder as
+  Workspace, under the folder's name (`project\src\main.rs`), each once. The folders are
+  listed in the background with Find in Files' filters (`birchpad_io::files_in`), so the
+  dialog shows the recent files at once; closing it stops the listing. Preferences > Go to
+  File sets the filters (`finder.filters`, `!+\.git !+\node_modules !+\target` by default),
+  hidden files (`finder.hidden`) and the most files listed (`finder.max-files`, 50000).
 - Ctrl+Shift+P, the palette of other editors, stays Notepad++'s macro playback; Ctrl+Shift+A
   is free in Notepad++'s keymap and is JetBrains' Find Action.
 
