@@ -72,13 +72,8 @@ fn sticky_scroll_is_off_and_keeps_five_lines_by_default() {
         };
         assert_eq!(editor.sticky_lines(), lines, "{set}");
     }
-    let settings: Settings = toml::from_str(
-        "[editor]
-sticky-scroll = true
-sticky-scroll-lines = 3
-",
-    )
-    .unwrap();
+    let settings: Settings =
+        toml::from_str("[editor]\nsticky-scroll = true\nsticky-scroll-lines = 3\n").unwrap();
     assert!(settings.editor.sticky_scroll);
     assert_eq!(settings.editor.sticky_lines(), 3);
     assert!(check_setting("editor.sticky-scroll", &toml::Value::Integer(1)).is_err());

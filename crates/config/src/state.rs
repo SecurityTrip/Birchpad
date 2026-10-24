@@ -33,6 +33,10 @@ pub struct UserState {
     pub indent_guides: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub wrap_symbol: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub show_non_printing: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub show_control_chars: Option<bool>,
     /// Settings > Theme as last chosen; unset means `appearance.theme` from the settings.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub theme: Option<String>,
@@ -56,6 +60,9 @@ pub struct UserState {
     /// The offer to open text files with Birchpad was answered "Don't Ask Again".
     #[serde(skip_serializing_if = "std::ops::Not::not")]
     pub default_app_declined: bool,
+    /// View > Zoom > Synchronize Across Views turned off: each view zooms on its own.
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub zoom_per_view: bool,
     /// The commands last run from the command palette, most recent first: each an invocation
     /// as JSON (`{"command":"file.save"}`).
     #[serde(skip_serializing_if = "Vec::is_empty")]

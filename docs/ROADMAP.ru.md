@@ -717,13 +717,18 @@ CONTRIBUTING.md (неудачные чтение и запись, отклонё
       вернуться. Собственный значок Birchpad — это нативный код трёх платформ рядом с циклом
       событий GPUI (окно сообщений Windows, NSStatusItem, StatusNotifierItem по D-Bus), то есть
       то, что должен давать GPUI. `-systemtray` по-прежнему запускает свёрнутым (6.40)
-- [ ] 7.4a Пункты меню, оставшиеся от Notepad++ 8 (6.49): Edit > Auto-Completion (команды
+- [x] 7.4a Пункты меню, оставшиеся от Notepad++ 8 (6.49): Edit > Auto-Completion (команды
       дополнения есть, подменю нет), сортировка Line Operations в порядке локали, Redact
       Selection и Change Search Engine... в On Selection, Column Mode..., Read-Only in Notepad++
       (для текущего или всех документов) рядом с атрибутом файла «только чтение»; Search > Copy
       Marked Text (есть только на вкладке Mark) и Find in These Search Results... в результатах
       поиска; Non-Printing Characters и Control Characters & Unicode EOL в View > Show Symbol,
-      Synchronize Across Views в Zoom; хеш Generate... набранного текста в Tools
+      Synchronize Across Views в Zoom; хеш Generate... набранного текста в Tools. Сделано по
+      руководству пользователя и поведению меню. В Auto-Completion добавлены Word Completion
+      (Ctrl+Enter) и Path Completion (Ctrl+Alt+Space); порядок локали — кратко порядок Unicode
+      по умолчанию (буквы, затем диакритика, затем регистр, кириллическая й — отдельная буква),
+      а не правила каждого языка, как у Windows; Read-Only in Notepad++ называется Read-Only in
+      Birchpad, атрибут — Read-Only Attribute of the File (право записи вне Windows)
 - [ ] 7.4b Параметры Preferences, оставшиеся от Notepad++ 8, для окна и текста (6.49): скрытие
       строки меню и строки состояния; у панели вкладок — наибольшая длина названия,
       альтернативные значки, цвет неактивных вкладок, цветная полоса на активной, закрепление

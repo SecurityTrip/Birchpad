@@ -12,7 +12,7 @@ pub fn char_cells(ch: char) -> usize {
     if (' '..'\u{7F}').contains(&ch) {
         // Printable ASCII, by far the most common case.
         1
-    } else if ch.is_control() {
+    } else if ch.is_control() || matches!(ch, '\u{2028}' | '\u{2029}') {
         1
     } else {
         ch.width().unwrap_or(1)
@@ -34,13 +34,46 @@ pub fn cells_at(ch: char, column: usize, tab_width: usize) -> usize {
     }
 }
 
-/// What is drawn for a control character: its Unicode control picture (␀, ␛, ...).
+/// What is drawn for a control character: its Unicode control picture (␀, ␛, ...); for the
+/// line breaks of Unicode that Birchpad's lines do not end at (U+0085, U+2028, U+2029), ␤
+/// and ¶.
 pub fn control_picture(ch: char) -> Option<char> {
     match ch {
         '\t' => None,
         '\0'..='\u{1F}' => char::from_u32(0x2400 + ch as u32),
         '\u{7F}' => Some('\u{2421}'),
+        '\u{85}' | '\u{2028}' => Some('\u{2424}'),
         '\u{80}'..='\u{9F}' => Some('\u{25AF}'),
+        '\u{2029}' => Some('\u{B6}'),
+        _ => None,
+    }
+}
+
+/// A character that shows nothing of itself, for View > Show Symbol > Show Non-Printing
+/// Characters.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum NonPrinting {
+    /// A space that is not a plain one (no-break, en, em, thin, ideographic ...): its cells
+    /// are framed.
+    Space,
+    /// A character without width (zero-width space and joiners, direction marks, the byte
+    /// order mark, the soft hyphen): a line marks where it is.
+    Mark,
+}
+
+/// Whether `ch` is a character [`NonPrinting`] shows.
+pub fn non_printing(ch: char) -> Option<NonPrinting> {
+    match ch {
+        '\u{A0}' | '\u{1680}' | '\u{2000}'..='\u{200A}' | '\u{202F}' | '\u{205F}' | '\u{3000}' => {
+            Some(NonPrinting::Space)
+        }
+        '\u{AD}'
+        | '\u{180E}'
+        | '\u{200B}'..='\u{200F}'
+        | '\u{202A}'..='\u{202E}'
+        | '\u{2060}'..='\u{2064}'
+        | '\u{2066}'..='\u{2069}'
+        | '\u{FEFF}' => Some(NonPrinting::Mark),
         _ => None,
     }
 }
@@ -99,6 +132,18 @@ pub struct DisplayText {
 impl DisplayText {
     /// Builds the display text of `range`, which starts at column `start_column` of its line.
     pub fn new(text: &Rope, range: Range<usize>, start_column: usize, tab_width: usize) -> Self {
+        Self::with_pictures(text, range, start_column, tab_width, true)
+    }
+
+    /// As [`Self::new`]; without `pictures` (View > Show Symbol > Show Control Characters &
+    /// Unicode EOL turned off) control characters show as spaces.
+    pub fn with_pictures(
+        text: &Rope,
+        range: Range<usize>,
+        start_column: usize,
+        tab_width: usize,
+        pictures: bool,
+    ) -> Self {
         let mut out = String::with_capacity(range.len());
         let mut substitutions = Vec::new();
         let mut column = start_column;
@@ -109,7 +154,7 @@ impl DisplayText {
             if ch == '\t' {
                 out.extend(std::iter::repeat_n(' ', cells));
             } else if let Some(picture) = control_picture(ch) {
-                out.push(picture);
+                out.push(if pictures { picture } else { ' ' });
             } else {
                 out.push(ch);
             }

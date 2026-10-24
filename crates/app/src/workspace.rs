@@ -103,17 +103,42 @@ pub fn register_commands(registry: &mut CommandRegistry) {
     ] {
         registry.workspace(id, move |this, (), _, cx| {
             let range = crate::editor::ZOOM_RANGE;
-            AppState::update_state(cx, |state, _| {
-                state.zoom = if step == 0 {
+            let zoomed = |zoom: i32| {
+                if step == 0 {
                     0
                 } else {
-                    (state.zoom + step).clamp(*range.start(), *range.end())
-                };
-            });
+                    (zoom + step).clamp(*range.start(), *range.end())
+                }
+            };
+            let state = &AppState::global(cx).state;
+            if state.zoom_per_view {
+                let shared = state.zoom;
+                if let Some(view) = this.active_view(cx) {
+                    view.update(cx, |view, cx| {
+                        view.zoom = Some(zoomed(view.zoom.unwrap_or(shared)));
+                        view.settings_changed(cx);
+                    });
+                }
+                return Ok(());
+            }
+            AppState::update_state(cx, |state, _| state.zoom = zoomed(state.zoom));
             this.refresh_views(cx);
             Ok(())
         });
     }
+    // Back on, every view takes the shared zoom again.
+    registry.workspace("view.zoom-sync", |this, (), _, cx| {
+        let per_view = !AppState::global(cx).state.zoom_per_view;
+        AppState::update_state(cx, |state, _| state.zoom_per_view = per_view);
+        if !per_view {
+            for view in this.all_views(cx) {
+                view.update(cx, |view, _| view.zoom = None);
+            }
+        }
+        this.refresh_views(cx);
+        this.refresh_menus(cx);
+        Ok(())
+    });
     registry.workspace("language.set", |this, args: LanguageArgs, _, cx| {
         if let Some(name) = args.language.strip_prefix(crate::user_languages::ID_PREFIX) {
             let found = crate::user_languages::find(name, cx).ok_or_else(|| {
@@ -1063,6 +1088,10 @@ impl Workspace {
         let requested_read_only = self
             .active_view(cx)
             .is_some_and(|view| view.read(cx).buffer.read(cx).requested_read_only());
+        let file_read_only = self.active_view(cx).is_some_and(|view| {
+            view.read(cx).buffer.read(cx).read_only() == Some(crate::buffer::ReadOnly::File)
+        });
+        let zoom_sync = !AppState::global(cx).state.zoom_per_view;
         let close_tags = AppState::global(cx).settings.completion.close_tags;
         let hex_shown = self.active_hex_editor(cx).is_some();
         let checked = |invocation: &Invocation| {
@@ -1077,6 +1106,12 @@ impl Workspace {
             }
             if invocation.command == "edit.toggle-read-only" {
                 return requested_read_only;
+            }
+            if invocation.command == "edit.toggle-read-only-attribute" {
+                return file_read_only;
+            }
+            if invocation.command == "view.zoom-sync" {
+                return zoom_sync;
             }
             if let Some((_, read, _)) = crate::editor::VIEW_SWITCHES
                 .iter()

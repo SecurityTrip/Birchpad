@@ -79,6 +79,9 @@ mod language_tests;
 #[path = "macros/tests.rs"]
 mod macros;
 
+#[path = "menus_left/tests.rs"]
+mod menus_left;
+
 #[path = "menus/model_tests.rs"]
 mod menus_model_tests;
 

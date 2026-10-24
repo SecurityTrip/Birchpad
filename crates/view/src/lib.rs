@@ -16,7 +16,8 @@ mod wrap;
 pub use bidi::BidiRow;
 pub use block::{Block, BlockPoint};
 pub use cells::{
-    DisplayText, cells_at, char_cells, column_after, control_picture, pos_at_column, tab_advance,
+    DisplayText, NonPrinting, cells_at, char_cells, column_after, control_picture, non_printing,
+    pos_at_column, tab_advance,
 };
 pub use display_map::{DisplayMap, LayoutConfig, LongLines, Row};
 pub use folding::{

@@ -107,3 +107,40 @@ fn columns_and_hit_testing() {
         "past the end"
     );
 }
+
+#[test]
+fn unicode_line_breaks_show_as_pictures_one_cell_wide() {
+    for ch in ['\u{85}', '\u{2028}', '\u{2029}'] {
+        assert_eq!(char_cells(ch), 1, "{ch:?}");
+    }
+    assert_eq!(control_picture('\u{85}'), Some('␤'));
+    assert_eq!(control_picture('\u{2028}'), Some('␤'));
+    assert_eq!(control_picture('\u{2029}'), Some('¶'));
+    assert_eq!(control_picture('\u{86}'), Some('\u{25AF}'));
+    assert_eq!(control_picture('a'), None);
+}
+
+#[test]
+fn control_characters_show_as_spaces_without_pictures() {
+    let text = Rope::from_str("a\u{1}b\tc");
+    let shown = DisplayText::with_pictures(&text, 0..text.len(), 0, 4, false);
+    assert_eq!(shown.text, "a b c");
+    let pictured = DisplayText::with_pictures(&text, 0..text.len(), 0, 4, true);
+    assert_eq!(pictured.text, "a␁b c");
+    assert_eq!(DisplayText::new(&text, 0..text.len(), 0, 4), pictured);
+    // Positions map the same either way.
+    assert_eq!(shown.to_display(2), 2);
+}
+
+#[test]
+fn non_printing_characters_are_odd_spaces_or_marks() {
+    for ch in ['\u{A0}', '\u{2009}', '\u{202F}', '\u{3000}'] {
+        assert_eq!(non_printing(ch), Some(NonPrinting::Space), "{ch:?}");
+    }
+    for ch in ['\u{200B}', '\u{200D}', '\u{FEFF}', '\u{AD}', '\u{2066}'] {
+        assert_eq!(non_printing(ch), Some(NonPrinting::Mark), "{ch:?}");
+    }
+    for ch in [' ', '\t', 'a', '\u{1}', '\u{2028}'] {
+        assert_eq!(non_printing(ch), None, "{ch:?}");
+    }
+}

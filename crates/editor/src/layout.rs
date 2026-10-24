@@ -352,15 +352,22 @@ impl EditorView {
                 let start_column = self.display.column(&text, start);
                 let row_cells = self.display.column(&text, row.range.end) - row.start_column;
                 widest = widest.max(cell * row_cells as f32);
-                let display = DisplayText::new(&text, start..end, start_column, settings.tab_width);
+                let display = DisplayText::with_pictures(
+                    &text,
+                    start..end,
+                    start_column,
+                    settings.tab_width,
+                    settings.show_control_chars,
+                );
                 let x = column_zero + cell * (start_column - row.start_column) as f32;
                 (display, x)
             } else {
-                let display = DisplayText::new(
+                let display = DisplayText::with_pictures(
                     &text,
                     row.range.clone(),
                     row.start_column,
                     settings.tab_width,
+                    settings.show_control_chars,
                 );
                 let x = if wrap_width.is_some() {
                     text_bounds.left() + TEXT_PADDING
@@ -439,7 +446,13 @@ impl EditorView {
         }
         let mut sticky = Vec::with_capacity(sticky_lines.len());
         for (index, (line, range)) in sticky_lines.into_iter().zip(sticky_ranges).enumerate() {
-            let display = DisplayText::new(&text, range, 0, settings.tab_width);
+            let display = DisplayText::with_pictures(
+                &text,
+                range,
+                0,
+                settings.tab_width,
+                settings.show_control_chars,
+            );
             let shaped = self.shape_row(&display, &metrics, &styles, window);
             let y = text_bounds.top() + line_height * index as f32;
             let x = if wrap_width.is_some() {

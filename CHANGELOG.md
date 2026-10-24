@@ -20,6 +20,23 @@ version's release notes from its section here.
   a word, a string's text, the string, what is between brackets, the brackets, the statement,
   the function; Shrink Selection (Ctrl+Alt+Down) goes back. In plain text it grows to the
   word, the line, then everything.
+- Edit > Auto-Completion lists the completion commands, with Word Completion (Ctrl+Enter, the
+  document's words only) and Path Completion (Ctrl+Alt+Space, the names in the folder of the
+  path typed before the caret).
+- Edit > Line Operations > Sort Lines In Locale Order: letters first, then accents, then case.
+- Edit > On Selection > Redact Selection turns the selected characters into █; Change Search
+  Engine... opens Preferences > Search Engine. Edit > Column Mode... tells how to select
+  columns.
+- Edit > Read-Only Attribute of the File sets or clears the file's attribute, Set and Clear
+  Read-Only for All Documents act on every tab; Set Read-Only is now Read-Only in Birchpad.
+- Search > Copy Marked Text; the search results' Find in These Search Results... searches the
+  lines a search found and lists what it finds as a search of its own.
+- View > Show Symbol > Show Non-Printing Characters frames spaces that are not plain ones and
+  marks characters without width; Show Control Characters & Unicode EOL (on by default) shows
+  control characters and the line and paragraph separators as pictures, or as spaces.
+- View > Zoom > Synchronize Across Views: turned off, each view zooms on its own.
+- Tools > MD5 (SHA-1, SHA-256, SHA-512) > Generate... hashes a text you type, as a whole or
+  line by line.
 - Sticky scroll, in Preferences > Editing: the first lines of the blocks around the top of the
   view stay there while you scroll, five at most by default; a click on one goes to it.
 

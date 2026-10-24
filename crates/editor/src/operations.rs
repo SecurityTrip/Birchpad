@@ -21,6 +21,7 @@ enum SortBy {
     DecimalComma,
     DecimalDot,
     Length,
+    Locale,
 }
 
 #[derive(Deserialize)]
@@ -139,6 +140,7 @@ pub fn register_commands(registry: &mut CommandRegistry) {
             SortBy::DecimalComma => SortKey::DecimalComma,
             SortBy::DecimalDot => SortKey::DecimalDot,
             SortBy::Length => SortKey::Length,
+            SortBy::Locale => SortKey::Locale,
         };
         // With a rectangle, lines sort by the text in its columns.
         if this.sort_by_block(key, args.descending, cx)? {
@@ -232,6 +234,10 @@ pub fn register_commands(registry: &mut CommandRegistry) {
         this.run_op(cx, |text, selection, _| {
             ops::convert_case(text, selection, case)
         });
+        Ok(())
+    });
+    registry.editor("edit.redact-selection", |this, (), _, cx| {
+        this.run_op(cx, |text, selection, _| ops::redact(text, selection));
         Ok(())
     });
     let comments: [(&'static str, CommentOp); 4] = [

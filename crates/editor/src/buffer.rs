@@ -506,6 +506,13 @@ impl Buffer {
         cx.notify();
     }
 
+    /// Edit > Read-Only Attribute of the File made the file read-only.
+    pub fn file_made_read_only(&mut self, cx: &mut Context<Self>) {
+        self.file_read_only = true;
+        cx.emit(BufferEvent::StateChanged);
+        cx.notify();
+    }
+
     /// Edit > Clear Read-Only Flag made the file writable.
     pub fn file_made_writable(&mut self, cx: &mut Context<Self>) {
         self.file_read_only = false;

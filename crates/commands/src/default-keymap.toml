@@ -1213,6 +1213,17 @@ keys = "secondary-space"
 command = "completion.complete"
 context = "Editor"
 
+# Notepad++'s Word Completion and Path Completion.
+[[binding]]
+keys = "secondary-enter"
+command = "completion.words"
+context = "Editor"
+
+[[binding]]
+keys = "secondary-alt-space"
+command = "completion.path"
+context = "Editor"
+
 [[binding]]
 keys = "secondary-shift-space"
 command = "completion.parameter-hint"

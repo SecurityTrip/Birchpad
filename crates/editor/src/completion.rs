@@ -335,6 +335,51 @@ impl EditorView {
         } else {
             Sources::for_typed(settings, typed)
         };
+        self.complete_from(sources, cx);
+    }
+
+    /// Edit > Auto-Completion > Word Completion: the document's words alone.
+    pub fn complete_words(&mut self, cx: &mut Context<Self>) {
+        let settings = &AppState::global(cx).settings.completion;
+        let sources = Sources {
+            api: false,
+            words: true,
+            ..Sources::all(settings)
+        };
+        self.complete_from(sources, cx);
+    }
+
+    /// Edit > Auto-Completion > Path Completion: the names in the folder of the path typed
+    /// before the caret, a relative one from the document's folder.
+    pub fn complete_path(&mut self, cx: &mut Context<Self>) {
+        let text = self.text(cx).clone();
+        let head = self.selection.primary().head;
+        let start = birchpad_core::completion::path_start(&text, head);
+        let typed = text.slice(start..head).to_string();
+        let (folder, name) = birchpad_core::completion::split_path(&typed);
+        let folder = std::path::Path::new(folder);
+        let folder = if folder.is_absolute() {
+            folder.to_owned()
+        } else {
+            let Some(base) = self.buffer.read(cx).path().and_then(|path| path.parent()) else {
+                return;
+            };
+            base.join(folder)
+        };
+        let choices = birchpad_io::path_completions(&folder, name);
+        if choices.is_empty() {
+            self.completion = None;
+            cx.notify();
+            return;
+        }
+        self.show_choices(head - name.len()..head, choices, cx);
+    }
+
+    fn complete_from(&mut self, sources: Sources, cx: &mut Context<Self>) {
+        let text = self.text(cx).clone();
+        let head = self.selection.primary().head;
+        let start = word_start(&text, head);
+        let typed = text.slice(start..head).chars().count();
         if typed == 0 || !(sources.api || sources.words) {
             self.completion = None;
             return;
@@ -536,6 +581,14 @@ fn move_selection(view: &mut EditorView, step: isize) {
 pub fn register_commands(registry: &mut CommandRegistry) {
     registry.editor("completion.complete", |this, (), _, cx| {
         this.update_completion(true, cx);
+        Ok(())
+    });
+    registry.editor("completion.words", |this, (), _, cx| {
+        this.complete_words(cx);
+        Ok(())
+    });
+    registry.editor("completion.path", |this, (), _, cx| {
+        this.complete_path(cx);
         Ok(())
     });
     registry.editor("completion.next-overload", |this, (), _, cx| {

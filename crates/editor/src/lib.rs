@@ -376,6 +376,16 @@ pub const VIEW_SWITCHES: &[ViewSwitch] = &[
         |view| view.wrap_symbol,
         |state, on| state.wrap_symbol = Some(on),
     ),
+    (
+        "view.show-non-printing",
+        |view| view.show_non_printing,
+        |state, on| state.show_non_printing = Some(on),
+    ),
+    (
+        "view.show-control-chars",
+        |view| view.show_control_chars,
+        |state, on| state.show_control_chars = Some(on),
+    ),
 ];
 
 /// View > Show Symbol > Show All Characters: whitespace and line ends both shown.
@@ -402,6 +412,8 @@ pub struct ViewSettings {
     pub show_eol: bool,
     pub indent_guides: bool,
     pub wrap_symbol: bool,
+    pub show_non_printing: bool,
+    pub show_control_chars: bool,
     pub current_line: CurrentLine,
     pub current_line_frame_width: Pixels,
     pub edge: Edge,
@@ -433,6 +445,14 @@ impl ViewSettings {
             show_eol: app.state.show_eol.unwrap_or(editor.show_eol),
             indent_guides: app.state.indent_guides.unwrap_or(editor.indent_guides),
             wrap_symbol: app.state.wrap_symbol.unwrap_or(editor.wrap_symbol),
+            show_non_printing: app
+                .state
+                .show_non_printing
+                .unwrap_or(editor.show_non_printing),
+            show_control_chars: app
+                .state
+                .show_control_chars
+                .unwrap_or(editor.show_control_chars),
             current_line: editor.current_line,
             current_line_frame_width: px(f32::from(editor.current_line_frame_width.clamp(1, 6))),
             edge: if editor.edge_columns.is_empty() {
@@ -516,6 +536,8 @@ pub struct EditorView {
     pub overwrite: bool,
     /// Edit > Text Direction RTL: rows run right to left and end at the right edge.
     pub rtl: bool,
+    /// Its own zoom level, while View > Zoom > Synchronize Across Views is off.
+    pub zoom: Option<i32>,
     /// The completion list, while it shows.
     pub completion: Option<completion::Popup>,
     /// A function's parameters, while they show.
@@ -689,6 +711,7 @@ impl EditorView {
             block: None,
             multi_order: None,
             expansions: None,
+            zoom: None,
             begin_select: None,
             last_scroll: None,
             synced_scroll: false,
@@ -1070,7 +1093,16 @@ impl EditorView {
 
     /// The view settings for this document's language.
     pub fn view_settings(&self, cx: &App) -> ViewSettings {
-        ViewSettings::for_buffer(self.buffer.read(cx), cx)
+        let mut settings = ViewSettings::for_buffer(self.buffer.read(cx), cx);
+        if let Some(own) = self.zoom {
+            let shared = AppState::global(cx)
+                .state
+                .zoom
+                .clamp(*ZOOM_RANGE.start(), *ZOOM_RANGE.end());
+            let own = own.clamp(*ZOOM_RANGE.start(), *ZOOM_RANGE.end());
+            settings.font_size += px((own - shared) as f32);
+        }
+        settings
     }
 
     pub fn tab_width(&self) -> usize {

@@ -330,3 +330,91 @@ fn find_all_lists_lines_and_f4_walks_them(cx: &mut TestAppContext) {
     cx.simulate_keystrokes("shift-f4");
     assert_eq!(active(cx), ("new 1".to_owned(), 8, 11));
 }
+
+#[gpui_kit::test]
+fn copy_marked_text_from_the_menu_copies_and_says_so(cx: &mut TestAppContext) {
+    let (workspace, cx) = open_workspace(cx);
+    cx.simulate_input("foo bar\nfoo");
+    let run = |workspace: &Entity<Workspace>, cx: &mut VisualTestContext| {
+        workspace.update_in(cx, |workspace, window, cx| {
+            workspace
+                .dispatch(
+                    &birchpad_commands::Invocation::new("search.copy-marked-text"),
+                    window,
+                    cx,
+                )
+                .unwrap();
+        });
+        cx.run_until_parked();
+        birchpad_ui::take_info()
+    };
+    // Nothing marked: nothing copied.
+    cx.update(|_, cx| cx.write_to_clipboard(gpui_kit::ClipboardItem::new_string("old".into())));
+    assert_eq!(run(&workspace, cx), ["Copied 0 marked texts"]);
+    let copied = cx.update(|_, cx| cx.read_from_clipboard().and_then(|item| item.text()));
+    assert_eq!(copied.as_deref(), Some("old"));
+    search_for(&workspace, "foo", FindOptions::default(), cx);
+    act(&workspace, FindBarEvent::MarkAll, cx);
+    assert_eq!(run(&workspace, cx), ["Copied 2 marked texts"]);
+    let copied = cx.update(|_, cx| cx.read_from_clipboard().and_then(|item| item.text()));
+    assert!(copied.is_some_and(|text| text.starts_with("foo") && text.matches("foo").count() == 2));
+}
+
+#[gpui_kit::test]
+fn find_in_these_search_results_searches_their_lines(cx: &mut TestAppContext) {
+    let (workspace, cx) = open_workspace(cx);
+    cx.simulate_input("foo one\nbar foo\nfoo two two");
+    search_for(&workspace, "foo", FindOptions::default(), cx);
+    act(
+        &workspace,
+        FindBarEvent::FindAll {
+            all_documents: false,
+        },
+        cx,
+    );
+    let within = |pattern: &str, regex: bool, cx: &mut VisualTestContext| {
+        workspace.update(cx, |workspace, cx| {
+            let query = birchpad_core::search::Query {
+                pattern: pattern.to_owned(),
+                mode: if regex {
+                    SearchMode::Regex
+                } else {
+                    SearchMode::Normal
+                },
+                ..Default::default()
+            };
+            let searcher = birchpad_core::search::Searcher::new(&query).unwrap();
+            workspace.search_results.update(cx, |results, cx| {
+                let run = results.run_of(None).unwrap();
+                results.search_within(run, &searcher, pattern, cx)
+            })
+        })
+    };
+    assert_eq!(within("two", false, cx), 2);
+    let rows = workspace.read_with(cx, |workspace, cx| {
+        workspace.search_results.read(cx).rows_text()
+    });
+    assert_eq!(rows[0], "Search \"two\" (2 hits in 1 file of 1 searched)");
+    assert_eq!(rows[2], "    Line 3: foo two two");
+    // Nothing found: no new search.
+    assert_eq!(within("zzz", false, cx), 0);
+    let count = workspace.read_with(cx, |workspace, cx| {
+        workspace.search_results.read(cx).rows_text().len()
+    });
+    assert_eq!(count, rows.len());
+    // A regular expression over the lines.
+    assert_eq!(within("^bar", true, cx), 1);
+}
+
+#[gpui_kit::test]
+fn find_in_these_search_results_needs_results(cx: &mut TestAppContext) {
+    let (workspace, cx) = open_workspace(cx);
+    let result = workspace.update_in(cx, |workspace, window, cx| {
+        workspace.dispatch(
+            &birchpad_commands::Invocation::new("search.find-in-results"),
+            window,
+            cx,
+        )
+    });
+    assert!(result.is_err());
+}

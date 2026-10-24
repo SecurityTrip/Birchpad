@@ -112,3 +112,27 @@ fn word_starts() {
     assert_eq!(word_start(&text, text.len()), 11);
     assert_eq!(word_start(&text, 999), 11);
 }
+
+#[test]
+fn a_path_typed_starts_after_a_space_a_quote_or_a_bracket() {
+    let at = |text: &str| {
+        let rope = Rope::from_str(text);
+        let start = path_start(&rope, text.len());
+        text[start..].to_owned()
+    };
+    assert_eq!(at("open C:\\Users\\me"), "C:\\Users\\me");
+    assert_eq!(at("include \"src/ma"), "src/ma");
+    assert_eq!(at("(./a"), "./a");
+    assert_eq!(at("x = "), "");
+    assert_eq!(at(""), "");
+    assert_eq!(at("путь/к"), "путь/к");
+}
+
+#[test]
+fn a_typed_path_splits_after_its_last_separator() {
+    assert_eq!(split_path("src/ma"), ("src/", "ma"));
+    assert_eq!(split_path("C:\\Users\\"), ("C:\\Users\\", ""));
+    assert_eq!(split_path("a/b\\c"), ("a/b\\", "c"));
+    assert_eq!(split_path("name"), ("", "name"));
+    assert_eq!(split_path(""), ("", ""));
+}

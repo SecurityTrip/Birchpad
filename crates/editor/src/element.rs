@@ -204,6 +204,16 @@ impl Element for EditorElement {
                 for tab in &symbols.tabs {
                     paint_tab_arrow(*tab, window);
                 }
+                for frame in &symbols.odd_spaces {
+                    window.paint_quad(outline(
+                        *frame,
+                        theme::paint(theme::editor().whitespace),
+                        gpui_kit::BorderStyle::Solid,
+                    ));
+                }
+                for mark in &symbols.zero_widths {
+                    window.paint_quad(fill(*mark, theme::paint(theme::editor().whitespace)));
+                }
                 for row in &layout.rows {
                     let origin = gpui_kit::point(row.x, row.y);
                     row.shaped

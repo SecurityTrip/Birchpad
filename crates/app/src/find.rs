@@ -37,6 +37,12 @@ use crate::search_results::{
 use crate::workspace::Workspace;
 
 pub fn register_commands(registry: &mut CommandRegistry) {
+    // Search > Copy Marked Text, as the Mark tab's button.
+    registry.workspace("search.copy-marked-text", |this, (), window, cx| {
+        let message = this.copy_marked(cx);
+        crate::workspace::report_info(message, window, cx);
+        Ok(())
+    });
     registry.workspace("search.find", |this, (), window, cx| {
         this.open_find(FindTab::Find, window, cx);
         Ok(())
@@ -956,7 +962,9 @@ impl Workspace {
             FindBarEvent::ReplaceAllInAll => self.replace_all_in_all(cx),
             FindBarEvent::MarkAll => self.mark_all(cx),
             FindBarEvent::ClearMarks => self.clear_marks(cx),
-            FindBarEvent::CopyMarked => self.copy_marked(cx),
+            FindBarEvent::CopyMarked => {
+                self.copy_marked(cx);
+            }
             FindBarEvent::FindInFiles => self.find_in_files(window, cx),
             FindBarEvent::FindInProjects => self.find_in_projects(cx),
             FindBarEvent::ReplaceInFiles => self.replace_in_files(window, cx),
@@ -1652,10 +1660,10 @@ impl Workspace {
         self.report(Some(t!("find.marks-cleared")), false, cx);
     }
 
-    /// Copy Marked Text: the marked texts, one per line.
-    fn copy_marked(&mut self, cx: &mut Context<Self>) {
+    /// Copy Marked Text: the marked texts, one per line. Returns what it says of them.
+    fn copy_marked(&mut self, cx: &mut Context<Self>) -> String {
         let Some(view) = self.active_view(cx) else {
-            return;
+            return t!("file-ops.no-document");
         };
         let (copied, count) = {
             let buffer = view.read(cx).buffer.read(cx);
@@ -1674,15 +1682,13 @@ impl Workspace {
         if count > 0 {
             cx.write_to_clipboard(ClipboardItem::new_string(copied));
         }
-        self.report(
-            Some(format!(
-                "{} {}",
-                t!("find.copied"),
-                plural(count, "marked text", "marked texts")
-            )),
-            count == 0,
-            cx,
+        let message = format!(
+            "{} {}",
+            t!("find.copied"),
+            plural(count, "marked text", "marked texts")
         );
+        self.report(Some(message.clone()), count == 0, cx);
+        message
     }
 
     /// Ctrl+G: Go To line or offset, as in Notepad++.

@@ -146,3 +146,50 @@ pub fn closing_tag(before: &str, html: bool) -> Option<String> {
     }
     Some(format!("</{name}>"))
 }
+
+/// Whether `ch` ends a path typed in text, looking back from the caret: a space, a quote, a
+/// bracket or a character no file name has.
+fn ends_path(ch: char) -> bool {
+    ch.is_whitespace()
+        || matches!(
+            ch,
+            '"' | '\''
+                | '`'
+                | '<'
+                | '>'
+                | '|'
+                | '*'
+                | '?'
+                | '('
+                | ')'
+                | '['
+                | ']'
+                | '{'
+                | '}'
+                | '='
+                | ','
+                | ';'
+        )
+}
+
+/// Path Completion: the start of the path being typed before `pos`.
+pub fn path_start(text: &Rope, pos: usize) -> usize {
+    let mut start = pos.min(text.len());
+    let head = text.slice(..start).to_string();
+    for ch in head.chars().rev() {
+        if ends_path(ch) {
+            break;
+        }
+        start -= ch.len_utf8();
+    }
+    start
+}
+
+/// A typed path cut after its last separator: the folder (with the separator) and the start
+/// of a name in it.
+pub fn split_path(typed: &str) -> (&str, &str) {
+    match typed.rfind(['/', '\\']) {
+        Some(at) => typed.split_at(at + 1),
+        None => ("", typed),
+    }
+}

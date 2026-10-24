@@ -79,8 +79,24 @@ pub const COMMANDS: &[CommandSpec] = &[
     workspace("edit.copy-folder-path", "Copy Current Dir. Path"),
     // { "format": "short" | "long" | "custom" }: the local time at every caret
     editor("edit.insert-date-time", "Insert Date Time"),
-    workspace("edit.toggle-read-only", "Set Read-Only"),
+    // The document read-only in Birchpad, or the file's attribute
+    workspace("edit.toggle-read-only", "Read-Only in Birchpad"),
     workspace("edit.clear-read-only-flag", "Clear Read-Only Flag"),
+    workspace(
+        "edit.toggle-read-only-attribute",
+        "Read-Only Attribute of the File",
+    ),
+    workspace("edit.set-read-only-all", "Set Read-Only for All Documents"),
+    workspace(
+        "edit.clear-read-only-all",
+        "Clear Read-Only for All Documents",
+    ),
+    // A message on selecting columns (Alt+drag, Alt+Shift+arrows)
+    workspace("edit.column-mode", "Column Mode..."),
+    // Every character of the selections but line breaks becomes █
+    editor("edit.redact-selection", "Redact Selection"),
+    // Preferences > Search Engine
+    workspace("edit.change-search-engine", "Change Search Engine..."),
     // Paste Special: text with NUL characters, the clipboard's HTML or RTF
     editor("edit.copy-binary", "Copy Binary Content"),
     editor("edit.cut-binary", "Cut Binary Content"),
@@ -110,6 +126,9 @@ pub const COMMANDS: &[CommandSpec] = &[
     // Auto-completion
     editor("completion.complete", "Function Completion"),
     editor("completion.parameter-hint", "Function Parameters Hint"),
+    // The document's words alone; the names in the folder of the path typed
+    editor("completion.words", "Word Completion"),
+    editor("completion.path", "Path Completion"),
     editor("completion.next", "Next Completion"),
     editor("completion.previous", "Previous Completion"),
     editor("completion.accept", "Accept Completion"),
@@ -254,6 +273,9 @@ pub const COMMANDS: &[CommandSpec] = &[
     workspace("search.incremental", "Incremental Search"),
     workspace("search.close-incremental", "Close Incremental Search"),
     workspace("search.mark", "Mark..."),
+    workspace("search.copy-marked-text", "Copy Marked Text"),
+    // The search results' lines searched again: a search of its own
+    workspace("search.find-in-results", "Find in These Search Results..."),
     workspace("search.results-window", "Search Results Window"),
     workspace("search.next-result", "Next Search Result"),
     workspace("search.previous-result", "Previous Search Result"),
@@ -310,6 +332,13 @@ pub const COMMANDS: &[CommandSpec] = &[
     workspace("view.show-whitespace", "Show Space and Tab"),
     workspace("view.show-eol", "Show End of Line"),
     workspace("view.show-all-characters", "Show All Characters"),
+    // Spaces that are not plain spaces, characters without width (U+200B, U+FEFF, ...)
+    workspace("view.show-non-printing", "Show Non-Printing Characters"),
+    // C0 and C1 control characters, U+2028 and U+2029, as pictures
+    workspace(
+        "view.show-control-chars",
+        "Show Control Characters & Unicode EOL",
+    ),
     workspace("view.indent-guides", "Show Indent Guide"),
     workspace("view.wrap-symbol", "Show Wrap Symbol"),
     workspace("view.word-wrap", "Word Wrap"),
@@ -336,6 +365,8 @@ pub const COMMANDS: &[CommandSpec] = &[
     workspace("view.zoom-in", "Zoom In"),
     workspace("view.zoom-out", "Zoom Out"),
     workspace("view.zoom-reset", "Restore Default Zoom"),
+    // Off: each view zooms on its own
+    workspace("view.zoom-sync", "Synchronize Across Views"),
     // { "browser": "default" | "firefox" | "chrome" | "edge" | "safari" }: the active file
     workspace("view.in-browser", "View Current File in"),
     editor("view.hide-lines", "Hide Lines"),
@@ -388,6 +419,8 @@ pub const COMMANDS: &[CommandSpec] = &[
     ),
     // Tools; { "hash": "md5" | "sha1" | "sha256" | "sha512" }
     workspace("tools.hash-files", "Generate from Files..."),
+    // The hash of a text typed in a dialog, of each line or of all
+    workspace("tools.hash-text", "Generate..."),
     editor(
         "tools.hash-selection",
         "Generate from Selection into Clipboard",

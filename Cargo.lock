@@ -656,6 +656,7 @@ dependencies = [
  "base64 0.23.1",
  "birchpad-i18n",
  "fancy-regex",
+ "icu_normalizer",
  "md-5 0.11.0",
  "memchr",
  "proptest",
@@ -721,7 +722,7 @@ dependencies = [
 
 [[package]]
 name = "birchpad-io"
-version = "0.5.0"
+version = "0.7.0"
 dependencies = [
  "birchpad-core",
  "birchpad-i18n",

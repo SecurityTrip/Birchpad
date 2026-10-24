@@ -689,13 +689,18 @@ each with its tests, docs and a `CHANGELOG.md` entry, its options in Preferences
       would be three platforms' native code beside GPUI's event loop (a Windows message window,
       an NSStatusItem, a D-Bus StatusNotifierItem), which is what GPUI should provide.
       `-systemtray` keeps starting minimized (6.40)
-- [ ] 7.4a Menus left from Notepad++ 8 (6.49): Edit > Auto-Completion (the completion commands
+- [x] 7.4a Menus left from Notepad++ 8 (6.49): Edit > Auto-Completion (the completion commands
       exist, the submenu does not), Line Operations' Sort in Locale Order, On Selection's Redact
       Selection and Change Search Engine..., Column Mode..., Read-Only in Notepad++ (on the
       current or every document) beside the file's read-only attribute; Search > Copy Marked
       Text (only the Mark tab has it) and the search results' Find in These Search Results...;
       View > Show Symbol's Non-Printing Characters and Control Characters & Unicode EOL, Zoom's
-      Synchronize Across Views; Tools' hash Generate... of a typed text
+      Synchronize Across Views; Tools' hash Generate... of a typed text. Built from the user
+      manual and the menus' behavior. Auto-Completion gains Word Completion (Ctrl+Enter) and
+      Path Completion (Ctrl+Alt+Space); the locale order is Unicode's default order in short
+      (letters, then accents, then case, Cyrillic й a letter of its own), not each language's
+      own rules, as Windows' would be; Read-Only in Notepad++ is Read-Only in Birchpad, the
+      attribute Read-Only Attribute of the File (write permission elsewhere than Windows)
 - [ ] 7.4b Preferences left from Notepad++ 8 for the window and the text (6.49): hide the menu
       bar and the status bar; the tab bar's maximum label length, alternate icons, inactive tab
       color, colored bar on the active tab, pinning turned off or only on its button, buttons

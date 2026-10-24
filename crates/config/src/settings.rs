@@ -276,6 +276,10 @@ pub struct EditorSettings {
     pub show_eol: bool,
     pub indent_guides: bool,
     pub wrap_symbol: bool,
+    /// Spaces that are not plain ones and characters without width, marked.
+    pub show_non_printing: bool,
+    /// Control characters and Unicode's other line breaks as pictures (␀, ␤); off, as spaces.
+    pub show_control_chars: bool,
     /// How the line of the caret stands out.
     pub current_line: CurrentLine,
     /// Width of the frame around the current line in pixels (1 to 6), as in Notepad++.
@@ -363,6 +367,8 @@ impl Default for EditorSettings {
             show_eol: false,
             indent_guides: true,
             wrap_symbol: false,
+            show_non_printing: false,
+            show_control_chars: true,
             current_line: CurrentLine::default(),
             current_line_frame_width: 1,
             edge: Edge::default(),
