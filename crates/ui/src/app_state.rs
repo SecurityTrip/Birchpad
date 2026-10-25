@@ -19,6 +19,10 @@ pub struct AppState {
     pub policies: Vec<(String, String)>,
     /// `-nosession`: neither restore nor save the session.
     pub no_session: bool,
+    /// `-fullReadOnly`: every document read-only for the run, which cannot be changed.
+    pub full_read_only: bool,
+    /// `-fullReadOnlySavingForbidden`: nothing can be saved either.
+    pub saving_forbidden: bool,
 }
 
 /// Where the session is kept.
@@ -63,6 +67,8 @@ impl AppState {
             state,
             policies,
             no_session: false,
+            full_read_only: false,
+            saving_forbidden: false,
         }
     }
 

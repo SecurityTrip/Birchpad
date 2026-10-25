@@ -50,6 +50,9 @@ pub fn register_commands(registry: &mut CommandRegistry) {
         this.save_copy_as(&view, window, cx);
         Ok(())
     });
+    registry.enabled_when("file.save-copy-as", |cx| {
+        !crate::app_state::AppState::global(cx).saving_forbidden
+    });
     registry.workspace("file.rename", |this, (), window, cx| {
         let view = this.active_document(cx)?;
         open_rename(cx.entity().downgrade(), view, window, cx);

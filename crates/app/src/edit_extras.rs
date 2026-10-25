@@ -44,6 +44,14 @@ pub fn register_commands(registry: &mut CommandRegistry) {
             Ok(())
         });
     }
+    // -fullReadOnly: Read-Only stays on for the run.
+    for id in [
+        "edit.toggle-read-only",
+        "edit.set-read-only-all",
+        "edit.clear-read-only-all",
+    ] {
+        registry.enabled_when(id, |cx| !AppState::global(cx).full_read_only);
+    }
     registry.workspace("edit.toggle-read-only-attribute", |this, (), _, cx| {
         let view = this
             .active_view(cx)

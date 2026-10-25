@@ -743,8 +743,10 @@ each with its tests, docs and a `CHANGELOG.md` entry, its options in Preferences
       current doc., now also a preference) and Style All Occurrences' match case and whole
       word. Not done: SQL's backslash as an escape, since the SQL grammar decides what a
       string is and has no such switch; muting sounds, since Birchpad makes none
-- [ ] 7.4d Command line left from Notepad++ 8 (6.49): `-fullReadOnly` and
-      `-fullReadOnlySavingForbidden`, every document read-only for the run, saving too
+- [x] 7.4d Command line left from Notepad++ 8 (6.49): `-fullReadOnly` and
+      `-fullReadOnlySavingForbidden`, every document read-only for the run, saving too: the
+      documents of the session too, Read-Only in Birchpad cannot be turned off, and the second
+      takes Save, Save As, Save a Copy As and Save All away
 - [ ] Release 0.7.0: the workspace version (0.7.0, set when its branch opens, so that nightly
       builds are its pre-releases), `CHANGELOG.md` and this roadmap updated; the
       [release checklist](release-checklist.md) gone through

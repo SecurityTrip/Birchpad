@@ -11,6 +11,8 @@ banner:
   this-file-is-read-only-use-save-as-to-keep-your-changes-in-another-file: "This file is read-only. Use Save As to keep your changes in another file."
 cli:
   add-the-text-to-the-window-s-title: "Add the text to the window's title"
+  every-document-read-only-and-nothing-saved-for-this-run: "Every document read-only, and nothing saved, for this run"
+  every-document-read-only-for-this-run-which-cannot-be-changed: "Every document read-only for this run, which cannot be changed"
   everything-after-it-is-a-file-even-if-it-starts-with-a-dash: "Everything after it is a file, even if it starts with a dash"
   folders-go-to-folder-as-workspace-as-they-always-do: "Folders go to Folder as Workspace, as they always do"
   go-to-the-column-from-1: "Go to the column (from 1)"
@@ -565,6 +567,7 @@ file-ops:
   save-all: "Save All"
   save-every-changed-document: "Save every document with unsaved changes?"
   save-question: "Save changes to {name}?"
+  saving-is-forbidden: "saving is turned off for this run (-fullReadOnlySavingForbidden)"
 find-in-files:
   find-in-files: "Find in Files"
   found: "{hits} in {files} of {searched} searched"

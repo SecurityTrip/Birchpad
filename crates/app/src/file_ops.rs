@@ -60,6 +60,10 @@ pub fn register_commands(registry: &mut CommandRegistry) {
         this.save(view, SaveMode::SaveAs, window, cx).detach();
         Ok(())
     });
+    // -fullReadOnlySavingForbidden: nothing is saved.
+    for id in ["file.save", "file.save-as"] {
+        registry.enabled_when(id, |cx| !AppState::global(cx).saving_forbidden);
+    }
     registry.workspace("file.save-all", |this, (), window, cx| {
         // MISC > Enable Save All confirm dialog.
         if !AppState::global(cx).settings.misc.confirm_save_all {
@@ -84,6 +88,7 @@ pub fn register_commands(registry: &mut CommandRegistry) {
         .detach();
         Ok(())
     });
+    registry.enabled_when("file.save-all", |cx| !AppState::global(cx).saving_forbidden);
     registry.workspace("file.close", |this, (), window, cx| {
         let views = this.active_view(cx).into_iter().collect();
         this.close_with_confirmation(views, window, cx).detach();
@@ -264,6 +269,12 @@ impl Workspace {
                 buffer.read(cx).display_name()
             )),
             _ => None,
+        };
+        // -fullReadOnlySavingForbidden: nothing at all is saved in this run.
+        let blocked = if AppState::global(cx).saving_forbidden {
+            Some(t!("file-ops.saving-is-forbidden"))
+        } else {
+            blocked
         };
         if let Some(reason) = blocked {
             report_error(

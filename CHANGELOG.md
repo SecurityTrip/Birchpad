@@ -74,6 +74,8 @@ version's release notes from its section here.
 - MISC: the document peeker in the Document Map, encoding detection turned off, Save All
   confirmed, symbolic links followed in Folder as Workspace, and extensions that open a file
   as a session or as a project workspace.
+- The command line takes `-fullReadOnly` (every document read-only for the run) and
+  `-fullReadOnlySavingForbidden` (nothing saved either).
 - Sticky scroll, in Preferences > Editing: the first lines of the blocks around the top of the
   view stay there while you scroll, five at most by default; a click on one goes to it.
 

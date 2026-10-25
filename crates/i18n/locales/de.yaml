@@ -9,6 +9,8 @@ banner:
   this-file-is-read-only-use-save-as-to-keep-your-changes-in-another-file: "Diese Datei ist schreibgeschützt. Mit „Speichern unter“ behalten Sie Ihre Änderungen in einer anderen Datei."
 cli:
   add-the-text-to-the-window-s-title: "Den Text an den Fenstertitel anhängen"
+  every-document-read-only-and-nothing-saved-for-this-run: "Jedes Dokument schreibgeschützt und nichts gespeichert, für diesen Lauf"
+  every-document-read-only-for-this-run-which-cannot-be-changed: "Jedes Dokument für diesen Lauf schreibgeschützt, unveränderlich"
   everything-after-it-is-a-file-even-if-it-starts-with-a-dash: "Alles danach ist eine Datei, auch wenn es mit einem Bindestrich beginnt"
   folders-go-to-folder-as-workspace-as-they-always-do: "Ordner kommen in „Ordner als Arbeitsbereich“, wie immer"
   go-to-the-column-from-1: "Zur Spalte gehen (ab 1)"
@@ -563,6 +565,7 @@ file-ops:
   save-all: "Alle speichern"
   save-every-changed-document: "Jedes Dokument mit ungespeicherten Änderungen speichern?"
   save-question: "Änderungen an {name} speichern?"
+  saving-is-forbidden: "Speichern ist für diesen Lauf ausgeschaltet (-fullReadOnlySavingForbidden)"
 find-in-files:
   find-in-files: "In Dateien suchen"
   found: "{hits} in {files} von {searched} durchsuchten"

@@ -102,7 +102,7 @@ Birchpad takes Notepad++'s options (Help > Command Line Arguments... lists them)
 
 ```text
 birchpad [-n<line>] [-c<column>] [-p<position>] [-l<language>] [-udl="name"] [-ro]
-         [-monitor] [-r] [-multiInst] [-nosession] [-openSession] [-openFoldersAsWorkspace]
+         [-fullReadOnly] [-fullReadOnlySavingForbidden] [-monitor] [-r] [-multiInst] [-nosession] [-openSession] [-openFoldersAsWorkspace]
          [-notabbar] [-alwaysOnTop] [-systemtray] [-x<left>] [-y<top>] [-titleAdd="text"]
          [-settingsDir="folder"] [-loadingTime] [-quickPrint] [-qt="text"] [-qf="file"]
          [-qSpeed<1-3>] [-noPlugin] [-pluginMessage="text"] [-L<code>]

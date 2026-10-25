@@ -878,6 +878,8 @@ impl Workspace {
         });
         AppState::remove_recent(&path, cx);
         let options = AppState::global(cx).load_options(None);
+        // -fullReadOnly: every file read-only.
+        let read_only = read_only || AppState::global(cx).full_read_only;
         let buffer = cx.new(|cx| Buffer::open(path, options, read_only, cx));
         let view = self.add_buffer(buffer, window, cx);
         if let Some(pristine) = pristine {
@@ -1275,6 +1277,18 @@ impl Workspace {
             window.set_window_edited(title.starts_with('*'));
             self.title = title;
         }
+    }
+
+    /// `-fullReadOnly`: every document read-only, those the session brought back too.
+    pub fn apply_full_read_only(&mut self, cx: &mut Context<Self>) {
+        if !AppState::global(cx).full_read_only {
+            return;
+        }
+        for view in self.all_views(cx) {
+            let buffer = view.read(cx).buffer.clone();
+            buffer.update(cx, |buffer, cx| buffer.set_requested_read_only(true, cx));
+        }
+        self.refresh_menus(cx);
     }
 
     /// Preferences > New Document > Always open a new document at startup: a new one besides

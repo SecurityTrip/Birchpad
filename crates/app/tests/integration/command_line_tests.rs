@@ -211,3 +211,53 @@ fn the_interface_language_for_this_run() {
     assert_eq!(for_this_run("fr"), "en");
     assert_eq!(for_this_run("-"), "en");
 }
+
+#[gpui_kit::test]
+fn full_read_only_keeps_every_document_read_only(cx: &mut gpui_kit::TestAppContext) {
+    use birchpad::app_state::AppState;
+    use birchpad_commands::Invocation;
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("a.txt");
+    std::fs::write(&path, "text").unwrap();
+    let (workspace, cx) = crate::workspace::open_workspace(cx);
+    cx.update(|_, cx| {
+        let app = cx.global_mut::<AppState>();
+        app.full_read_only = true;
+        app.saving_forbidden = true;
+    });
+    workspace.update_in(cx, |workspace, window, cx| {
+        workspace.open_path(&path, window, cx);
+        workspace.apply_full_read_only(cx);
+    });
+    cx.run_until_parked();
+    let read_only = workspace.read_with(cx, |workspace, cx| {
+        workspace
+            .all_views(cx)
+            .iter()
+            .all(|view| view.read(cx).buffer.read(cx).requested_read_only())
+    });
+    assert!(read_only);
+    let run = |id: &str, cx: &mut gpui_kit::VisualTestContext| {
+        workspace.update_in(cx, |workspace, window, cx| {
+            workspace.dispatch(&Invocation::new(id), window, cx)
+        })
+    };
+    // Read-Only cannot be turned off, and nothing is saved.
+    for id in [
+        "edit.toggle-read-only",
+        "edit.clear-read-only-all",
+        "file.save",
+        "file.save-as",
+        "file.save-all",
+        "file.save-copy-as",
+    ] {
+        assert!(run(id, cx).is_err(), "{id}");
+    }
+    // Without the options, as usual.
+    cx.update(|_, cx| {
+        let app = cx.global_mut::<AppState>();
+        app.full_read_only = false;
+        app.saving_forbidden = false;
+    });
+    assert!(run("edit.toggle-read-only", cx).is_ok());
+}

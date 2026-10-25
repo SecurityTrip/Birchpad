@@ -10,6 +10,8 @@ banner:
   this-file-is-read-only-use-save-as-to-keep-your-changes-in-another-file: "Файл только для чтения. Сохраните изменения в другом файле через «Сохранить как»."
 cli:
   add-the-text-to-the-window-s-title: "Добавить текст к заголовку окна"
+  every-document-read-only-and-nothing-saved-for-this-run: "Каждый документ только для чтения, и ничего не сохраняется, на этот запуск"
+  every-document-read-only-for-this-run-which-cannot-be-changed: "Каждый документ только для чтения на этот запуск, без возможности изменить"
   everything-after-it-is-a-file-even-if-it-starts-with-a-dash: "Всё после этого — файлы, даже если начинаются с дефиса"
   folders-go-to-folder-as-workspace-as-they-always-do: "Папки открываются в «Папке как рабочем пространстве», как всегда"
   go-to-the-column-from-1: "Перейти к столбцу (с 1)"
@@ -564,6 +566,7 @@ file-ops:
   save-all: "Сохранить все"
   save-every-changed-document: "Сохранить все документы с несохранёнными изменениями?"
   save-question: "Сохранить изменения в {name}?"
+  saving-is-forbidden: "сохранение отключено на этот запуск (-fullReadOnlySavingForbidden)"
 find-in-files:
   find-in-files: "Найти в файлах"
   found: "{hits} в файлах: {files} из {searched} просмотренных"

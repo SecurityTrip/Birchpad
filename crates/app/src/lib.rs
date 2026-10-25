@@ -163,6 +163,8 @@ pub fn run() {
             let mut app_state = AppState::new(settings, paths);
             // Printing files at once (`-quickPrint`) leaves the session as it was.
             app_state.no_session = command_line.no_session || command_line.quick_print;
+            app_state.full_read_only = command_line.full_read_only;
+            app_state.saving_forbidden = command_line.saving_forbidden;
             cx.set_global(app_state);
             themes::init(cx);
             i18n::apply(cx);
@@ -215,6 +217,7 @@ pub fn run() {
                     }
                     workspace.open_command_line(&command_line, window, cx);
                     workspace.open_startup_document(window, cx);
+                    workspace.apply_full_read_only(cx);
                     workspace.report_pending_recoveries(window, cx);
                     workspace.start_backups(cx);
                     workspace.start_watching(window, cx);
