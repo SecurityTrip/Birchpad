@@ -239,7 +239,9 @@ pub(crate) fn unpack(archive: &Path, to: &Path) -> Result<(), String> {
     for index in 0..zip.len() {
         let mut entry = zip.by_index(index).map_err(|error| error.to_string())?;
         let Some(name) = entry.enclosed_name() else {
-            return Err(format!("{} is outside the package", entry.name()));
+            // zip 9 gives the name as a `Result`: the raw bytes say it whatever they are.
+            let raw = String::from_utf8_lossy(entry.name_raw()).into_owned();
+            return Err(format!("{raw} is outside the package"));
         };
         let path = to.join(name);
         if entry.is_dir() {
