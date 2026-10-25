@@ -247,7 +247,18 @@ fn replace_all_in_all_opened_documents(cx: &mut TestAppContext) {
     cx.simulate_input("a");
     search_for(&workspace, "a", FindOptions::default(), cx);
     set_replacement(&workspace, "b", cx);
-    let status = act(&workspace, FindBarEvent::ReplaceAllInAll, cx);
+    // Preferences > Searching confirm it first.
+    act(&workspace, FindBarEvent::ReplaceAllInAll, cx);
+    cx.simulate_prompt_answer("Replace All");
+    cx.run_until_parked();
+    let status = workspace.read_with(cx, |workspace, cx| {
+        workspace
+            .find_bar
+            .read(cx)
+            .status
+            .clone()
+            .map(|(message, _)| message)
+    });
     assert_eq!(
         status.as_deref(),
         Some("Replace All in all opened documents: 3 occurrences replaced in 2 documents")
@@ -402,8 +413,9 @@ fn find_in_these_search_results_searches_their_lines(cx: &mut TestAppContext) {
         workspace.search_results.read(cx).rows_text().len()
     });
     assert_eq!(count, rows.len());
-    // A regular expression over the lines.
-    assert_eq!(within("^bar", true, cx), 1);
+    // A regular expression over the lines of the newest search.
+    assert_eq!(within("^foo t", true, cx), 1);
+    assert_eq!(within("^bar", true, cx), 0);
 }
 
 #[gpui_kit::test]
@@ -417,4 +429,26 @@ fn find_in_these_search_results_needs_results(cx: &mut TestAppContext) {
         )
     });
     assert!(result.is_err());
+}
+
+#[gpui_kit::test]
+fn replace_all_in_all_waits_for_its_answer(cx: &mut TestAppContext) {
+    let (workspace, cx) = open_workspace(cx);
+    cx.simulate_input("a a");
+    search_for(&workspace, "a", FindOptions::default(), cx);
+    set_replacement(&workspace, "b", cx);
+    act(&workspace, FindBarEvent::ReplaceAllInAll, cx);
+    cx.simulate_prompt_answer("Cancel");
+    cx.run_until_parked();
+    assert_eq!(active_text(&workspace, cx), "a a", "cancelled");
+    // Not asked for, it replaces at once.
+    cx.update(|_, cx| {
+        cx.global_mut::<birchpad::app_state::AppState>()
+            .settings
+            .searching
+            .confirm_replace_all_documents = false;
+    });
+    act(&workspace, FindBarEvent::ReplaceAllInAll, cx);
+    cx.run_until_parked();
+    assert_eq!(active_text(&workspace, cx), "b b");
 }
