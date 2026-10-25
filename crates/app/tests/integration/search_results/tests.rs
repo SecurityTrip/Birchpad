@@ -154,7 +154,8 @@ fn the_right_click_menu_removes_copies_folds_and_clears(cx: &mut TestAppContext)
     };
 
     // Remove, Copy Selected Line, Copy Selected Pathname, Open Selected Pathname, Open All,
-    // Fold All, Unfold All, Wrap Long Lines, Purge for Every Search, Clear All; the arrow
+    // Fold All, Unfold All, Wrap Long Lines, Purge for Every Search, Find in These Search
+    // Results..., Clear All; the arrow
     // keys skip the items that are disabled for the row.
     right_click(5, cx);
     assert_eq!(selected(&results, cx), Some(5), "the right click selects");
@@ -187,7 +188,7 @@ fn the_right_click_menu_removes_copies_folds_and_clears(cx: &mut TestAppContext)
     cx.simulate_keystrokes("down escape");
     assert_eq!(rows(&results, cx).len(), 5);
     right_click(1, cx);
-    cx.simulate_keystrokes("down down down down down down down down down enter");
+    cx.simulate_keystrokes("down down down down down down down down down down enter");
     assert!(rows(&results, cx).is_empty(), "cleared");
 }
 
