@@ -842,7 +842,7 @@ dependencies = [
 
 [[package]]
 name = "birchpad-theme"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "birchpad-i18n",
  "roxmltree 0.21.1",

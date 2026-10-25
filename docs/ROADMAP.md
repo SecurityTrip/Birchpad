@@ -701,7 +701,7 @@ each with its tests, docs and a `CHANGELOG.md` entry, its options in Preferences
       (letters, then accents, then case, Cyrillic й a letter of its own), not each language's
       own rules, as Windows' would be; Read-Only in Notepad++ is Read-Only in Birchpad, the
       attribute Read-Only Attribute of the File (write permission elsewhere than Windows)
-- [ ] 7.4b Preferences left from Notepad++ 8 for the window and the text (6.49): hide the menu
+- [x] 7.4b Preferences left from Notepad++ 8 for the window and the text (6.49): hide the menu
       bar and the status bar; the tab bar's maximum label length, alternate icons, inactive tab
       color, colored bar on the active tab, pinning turned off or only on its button, buttons
       on inactive tabs; Editing's caret width and blink rate, wrapped lines' indent, smooth
@@ -711,7 +711,15 @@ each with its tests, docs and a `CHANGELOG.md` entry, its options in Preferences
       column-to-multi-editing as options, how end of lines and non-printing characters are
       drawn, typing control characters prevented; Dark Mode's tones; Margins' fold style,
       border width, line numbers' width, padding left, right and in Distraction Free mode, the
-      vertical edge as a background
+      vertical edge as a background. Built from the user manual's Preferences page. The edge
+      as a background was there already (Margins > Vertical edge > Background); selected text
+      can now be dragged, which the option turns off; virtual space takes clicks past the end
+      of a line, and the arrow keys still stop at it. Not done: smooth font, since GPUI draws
+      and smooths the text itself on every platform; how non-printing characters are drawn
+      (abbreviations or code points), since Birchpad gives every character the cells it takes
+      and a label several cells wide would need the column model to change with the setting
+      (they are framed or marked instead); Dark Mode's customized tone, beside the seven tones
+      (the Style Configurator sets the interface's colors)
 - [ ] 7.4c Preferences left from Notepad++ 8 for files, search and typing (6.49): New Document's
       encoding applied to opened ANSI files, a new document at startup, the first line as an
       untitled tab's name; opening a folder's files one by one; Recent Files' submenu, file name

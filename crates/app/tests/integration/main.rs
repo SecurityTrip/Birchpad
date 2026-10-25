@@ -197,6 +197,9 @@ mod user_languages;
 #[path = "view_extras/tests.rs"]
 mod view_extras;
 
+#[path = "window_options/tests.rs"]
+mod window_options;
+
 #[path = "window_menu/tests.rs"]
 mod window_menu;
 

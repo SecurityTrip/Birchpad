@@ -59,11 +59,29 @@ struct FrameStyles {
     /// Sorted, non-overlapping.
     spans: Vec<(ByteRange<usize>, TextStyle)>,
     braces: Vec<(ByteRange<usize>, TextStyle)>,
+    /// The selections, and the color of selected text over every other (Preferences >
+    /// Editing > Selected text's own color).
+    selected: Vec<ByteRange<usize>>,
+    selected_color: Option<u32>,
 }
 
 impl FrameStyles {
-    /// The style at document position `pos`: a bracket's, else the highlight's.
+    /// The style at document position `pos`: a bracket's, else the highlight's; in a
+    /// selection, with the selected text's color.
     fn at(&self, pos: usize) -> Option<TextStyle> {
+        let style = self.base_at(pos);
+        match self.selected_color {
+            Some(color) if self.selected.iter().any(|range| range.contains(&pos)) => {
+                Some(TextStyle {
+                    color: Some(color),
+                    ..style.unwrap_or_default()
+                })
+            }
+            _ => style,
+        }
+    }
+
+    fn base_at(&self, pos: usize) -> Option<TextStyle> {
         if let Some((_, style)) = self.braces.iter().find(|(range, _)| range.contains(&pos)) {
             return Some(*style);
         }
@@ -81,7 +99,13 @@ impl FrameStyles {
             .iter()
             .take_while(move |(r, _)| r.start < range.end)
             .chain(self.braces.iter())
-            .flat_map(|(r, _)| [r.start, r.end])
+            .map(|(r, _)| r)
+            .chain(
+                self.selected
+                    .iter()
+                    .filter(|_| self.selected_color.is_some()),
+            )
+            .flat_map(|r| [r.start, r.end])
     }
 }
 
@@ -164,8 +188,12 @@ impl Margins {
                 margin
             })
         };
-        // Wide enough for the largest line number (at least three digits).
-        let digits = line_count.to_string().len().max(3);
+        // Wide enough for the largest line number (at least three digits), or for seven
+        // digits whatever the document's length (Constant width).
+        let digits = match settings.line_number_width {
+            birchpad_config::LineNumberWidth::Dynamic => line_count.to_string().len().max(3),
+            birchpad_config::LineNumberWidth::Constant => 7,
+        };
         let line_numbers = column(settings.line_numbers, metrics.cell * (digits as f32 + 2.));
         let symbols = column(settings.bookmark_margin, metrics.line_height);
         let changes = column(
@@ -235,6 +263,11 @@ pub struct Layout {
     pub full_rows: usize,
     /// Sticky scroll's lines, from the top.
     pub sticky: Vec<StickyRow>,
+    /// The carets are blocks over a character, drawn translucent.
+    pub caret_block: bool,
+    /// The line between the margins and the text.
+    pub border_width: Pixels,
+    pub fold_style: birchpad_config::FoldStyle,
 }
 
 impl EditorView {
@@ -270,6 +303,12 @@ impl EditorView {
             )
         };
 
+        // Preferences > Margins > Padding: room taken from the text area on each side.
+        let padding = settings.padding_left + settings.padding_right;
+        if text_bounds.size.width > padding + px(40.) {
+            text_bounds.origin.x += settings.padding_left;
+            text_bounds.size.width -= padding;
+        }
         let wrap_width = settings.word_wrap.then(|| {
             let usable = text_bounds.size.width - TEXT_PADDING * 2.;
             // The wrap symbol takes the last column.
@@ -283,6 +322,11 @@ impl EditorView {
             LayoutConfig {
                 tab_width: settings.tab_width,
                 wrap_width,
+                wrap_indent: match settings.wrap_indent {
+                    birchpad_config::WrapIndent::Default => birchpad_view::WrapIndent::None,
+                    birchpad_config::WrapIndent::Aligned => birchpad_view::WrapIndent::Aligned,
+                    birchpad_config::WrapIndent::Indent => birchpad_view::WrapIndent::Indent,
+                },
             },
             cx,
         );
@@ -325,7 +369,12 @@ impl EditorView {
             }
             self.autoscroll = false;
         }
-        let max_top = total_rows.saturating_sub(full_rows) as f64;
+        // Scrolling beyond the last line: it can go up to the top.
+        let max_top = if settings.scroll_beyond_last_line {
+            total_rows.saturating_sub(1)
+        } else {
+            total_rows.saturating_sub(full_rows)
+        } as f64;
         self.scroll_top = self.scroll_top.clamp(0., max_top);
 
         let column_zero = text_bounds.left() + TEXT_PADDING - self.scroll_left;
@@ -369,10 +418,20 @@ impl EditorView {
                     settings.tab_width,
                     settings.show_control_chars,
                 );
-                let x = if wrap_width.is_some() {
-                    text_bounds.left() + TEXT_PADDING
-                } else {
-                    column_zero
+                let x = match wrap_width {
+                    // Rows after the first of a line start under its indentation (Line Wrap).
+                    Some(width) if row.index_in_line > 0 => {
+                        let line = birchpad_core::motion::line_range(&text, row.line);
+                        let indent = birchpad_view::wrap_indent(
+                            text.slice(line),
+                            width,
+                            settings.tab_width,
+                            self.display.config().wrap_indent,
+                        );
+                        text_bounds.left() + TEXT_PADDING + cell * indent as f32
+                    }
+                    Some(_) => text_bounds.left() + TEXT_PADDING,
+                    None => column_zero,
                 };
                 (display, x)
             };
@@ -414,11 +473,24 @@ impl EditorView {
                 range.start..end
             })
             .collect();
-        let styles = if sticky_ranges.is_empty() {
+        let mut styles = if sticky_ranges.is_empty() {
             self.frame_styles(&shown, &text, cx)
         } else {
             self.frame_styles(&[sticky_ranges.clone(), shown.clone()].concat(), &text, cx)
         };
+        if birchpad_ui::AppState::global(cx)
+            .settings
+            .editor
+            .selection_foreground
+        {
+            styles.selected_color = Some(theme::editor().selection_text.0);
+            styles.selected = self
+                .selection
+                .iter()
+                .filter(|range| !range.is_empty())
+                .map(|range| range.from()..range.to())
+                .collect();
+        }
         let mut rows = Vec::with_capacity(pending.len());
         for (row, y, mut x, display) in pending {
             // Rows shaped only in part (very long ones) reorder the part shown.
@@ -505,6 +577,9 @@ impl EditorView {
             total_rows,
             full_rows,
             sticky,
+            caret_block: false,
+            border_width: settings.border_width,
+            fold_style: settings.fold_style,
         };
         layout.bookmarks = self.bookmark_symbols(&layout, &text, cx);
         layout.change_bars = self.change_bars(&layout, &text, cx);
@@ -512,7 +587,11 @@ impl EditorView {
         self.hidden_marks(&mut layout, &text);
         layout.decorations = self.decoration_bounds(&layout, &text, cx);
         layout.selections = self.selection_bounds(&layout, &text);
-        layout.carets = self.caret_bounds(&layout, &text);
+        layout.carets = self.caret_bounds(&layout, &text, settings.caret_width);
+        layout.caret_block = matches!(
+            settings.caret_width,
+            birchpad_config::CaretWidth::Block | birchpad_config::CaretWidth::BlockAfter
+        );
         self.layout_symbols(&mut layout, &text, &settings, window);
         layout.vertical_bar = vertical_scrollbar(bounds, &layout, self.scroll_top);
         if let Some(bar) = &mut layout.vertical_bar {
@@ -1281,8 +1360,17 @@ impl EditorView {
         quads
     }
 
-    fn caret_bounds(&mut self, layout: &Layout, text: &Rope) -> Vec<Bounds<Pixels>> {
+    fn caret_bounds(
+        &mut self,
+        layout: &Layout,
+        text: &Rope,
+        width: birchpad_config::CaretWidth,
+    ) -> Vec<Bounds<Pixels>> {
+        use birchpad_config::CaretWidth;
         let mut carets = Vec::new();
+        if width == CaretWidth::None && !self.overwrite {
+            return carets;
+        }
         let line_height = layout.metrics.line_height;
         let (Some(first), Some(last)) = (layout.rows.first(), layout.rows.last()) else {
             return carets;
@@ -1308,7 +1396,18 @@ impl EditorView {
                     size(layout.metrics.cell, px(2.)),
                 )
             } else {
-                Bounds::new(point(x, row.y), size(px(2.), line_height))
+                let cell = layout.metrics.cell;
+                match width {
+                    CaretWidth::Block => Bounds::new(point(x, row.y), size(cell, line_height)),
+                    CaretWidth::BlockAfter => {
+                        Bounds::new(point(x - cell, row.y), size(cell, line_height))
+                    }
+                    CaretWidth::None | CaretWidth::One => {
+                        Bounds::new(point(x, row.y), size(px(1.), line_height))
+                    }
+                    CaretWidth::Two => Bounds::new(point(x, row.y), size(px(2.), line_height)),
+                    CaretWidth::Three => Bounds::new(point(x, row.y), size(px(3.), line_height)),
+                }
             });
         }
         carets

@@ -228,6 +228,41 @@ pub struct AppearanceSettings {
     /// The colors of menus, tabs, panels and dialogs, apart from the editor's theme: Notepad++'s
     /// Preferences > Dark Mode.
     pub interface: InterfaceMode,
+    /// A hint of color in the dark interface (Dark Mode's tones).
+    pub dark_tone: DarkTone,
+    /// The menu bar shows; hidden, Alt or F10 shows it while a menu is open ("Hide menu bar").
+    pub menu_bar: bool,
+    /// The status bar shows ("Status Bar > Hide" off).
+    pub status_bar: bool,
+}
+
+/// Notepad++'s Dark Mode tones: a hint of color in the dark interface's surfaces.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum DarkTone {
+    #[default]
+    Black,
+    Red,
+    Green,
+    Blue,
+    Purple,
+    Cyan,
+    Olive,
+}
+
+impl DarkTone {
+    /// The hue of the tone, in degrees; none for black.
+    pub fn hue(self) -> Option<f32> {
+        match self {
+            Self::Black => None,
+            Self::Red => Some(0.),
+            Self::Olive => Some(60.),
+            Self::Green => Some(120.),
+            Self::Cyan => Some(180.),
+            Self::Blue => Some(220.),
+            Self::Purple => Some(280.),
+        }
+    }
 }
 
 /// Notepad++'s Dark Mode for the interface.
@@ -251,6 +286,9 @@ impl Default for AppearanceSettings {
             native_lang: String::new(),
             title_file_name_only: false,
             interface: InterfaceMode::default(),
+            dark_tone: DarkTone::default(),
+            menu_bar: true,
+            status_bar: true,
         }
     }
 }
@@ -294,6 +332,121 @@ pub struct EditorSettings {
     pub sticky_scroll: bool,
     /// The most lines sticky scroll keeps, from 1 to 10.
     pub sticky_scroll_lines: u8,
+    /// How the caret is drawn ("Caret Settings > Width").
+    pub caret_width: CaretWidth,
+    /// Milliseconds between the caret's blinks, from 0 (it does not blink) to 2000.
+    pub caret_blink_ms: u16,
+    /// Where the rows of a wrapped line start ("Line Wrap").
+    pub wrap_indent: WrapIndent,
+    /// The caret goes past the end of lines, spaces filling the gap when typing there
+    /// ("Enable virtual space").
+    pub virtual_space: bool,
+    /// The last line can scroll up to the top ("Scrolling beyond last line").
+    pub scroll_beyond_last_line: bool,
+    /// A right click outside the selection keeps it ("Keep selection when right-click outside
+    /// of selection").
+    pub keep_selection_on_right_click: bool,
+    /// Copy and Cut with nothing selected take the caret's whole line.
+    pub copy_line_without_selection: bool,
+    /// Selected text in the theme's selection foreground ("Apply selected text foreground
+    /// colour").
+    pub selection_foreground: bool,
+    /// The selected text can be dragged elsewhere, Ctrl copying it ("Disable selected text
+    /// drag-and-drop" off).
+    pub drag_text: bool,
+    /// Ctrl+click adds a caret ("Enable Multi-Editing").
+    pub multi_editing: bool,
+    /// Typing in a rectangular selection makes it a selection of each row of its own, as
+    /// multi-editing goes on ("Enable Column Selection to Multi-editing").
+    pub column_to_multi_editing: bool,
+    /// How line endings show with View > Show Symbol ("EOL (CRLF) rendering").
+    pub eol_style: EolStyle,
+    /// Keys that would type a control character (Ctrl+E) type nothing ("Prevent control
+    /// character (C0 code) typing into document").
+    pub prevent_control_typing: bool,
+    /// How the folding margin draws fold points ("Fold Margin Style").
+    pub fold_style: FoldStyle,
+    /// The line between the margins and the text, in pixels from 0 to 30 ("Border Width").
+    pub border_width: u8,
+    /// The line number margin grows with the number of lines, or keeps room for a million
+    /// ("Dynamic width" or "Constant width").
+    pub line_number_width: LineNumberWidth,
+    /// Room left and right of the text, in pixels from 0 to 30 ("Padding").
+    pub padding_left: u8,
+    pub padding_right: u8,
+    /// How much of the window's width Distraction Free mode leaves on each side of the text,
+    /// from 0 (none) to 9 tenths of half of it ("Distraction Free" padding).
+    pub padding_distraction_free: u8,
+}
+
+/// Notepad++'s fold margin styles.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum FoldStyle {
+    /// A minus or a plus sign.
+    Simple,
+    /// An arrow, down when open, right when folded.
+    Arrow,
+    /// Circles joined by the fold's lines.
+    CircleTree,
+    /// Boxes joined by the fold's lines.
+    #[default]
+    BoxTree,
+    /// No fold points drawn; clicks still fold.
+    None,
+}
+
+/// How wide the line number margin is.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum LineNumberWidth {
+    #[default]
+    Dynamic,
+    Constant,
+}
+
+/// Notepad++'s caret widths.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum CaretWidth {
+    /// No caret at all.
+    #[serde(rename = "0")]
+    None,
+    #[serde(rename = "1")]
+    One,
+    #[default]
+    #[serde(rename = "2")]
+    Two,
+    #[serde(rename = "3")]
+    Three,
+    /// A block over the character after the caret.
+    Block,
+    /// A block over the character before the caret.
+    BlockAfter,
+}
+
+/// Where the rows after the first of a wrapped line start.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum WrapIndent {
+    /// At the left edge.
+    #[default]
+    Default,
+    /// Under the line's indentation.
+    Aligned,
+    /// One indentation step further in than the line.
+    Indent,
+}
+
+/// How line endings show.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum EolStyle {
+    /// A rounded box labeled CR, LF or CRLF.
+    #[default]
+    Box,
+    /// The label alone.
+    PlainText,
 }
 
 impl EditorSettings {
@@ -375,6 +528,25 @@ impl Default for EditorSettings {
             edge_columns: vec![80],
             sticky_scroll: false,
             sticky_scroll_lines: 5,
+            caret_width: CaretWidth::default(),
+            caret_blink_ms: 530,
+            wrap_indent: WrapIndent::default(),
+            virtual_space: false,
+            scroll_beyond_last_line: false,
+            keep_selection_on_right_click: false,
+            copy_line_without_selection: false,
+            selection_foreground: false,
+            drag_text: true,
+            multi_editing: true,
+            column_to_multi_editing: false,
+            eol_style: EolStyle::default(),
+            prevent_control_typing: true,
+            fold_style: FoldStyle::default(),
+            border_width: 1,
+            line_number_width: LineNumberWidth::default(),
+            padding_left: 0,
+            padding_right: 0,
+            padding_distraction_free: 4,
         }
     }
 }
@@ -593,6 +765,36 @@ pub struct TabSettings {
     pub switcher_mru: bool,
     /// Closing the last tab quits ("Exit on close the last tab").
     pub exit_on_last_close: bool,
+    /// Labels longer than this many characters are cut, `…` at their end; 0 for no limit
+    /// ("Max tab label length").
+    pub max_label_length: u16,
+    /// A check mark, a pencil and a lock for saved, changed and read-only documents in place
+    /// of the dot ("Alternate icons").
+    pub alternate_icons: bool,
+    /// Inactive tabs have a background of their own ("Change inactive tab color").
+    pub inactive_color: bool,
+    /// A line of the accent color marks the active tab ("Draw a coloured bar on active tab").
+    pub active_bar: bool,
+    /// Tabs can be pinned ("Enable pin tab feature").
+    pub pinning: bool,
+    /// Only pinned tabs show the pin; off, every tab has a pin button that pins it ("Show only
+    /// pinned button").
+    pub only_pinned_button: bool,
+    /// Inactive tabs show their close and pin buttons too ("Show buttons on inactive tabs").
+    pub inactive_buttons: bool,
+}
+
+impl TabSettings {
+    /// A tab's label: `name`, cut to the maximum length with `…` at its end.
+    pub fn label(&self, name: &str) -> String {
+        let max = usize::from(self.max_label_length);
+        if max == 0 || name.chars().count() <= max {
+            return name.to_owned();
+        }
+        let mut cut: String = name.chars().take(max.saturating_sub(1).max(1)).collect();
+        cut.push('…');
+        cut
+    }
 }
 
 impl Default for TabSettings {
@@ -608,6 +810,13 @@ impl Default for TabSettings {
             switcher: true,
             switcher_mru: true,
             exit_on_last_close: false,
+            max_label_length: 0,
+            alternate_icons: false,
+            inactive_color: true,
+            active_bar: true,
+            pinning: true,
+            only_pinned_button: true,
+            inactive_buttons: true,
         }
     }
 }

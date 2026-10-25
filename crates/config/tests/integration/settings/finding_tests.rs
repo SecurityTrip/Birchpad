@@ -79,3 +79,79 @@ fn sticky_scroll_is_off_and_keeps_five_lines_by_default() {
     assert!(check_setting("editor.sticky-scroll", &toml::Value::Integer(1)).is_err());
     assert!(check_setting("editor.sticky-scroll-lines", &toml::Value::Integer(-1)).is_err());
 }
+
+#[test]
+fn window_and_text_options_default_to_what_birchpad_did() {
+    let settings = Settings::default();
+    let appearance = &settings.appearance;
+    assert!(appearance.menu_bar && appearance.status_bar);
+    assert_eq!(appearance.dark_tone, DarkTone::Black);
+    let tabs = &settings.tabs;
+    assert_eq!(tabs.max_label_length, 0);
+    assert!(!tabs.alternate_icons);
+    assert!(tabs.inactive_color && tabs.active_bar && tabs.pinning);
+    assert!(tabs.only_pinned_button && tabs.inactive_buttons);
+    let editor = &settings.editor;
+    assert_eq!(editor.caret_width, CaretWidth::Two);
+    assert_eq!(editor.caret_blink_ms, 530);
+    assert_eq!(editor.wrap_indent, WrapIndent::Default);
+    assert!(!editor.virtual_space && !editor.scroll_beyond_last_line);
+    assert!(!editor.keep_selection_on_right_click && !editor.copy_line_without_selection);
+    assert!(!editor.selection_foreground && editor.drag_text && editor.multi_editing);
+    assert!(!editor.column_to_multi_editing && editor.prevent_control_typing);
+    assert_eq!(editor.eol_style, EolStyle::Box);
+    assert_eq!(editor.fold_style, FoldStyle::BoxTree);
+    assert_eq!(editor.border_width, 1);
+    assert_eq!(editor.line_number_width, LineNumberWidth::Dynamic);
+    assert_eq!((editor.padding_left, editor.padding_right), (0, 0));
+    assert_eq!(editor.padding_distraction_free, 4);
+}
+
+#[test]
+fn window_and_text_options_read_their_names() {
+    let settings: Settings = toml::from_str(
+        "[editor]\ncaret-width = \"block-after\"\nwrap-indent = \"indent\"\nfold-style = \"circle-tree\"\neol-style = \"plain-text\"\nline-number-width = \"constant\"\n[appearance]\ndark-tone = \"olive\"\n",
+    )
+    .unwrap();
+    assert_eq!(settings.editor.caret_width, CaretWidth::BlockAfter);
+    assert_eq!(settings.editor.wrap_indent, WrapIndent::Indent);
+    assert_eq!(settings.editor.fold_style, FoldStyle::CircleTree);
+    assert_eq!(settings.editor.eol_style, EolStyle::PlainText);
+    assert_eq!(settings.editor.line_number_width, LineNumberWidth::Constant);
+    assert_eq!(settings.appearance.dark_tone, DarkTone::Olive);
+    check_setting("editor.caret-width", &toml::Value::String("0".into())).unwrap();
+    assert!(check_setting("editor.caret-width", &toml::Value::String("4".into())).is_err());
+    assert!(check_setting("editor.fold-style", &toml::Value::String("tree".into())).is_err());
+    assert!(check_setting("appearance.dark-tone", &toml::Value::String("pink".into())).is_err());
+}
+
+#[test]
+fn dark_tones_have_hues_but_black() {
+    assert_eq!(DarkTone::Black.hue(), None);
+    for tone in [
+        DarkTone::Red,
+        DarkTone::Green,
+        DarkTone::Blue,
+        DarkTone::Purple,
+        DarkTone::Cyan,
+        DarkTone::Olive,
+    ] {
+        let hue = tone.hue().unwrap();
+        assert!((0. ..360.).contains(&hue), "{tone:?}");
+    }
+}
+
+#[test]
+fn tab_labels_are_cut_to_their_length() {
+    let tabs = |max| TabSettings {
+        max_label_length: max,
+        ..TabSettings::default()
+    };
+    assert_eq!(tabs(0).label("a long name.txt"), "a long name.txt");
+    assert_eq!(tabs(6).label("a long name.txt"), "a lon…");
+    assert_eq!(tabs(15).label("a long name.txt"), "a long name.txt");
+    assert_eq!(tabs(14).label("a long name.txt"), "a long name.t…");
+    assert_eq!(tabs(1).label("ab"), "a…");
+    assert_eq!(tabs(3).label("файлы"), "фа…");
+    assert_eq!(tabs(3).label(""), "");
+}

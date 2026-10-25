@@ -22,6 +22,7 @@ fn wrapping_a_large_document() {
         LayoutConfig {
             tab_width: 4,
             wrap_width: Some(120),
+            ..LayoutConfig::default()
         },
     );
     let rows = map.row_count(&text);
@@ -74,6 +75,7 @@ fn ten_megabyte_line() {
         LayoutConfig {
             tab_width: 4,
             wrap_width: Some(100),
+            ..LayoutConfig::default()
         },
     );
     let rows = wrapped.row_count(&text);

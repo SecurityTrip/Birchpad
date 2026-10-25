@@ -16,6 +16,7 @@ fn wrapped(width: usize) -> LayoutConfig {
     LayoutConfig {
         tab_width: 4,
         wrap_width: Some(width),
+        ..LayoutConfig::default()
     }
 }
 
@@ -151,7 +152,7 @@ proptest! {
         width in prop::option::of(1usize..12),
         tab_width in 1usize..5,
     ) {
-        let config = LayoutConfig { tab_width, wrap_width: width };
+        let config = LayoutConfig { tab_width, wrap_width: width, ..LayoutConfig::default() };
         let mut text = Rope::from_str(&doc);
         let mut map = map_of(&text, config);
         show_all(&mut map, &text);

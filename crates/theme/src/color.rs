@@ -35,6 +35,27 @@ impl Color {
         let [r, g, b, _] = self.0.to_be_bytes();
         299 * u32::from(r) + 587 * u32::from(g) + 114 * u32::from(b) < 128_000
     }
+
+    /// The color with a hint of the hue `hue` (degrees): `amount` of the way, from 0 to 1,
+    /// towards a color of that hue and the same brightness. The opacity stays.
+    pub fn tinted(self, hue: f32, amount: f32) -> Self {
+        let [r, g, b, a] = self.0.to_be_bytes();
+        let level = (f32::from(r) + f32::from(g) + f32::from(b)) / 3.;
+        // A saturated color of the hue, scaled to the same average level.
+        let channel = |offset: f32| {
+            let angle = (hue + offset).to_radians();
+            (angle.cos() + 1.) / 2.
+        };
+        let (tr, tg, tb) = (channel(0.), channel(-120.), channel(120.));
+        let average = (tr + tg + tb) / 3.;
+        let scale = if average > 0. { level / average } else { 0. };
+        let amount = amount.clamp(0., 1.);
+        let mix = |own: u8, target: f32| -> u8 {
+            let target = (target * scale).clamp(0., 255.);
+            (f32::from(own) * (1. - amount) + target * amount).round() as u8
+        };
+        Self(u32::from_be_bytes([mix(r, tr), mix(g, tg), mix(b, tb), a]))
+    }
 }
 
 impl fmt::Debug for Color {

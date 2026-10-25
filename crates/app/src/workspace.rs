@@ -359,7 +359,10 @@ impl Workspace {
                 .unwrap_or(true)
         });
         if !cfg!(target_os = "macos") {
-            this.menu_bar = Some(cx.new(|cx| MenuBar::new(window, cx)));
+            let menu_bar = cx.new(|cx| MenuBar::new(window, cx));
+            // A hidden menu bar shows while a menu is open.
+            cx.observe(&menu_bar, |_, _, cx| cx.notify()).detach();
+            this.menu_bar = Some(menu_bar);
         }
         this
     }
@@ -1259,6 +1262,14 @@ impl Render for Workspace {
             .active_view(cx)
             .map(|view| view.update(cx, |view, cx| StatusInfo::of(view, cx)));
         let ansi = AppState::global(cx).ansi;
+        let appearance = &AppState::global(cx).settings.appearance;
+        let (show_menu_bar, show_status_bar) = (appearance.menu_bar, appearance.status_bar);
+        // Hidden, the menu bar still shows while one of its menus is open (Alt, F10).
+        let menu_bar_shown = show_menu_bar
+            || self
+                .menu_bar
+                .as_ref()
+                .is_some_and(|menu_bar| menu_bar.read(cx).is_active());
         div()
             .id("workspace")
             .key_context("Workspace")
@@ -1289,7 +1300,9 @@ impl Render for Workspace {
             .text_color(crate::theme::paint(crate::theme::ui().text))
             .when_some(self.menu_bar.clone(), birchpad_menu_bar::route_input)
             .when_some(
-                self.menu_bar.clone().filter(|_| !self.modes.text_only()),
+                self.menu_bar
+                    .clone()
+                    .filter(|_| !self.modes.text_only() && menu_bar_shown),
                 |this, menu_bar| {
                     this.child(
                         div()
@@ -1308,12 +1321,19 @@ impl Render for Workspace {
             .child({
                 let center = self.render_main_area(cx);
                 let main = if self.modes.distraction_free {
-                    // The text in a column in the middle.
+                    // The text in a column in the middle, as wide as Preferences > Margins >
+                    // Distraction Free padding leaves it.
+                    let padding = AppState::global(cx)
+                        .settings
+                        .editor
+                        .padding_distraction_free
+                        .min(9);
+                    let width = 1. - f32::from(padding) / 10.;
                     div()
                         .size_full()
                         .flex()
                         .justify_center()
-                        .child(div().h_full().w(relative(0.6)).child(center))
+                        .child(div().h_full().w(relative(width)).child(center))
                         .into_any_element()
                 } else if self.modes.post_it {
                     center
@@ -1335,7 +1355,7 @@ impl Render for Workspace {
             .when(self.incremental.read(cx).visible, |this| {
                 this.child(self.incremental.clone())
             })
-            .when(!self.modes.text_only(), |this| {
+            .when(!self.modes.text_only() && show_status_bar, |this| {
                 this.child(crate::status_bar::render(status, ansi, cx))
             })
     }

@@ -104,18 +104,16 @@ impl Element for EditorElement {
             gutter,
             theme::paint(theme::editor().gutter_background),
         ));
-        if gutter.size.width > px(0.) {
-            // The border on the side of the text.
+        if gutter.size.width > px(0.) && layout.border_width > px(0.) {
+            // The border on the side of the text (Preferences > Margins > Border Width).
+            let width = layout.border_width.min(gutter.size.width);
             let border = if gutter.left() >= layout.text_bounds.right() {
                 gutter.left()
             } else {
-                gutter.right() - px(1.)
+                gutter.right() - width
             };
             window.paint_quad(fill(
-                Bounds::new(
-                    point(border, gutter.top()),
-                    size(px(1.), gutter.size.height),
-                ),
+                Bounds::new(point(border, gutter.top()), size(width, gutter.size.height)),
                 theme::paint(theme::editor().gutter_border),
             ));
         }
@@ -138,11 +136,16 @@ impl Element for EditorElement {
                 };
                 window.paint_quad(fill(*bar, theme::paint(color)));
             }
-            for line in &layout.fold_lines {
+            // Only the tree styles join their fold points with lines.
+            let tree = matches!(
+                layout.fold_style,
+                birchpad_config::FoldStyle::BoxTree | birchpad_config::FoldStyle::CircleTree
+            );
+            for line in layout.fold_lines.iter().filter(|_| tree) {
                 window.paint_quad(fill(*line, theme::paint(theme::editor().fold_line)));
             }
             for (fold_box, collapsed) in &layout.fold_boxes {
-                paint_fold_box(*fold_box, *collapsed, window);
+                paint_fold_point(*fold_box, *collapsed, layout.fold_style, window);
             }
         });
         window.with_content_mask(
@@ -221,9 +224,12 @@ impl Element for EditorElement {
                         .ok();
                 }
                 for (bounds, label) in &symbols.line_breaks {
-                    window.paint_quad(
-                        fill(*bounds, theme::paint(theme::editor().eol_box)).corner_radii(px(3.)),
-                    );
+                    if !symbols.eol_plain {
+                        window.paint_quad(
+                            fill(*bounds, theme::paint(theme::editor().eol_box))
+                                .corner_radii(px(3.)),
+                        );
+                    }
                     let x = bounds.left() + (bounds.size.width - label.width()) / 2.;
                     label
                         .paint(
@@ -252,8 +258,15 @@ impl Element for EditorElement {
                     );
                 }
                 if show_carets {
-                    for caret in &layout.carets {
-                        window.paint_quad(fill(*caret, theme::paint(theme::editor().caret)));
+                    let caret = theme::editor().caret;
+                    // A block lets the character under it show through.
+                    let caret = if layout.caret_block {
+                        caret.with_alpha(0x70)
+                    } else {
+                        caret
+                    };
+                    for bounds in &layout.carets {
+                        window.paint_quad(fill(*bounds, theme::paint(caret)));
                     }
                 }
             },
@@ -331,11 +344,76 @@ fn paint_sticky(layout: &super::layout::Layout, window: &mut Window, cx: &mut Ap
     ));
 }
 
+/// A fold point in the style Preferences > Margins says: a box or a circle with a minus
+/// (expanded) or a plus (collapsed), the sign alone, an arrow, or nothing.
+fn paint_fold_point(
+    bounds: Bounds<Pixels>,
+    collapsed: bool,
+    style: birchpad_config::FoldStyle,
+    window: &mut Window,
+) {
+    use birchpad_config::FoldStyle;
+    let mark = theme::paint(theme::editor().fold_mark);
+    match style {
+        FoldStyle::None => {}
+        FoldStyle::BoxTree => paint_fold_box(bounds, collapsed, window),
+        FoldStyle::CircleTree => {
+            window.paint_quad(
+                fill(bounds, theme::paint(theme::editor().background))
+                    .corner_radii(bounds.size.width / 2.),
+            );
+            window.paint_quad(
+                outline(bounds, mark, gpui_kit::BorderStyle::Solid)
+                    .corner_radii(bounds.size.width / 2.),
+            );
+            paint_fold_sign(bounds, collapsed, window);
+        }
+        FoldStyle::Simple => paint_fold_sign(bounds, collapsed, window),
+        FoldStyle::Arrow => {
+            // A triangle of pixel rows: pointing down when open, right when folded.
+            let steps = ((bounds.size.width / 2.).floor() / px(1.)) as i32;
+            let middle = point(
+                (bounds.left() + bounds.size.width / 2.).floor(),
+                (bounds.top() + bounds.size.height / 2.).floor(),
+            );
+            let half = steps / 2;
+            for step in 0..=half {
+                let step = step as f32;
+                let length = px((half as f32 - step) * 2. + 1.);
+                let quad = if collapsed {
+                    Bounds::new(
+                        point(
+                            middle.x - px(half as f32 / 2.) + px(step),
+                            middle.y - length / 2.,
+                        ),
+                        size(px(1.), length),
+                    )
+                } else {
+                    Bounds::new(
+                        point(
+                            middle.x - length / 2.,
+                            middle.y - px(half as f32 / 2.) + px(step),
+                        ),
+                        size(length, px(1.)),
+                    )
+                };
+                window.paint_quad(fill(quad, mark));
+            }
+        }
+    }
+}
+
 /// A fold box: a square with a minus (expanded) or a plus (collapsed), as Notepad++ draws them.
 fn paint_fold_box(bounds: Bounds<Pixels>, collapsed: bool, window: &mut Window) {
     let mark = theme::paint(theme::editor().fold_mark);
     window.paint_quad(fill(bounds, theme::paint(theme::editor().background)));
     window.paint_quad(outline(bounds, mark, gpui_kit::BorderStyle::Solid));
+    paint_fold_sign(bounds, collapsed, window);
+}
+
+/// The minus or plus of a fold point.
+fn paint_fold_sign(bounds: Bounds<Pixels>, collapsed: bool, window: &mut Window) {
+    let mark = theme::paint(theme::editor().fold_mark);
     let inset = (bounds.size.width / 4.).round().max(px(2.));
     let middle_y = (bounds.top() + bounds.size.height / 2.).floor();
     let middle_x = (bounds.left() + bounds.size.width / 2.).floor();

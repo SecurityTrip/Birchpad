@@ -52,7 +52,7 @@ proptest! {
         ),
         width in 1usize..12,
     ) {
-        let config = LayoutConfig { tab_width: 4, wrap_width: Some(width) };
+        let config = LayoutConfig { tab_width: 4, wrap_width: Some(width), ..LayoutConfig::default() };
         let mut rope = Rope::from_str(&doc);
         let mut map = DisplayMap::new(&rope, config);
         for raw in steps {
@@ -68,7 +68,7 @@ proptest! {
     #[test]
     fn every_position_round_trips_through_rows(doc in text(), width in 1usize..12) {
         let rope = Rope::from_str(&doc);
-        let mut map = DisplayMap::new(&rope, LayoutConfig { tab_width: 4, wrap_width: Some(width) });
+        let mut map = DisplayMap::new(&rope, LayoutConfig { tab_width: 4, wrap_width: Some(width), ..LayoutConfig::default() });
         let rows = map.row_count(&rope);
         let mut previous_row = 0;
         // Caret positions: every character boundary except between the CR and LF of a CRLF.
@@ -100,7 +100,7 @@ proptest! {
     ) {
         let rope = Rope::from_str(&doc);
         let lines = birchpad_core::motion::line_count(&rope);
-        let mut map = DisplayMap::new(&rope, LayoutConfig { tab_width: 4, wrap_width: width });
+        let mut map = DisplayMap::new(&rope, LayoutConfig { tab_width: 4, wrap_width: width, ..LayoutConfig::default() });
         let before = map.row_count(&rope);
         let pads: Vec<(usize, u32)> = pads
             .into_iter()
@@ -162,7 +162,7 @@ proptest! {
     ) {
         let rope = Rope::from_str(&doc);
         let lines = birchpad_core::motion::line_count(&rope);
-        let mut map = DisplayMap::new(&rope, LayoutConfig { tab_width: 4, wrap_width: width });
+        let mut map = DisplayMap::new(&rope, LayoutConfig { tab_width: 4, wrap_width: width, ..LayoutConfig::default() });
         // Hidden ranges like collapsed folds produce: never line 0 (a header is above),
         // sorted and disjoint.
         let mut hidden: Vec<std::ops::Range<usize>> = Vec::new();

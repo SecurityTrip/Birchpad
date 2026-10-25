@@ -25,4 +25,4 @@ pub use folding::{
     sticky_headers,
 };
 pub use guides::{indent_guides, indentation};
-pub use wrap::{row_count, wrap_line};
+pub use wrap::{WrapIndent, row_count, wrap_indent, wrap_line};

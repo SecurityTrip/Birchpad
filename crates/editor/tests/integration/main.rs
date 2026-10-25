@@ -23,6 +23,9 @@ mod edge_tests;
     clippy::single_range_in_vec_init,
     reason = "hidden lines are lists of line ranges, some with one range"
 )]
+#[path = "editing_options/tests.rs"]
+mod editing_options;
+
 #[path = "folding/tests.rs"]
 mod folding;
 

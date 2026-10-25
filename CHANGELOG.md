@@ -37,6 +37,20 @@ version's release notes from its section here.
 - View > Zoom > Synchronize Across Views: turned off, each view zooms on its own.
 - Tools > MD5 (SHA-1, SHA-256, SHA-512) > Generate... hashes a text you type, as a whole or
   line by line.
+- Preferences > Appearance hides the menu bar (Alt or F10 shows it) and the status bar, and
+  gives the dark interface a tone: red, green, blue, purple, cyan or olive.
+- Preferences > Tab Bar: a maximum label length, alternate icons (a check mark, a pencil, a
+  padlock), the inactive tabs' own color and the active tab's colored bar as options, pinning
+  turned off or a pin button on every tab, and buttons on inactive tabs.
+- Preferences > Editing: the caret's width (0 to 3 pixels, or a block) and blink rate, where
+  wrapped rows start (aligned or indented), virtual space, scrolling beyond the last line,
+  keeping the selection on a right click, copying and cutting the line with nothing selected,
+  the selected text's own color, multi-editing and column selection to multi-editing,
+  end-of-line labels without their box, and typing control characters prevented. The
+  selected text can be dragged and dropped (Ctrl copies it); an option turns this off.
+- Preferences > Margins: the fold margin's style (simple, arrow, circle tree, box tree, none),
+  the border's width, a line number margin of constant width, and padding left, right and in
+  Distraction Free mode.
 - Sticky scroll, in Preferences > Editing: the first lines of the blocks around the top of the
   view stay there while you scroll, five at most by default; a click on one goes to it.
 

@@ -60,3 +60,59 @@ fn row_count_fast_path_agrees() {
 fn every_row_has_a_character_even_when_too_narrow() {
     assert_eq!(rows("日本", 1), ["日", "本"]);
 }
+
+#[test]
+fn wrap_indent_is_the_line_s_indentation_at_most_half_the_width() {
+    let line = |text: &str| Rope::from_str(text);
+    let indent = |text: &str, mode| wrap_indent(line(text).slice(..), 20, 4, mode);
+    assert_eq!(indent("    abc", WrapIndent::None), 0);
+    assert_eq!(indent("    abc", WrapIndent::Aligned), 4);
+    assert_eq!(indent("\tabc", WrapIndent::Aligned), 4);
+    assert_eq!(indent("  abc", WrapIndent::Indent), 6);
+    assert_eq!(indent("abc", WrapIndent::Aligned), 0);
+    assert_eq!(indent("", WrapIndent::Indent), 4);
+    // Never more than half the width.
+    assert_eq!(indent(&" ".repeat(30), WrapIndent::Aligned), 10);
+}
+
+/// The rows of `text` in a display map wrapping at `width` with `mode`.
+fn indented_rows(text: &str, width: usize, mode: WrapIndent) -> Vec<String> {
+    let rope = Rope::from_str(text);
+    let mut map = DisplayMap::new(
+        &rope,
+        LayoutConfig {
+            tab_width: 4,
+            wrap_width: Some(width),
+            wrap_indent: mode,
+        },
+    );
+    (0..map.row_count(&rope))
+        .map(|index| {
+            let row = map.row(&rope, index);
+            rope.slice(row.range).to_string()
+        })
+        .collect()
+}
+
+#[test]
+fn indented_rows_after_the_first_hold_less() {
+    let text = "    aaa bbb ccc ddd";
+    assert_eq!(
+        indented_rows(text, 12, WrapIndent::None),
+        ["    aaa bbb ", "ccc ddd"]
+    );
+    // Rows after the first start four cells in: eight cells left.
+    assert_eq!(
+        indented_rows(text, 12, WrapIndent::Aligned),
+        ["    aaa bbb ", "ccc ddd"]
+    );
+    assert_eq!(
+        indented_rows("    aaaa bbbb cccc dddd", 12, WrapIndent::Aligned),
+        ["    aaaa ", "bbbb ", "cccc ", "dddd"]
+    );
+    // A line without indentation wraps as before.
+    assert_eq!(
+        indented_rows("aaa bbb ccc ddd", 8, WrapIndent::Aligned),
+        indented_rows("aaa bbb ccc ddd", 8, WrapIndent::None)
+    );
+}

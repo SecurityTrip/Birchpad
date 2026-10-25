@@ -34,15 +34,16 @@ pub use session_names::{
     parse_line_ending,
 };
 pub use settings::{
-    AppearanceSettings, AutoIndent, BackupOnSave, ChangeDetection, ChangeHistory, CloudSettings,
-    CompareSettings, CompletionSettings, CurrentLine, DEFAULT_TOOLBAR, DateSettings,
-    DefaultDirectory, DelimiterSettings, DiagnosticsSettings, Edge, EditorSettings, FileSettings,
-    FinderSettings, HexSettings, HighlightingSettings, InstanceMode, InstanceSettings,
-    InterfaceMode, LanguageSettings, LinkSettings, NetworkSettings, NewDocumentSettings,
-    PaletteSettings, Paper, PluginInstall, PluginSettings, PreviewSettings, PrintColors,
-    PrintSettings, SearchEngine, SearchEngineSettings, SessionSettings, Settings,
-    SmartHighlighting, SpellScope, SpellSettings, TabSettings, TokenMatching, ToolbarSettings,
-    ToolbarSize, UpdateChannel, UpdateMode, UpdateSettings,
+    AppearanceSettings, AutoIndent, BackupOnSave, CaretWidth, ChangeDetection, ChangeHistory,
+    CloudSettings, CompareSettings, CompletionSettings, CurrentLine, DEFAULT_TOOLBAR, DarkTone,
+    DateSettings, DefaultDirectory, DelimiterSettings, DiagnosticsSettings, Edge, EditorSettings,
+    EolStyle, FileSettings, FinderSettings, FoldStyle, HexSettings, HighlightingSettings,
+    InstanceMode, InstanceSettings, InterfaceMode, LanguageSettings, LineNumberWidth, LinkSettings,
+    NetworkSettings, NewDocumentSettings, PaletteSettings, Paper, PluginInstall, PluginSettings,
+    PreviewSettings, PrintColors, PrintSettings, SearchEngine, SearchEngineSettings,
+    SessionSettings, Settings, SmartHighlighting, SpellScope, SpellSettings, TabSettings,
+    TokenMatching, ToolbarSettings, ToolbarSize, UpdateChannel, UpdateMode, UpdateSettings,
+    WrapIndent,
 };
 pub use state::{
     FindInFilesState, MAX_RECENT_COMMANDS, MAX_RECENT_FILES, PanelsState, PreviewMode,

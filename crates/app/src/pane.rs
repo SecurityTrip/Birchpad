@@ -54,6 +54,10 @@ fn tab_color(number: u8) -> Option<birchpad_theme::Color> {
 /// A pushpin, drawn on a pinned tab.
 const PIN_ICON: &[u8] = br#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none" stroke="black" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5.5 2h5M6.5 2v4L4 9h8L9.5 6V2M8 9v5"/></svg>"#;
 
+/// Alternate icons: a pencil on a tab with unsaved changes, and a padlock on a read-only one.
+const PENCIL_ICON: &[u8] = br#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none" stroke="black" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 2.5l3 3L6 13H3v-3z M9 4l3 3"/></svg>"#;
+const LOCK_ICON: &[u8] = br#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none" stroke="black" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7.5h8v6H4z M5.5 7.5V5a2.5 2.5 0 0 1 5 0v2.5"/></svg>"#;
+
 /// How many lines the document peeker shows, and how many characters of each.
 pub const PEEK_LINES: usize = 12;
 pub const PEEK_COLUMNS: usize = 72;
@@ -94,6 +98,10 @@ pub fn register_commands(registry: &mut CommandRegistry) {
             pane.update(cx, |pane, cx| pane.set_pinned(&view, pinned, cx));
         }
         Ok(())
+    });
+    // Preferences > Tab Bar > Enable pin tab feature.
+    registry.enabled_when("view.pin-tab", |cx| {
+        crate::app_state::AppState::global(cx).settings.tabs.pinning
     });
     registry.workspace("view.tab-color", |this, args: ColorArgs, _, cx| {
         if !(1..=TAB_COLORS).contains(&args.color) {
@@ -872,8 +880,24 @@ impl Pane {
                 ReadOnly::File | ReadOnly::Decoding(_) | ReadOnly::Requested | ReadOnly::Monitoring
             )
         );
-        let label: SharedString = buffer.display_name().into();
-        let prefix = if read_only {
+        let label: SharedString = options.label(&buffer.display_name()).into();
+        let prefix = if options.alternate_icons {
+            // Notepad++'s alternate icons: a padlock, a pencil or a check mark.
+            let icon = if read_only {
+                Icon::default().data(LOCK_ICON)
+            } else if modified {
+                Icon::default().data(PENCIL_ICON)
+            } else {
+                Icon::new(IconName::Check)
+            };
+            icon.xsmall()
+                .text_color(paint(if modified && !read_only {
+                    ui().modified
+                } else {
+                    ui().faint
+                }))
+                .into_any_element()
+        } else if read_only {
             // Read-only: an eye, as in "view only".
             Icon::new(IconName::Eye)
                 .xsmall()
@@ -887,7 +911,9 @@ impl Pane {
                 .when(modified, |dot| dot.bg(paint(ui().modified)))
                 .into_any_element()
         };
-        let suffix = if marks.pinned {
+        // Inactive tabs show their buttons only if the settings say so.
+        let buttons = active || options.inactive_buttons;
+        let suffix = if marks.pinned && options.pinning && buttons {
             let unpin = item.clone();
             Some(
                 Button::new(("unpin-tab", index))
@@ -901,7 +927,21 @@ impl Pane {
                     }))
                     .into_any_element(),
             )
-        } else if options.close_button {
+        } else if options.pinning && !options.only_pinned_button && !marks.pinned && buttons {
+            let pin = item.clone();
+            Some(
+                Button::new(("pin-tab", index))
+                    .ghost()
+                    .xsmall()
+                    .icon(Icon::default().data(PIN_ICON).text_color(paint(ui().faint)))
+                    .debug_selector(move || format!("pane-{pane}-pin-tab-{index}"))
+                    .on_click(cx.listener(move |this, _, _, cx| {
+                        cx.stop_propagation();
+                        this.set_pinned(&pin, true, cx);
+                    }))
+                    .into_any_element(),
+            )
+        } else if options.close_button && buttons {
             let close_item = item.clone();
             Some(
                 Button::new(("close-tab", index))
@@ -920,7 +960,7 @@ impl Pane {
         };
         let background = match marks.color.and_then(tab_color) {
             Some(color) => paint(color),
-            None if active => paint(ui().background),
+            None if active || !options.inactive_color => paint(ui().background),
             None => paint(ui().surface),
         };
         let middle_item = item.clone();
@@ -944,7 +984,11 @@ impl Pane {
             .border_color(paint(ui().border))
             .map(|tab| {
                 // The active tab is marked by a line on the side towards its text.
-                let line = paint(if active { ui().accent } else { ui().border });
+                let line = paint(if active && options.active_bar {
+                    ui().accent
+                } else {
+                    ui().border
+                });
                 if options.vertical {
                     tab.w_full().border_b_1().border_r_2().border_color(line)
                 } else {

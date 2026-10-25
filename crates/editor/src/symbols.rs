@@ -29,6 +29,8 @@ pub struct Symbols {
     pub tabs: Vec<Bounds<Pixels>>,
     /// Boxes labeled CR, LF or CRLF after the end of lines.
     pub line_breaks: Vec<(Bounds<Pixels>, ShapedLine)>,
+    /// The labels of line breaks without their box ("EOL rendering: Plain text").
+    pub eol_plain: bool,
     /// The cells where wrapped rows show the wrap symbol.
     pub wrap_marks: Vec<Bounds<Pixels>>,
     /// Show Non-Printing Characters: frames around spaces that are not plain ones.
@@ -79,7 +81,8 @@ impl EditorView {
             whitespace_marks(layout, text, &mut symbols);
         }
         if settings.show_eol {
-            symbols.line_breaks = self.line_break_marks(layout, text, window);
+            symbols.eol_plain = settings.eol_style == birchpad_config::EolStyle::PlainText;
+            symbols.line_breaks = self.line_break_marks(layout, text, symbols.eol_plain, window);
         }
         if settings.show_non_printing {
             non_printing_marks(layout, text, &mut symbols);
@@ -176,13 +179,20 @@ impl EditorView {
         &mut self,
         layout: &Layout,
         text: &Rope,
+        plain: bool,
         window: &mut Window,
     ) -> Vec<(Bounds<Pixels>, ShapedLine)> {
         let metrics = &layout.metrics;
         let font_size = (metrics.font_size * 0.7).round();
         let height = (font_size * 1.3).round().min(metrics.line_height);
         let padding = (font_size * 0.25).round();
-        let color: Hsla = theme::paint(theme::editor().eol_text).into();
+        // Without its box, the label takes the color of the other symbols.
+        let color: Hsla = theme::paint(if plain {
+            theme::editor().whitespace
+        } else {
+            theme::editor().eol_text
+        })
+        .into();
         let mut labels: [Option<ShapedLine>; 3] = Default::default();
         let mut marks = Vec::new();
         for row in layout.rows.iter().filter(|row| row.row.last_in_line) {
