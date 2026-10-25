@@ -184,7 +184,8 @@ fn parts_of_a_path_find_a_workspace_file_and_enter_opens_it(cx: &mut TestAppCont
     assert_eq!(shown(&pick, cx), ["project/src/main.rs"]);
     pick.update_in(cx, |pick, window, cx| pick.pick(window, cx));
     cx.run_until_parked();
-    assert_eq!(tab_names(&workspace, cx), ["new 1", "main.rs"]);
+    // The untouched "new 1" gives way to the file.
+    assert_eq!(tab_names(&workspace, cx), ["main.rs"]);
     drop(dir);
 }
 
