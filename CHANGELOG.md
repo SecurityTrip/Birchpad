@@ -6,6 +6,8 @@ version's release notes from its section here.
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-10-26
+
 ### Added
 
 - View > Command Palette... (Ctrl+Shift+A) finds any command by a few letters of its name:
@@ -78,6 +80,16 @@ version's release notes from its section here.
   `-fullReadOnlySavingForbidden` (nothing saved either).
 - Sticky scroll, in Preferences > Editing: the first lines of the blocks around the top of the
   view stay there while you scroll, five at most by default; a click on one goes to it.
+
+### Changed
+
+- Edit > Set Read-Only is now Read-Only in Birchpad, beside Read-Only Attribute of the File.
+- File > Recent Files leaves out files that are gone; Preferences > Files keeps them.
+- Replace All in All Opened Documents asks first; a selection of 1024 characters or more
+  checks In selection when the find panel opens; keys such as Ctrl+E no longer type control
+  characters (Preferences > Searching, Editing).
+- The ZIP library is version 9 (plugins, PlantUML and the online catalog's packages), with
+  interprocess 2.4.6 and the Scala grammar 0.26.3.
 
 ## [0.6.0] - 2026-10-22
 
@@ -686,7 +698,8 @@ The first release: a Notepad++-like editor for Windows, Linux and macOS.
   entirely (`updates.mode = "off"`).
 - Nightly builds of `main` on the nightly channel.
 
-[Unreleased]: https://github.com/SecurityTrip/Birchpad/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/SecurityTrip/Birchpad/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/SecurityTrip/Birchpad/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/SecurityTrip/Birchpad/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/SecurityTrip/Birchpad/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/SecurityTrip/Birchpad/compare/v0.3.0...v0.4.0

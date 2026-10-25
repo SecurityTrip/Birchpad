@@ -747,7 +747,7 @@ each with its tests, docs and a `CHANGELOG.md` entry, its options in Preferences
       `-fullReadOnlySavingForbidden`, every document read-only for the run, saving too: the
       documents of the session too, Read-Only in Birchpad cannot be turned off, and the second
       takes Save, Save As, Save a Copy As and Save All away
-- [ ] Release 0.7.0: the workspace version (0.7.0, set when its branch opens, so that nightly
+- [x] Release 0.7.0: the workspace version (0.7.0, set when its branch opens, so that nightly
       builds are its pre-releases), `CHANGELOG.md` and this roadmap updated; the
       [release checklist](release-checklist.md) gone through
 
