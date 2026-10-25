@@ -81,7 +81,7 @@ impl CallTip {
 
 /// Whether Auto-Completion closes the tags of the language `id`, and whether it is HTML (with
 /// elements that have no closing tag).
-fn tag_language(id: &str) -> Option<bool> {
+pub(crate) fn tag_language(id: &str) -> Option<bool> {
     match id {
         "html" | "php" | "asp" | "vue" | "svelte" => Some(true),
         "xml" | "svg" | "xsl" | "xslt" => Some(false),
@@ -158,6 +158,8 @@ pub struct Sources {
     pub api: bool,
     pub words: bool,
     pub options: WordOptions,
+    /// Only entries that start with what is typed, case and all.
+    pub brief: bool,
 }
 
 impl Sources {
@@ -170,6 +172,7 @@ impl Sources {
                 ignore_case: settings.ignore_case,
                 ignore_numbers: settings.ignore_numbers,
             },
+            brief: settings.brief,
         }
     }
 
@@ -218,6 +221,13 @@ pub fn items(
     } else {
         Vec::new()
     };
+    // Make auto-completion list brief: what starts with the typed text, case and all.
+    let brief = sources.brief;
+    items.retain(|item| !brief || item.label.starts_with(&prefix));
+    let words: Vec<String> = words
+        .into_iter()
+        .filter(|word| !brief || word.starts_with(&prefix))
+        .collect();
     for word in words {
         if !items.iter().any(|item| item.label == word) {
             items.push(Item {
@@ -380,7 +390,10 @@ impl EditorView {
         let head = self.selection.primary().head;
         let start = word_start(&text, head);
         let typed = text.slice(start..head).chars().count();
-        if typed == 0 || !(sources.api || sources.words) {
+        // Performance > Allow Auto-completion: off for large files.
+        let large = self.buffer.read(cx).is_large(cx)
+            && !AppState::global(cx).settings.files.large_file_completion;
+        if typed == 0 || !(sources.api || sources.words) || large {
             self.completion = None;
             return;
         }
@@ -578,6 +591,13 @@ fn move_selection(view: &mut EditorView, step: isize) {
     }
 }
 
+/// The key that took the entry, when one did.
+#[derive(serde::Deserialize, Default)]
+struct AcceptArgs {
+    #[serde(default)]
+    key: Option<String>,
+}
+
 pub fn register_commands(registry: &mut CommandRegistry) {
     registry.editor("completion.complete", |this, (), _, cx| {
         this.update_completion(true, cx);
@@ -651,8 +671,25 @@ pub fn register_commands(registry: &mut CommandRegistry) {
         cx.notify();
         Ok(())
     });
-    registry.editor("completion.accept", |this, (), _, cx| {
-        this.accept_completion(cx);
+    registry.editor("completion.accept", |this, args: AcceptArgs, _, cx| {
+        // Preferences > Auto-Completion > Insert Selection: a key that does not take the
+        // entry closes the list and does what it does.
+        let completion = &AppState::global(cx).settings.completion;
+        let takes = match args.key.as_deref() {
+            Some("enter") => completion.accept_with_enter,
+            Some("tab") => completion.accept_with_tab,
+            _ => true,
+        };
+        if takes {
+            this.accept_completion(cx);
+            return Ok(());
+        }
+        this.completion = None;
+        match args.key.as_deref() {
+            Some("enter") => this.newline(cx),
+            _ => this.insert("\t", crate::LastEdit::Typing, cx),
+        }
+        cx.notify();
         Ok(())
     });
     registry.editor("completion.cancel", |this, (), _, cx| {

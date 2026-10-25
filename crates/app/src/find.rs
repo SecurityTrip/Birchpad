@@ -551,6 +551,7 @@ impl FindBar {
 
 impl Render for FindBar {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let monospaced = AppState::global(cx).settings.searching.monospaced;
         let options = self.options;
         let tab = self.tab;
         let regex = options.mode == SearchMode::Regex;
@@ -666,7 +667,8 @@ impl Render for FindBar {
                 Input::new(&self.find_input)
                     .id("find-input")
                     .w(px(360.))
-                    .small(),
+                    .small()
+                    .when(monospaced, |input| input.font_family(crate::MONOSPACE)),
             )
             .children(actions);
         let row = || div().flex().flex_row().items_center().gap_2();
@@ -677,7 +679,8 @@ impl Render for FindBar {
                     Input::new(&self.replace_input)
                         .id("replace-input")
                         .w(px(360.))
-                        .small(),
+                        .small()
+                        .when(monospaced, |input| input.font_family(crate::MONOSPACE)),
                 )
                 .when(tab == FindTab::Replace, |row| {
                     row.child(button("replace", "Replace", || FindBarEvent::Replace))
@@ -913,25 +916,55 @@ impl Workspace {
     /// search text; a selection over several lines turns In selection on instead, as in
     /// Notepad++.
     fn open_find(&mut self, tab: FindTab, window: &mut Window, cx: &mut Context<Self>) {
+        let searching = AppState::global(cx).settings.searching.clone();
         let (text, in_selection) = self
             .active_view(cx)
             .map(|view| {
                 let view = view.read(cx);
                 let range = view.selection.primary();
                 let text = view.text(cx).slice(range.from()..range.to()).to_string();
-                if text.is_empty() {
-                    (None, Some(false))
-                } else if text.contains(['\n', '\r']) {
-                    (None, Some(true))
-                } else {
-                    (Some(text), Some(false))
-                }
+                find_field_fill(&text, view.text(cx), range.head, &searching)
             })
             .unwrap_or((None, None));
         self.find_bar
             .update(cx, |bar, cx| bar.show(tab, text, in_selection, window, cx));
         self.follow_current_document(window, cx);
         cx.notify();
+    }
+
+    /// Preferences > Searching > Find dialog remains open after search that outputs to
+    /// results window: off, the panel closes.
+    fn close_unless_staying(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if !AppState::global(cx).settings.searching.stay_open {
+            self.close_find(window, cx);
+        }
+    }
+
+    /// Replace All in All Opened Documents, after asking if Preferences > Searching say so.
+    fn confirm_replace_all_in_all(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if !AppState::global(cx)
+            .settings
+            .searching
+            .confirm_replace_all_documents
+        {
+            self.replace_all_in_all(cx);
+            return;
+        }
+        let answers = [t!("find.replace-all"), t!("common.cancel")];
+        let answers: Vec<&str> = answers.iter().map(String::as_str).collect();
+        let answer = window.prompt(
+            gpui_kit::PromptLevel::Warning,
+            &t!("find.replace-in-every-open-document"),
+            None,
+            &answers,
+            cx,
+        );
+        cx.spawn(async move |this, cx| {
+            if answer.await.ok() == Some(0) {
+                this.update(cx, |this, cx| this.replace_all_in_all(cx)).ok();
+            }
+        })
+        .detach();
     }
 
     pub fn close_find(&mut self, window: &mut Window, cx: &mut Context<Self>) {
@@ -956,16 +989,22 @@ impl Workspace {
         match event {
             FindBarEvent::Find(direction) => self.find(*direction, window, cx),
             FindBarEvent::Count => self.count(cx),
-            FindBarEvent::FindAll { all_documents } => self.find_all(*all_documents, cx),
+            FindBarEvent::FindAll { all_documents } => {
+                self.find_all(*all_documents, cx);
+                self.close_unless_staying(window, cx);
+            }
             FindBarEvent::Replace => self.replace(window, cx),
             FindBarEvent::ReplaceAll => self.replace_all(window, cx),
-            FindBarEvent::ReplaceAllInAll => self.replace_all_in_all(cx),
+            FindBarEvent::ReplaceAllInAll => self.confirm_replace_all_in_all(window, cx),
             FindBarEvent::MarkAll => self.mark_all(cx),
             FindBarEvent::ClearMarks => self.clear_marks(cx),
             FindBarEvent::CopyMarked => {
                 self.copy_marked(cx);
             }
-            FindBarEvent::FindInFiles => self.find_in_files(window, cx),
+            FindBarEvent::FindInFiles => {
+                self.find_in_files(window, cx);
+                self.close_unless_staying(window, cx);
+            }
             FindBarEvent::FindInProjects => self.find_in_projects(cx),
             FindBarEvent::ReplaceInFiles => self.replace_in_files(window, cx),
             FindBarEvent::StopFiles => self.find_bar.update(cx, |bar, cx| bar.stop_files(cx)),
@@ -1395,15 +1434,28 @@ impl Workspace {
             let replacement = searcher.replacement(&text, selected.clone(), &template);
             let caret = selected.start + replacement.len();
             let transaction =
-                Transaction::from_edits(&text, [Edit::replace(selected, replacement)])
+                Transaction::from_edits(&text, [Edit::replace(selected.clone(), replacement)])
                     .expect("a match lies on character boundaries");
+            let stays = AppState::global(cx).settings.searching.replace_stays;
+            let replaced = selected.start..caret;
             let applied = view.update(cx, |view, cx| {
                 let applied = view.apply_command_edit(transaction, cx);
                 if applied {
-                    view.go_to(caret, cx);
+                    if stays {
+                        view.select_range(replaced, cx);
+                    } else {
+                        view.go_to(caret, cx);
+                    }
                 }
                 applied
             });
+            // Replace: Don't move to the following occurrence.
+            if applied && stays {
+                if recording {
+                    crate::macros::pause(false, cx);
+                }
+                return;
+            }
             if !applied {
                 if recording {
                     crate::macros::pause(false, cx);
@@ -1820,4 +1872,30 @@ impl Render for GoTo {
                     .child(error)
             }))
     }
+}
+
+/// What the find panel takes from the document when it opens, as Preferences > Searching
+/// say: the selection (or, with none, the word at the caret) for the find field, and whether
+/// In selection is checked. A selection of several lines never fills the field.
+pub fn find_field_fill(
+    selected: &str,
+    text: &birchpad_core::Rope,
+    caret: usize,
+    searching: &birchpad_config::SearchingSettings,
+) -> (Option<String>, Option<bool>) {
+    let length = selected.chars().count();
+    if length == 0 {
+        let word = searching
+            .fill_from_word
+            .then(|| birchpad_core::motion::word_at(text, caret))
+            .filter(|word| !word.is_empty())
+            .map(|word| text.slice(word).to_string())
+            .filter(|word| word.chars().any(birchpad_core::completion::is_word_char));
+        return (word, Some(false));
+    }
+    let threshold = searching.in_selection_from as usize;
+    let several_lines = selected.contains(['\n', '\r']);
+    let in_selection = threshold > 0 && length >= threshold || several_lines && threshold > 0;
+    let fills = !several_lines && length <= searching.fill_from_selection as usize;
+    (fills.then(|| selected.to_owned()), Some(in_selection))
 }

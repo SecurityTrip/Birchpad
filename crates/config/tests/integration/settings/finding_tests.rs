@@ -155,3 +155,46 @@ fn tab_labels_are_cut_to_their_length() {
     assert_eq!(tabs(3).label("файлы"), "фа…");
     assert_eq!(tabs(3).label(""), "");
 }
+
+#[test]
+fn files_search_and_typing_options_default_to_what_birchpad_did() {
+    let settings = Settings::default();
+    let new = &settings.new_document;
+    assert!(!new.apply_to_ansi && !new.at_startup && !new.first_line_name);
+    let files = &settings.files;
+    assert!(!files.recent_submenu && !files.recent_file_name_only);
+    assert_eq!(files.recent_max_length, 0);
+    assert!(files.recent_check_existence && !files.drop_folder_opens_files);
+    assert!(!files.large_file_no_wrap && !files.large_file_completion);
+    assert!(!files.large_file_smart_highlighting);
+    assert!(files.large_file_brace_match && files.large_file_links);
+    let searching = &settings.searching;
+    assert_eq!(
+        (searching.in_selection_from, searching.fill_from_selection),
+        (1024, 1024)
+    );
+    assert!(searching.fill_from_word && searching.stay_open);
+    assert!(searching.confirm_replace_all_documents && searching.one_entry_per_line);
+    assert!(!searching.replace_stays && !searching.ignore_unsaved_changes);
+    assert!(settings.misc.detect_encoding && !settings.misc.follow_symlinks);
+    assert!(settings.language_menu.compact);
+    assert!(settings.highlighting.matching_tags);
+    let completion = &settings.completion;
+    assert!(completion.accept_with_tab && completion.accept_with_enter && !completion.brief);
+    assert!(!settings.editor.backspace_unindents);
+    assert!(settings.delimiters.word_chars.is_empty());
+}
+
+#[test]
+fn hidden_languages_are_ids_separated_by_spaces() {
+    let menu = LanguageMenuSettings {
+        hidden: "cobol, Fortran;ada".into(),
+        ..LanguageMenuSettings::default()
+    };
+    for id in ["cobol", "fortran", "ada", "COBOL"] {
+        assert!(!menu.shows(id), "{id}");
+    }
+    assert!(menu.shows("rust"));
+    assert!(LanguageMenuSettings::default().shows("cobol"));
+    assert!(LanguageMenuSettings::default().shows(""));
+}

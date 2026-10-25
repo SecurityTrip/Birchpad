@@ -104,10 +104,30 @@ pub fn char_class(ch: char) -> CharClass {
     match ch {
         ' ' | '\t' => CharClass::Space,
         '\r' | '\n' => CharClass::LineBreak,
-        _ if ch.is_alphanumeric() || ch == '_' => CharClass::Word,
+        _ if ch.is_alphanumeric() || ch == '_' || is_extra_word_char(ch) => CharClass::Word,
         _ if ch.is_whitespace() => CharClass::Space,
         _ => CharClass::Punctuation,
     }
+}
+
+/// Characters that are part of words besides letters, digits and `_` (Preferences >
+/// Delimiter > Add your character as part of word).
+static EXTRA_WORD_CHARS: std::sync::RwLock<Vec<char>> = std::sync::RwLock::new(Vec::new());
+
+/// Makes the characters of `chars` (but spaces) part of words, for word movement, double-click
+/// selection, smart highlighting and completion.
+pub fn set_extra_word_chars(chars: &str) {
+    let chars: Vec<char> = chars.chars().filter(|ch| !ch.is_whitespace()).collect();
+    if let Ok(mut extra) = EXTRA_WORD_CHARS.write() {
+        *extra = chars;
+    }
+}
+
+/// Whether `ch` was made part of words by [`set_extra_word_chars`].
+pub fn is_extra_word_char(ch: char) -> bool {
+    EXTRA_WORD_CHARS
+        .read()
+        .is_ok_and(|extra| !extra.is_empty() && extra.contains(&ch))
 }
 
 /// Ctrl+Right: to the start of the next word, past any spaces. A line break is a stop of its

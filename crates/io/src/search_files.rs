@@ -45,10 +45,7 @@ pub fn is_binary(text: &Rope) -> bool {
 
 /// Reads a file to search, as File > Open would; a binary file is skipped.
 pub fn read_for_search(path: &Path, ansi: Encoding) -> Result<LoadedFile, Skipped> {
-    let options = LoadOptions {
-        encoding: None,
-        ansi,
-    };
+    let options = LoadOptions::new(ansi);
     let loaded = crate::load(path, options, &AtomicU64::new(0)).map_err(|_| Skipped::Failed)?;
     if is_binary(&loaded.text) {
         return Err(Skipped::Binary);

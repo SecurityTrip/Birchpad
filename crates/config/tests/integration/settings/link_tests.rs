@@ -17,6 +17,7 @@ fn schemes_and_delimiters() {
         open: "(".into(),
         close: ")".into(),
         multi_line: true,
+        ..DelimiterSettings::default()
     };
     assert_eq!(brackets.pair(), Some(('(', ')')));
     for (open, close) in [("", ")"), ("((", ")"), ("(", "")] {
@@ -24,6 +25,7 @@ fn schemes_and_delimiters() {
             open: open.into(),
             close: close.into(),
             multi_line: false,
+            ..DelimiterSettings::default()
         };
         assert_eq!(wrong.pair(), None, "{open:?} {close:?}");
     }

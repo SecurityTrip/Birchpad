@@ -1242,11 +1242,13 @@ context = "Completion"
 [[binding]]
 keys = "enter"
 command = "completion.accept"
+args = { key = "enter" }
 context = "Completion"
 
 [[binding]]
 keys = "tab"
 command = "completion.accept"
+args = { key = "tab" }
 context = "Completion"
 
 [[binding]]

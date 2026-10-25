@@ -414,6 +414,14 @@ impl Buffer {
             .map(|text| self.marks.bookmarks.lines(text));
         match result {
             Ok(file) => {
+                // Performance > Deactivate Word Wrap globally: a large file turns it off.
+                let limit =
+                    u64::from(AppState::global(cx).settings.files.large_file_limit_mb) << 20;
+                if file.text.len() as u64 > limit
+                    && AppState::global(cx).settings.files.large_file_no_wrap
+                {
+                    AppState::update_state(cx, |state, _| state.word_wrap = Some(false));
+                }
                 self.problem = file.problem;
                 self.decode_changes = file.changes;
                 self.file_read_only = file.info.read_only;
@@ -761,6 +769,12 @@ impl Buffer {
             self.syntax.user_language =
                 (crate::EditorHooks::get(cx).user_language_for_file)(name, cx);
         }
+    }
+
+    /// Whether the document is over Preferences > Performance's large file limit.
+    pub fn is_large(&self, cx: &gpui_kit::App) -> bool {
+        let limit = u64::from(AppState::global(cx).settings.files.large_file_limit_mb) << 20;
+        self.doc.text().len() as u64 > limit
     }
 
     fn install_language(&mut self, language: Option<&'static Language>, cx: &mut Context<Self>) {

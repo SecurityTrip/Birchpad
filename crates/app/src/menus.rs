@@ -64,6 +64,31 @@ pub fn menu_label(item: &MenuItem) -> String {
     }
 }
 
+/// How File > Recent Files names a file: by its whole path or its name alone, a long path
+/// cut in its middle to the maximum length (Preferences > Recent Files History).
+pub fn recent_label(path: &std::path::Path, files: &birchpad_config::FileSettings) -> String {
+    let text = if files.recent_file_name_only {
+        path.file_name().map_or_else(
+            || path.display().to_string(),
+            |name| name.to_string_lossy().into_owned(),
+        )
+    } else {
+        path.display().to_string()
+    };
+    let max = usize::from(files.recent_max_length);
+    let length = text.chars().count();
+    if max == 0 || length <= max {
+        return text;
+    }
+    // The start and the end, which says the most, around an ellipsis.
+    let keep = max.saturating_sub(1).max(2);
+    let head = keep / 2;
+    let tail = keep - head;
+    let start: String = text.chars().take(head).collect();
+    let end: String = text.chars().skip(length - tail).collect();
+    format!("{start}…{end}")
+}
+
 /// Turns the menu model into GPUI menus.
 fn build(model: Vec<Menu>, state: &MenuState, cx: &App) -> Vec<gpui_kit::Menu> {
     let registry = cx.global::<CommandRegistry>();
@@ -103,8 +128,15 @@ fn build_menu(
                 submenu, state, registry, cx,
             ))),
             MenuItem::Placeholder(Placeholder::RecentFiles) => {
-                if state.recent_files.is_empty() {
-                    items.push(
+                let files = &crate::app_state::AppState::global(cx).settings.files;
+                let mut recent = Vec::new();
+                let shown: Vec<&PathBuf> = state
+                    .recent_files
+                    .iter()
+                    .filter(|path| !files.recent_check_existence || path.exists())
+                    .collect();
+                if shown.is_empty() {
+                    recent.push(
                         GpuiMenuItem::action(
                             t!("menus.empty"),
                             RunCommand::new("file.clear-recent"),
@@ -112,11 +144,19 @@ fn build_menu(
                         .disabled(true),
                     );
                 }
-                for (index, path) in state.recent_files.iter().enumerate() {
-                    let label = format!("{}: {}", index + 1, path.display());
+                for (index, path) in shown.into_iter().enumerate() {
+                    let label = format!("{}: {}", index + 1, recent_label(path, files));
                     let invocation =
                         Invocation::with_args("file.open-recent", json!({ "path": path }));
-                    items.push(GpuiMenuItem::action(label, RunCommand(invocation)));
+                    recent.push(GpuiMenuItem::action(label, RunCommand(invocation)));
+                }
+                // Preferences > Recent Files History > In Submenu.
+                if files.recent_submenu {
+                    items.push(GpuiMenuItem::submenu(
+                        gpui_kit::Menu::new(t!("menus.recent-files")).items(recent),
+                    ));
+                } else {
+                    items.extend(recent);
                 }
             }
             MenuItem::Placeholder(Placeholder::CharacterSets { command }) => {
@@ -133,32 +173,42 @@ fn build_menu(
                 }
             }
             MenuItem::Placeholder(Placeholder::Languages) => {
-                // Grouped by first letter, as in Notepad++.
-                let mut letters: Vec<char> = birchpad_syntax::LANGUAGES
+                // Preferences > Language: the languages not hidden, grouped by first letter as
+                // in Notepad++ (compact), or one under the other.
+                let settings = &crate::app_state::AppState::global(cx)
+                    .settings
+                    .language_menu;
+                let shown: Vec<&birchpad_syntax::Language> = birchpad_syntax::LANGUAGES
                     .iter()
-                    .filter_map(|language| language.name.chars().next())
-                    .map(|letter| letter.to_ascii_uppercase())
+                    .filter(|language| settings.shows(language.id))
                     .collect();
-                letters.dedup();
-                for letter in letters {
-                    let entries = birchpad_syntax::LANGUAGES
+                let item = |language: &birchpad_syntax::Language| {
+                    let invocation =
+                        Invocation::with_args("language.set", json!({ "language": language.id }));
+                    let checked = (state.checked)(&invocation);
+                    GpuiMenuItem::action(language.name, RunCommand(invocation)).checked(checked)
+                };
+                if !settings.compact {
+                    items.extend(shown.iter().map(|language| item(language)));
+                } else {
+                    let mut letters: Vec<char> = shown
                         .iter()
-                        .filter(|language| {
-                            language.name.chars().next().map(|c| c.to_ascii_uppercase())
-                                == Some(letter)
-                        })
-                        .map(|language| {
-                            let invocation = Invocation::with_args(
-                                "language.set",
-                                json!({ "language": language.id }),
-                            );
-                            let checked = (state.checked)(&invocation);
-                            GpuiMenuItem::action(language.name, RunCommand(invocation))
-                                .checked(checked)
-                        });
-                    items.push(GpuiMenuItem::submenu(
-                        gpui_kit::Menu::new(letter.to_string()).items(entries),
-                    ));
+                        .filter_map(|language| language.name.chars().next())
+                        .map(|letter| letter.to_ascii_uppercase())
+                        .collect();
+                    letters.dedup();
+                    for letter in letters {
+                        let entries = shown
+                            .iter()
+                            .filter(|language| {
+                                language.name.chars().next().map(|c| c.to_ascii_uppercase())
+                                    == Some(letter)
+                            })
+                            .map(|language| item(language));
+                        items.push(GpuiMenuItem::submenu(
+                            gpui_kit::Menu::new(letter.to_string()).items(entries),
+                        ));
+                    }
                 }
             }
             MenuItem::Placeholder(Placeholder::UserLanguages) => {

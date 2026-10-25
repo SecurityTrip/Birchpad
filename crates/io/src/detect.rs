@@ -43,6 +43,19 @@ pub struct Detection {
     pub by: DetectedBy,
 }
 
+/// As [`detect`], but a file that is neither Unicode nor marked as such is `ansi`, without
+/// guessing ("Autodetect character encoding" off).
+pub fn detect_without_guess(bytes: &[u8], ansi: Encoding) -> Detection {
+    let found = |encoding, by| Detection { encoding, by };
+    if let Some(encoding) = sniff_bom(bytes) {
+        return found(encoding, DetectedBy::Bom);
+    }
+    if std::str::from_utf8(bytes).is_ok() {
+        return found(Encoding::Utf8, DetectedBy::Utf8);
+    }
+    found(ansi, DetectedBy::Ansi)
+}
+
 /// Guesses the encoding of `bytes`. `ansi` is the fallback legacy encoding.
 pub fn detect(bytes: &[u8], ansi: Encoding) -> Detection {
     let found = |encoding, by| Detection { encoding, by };

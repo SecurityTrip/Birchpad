@@ -35,6 +35,111 @@ pub struct Settings {
     pub spell: SpellSettings,
     pub palette: PaletteSettings,
     pub finder: FinderSettings,
+    pub searching: SearchingSettings,
+    pub misc: MiscSettings,
+    pub language_menu: LanguageMenuSettings,
+}
+
+/// Notepad++'s Preferences > Searching.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, rename_all = "kebab-case")]
+pub struct SearchingSettings {
+    /// A selection of at least this many characters turns In selection on when the find
+    /// panel opens; 0 never does.
+    pub in_selection_from: u32,
+    /// The selection, up to this many characters, fills the find field when the panel opens;
+    /// 0 never fills it.
+    pub fill_from_selection: u32,
+    /// With nothing selected, the word at the caret fills it.
+    pub fill_from_word: bool,
+    /// The find fields in a monospaced font.
+    pub monospaced: bool,
+    /// The find panel stays open after a search that lists its results.
+    pub stay_open: bool,
+    /// Replace All in All Opened Documents asks first.
+    pub confirm_replace_all_documents: bool,
+    /// Replace stays on what it replaced instead of going to the next match.
+    pub replace_stays: bool,
+    /// The search results list each line once, whatever it holds; off, once for each match.
+    pub one_entry_per_line: bool,
+    /// Find in Files searches the files on disk, not what open documents hold unsaved.
+    pub ignore_unsaved_changes: bool,
+    /// Find in Files' folder is the active document's when the panel opens.
+    pub folder_from_document: bool,
+}
+
+impl Default for SearchingSettings {
+    fn default() -> Self {
+        Self {
+            in_selection_from: 1024,
+            fill_from_selection: 1024,
+            fill_from_word: true,
+            monospaced: false,
+            stay_open: true,
+            confirm_replace_all_documents: true,
+            replace_stays: false,
+            one_entry_per_line: true,
+            ignore_unsaved_changes: false,
+            folder_from_document: false,
+        }
+    }
+}
+
+/// Notepad++'s Preferences > MISC. that Birchpad has.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, rename_all = "kebab-case")]
+pub struct MiscSettings {
+    /// The document peeker shows an inactive tab in the Document Map, when it is open, rather
+    /// than in a popup.
+    pub peek_on_document_map: bool,
+    /// Files without a byte order mark are examined for their encoding; off, they open in
+    /// UTF-8, or ANSI if they are not ("Autodetect character encoding").
+    pub detect_encoding: bool,
+    /// Save All asks first ("Enable Save All confirm dialog").
+    pub confirm_save_all: bool,
+    /// Folder as Workspace follows links to folders.
+    pub follow_symlinks: bool,
+}
+
+impl Default for MiscSettings {
+    fn default() -> Self {
+        Self {
+            peek_on_document_map: false,
+            detect_encoding: true,
+            confirm_save_all: false,
+            follow_symlinks: false,
+        }
+    }
+}
+
+/// Notepad++'s Preferences > Language: the Language menu.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, rename_all = "kebab-case")]
+pub struct LanguageMenuSettings {
+    /// The languages in submenus by their first letter ("Make language menu compact"); off,
+    /// one under the other.
+    pub compact: bool,
+    /// Ids of languages the menu leaves out, separated by spaces (`cobol fortran`).
+    pub hidden: String,
+}
+
+impl Default for LanguageMenuSettings {
+    fn default() -> Self {
+        Self {
+            compact: true,
+            hidden: String::new(),
+        }
+    }
+}
+
+impl LanguageMenuSettings {
+    /// Whether the menu lists the language `id`.
+    pub fn shows(&self, id: &str) -> bool {
+        !self
+            .hidden
+            .split([' ', ',', ';'])
+            .any(|hidden| hidden.eq_ignore_ascii_case(id))
+    }
 }
 
 /// Search > Go to File...
@@ -364,6 +469,9 @@ pub struct EditorSettings {
     /// Keys that would type a control character (Ctrl+E) type nothing ("Prevent control
     /// character (C0 code) typing into document").
     pub prevent_control_typing: bool,
+    /// Backspace in a line's indentation takes it out a level ("Backspace key unindents
+    /// instead of removing single space").
+    pub backspace_unindents: bool,
     /// How the folding margin draws fold points ("Fold Margin Style").
     pub fold_style: FoldStyle,
     /// The line between the margins and the text, in pixels from 0 to 30 ("Border Width").
@@ -541,6 +649,7 @@ impl Default for EditorSettings {
             column_to_multi_editing: false,
             eol_style: EolStyle::default(),
             prevent_control_typing: true,
+            backspace_unindents: false,
             fold_style: FoldStyle::default(),
             border_width: 1,
             line_number_width: LineNumberWidth::default(),
@@ -574,6 +683,12 @@ pub struct CompletionSettings {
     pub call_tips: bool,
     /// Typing the `>` of an HTML or XML opening tag inserts its closing tag after the caret.
     pub close_tags: bool,
+    /// The keys that take the entry chosen in the list ("Insert Selection").
+    pub accept_with_tab: bool,
+    pub accept_with_enter: bool,
+    /// The list holds only the entries that start with what is typed, case and all, and
+    /// shrinks as typing goes on ("Make auto-completion list brief").
+    pub brief: bool,
 }
 
 impl Default for CompletionSettings {
@@ -588,6 +703,9 @@ impl Default for CompletionSettings {
             ignore_numbers: true,
             call_tips: true,
             close_tags: false,
+            accept_with_tab: true,
+            accept_with_enter: true,
+            brief: false,
         }
     }
 }
@@ -602,13 +720,20 @@ impl CompletionSettings {
 }
 
 /// Notepad++'s Preferences > Highlighting.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default, rename_all = "kebab-case")]
 pub struct HighlightingSettings {
     /// Highlighting every occurrence of the selected word in the visible text.
     pub smart: SmartHighlighting,
     /// How Search > Style All Occurrences of Token matches the token.
     pub token_style: TokenMatching,
+    /// Smart highlighting marks the word in the other view's document too.
+    pub smart_other_view: bool,
+    /// The partner of the HTML or XML tag at the caret is highlighted, with it ("Highlight
+    /// Matching Tags"), their attributes too, and inside comments as well.
+    pub matching_tags: bool,
+    pub matching_tag_attributes: bool,
+    pub matching_tags_in_comments: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -621,6 +746,19 @@ pub struct SmartHighlighting {
     pub whole_word: bool,
     /// Take match case and whole word from the find panel instead.
     pub use_find_options: bool,
+}
+
+impl Default for HighlightingSettings {
+    fn default() -> Self {
+        Self {
+            smart: SmartHighlighting::default(),
+            token_style: TokenMatching::default(),
+            smart_other_view: false,
+            matching_tags: true,
+            matching_tag_attributes: false,
+            matching_tags_in_comments: false,
+        }
+    }
 }
 
 impl Default for SmartHighlighting {
@@ -681,6 +819,25 @@ pub struct FileSettings {
     pub default_directory_path: String,
     /// At startup, offer to make Birchpad the default editor of text files, unless it is.
     pub offer_default_app: bool,
+    /// File > Recent Files lists the files in a submenu of their own ("In Submenu").
+    pub recent_submenu: bool,
+    /// The recent files show by their name only ("Only File Name").
+    pub recent_file_name_only: bool,
+    /// Recent paths longer than this many characters are cut in the middle; 0 for no limit
+    /// ("Customize Maximum Length").
+    pub recent_max_length: u16,
+    /// Recent files that are gone are left out of the menu ("Don't check at launch time" off).
+    pub recent_check_existence: bool,
+    /// A folder dropped on the window opens its files instead of going to Folder as Workspace.
+    pub drop_folder_opens_files: bool,
+    /// Large files: word wrap goes off for every document when one opens ("Deactivate Word
+    /// Wrap globally").
+    pub large_file_no_wrap: bool,
+    /// What large files keep: auto-completion, smart highlighting, brace matching, links.
+    pub large_file_completion: bool,
+    pub large_file_smart_highlighting: bool,
+    pub large_file_brace_match: bool,
+    pub large_file_links: bool,
 }
 
 /// Notepad++'s "Backup on save".
@@ -722,6 +879,16 @@ impl Default for FileSettings {
             default_directory: DefaultDirectory::default(),
             default_directory_path: String::new(),
             offer_default_app: true,
+            recent_submenu: false,
+            recent_file_name_only: false,
+            recent_max_length: 0,
+            recent_check_existence: true,
+            drop_folder_opens_files: false,
+            large_file_no_wrap: false,
+            large_file_completion: false,
+            large_file_smart_highlighting: false,
+            large_file_brace_match: true,
+            large_file_links: true,
         }
     }
 }
@@ -901,6 +1068,8 @@ pub enum ToolbarSize {
 #[serde(default, rename_all = "kebab-case")]
 pub struct InstanceSettings {
     pub mode: InstanceMode,
+    /// The panels open in a run without a session (`-nosession`) are remembered too.
+    pub nosession_panels: bool,
 }
 
 /// What a launch does while Birchpad runs.
@@ -1026,6 +1195,8 @@ pub struct LinkSettings {
     /// Schemes besides http, https, ftp, ftps, file and mailto, separated by spaces
     /// ("URI customized schemes").
     pub schemes: String,
+    /// A link under the mouse is framed, not only colored ("Full box mode").
+    pub hover_box: bool,
 }
 
 impl Default for LinkSettings {
@@ -1035,6 +1206,7 @@ impl Default for LinkSettings {
             double_click: false,
             underline: true,
             schemes: "svn:// git:// ssh:// sftp://".to_owned(),
+            hover_box: false,
         }
     }
 }
@@ -1055,6 +1227,9 @@ pub struct DelimiterSettings {
     pub close: String,
     /// The delimiters may be on other lines ("Allow on several lines").
     pub multi_line: bool,
+    /// Characters that are part of words besides letters, digits and `_` ("Add your
+    /// character as part of word").
+    pub word_chars: String,
 }
 
 impl Default for DelimiterSettings {
@@ -1063,6 +1238,7 @@ impl Default for DelimiterSettings {
             open: "\"".to_owned(),
             close: "\"".to_owned(),
             multi_line: false,
+            word_chars: String::new(),
         }
     }
 }
@@ -1091,6 +1267,13 @@ pub struct NewDocumentSettings {
     pub line_ending: String,
     /// A language id, or `text`.
     pub language: String,
+    /// Files opened in the ANSI encoding with nothing but ASCII in them take the new
+    /// document's encoding ("Apply to opened ANSI files").
+    pub apply_to_ansi: bool,
+    /// A new document opens at startup besides the session and the files asked for.
+    pub at_startup: bool,
+    /// An untitled document's tab is named after its first line.
+    pub first_line_name: bool,
 }
 
 impl Default for NewDocumentSettings {
@@ -1099,6 +1282,9 @@ impl Default for NewDocumentSettings {
             encoding: "utf-8".to_owned(),
             line_ending: "system".to_owned(),
             language: "text".to_owned(),
+            apply_to_ansi: false,
+            at_startup: false,
+            first_line_name: false,
         }
     }
 }
@@ -1138,6 +1324,10 @@ pub struct SessionSettings {
     /// Files of the session that cannot be read now (a network drive away) stay in it, to open
     /// when they can ("Remember inaccessible files").
     pub remember_inaccessible: bool,
+    /// Files with this extension (`.npss`) open as sessions, not as text.
+    pub session_extension: String,
+    /// Files with this extension open their folders as workspace, not as text.
+    pub workspace_extension: String,
 }
 
 impl Default for SessionSettings {
@@ -1147,6 +1337,8 @@ impl Default for SessionSettings {
             backup_unsaved: true,
             backup_interval_seconds: 7,
             remember_inaccessible: false,
+            session_extension: String::new(),
+            workspace_extension: String::new(),
         }
     }
 }
@@ -1280,6 +1472,8 @@ pub struct PrintSettings {
     pub footer_left: String,
     pub footer_center: String,
     pub footer_right: String,
+    /// A form feed (U+000C) starts a new page ("Print formfeed as page break").
+    pub form_feed_page_break: bool,
 }
 
 impl Default for PrintSettings {
@@ -1300,6 +1494,7 @@ impl Default for PrintSettings {
             footer_left: String::new(),
             footer_center: String::new(),
             footer_right: String::new(),
+            form_feed_page_break: false,
         }
     }
 }

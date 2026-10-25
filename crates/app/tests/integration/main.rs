@@ -46,6 +46,9 @@ mod file_ops;
 #[path = "find/tests.rs"]
 mod find;
 
+#[path = "files_options/tests.rs"]
+mod files_options;
+
 #[path = "finder/tests.rs"]
 mod finder;
 

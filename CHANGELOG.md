@@ -51,6 +51,29 @@ version's release notes from its section here.
 - Preferences > Margins: the fold margin's style (simple, arrow, circle tree, box tree, none),
   the border's width, a line number margin of constant width, and padding left, right and in
   Distraction Free mode.
+- Preferences > New Document: files of ASCII alone take the new document's encoding, a new
+  document opens at startup besides the others, and an untitled tab can be named after its
+  first line. A folder dropped on the window can open its files instead of Folder as
+  Workspace.
+- Recent files: in a submenu, by their name only, cut to a maximum length, and kept when they
+  are gone if you wish. The Language menu can be one list instead of letters, and leave out
+  languages.
+- Highlight Matching Tags in HTML and XML (with their attributes, and in comments, if asked);
+  smart highlighting in the other view too.
+- Preferences > Searching: when In selection is checked and the find field filled from the
+  selection or the word at the caret, a monospaced find panel, the panel closing after Find
+  All, Replace All in All Opened Documents confirmed, Replace staying on what it replaced,
+  search results with a row for each match, Find in Files ignoring unsaved changes or always
+  starting in the document's folder.
+- Auto-Completion: which of Tab and Enter take an entry, a brief list, and Backspace
+  unindenting. Delimiter: characters of your own that are part of words.
+- Performance: large files can keep auto-completion, smart highlighting, brace matching and
+  links, or turn word wrap off everywhere. Print can break pages at form feeds.
+- Cloud & Link frames the link under the mouse; Multi-Instance remembers panels with
+  `-nosession` if you wish.
+- MISC: the document peeker in the Document Map, encoding detection turned off, Save All
+  confirmed, symbolic links followed in Folder as Workspace, and extensions that open a file
+  as a session or as a project workspace.
 - Sticky scroll, in Preferences > Editing: the first lines of the blocks around the top of the
   view stay there while you scroll, five at most by default; a click on one goes to it.
 

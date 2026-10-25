@@ -16,6 +16,8 @@ fn ebcdic(bytes: &[u8], name: &'static str) -> LoadedFile {
     let options = LoadOptions {
         encoding: Some(Encoding::Legacy(name)),
         ansi: Encoding::Legacy("windows-1252"),
+        guess: true,
+        ascii_as: None,
     };
     decode_file(bytes.to_vec(), info, options)
 }
@@ -136,4 +138,55 @@ fn files_up_to_the_limit_are_read_and_larger_ones_refused() {
 #[test]
 fn the_real_limit_is_two_gigabytes() {
     assert_eq!(MAX_FILE_SIZE, 1 << 31);
+}
+
+#[test]
+fn ascii_files_take_the_encoding_asked_for_and_guessing_can_stop() {
+    let decode = |bytes: &[u8], options: LoadOptions| {
+        let info = FileInfo {
+            len: bytes.len() as u64,
+            read_only: false,
+            modified: None,
+        };
+        decode_file(bytes.to_vec(), info, options).format
+    };
+    let ansi = Encoding::Legacy("windows-1252");
+    let plain = LoadOptions::new(ansi);
+    assert_eq!(decode(b"abc", plain).encoding, Encoding::Utf8);
+    let with_bom = LoadOptions {
+        ascii_as: Some((Encoding::Utf8, true)),
+        ..plain
+    };
+    let format = decode(b"abc", with_bom);
+    assert_eq!((format.encoding, format.bom), (Encoding::Utf8, true));
+    // Not ASCII: as detected.
+    assert!(!decode("é".as_bytes(), with_bom).bom);
+    // A Unicode encoding other than UTF-8 would change the bytes: not taken.
+    let utf16 = LoadOptions {
+        ascii_as: Some((Encoding::Utf16Le, true)),
+        ..plain
+    };
+    assert_eq!(decode(b"abc", utf16).encoding, Encoding::Utf8);
+    // Without guessing, bytes that are not UTF-8 are ANSI.
+    let cyrillic = [0xcf, 0xf0, 0xe8, 0xe2, 0xe5, 0xf2, 0x20, 0xec, 0xe8, 0xf0];
+    let guessing = birchpad_io::detect(&cyrillic, ansi);
+    let not_guessing = birchpad_io::detect_without_guess(&cyrillic, ansi);
+    assert_eq!(not_guessing.encoding, ansi);
+    assert_eq!(not_guessing.by, DetectedBy::Ansi);
+    let _ = guessing;
+    assert_eq!(
+        decode(
+            &cyrillic,
+            LoadOptions {
+                guess: false,
+                ..plain
+            }
+        )
+        .encoding,
+        ansi
+    );
+    assert_eq!(
+        birchpad_io::detect_without_guess(b"\xef\xbb\xbfa", ansi).by,
+        DetectedBy::Bom
+    );
 }

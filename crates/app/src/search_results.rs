@@ -101,6 +101,27 @@ impl SearchRun {
     }
 }
 
+/// The lines found, a line with several matches once for each of them.
+pub fn entry_per_match(lines: Vec<LineHit>) -> Vec<LineHit> {
+    let mut split = Vec::with_capacity(lines.len());
+    for line in lines {
+        if line.highlights.len() <= 1 {
+            split.push(line);
+            continue;
+        }
+        for range in &line.highlights {
+            split.push(LineHit {
+                line: line.line,
+                text: line.text.clone(),
+                highlights: vec![range.clone()],
+                target: range.clone(),
+                matches: 1,
+            });
+        }
+    }
+    split
+}
+
 /// A row of the list.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Row {
@@ -163,7 +184,16 @@ impl SearchResults {
     }
 
     /// Shows a new search above the earlier ones, with its first line selected.
-    pub fn add(&mut self, run: SearchRun, cx: &mut Context<Self>) {
+    pub fn add(&mut self, mut run: SearchRun, cx: &mut Context<Self>) {
+        // Preferences > Searching: off, a line with several matches has a row for each.
+        let one_per_line = cx
+            .try_global::<AppState>()
+            .is_none_or(|state| state.settings.searching.one_entry_per_line);
+        if !one_per_line {
+            for file in &mut run.files {
+                file.lines = entry_per_match(std::mem::take(&mut file.lines));
+            }
+        }
         self.visible = true;
         if self.purge {
             self.runs.clear();

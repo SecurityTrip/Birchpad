@@ -159,6 +159,7 @@ pub fn setup_of(settings: &PrintSettings, tab_width: usize) -> PageSetup {
             settings.header_center.clone(),
             settings.header_right.clone(),
         ],
+        form_feed: settings.form_feed_page_break,
         footer: [
             settings.footer_left.clone(),
             settings.footer_center.clone(),

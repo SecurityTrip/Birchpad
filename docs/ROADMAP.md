@@ -720,7 +720,7 @@ each with its tests, docs and a `CHANGELOG.md` entry, its options in Preferences
       and a label several cells wide would need the column model to change with the setting
       (they are framed or marked instead); Dark Mode's customized tone, beside the seven tones
       (the Style Configurator sets the interface's colors)
-- [ ] 7.4c Preferences left from Notepad++ 8 for files, search and typing (6.49): New Document's
+- [x] 7.4c Preferences left from Notepad++ 8 for files, search and typing (6.49): New Document's
       encoding applied to opened ANSI files, a new document at startup, the first line as an
       untitled tab's name; opening a folder's files one by one; Recent Files' submenu, file name
       only or full path, maximum length, skipping the existence check; Language's compact menu,
@@ -734,7 +734,15 @@ each with its tests, docs and a `CHANGELOG.md` entry, its options in Preferences
       Delimiter's word characters; Performance's large file restrictions one by one; Cloud &
       Link's full box on hover; MISC's peek on the document map, mute sounds, encoding
       detection, Save All confirmation, following symbolic links in Folder as Workspace, the
-      session and workspace file extensions; Multi-Instance's panels with `-nosession`
+      session and workspace file extensions; Multi-Instance's panels with `-nosession`. Built
+      from the user manual's Preferences page. As Birchpad reads ASCII as UTF-8, "Apply to
+      opened ANSI files" gives files of ASCII alone the new document's UTF-8 (with or without
+      its byte order mark) or ANSI; Highlight Matching Tags is new, in HTML and XML; the
+      Auto-Completion pairs, three of one's own too, were there already (any pairs in
+      `completion.auto-close`), and so were Find in Files from the document's folder (Follow
+      current doc., now also a preference) and Style All Occurrences' match case and whole
+      word. Not done: SQL's backslash as an escape, since the SQL grammar decides what a
+      string is and has no such switch; muting sounds, since Birchpad makes none
 - [ ] 7.4d Command line left from Notepad++ 8 (6.49): `-fullReadOnly` and
       `-fullReadOnlySavingForbidden`, every document read-only for the run, saving too
 - [ ] Release 0.7.0: the workspace version (0.7.0, set when its branch opens, so that nightly

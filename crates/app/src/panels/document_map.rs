@@ -119,10 +119,15 @@ impl DocumentMap {
         }
     }
 
+    /// The active view, or the tab the document peeker shows here.
     fn active_view(&self, cx: &App) -> Option<Entity<EditorView>> {
-        self.workspace
-            .upgrade()
-            .and_then(|workspace| workspace.read(cx).active_view(cx))
+        let workspace = self.workspace.upgrade()?;
+        let workspace = workspace.read(cx);
+        workspace
+            .peeked
+            .as_ref()
+            .and_then(gpui_kit::WeakEntity::upgrade)
+            .or_else(|| workspace.active_view(cx))
     }
 
     /// The map of `view` for a panel `height` high.

@@ -204,6 +204,9 @@ pub enum PaneEvent {
         view: Option<Entity<EditorView>>,
         invocation: Invocation,
     },
+    /// The mouse went over an inactive tab (`Some`) or left it, for the Document Map to show
+    /// it (MISC > Document Peeker in the Document Map).
+    Peek(Option<Entity<EditorView>>),
 }
 
 /// A tab being dragged.
@@ -880,7 +883,7 @@ impl Pane {
                 ReadOnly::File | ReadOnly::Decoding(_) | ReadOnly::Requested | ReadOnly::Monitoring
             )
         );
-        let label: SharedString = options.label(&buffer.display_name()).into();
+        let label: SharedString = options.label(&tab_name(buffer, cx)).into();
         let prefix = if options.alternate_icons {
             // Notepad++'s alternate icons: a padlock, a pencil or a check mark.
             let icon = if read_only {
@@ -963,6 +966,12 @@ impl Pane {
             None if active || !options.inactive_color => paint(ui().background),
             None => paint(ui().surface),
         };
+        // The peeker in the Document Map, when it is open.
+        let peek_on_map = {
+            let app = crate::app_state::AppState::global(cx);
+            app.settings.misc.peek_on_document_map
+                && app.state.panels.open.iter().any(|id| id == "document-map")
+        };
         let middle_item = item.clone();
         let clicked_item = item.clone();
         let double_click_close = options.double_click_close;
@@ -1018,7 +1027,13 @@ impl Pane {
                     cx.emit(PaneEvent::CloseRequested(middle_item.clone()));
                 }),
             )
-            .when(options.peeker && !active, |tab| {
+            .when(options.peeker && !active && peek_on_map, |tab| {
+                let peeked = item.clone();
+                tab.on_hover(cx.listener(move |_, hovered: &bool, _, cx| {
+                    cx.emit(PaneEvent::Peek(hovered.then(|| peeked.clone())));
+                }))
+            })
+            .when(options.peeker && !active && !peek_on_map, |tab| {
                 tab.tooltip(move |_, cx| {
                     let lines = peek_item
                         .upgrade()
@@ -1298,5 +1313,32 @@ impl Workspace {
         if let Err(error) = self.dispatch(invocation, window, cx) {
             crate::workspace::report_error(&error, window, cx);
         }
+    }
+}
+
+/// The name a tab shows: the document's, or for an untitled one with Preferences > New
+/// Document > Use the first line as the tab's name, its first line (60 characters at most).
+pub fn tab_name(buffer: &crate::buffer::Buffer, cx: &App) -> String {
+    let name = buffer.display_name();
+    if buffer.path().is_some()
+        || !crate::app_state::AppState::global(cx)
+            .settings
+            .new_document
+            .first_line_name
+    {
+        return name;
+    }
+    let first = buffer
+        .doc()
+        .text()
+        .lines(birchpad_core::LINE_TYPE)
+        .next()
+        .map(|line| line.chars().take(60).collect::<String>())
+        .unwrap_or_default();
+    let first = first.trim();
+    if first.is_empty() {
+        name
+    } else {
+        first.to_owned()
     }
 }

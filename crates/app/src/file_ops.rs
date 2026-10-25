@@ -61,7 +61,27 @@ pub fn register_commands(registry: &mut CommandRegistry) {
         Ok(())
     });
     registry.workspace("file.save-all", |this, (), window, cx| {
-        this.save_all(window, cx).detach();
+        // MISC > Enable Save All confirm dialog.
+        if !AppState::global(cx).settings.misc.confirm_save_all {
+            this.save_all(window, cx).detach();
+            return Ok(());
+        }
+        let answers = [t!("file-ops.save-all"), t!("common.cancel")];
+        let answers: Vec<&str> = answers.iter().map(String::as_str).collect();
+        let answer = window.prompt(
+            gpui_kit::PromptLevel::Info,
+            &t!("file-ops.save-every-changed-document"),
+            None,
+            &answers,
+            cx,
+        );
+        cx.spawn_in(window, async move |this, cx| {
+            if answer.await.ok() == Some(0) {
+                this.update_in(cx, |this, window, cx| this.save_all(window, cx).detach())
+                    .ok();
+            }
+        })
+        .detach();
         Ok(())
     });
     registry.workspace("file.close", |this, (), window, cx| {

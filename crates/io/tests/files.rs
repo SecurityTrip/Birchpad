@@ -29,6 +29,8 @@ fn open_as(name: &str, encoding: Option<Encoding>) -> LoadedFile {
     let options = LoadOptions {
         encoding,
         ansi: ANSI,
+        guess: true,
+        ascii_as: None,
     };
     load(&fixture(name), options, &AtomicU64::new(0)).unwrap()
 }
@@ -433,6 +435,8 @@ fn missing_and_directory_paths_fail_cleanly() {
     let options = LoadOptions {
         encoding: None,
         ansi: ANSI,
+        guess: true,
+        ascii_as: None,
     };
     let progress = AtomicU64::new(0);
     assert!(matches!(
@@ -466,6 +470,8 @@ fn large_file_loads_quickly() {
         LoadOptions {
             encoding: None,
             ansi: ANSI,
+            guess: true,
+            ascii_as: None,
         },
         &AtomicU64::new(0),
     )

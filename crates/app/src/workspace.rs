@@ -255,6 +255,9 @@ pub struct Workspace {
     pub find_bar: Entity<FindBar>,
     pub incremental: Entity<IncrementalBar>,
     pub search_results: Entity<SearchResults>,
+    /// The inactive tab the mouse is over, which the Document Map shows (MISC > Document
+    /// Peeker).
+    pub peeked: Option<gpui_kit::WeakEntity<EditorView>>,
     title: String,
     /// `-titleAdd`: text after the window's title.
     pub title_add: Option<String>,
@@ -307,6 +310,7 @@ impl Workspace {
             find_bar,
             incremental,
             search_results,
+            peeked: None,
             title: String::new(),
             title_add: None,
             quick_prints: Vec::new(),
@@ -411,6 +415,10 @@ impl Workspace {
             }
             PaneEvent::Command { view, invocation } => {
                 self.run_tab_command(view.as_ref(), invocation, window, cx);
+            }
+            PaneEvent::Peek(view) => {
+                self.peeked = view.as_ref().map(Entity::downgrade);
+                window.refresh();
             }
         }
     }
@@ -619,7 +627,48 @@ impl Workspace {
     /// Opens a file in a new tab, or switches to its tab if it is already open. The file is read
     /// in the background.
     pub fn open_path(&mut self, path: &Path, window: &mut Window, cx: &mut Context<Self>) {
+        if self.open_by_extension(path, window, cx) {
+            return;
+        }
         self.open_path_with(path, false, window, cx);
+    }
+
+    /// MISC > Session file ext. and Workspace file ext.: a file with one of them opens as a
+    /// session, or in Project Panel 1, rather than as text. Returns whether it did.
+    pub fn open_by_extension(
+        &mut self,
+        path: &Path,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> bool {
+        let session = &AppState::global(cx).settings.session;
+        let matches = |wanted: &str| {
+            let wanted = wanted.trim().trim_start_matches('.');
+            !wanted.is_empty()
+                && path
+                    .extension()
+                    .is_some_and(|extension| extension.eq_ignore_ascii_case(wanted))
+        };
+        if matches(&session.session_extension) {
+            if let Err(error) = self.load_session_file(path, window, cx) {
+                report_error(&error, window, cx);
+            }
+            return true;
+        }
+        if matches(&session.workspace_extension) {
+            let kind = crate::panels::PanelKind::Project(1);
+            self.open_panel(kind, window, cx);
+            if let Some(panel) = self.docks.views.get(&kind).and_then(|view| {
+                view.clone()
+                    .downcast::<crate::panels::project::ProjectPanel>()
+                    .ok()
+            }) {
+                let path = path.to_owned();
+                panel.update(cx, |panel, cx| panel.open_workspace(path, cx));
+            }
+            return true;
+        }
+        false
     }
 
     /// Opens files and places carets as a command line asks (also from a second launch), and
@@ -1228,6 +1277,22 @@ impl Workspace {
         }
     }
 
+    /// Preferences > New Document > Always open a new document at startup: a new one besides
+    /// the session's and the command line's, unless the only one is an empty untitled one.
+    pub fn open_startup_document(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if !AppState::global(cx).settings.new_document.at_startup {
+            return;
+        }
+        let views = self.all_views(cx);
+        let only_empty = matches!(views.as_slice(), [view] if {
+            let buffer = view.read(cx).buffer.read(cx);
+            buffer.path().is_none() && buffer.doc().text().len_chars() == 0
+        });
+        if !only_empty {
+            self.new_file(window, cx);
+        }
+    }
+
     /// The window's title: `*` for unsaved changes, the active file's path (or only its name,
     /// Preferences > Appearance), and Birchpad.
     pub fn window_title(&self, cx: &App) -> String {
@@ -1285,8 +1350,14 @@ impl Render for Workspace {
             }))
             .on_drop(cx.listener(|this, paths: &ExternalPaths, window, cx| {
                 // A folder goes to Folder as Workspace, as in Notepad++.
+                let opens_files = AppState::global(cx).settings.files.drop_folder_opens_files;
                 for path in paths.paths() {
-                    if path.is_dir() {
+                    if path.is_dir() && opens_files {
+                        // Preferences > Default Directory: open the folder's files instead.
+                        for file in folder_files(path) {
+                            this.open_path(&file, window, cx);
+                        }
+                    } else if path.is_dir() {
                         this.add_workspace_folder(path, window, cx);
                     } else {
                         this.open_path(path, window, cx);
@@ -1441,4 +1512,22 @@ impl Focusable for Workspace {
     fn focus_handle(&self, _: &App) -> FocusHandle {
         self.focus_handle.clone()
     }
+}
+
+/// The files of a folder dropped on the window, its subfolders' too, without hidden ones, at
+/// most a thousand.
+pub fn folder_files(folder: &Path) -> Vec<std::path::PathBuf> {
+    let options = birchpad_io::FolderOptions {
+        subfolders: true,
+        hidden: false,
+    };
+    let mut files = birchpad_io::files_in(
+        folder,
+        &birchpad_io::Filters::default(),
+        options,
+        &std::sync::atomic::AtomicBool::new(false),
+    )
+    .unwrap_or_default();
+    files.truncate(1000);
+    files
 }

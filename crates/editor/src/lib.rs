@@ -205,6 +205,12 @@ pub fn register_commands(registry: &mut CommandRegistry) {
         Ok(())
     });
     registry.editor("edit.backspace", |this, (), _, cx| {
+        // Preferences > Auto-Completion > Backspace unindents: in the indentation, the
+        // line goes out a level instead of losing a space.
+        if this.in_indentation(cx) && AppState::global(cx).settings.editor.backspace_unindents {
+            this.indent(false, cx);
+            return Ok(());
+        }
         if !this.backspace_pair(cx) {
             this.delete_with(cx, motion::prev_boundary);
         }
@@ -562,6 +568,8 @@ pub struct EditorView {
     pub rtl: bool,
     /// Its own zoom level, while View > Zoom > Synchronize Across Views is off.
     pub zoom: Option<i32>,
+    /// Where the mouse is over the text, for the link it frames.
+    pub hovered: Option<usize>,
     /// The completion list, while it shows.
     pub completion: Option<completion::Popup>,
     /// A function's parameters, while they show.
@@ -612,6 +620,14 @@ pub struct EditorView {
     /// The selections Expand Selection grew from, the last one last, valid while `selection`
     /// is still the one it made.
     expansions: Option<(Vec<Selection>, Selection)>,
+    /// Highlight Matching Tags of the last frame: for which text, caret and comments setting,
+    /// and the tags found.
+    tag_match: Option<(
+        birchpad_core::RevisionId,
+        usize,
+        bool,
+        Option<birchpad_core::ops::TagPair>,
+    )>,
     /// Begin/End Select: where the first invocation put the start, and in which mode.
     begin_select: Option<multi::BeginSelect>,
     /// The scroll position of the last frame, to report scrolling.
@@ -735,7 +751,9 @@ impl EditorView {
             block: None,
             multi_order: None,
             expansions: None,
+            tag_match: None,
             zoom: None,
+            hovered: None,
             begin_select: None,
             last_scroll: None,
             synced_scroll: false,
@@ -1503,6 +1521,21 @@ impl EditorView {
         false
     }
 
+    /// Whether every caret is in its line's indentation, past its start, with nothing
+    /// selected.
+    pub fn in_indentation(&self, cx: &App) -> bool {
+        let text = self.text(cx);
+        self.selection.iter().all(|range| {
+            let line_start = line_range(text, line_of(text, range.head)).start;
+            range.is_empty()
+                && range.head > line_start
+                && text
+                    .slice(line_start..range.head)
+                    .chars()
+                    .all(|ch| ch == ' ' || ch == '\t')
+        })
+    }
+
     /// The caret's whole line, when nothing is selected and Copy and Cut take it.
     fn unselected_line(&self, cx: &App) -> Option<ByteRange<usize>> {
         if !AppState::global(cx)
@@ -1828,6 +1861,14 @@ impl EditorView {
 
     pub fn mouse_move(&mut self, event: &MouseMoveEvent, _: &mut Window, cx: &mut Context<Self>) {
         let Some(drag) = self.drag.clone() else {
+            // Cloud & Link > full box mode: the link under the mouse is framed.
+            if event.pressed_button.is_none() && AppState::global(cx).settings.links.hover_box {
+                let hovered = self.position_for_point(event.position, cx);
+                if hovered != self.hovered {
+                    self.hovered = hovered;
+                    cx.notify();
+                }
+            }
             return;
         };
         if event.pressed_button != Some(MouseButton::Left) {

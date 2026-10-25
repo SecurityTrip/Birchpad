@@ -123,6 +123,24 @@ pub struct LoadOptions {
     pub encoding: Option<Encoding>,
     /// The legacy encoding used when detection finds nothing better.
     pub ansi: Encoding,
+    /// Guess the legacy encoding of a file that is neither Unicode nor marked as such; off,
+    /// such a file is `ansi` ("Autodetect character encoding").
+    pub guess: bool,
+    /// The encoding and byte order mark a file of ASCII alone takes ("Apply to opened ANSI
+    /// files"); none: UTF-8 without a mark, as the bytes are.
+    pub ascii_as: Option<(Encoding, bool)>,
+}
+
+impl LoadOptions {
+    /// Detection as usual, with `ansi` as the legacy encoding.
+    pub fn new(ansi: Encoding) -> Self {
+        Self {
+            encoding: None,
+            ansi,
+            guess: true,
+            ascii_as: None,
+        }
+    }
 }
 
 /// A decoded file, ready to become a document.
@@ -167,10 +185,19 @@ pub fn decode_file(bytes: Vec<u8>, info: FileInfo, options: LoadOptions) -> Load
     let (encoding, detected_by) = match options.encoding {
         Some(encoding) => (encoding, None),
         None => {
-            let detection = detect(&bytes, options.ansi);
+            let detection = if options.guess {
+                detect(&bytes, options.ansi)
+            } else {
+                crate::detect::detect_without_guess(&bytes, options.ansi)
+            };
             (detection.encoding, Some(detection.by))
         }
     };
+    // A file of ASCII alone reads the same in any of these: it takes the one asked for.
+    let ascii_as = options
+        .ascii_as
+        .filter(|_| detected_by == Some(DetectedBy::Utf8) && bytes.is_ascii())
+        .filter(|(encoding, _)| *encoding == Encoding::Utf8 || *encoding == options.ansi);
     let head = Head::of(&bytes);
     let nel = breaks_with_nel(&bytes, encoding);
     let decoded = decode(bytes, encoding);
@@ -181,10 +208,17 @@ pub fn decode_file(bytes: Vec<u8>, info: FileInfo, options: LoadOptions) -> Load
     };
     LoadedFile {
         text: Rope::from_str(&text),
-        format: Format {
-            encoding,
-            bom: decoded.bom,
-            line_ending,
+        format: match ascii_as {
+            Some((encoding, bom)) => Format {
+                encoding,
+                bom: bom && encoding.is_unicode(),
+                line_ending,
+            },
+            None => Format {
+                encoding,
+                bom: decoded.bom,
+                line_ending,
+            },
         },
         detected_by,
         problem: decoded.problem,

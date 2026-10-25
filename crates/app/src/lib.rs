@@ -214,6 +214,7 @@ pub fn run() {
                         workspace.load_plugins(window, cx);
                     }
                     workspace.open_command_line(&command_line, window, cx);
+                    workspace.open_startup_document(window, cx);
                     workspace.report_pending_recoveries(window, cx);
                     workspace.start_backups(cx);
                     workspace.start_watching(window, cx);

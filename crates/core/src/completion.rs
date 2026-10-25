@@ -6,7 +6,7 @@ use ropey::Rope;
 
 /// Characters of a word for completion: letters, digits and `_`.
 pub fn is_word_char(ch: char) -> bool {
-    ch.is_alphanumeric() || ch == '_'
+    ch.is_alphanumeric() || ch == '_' || crate::motion::is_extra_word_char(ch)
 }
 
 /// The start of the word that ends at `pos` (the word being typed).

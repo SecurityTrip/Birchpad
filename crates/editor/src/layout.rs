@@ -451,9 +451,14 @@ impl EditorView {
             pending.push((row, y, x, display));
         }
         let shown = shown_ranges(&pending);
+        let shared_before = crate::smart_highlight::shared_query();
         if self.update_smart_highlight(&shown, &text, cx) {
             // Searching continues in the next frame.
             window.request_animation_frame();
+        }
+        // The other view highlights what this one shares: it draws again.
+        if self.focused && crate::smart_highlight::shared_query() != shared_before {
+            window.refresh();
         }
         // Sticky scroll: the headers of the folds around the top, highlighted with the rest.
         let sticky_lines = match settings.sticky_scroll {
@@ -661,8 +666,17 @@ impl EditorView {
     fn frame_styles(&mut self, ranges: &[ByteRange<usize>], text: &Rope, cx: &App) -> FrameStyles {
         let buffer = self.buffer.read(cx);
         let mut styles = FrameStyles::default();
-        if let Some(found) =
-            birchpad_syntax::matching_bracket(text, buffer.syntax(), self.selection.primary().head)
+        let braces = !buffer.is_large(cx)
+            || birchpad_ui::AppState::global(cx)
+                .settings
+                .files
+                .large_file_brace_match;
+        if braces
+            && let Some(found) = birchpad_syntax::matching_bracket(
+                text,
+                buffer.syntax(),
+                self.selection.primary().head,
+            )
         {
             match found.partner {
                 Some(partner) => {
@@ -670,6 +684,34 @@ impl EditorView {
                     styles.braces.push((partner, theme::brace_match()));
                 }
                 None => styles.braces.push((found.bracket, theme::brace_bad())),
+            }
+        }
+        // Preferences > Highlighting > Highlight Matching Tags, in HTML and XML.
+        let highlighting = &birchpad_ui::AppState::global(cx).settings.highlighting;
+        let language = buffer.language().map(|language| language.id);
+        if highlighting.matching_tags
+            && language.is_some_and(|id| crate::completion::tag_language(id).is_some())
+        {
+            let head = self.selection.primary().head;
+            let revision = buffer.doc().revision();
+            let in_comments = highlighting.matching_tags_in_comments;
+            let attributes = highlighting.matching_tag_attributes;
+            let cached = self.tag_match.as_ref().filter(|(known, at, comments, _)| {
+                *known == revision && *at == head && *comments == in_comments
+            });
+            let pair = match cached {
+                Some((.., pair)) => pair.clone(),
+                None => {
+                    let pair = birchpad_core::ops::matching_tag(text, head, in_comments);
+                    self.tag_match = Some((revision, head, in_comments, pair.clone()));
+                    pair
+                }
+            };
+            if let Some(pair) = pair {
+                for tag in [pair.open, pair.close] {
+                    let range = if attributes { tag.range } else { tag.name };
+                    styles.braces.push((range, theme::brace_match()));
+                }
             }
         }
         let Some(syntax) = buffer.syntax() else {
@@ -1149,10 +1191,15 @@ impl EditorView {
                 .overlapping(visible.clone())
                 .map(|(range, _)| (range, incremental)),
         );
-        // Clickable links, underlined.
-        let links = &birchpad_ui::AppState::global(cx).settings.links;
-        if links.enabled && links.underline {
-            let paint = Paint::Underline(theme::paint(theme::ui().accent));
+        // Clickable links, underlined; the one under the mouse framed (full box mode).
+        let settings = &birchpad_ui::AppState::global(cx).settings;
+        let links = &settings.links;
+        let large = self.buffer.read(cx).is_large(cx) && !settings.files.large_file_links;
+        if links.enabled && (links.underline || links.hover_box) && !large {
+            let underline = Paint::Underline(theme::paint(theme::ui().accent));
+            let boxed = Paint::Outline(theme::paint(theme::ui().accent));
+            let hovered = self.hovered.filter(|_| links.hover_box);
+            let underlines = links.underline;
             let extra = links.extra_schemes();
             let lines = birchpad_core::motion::line_of(text, visible.start)
                 ..birchpad_core::motion::line_of(text, visible.end) + 1;
@@ -1162,7 +1209,14 @@ impl EditorView {
                 ranges.extend(
                     birchpad_core::links::links_in(&content, &extra)
                         .into_iter()
-                        .map(|link| (bounds.start + link.start..bounds.start + link.end, paint)),
+                        .map(|link| bounds.start + link.start..bounds.start + link.end)
+                        .filter_map(|link| {
+                            if hovered.is_some_and(|at| link.contains(&at)) {
+                                Some((link, boxed))
+                            } else {
+                                underlines.then_some((link, underline))
+                            }
+                        }),
                 );
             }
         }
