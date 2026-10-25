@@ -67,6 +67,10 @@ thread_local! {
 
 /// Opens a dialog titled `title` with a list of `items`, the first `recent` of them recently
 /// used.
+#[expect(
+    clippy::too_many_arguments,
+    reason = "the dialog's texts, its items and what picking does, each its own"
+)]
 pub fn open(
     title: String,
     placeholder: String,

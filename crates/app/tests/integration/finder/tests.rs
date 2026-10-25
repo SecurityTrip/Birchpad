@@ -53,7 +53,7 @@ fn files_are_shown_under_their_folder_s_name() {
 fn folders_are_listed_without_version_control_and_build_folders() {
     let (_dir, root) = project();
     let folders = list_folders(
-        &[root.clone()],
+        std::slice::from_ref(&root),
         &FinderSettings::default(),
         &AtomicBool::new(false),
     )
@@ -116,7 +116,7 @@ fn recent_files_come_first_once_and_the_limit_holds() {
     let recent = recent_files(&[main.clone(), gone]);
     assert_eq!(recent.len(), 1, "a file that is gone is left out");
     let folders = list_folders(
-        &[root.clone()],
+        std::slice::from_ref(&root),
         &FinderSettings::default(),
         &AtomicBool::new(false),
     )

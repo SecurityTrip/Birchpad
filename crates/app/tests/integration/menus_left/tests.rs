@@ -141,8 +141,8 @@ fn lines_sort_in_locale_order_from_the_menu(cx: &mut TestAppContext) {
 fn column_mode_and_change_search_engine_open_their_dialogs(cx: &mut TestAppContext) {
     let (workspace, cx) = open_workspace(cx);
     command(&workspace, "edit.column-mode", cx);
-    assert!(cx.update(|window, cx| gpui_kit::component::WindowExt::has_active_dialog(window, cx)));
-    cx.update(|window, cx| gpui_kit::component::WindowExt::close_dialog(window, cx));
+    assert!(cx.update(gpui_kit::component::WindowExt::has_active_dialog));
+    cx.update(gpui_kit::component::WindowExt::close_dialog);
     command(&workspace, "edit.change-search-engine", cx);
     let preferences = birchpad::preferences::OPENED
         .with(|opened| opened.borrow().clone().and_then(|weak| weak.upgrade()))

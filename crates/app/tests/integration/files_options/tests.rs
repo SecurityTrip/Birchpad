@@ -111,6 +111,10 @@ fn recent_files_show_by_name_or_cut_in_the_middle() {
 }
 
 #[test]
+#[allow(
+    clippy::single_range_in_vec_init,
+    reason = "a line's matches are a list of ranges, some with one"
+)]
 fn search_results_can_list_each_match_on_its_own() {
     let line = LineHit {
         line: 3,

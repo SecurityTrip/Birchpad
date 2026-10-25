@@ -145,7 +145,11 @@ fn sticky_scroll_keeps_the_headers_around_the_top(cx: &mut TestAppContext) {
         })
     };
     // The caret there too: a change of settings scrolls back to it.
-    let line_50 = text.lines().take(50).map(|line| line.len() + 1).sum::<usize>();
+    let line_50 = text
+        .lines()
+        .take(50)
+        .map(|line| line.len() + 1)
+        .sum::<usize>();
     view.update(cx, |view, cx| {
         view.go_to(line_50, cx);
         view.scroll_to_line(50, cx);

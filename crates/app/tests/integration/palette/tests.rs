@@ -49,7 +49,7 @@ fn pick_chosen(pick: &Entity<QuickPick>, cx: &mut VisualTestContext) {
 }
 
 fn dialog_open(cx: &mut VisualTestContext) -> bool {
-    cx.update(|window, cx| gpui_kit::component::WindowExt::has_active_dialog(window, cx))
+    cx.update(gpui_kit::component::WindowExt::has_active_dialog)
 }
 
 #[gpui_kit::test]
