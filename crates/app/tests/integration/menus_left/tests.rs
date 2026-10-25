@@ -124,10 +124,12 @@ fn lines_sort_in_locale_order_from_the_menu(cx: &mut TestAppContext) {
             json!({ "by": "locale", "descending": descending }),
         )
     };
+    // Typed Enter breaks lines as the platform does.
+    let text = |cx: &mut VisualTestContext| active_text(&workspace, cx).replace("\r\n", "\n");
     run(&workspace, sort(false), cx).unwrap();
-    assert_eq!(active_text(&workspace, cx), "a\nÁ\nb\nB");
+    assert_eq!(text(cx), "a\nÁ\nb\nB");
     run(&workspace, sort(true), cx).unwrap();
-    assert_eq!(active_text(&workspace, cx), "B\nb\nÁ\na");
+    assert_eq!(text(cx), "B\nb\nÁ\na");
     let menu_has = birchpad_commands::main_menu()
         .iter()
         .flat_map(|menu| menu.invocations().into_iter().cloned().collect::<Vec<_>>())
@@ -152,7 +154,16 @@ fn column_mode_and_change_search_engine_open_their_dialogs(cx: &mut TestAppConte
 #[gpui_kit::test]
 fn show_symbol_switches_for_non_printing_and_control_characters(cx: &mut TestAppContext) {
     let (workspace, cx) = open_workspace(cx);
-    cx.simulate_input("a\u{A0}b\u{200B}c\u{1}");
+    // Typing keeps control characters out (Prevent typing control characters): inserted.
+    run(
+        &workspace,
+        Invocation::with_args(
+            "edit.insert-text",
+            json!({ "text": "a\u{A0}b\u{200B}c\u{1}" }),
+        ),
+        cx,
+    )
+    .unwrap();
     let shown = |cx: &mut VisualTestContext| {
         workspace.read_with(cx, |workspace, cx| {
             let view = workspace.active_view(cx).unwrap();

@@ -229,7 +229,8 @@ fn enter_types_a_line_break_when_it_does_not_take_the_entry(cx: &mut TestAppCont
         cx,
     );
     assert!(!open(cx));
-    assert_eq!(active_text(&workspace, cx), "alpha a\n");
+    let text = |cx: &mut VisualTestContext| active_text(&workspace, cx).replace("\r\n", "\n");
+    assert_eq!(text(cx), "alpha a\n");
     // Tab still takes it.
     cx.simulate_input("al");
     run(&workspace, Invocation::new("completion.words"), cx);
@@ -238,7 +239,7 @@ fn enter_types_a_line_break_when_it_does_not_take_the_entry(cx: &mut TestAppCont
         Invocation::with_args("completion.accept", json!({ "key": "tab" })),
         cx,
     );
-    assert_eq!(active_text(&workspace, cx), "alpha a\nalpha");
+    assert_eq!(text(cx), "alpha a\nalpha");
 }
 
 #[gpui_kit::test]
