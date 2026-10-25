@@ -70,15 +70,17 @@ pub fn register_commands(registry: &mut CommandRegistry) {
         this.update_now(None, window, cx)
     });
     registry.enabled_when("help.update-now", |cx| {
-        let updates = cx.global::<Updates>();
-        updates.installer.is_some() && updates.available.is_some()
+        // Before update checks are set up (a window of tests), there is nothing to install.
+        cx.try_global::<Updates>()
+            .is_some_and(|updates| updates.installer.is_some() && updates.available.is_some())
     });
     registry.workspace("help.restart-to-update", |this, (), window, cx| {
         this.restart_to_update(window, cx);
         Ok(())
     });
     registry.enabled_when("help.restart-to-update", |cx| {
-        cx.global::<Updates>().ready.is_some()
+        cx.try_global::<Updates>()
+            .is_some_and(|updates| updates.ready.is_some())
     });
 }
 
