@@ -89,8 +89,24 @@ pub fn entries(recent: &[String], cx: &App) -> (Vec<Entry>, usize) {
     let others = [MapperTab::Macros, MapperTab::Run, MapperTab::Plugins]
         .into_iter()
         .flat_map(|tab| shortcut_mapper::rows_of(tab, keymap, cx));
+    // The Language menu's languages, made at run time rather than in the menu model.
+    let language = crate::i18n::get_or(&crate::menus::menu_key("Language"), "Language");
+    let languages = birchpad_syntax::LANGUAGES
+        .iter()
+        .map(|found| shortcut_mapper::Row {
+            invocation: Invocation::with_args(
+                "language.set",
+                serde_json::json!({ "language": found.id }),
+            ),
+            name: format!("{language}: {}", found.name),
+            category: String::new(),
+        });
     let mut all: Vec<Entry> = Vec::new();
-    for row in catalog.chain(shortcut_mapper::menu_rows()).chain(others) {
+    for row in catalog
+        .chain(shortcut_mapper::menu_rows())
+        .chain(languages)
+        .chain(others)
+    {
         if runs(&row.invocation) && !all.iter().any(|entry| entry.invocation == row.invocation) {
             all.push(Entry {
                 shortcut: shortcut(keymap, &row.invocation),
