@@ -138,6 +138,7 @@ impl LanguageMenuSettings {
         !self
             .hidden
             .split([' ', ',', ';'])
+            .filter(|hidden| !hidden.is_empty())
             .any(|hidden| hidden.eq_ignore_ascii_case(id))
     }
 }
