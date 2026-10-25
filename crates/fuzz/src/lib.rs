@@ -89,6 +89,8 @@ pub fn open_file(data: &[u8]) -> bool {
     let options = LoadOptions {
         encoding,
         ansi: Encoding::Legacy("windows-1252"),
+        guess: true,
+        ascii_as: None,
     };
     let file = decode_file(bytes.to_vec(), info, options);
     let format = file.format;

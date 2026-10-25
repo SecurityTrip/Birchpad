@@ -266,7 +266,15 @@ fn reset(
         }
     });
     if scenario.read_only {
-        std::fs::write(dir.join("read-only.txt"), scenario.text).unwrap();
+        let file = dir.join("read-only.txt");
+        // Read-Only Attribute of the File, swept too, may have left the file read-only.
+        if let Ok(metadata) = std::fs::metadata(&file) {
+            let mut permissions = metadata.permissions();
+            #[allow(clippy::permissions_set_readonly_false)]
+            permissions.set_readonly(false);
+            std::fs::set_permissions(&file, permissions).unwrap();
+        }
+        std::fs::write(&file, scenario.text).unwrap();
         let args = ["-ro", "read-only.txt"].map(std::ffi::OsString::from);
         let command_line = CommandLine::parse(args, dir);
         workspace.update_in(cx, |workspace, window, cx| {

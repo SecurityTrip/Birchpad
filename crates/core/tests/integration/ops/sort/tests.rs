@@ -103,3 +103,41 @@ fn reverse_shuffle_and_remove() {
         "nothing to do"
     );
 }
+
+#[test]
+fn locale_order_puts_letters_before_accents_before_case() {
+    // By code point every capital would come first, and é after z.
+    assert_eq!(
+        sort(
+            "zebra\néclair\nEclair\nApple\napple",
+            SortKey::Locale,
+            false
+        ),
+        "|apple\nApple\nEclair\néclair\nzebra"
+    );
+    assert_eq!(
+        sort("apple\nApple\nzebra", SortKey::Locale, true),
+        "|zebra\nApple\napple"
+    );
+    // Russian: й after и, ё with е.
+    assert_eq!(
+        sort("йод\nигра\nель\nёж\nкот", SortKey::Locale, false),
+        "|ёж\nель\nигра\nйод\nкот"
+    );
+    // Equal keys keep their order; empty lines first.
+    assert_eq!(sort("b\n\nb", SortKey::Locale, false), "|\nb\nb");
+}
+
+#[test]
+fn collation_keys_compare_letters_then_accents_then_case() {
+    let (primary, secondary, case) = collation_key("Éa");
+    assert_eq!(primary, "ea");
+    assert_ne!(secondary, primary);
+    assert_eq!(case, "10");
+    assert_eq!(
+        collation_key(""),
+        (String::new(), String::new(), String::new())
+    );
+    assert_eq!(collation_key("й").0, "й");
+    assert_eq!(collation_key("ё").0, "е");
+}

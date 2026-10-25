@@ -103,17 +103,42 @@ pub fn register_commands(registry: &mut CommandRegistry) {
     ] {
         registry.workspace(id, move |this, (), _, cx| {
             let range = crate::editor::ZOOM_RANGE;
-            AppState::update_state(cx, |state, _| {
-                state.zoom = if step == 0 {
+            let zoomed = |zoom: i32| {
+                if step == 0 {
                     0
                 } else {
-                    (state.zoom + step).clamp(*range.start(), *range.end())
-                };
-            });
+                    (zoom + step).clamp(*range.start(), *range.end())
+                }
+            };
+            let state = &AppState::global(cx).state;
+            if state.zoom_per_view {
+                let shared = state.zoom;
+                if let Some(view) = this.active_view(cx) {
+                    view.update(cx, |view, cx| {
+                        view.zoom = Some(zoomed(view.zoom.unwrap_or(shared)));
+                        view.settings_changed(cx);
+                    });
+                }
+                return Ok(());
+            }
+            AppState::update_state(cx, |state, _| state.zoom = zoomed(state.zoom));
             this.refresh_views(cx);
             Ok(())
         });
     }
+    // Back on, every view takes the shared zoom again.
+    registry.workspace("view.zoom-sync", |this, (), _, cx| {
+        let per_view = !AppState::global(cx).state.zoom_per_view;
+        AppState::update_state(cx, |state, _| state.zoom_per_view = per_view);
+        if !per_view {
+            for view in this.all_views(cx) {
+                view.update(cx, |view, _| view.zoom = None);
+            }
+        }
+        this.refresh_views(cx);
+        this.refresh_menus(cx);
+        Ok(())
+    });
     registry.workspace("language.set", |this, args: LanguageArgs, _, cx| {
         if let Some(name) = args.language.strip_prefix(crate::user_languages::ID_PREFIX) {
             let found = crate::user_languages::find(name, cx).ok_or_else(|| {
@@ -146,6 +171,7 @@ pub fn register_commands(registry: &mut CommandRegistry) {
     crate::encoding_ui::register_commands(registry);
     crate::file_ops::register_commands(registry);
     crate::find::register_commands(registry);
+    crate::finder::register_commands(registry);
     crate::compare::register_commands(registry);
     crate::help::register_commands(registry);
     crate::hex_view::register_commands(registry);
@@ -169,6 +195,7 @@ pub fn register_commands(registry: &mut CommandRegistry) {
     crate::user_languages::register_commands(registry);
     crate::print::register_commands(registry);
     crate::pane::register_commands(registry);
+    crate::palette::register_commands(registry);
     crate::preview::register_commands(registry);
     crate::plantuml::register_commands(registry);
     crate::window_menu::register_commands(registry);
@@ -228,6 +255,9 @@ pub struct Workspace {
     pub find_bar: Entity<FindBar>,
     pub incremental: Entity<IncrementalBar>,
     pub search_results: Entity<SearchResults>,
+    /// The inactive tab the mouse is over, which the Document Map shows (MISC > Document
+    /// Peeker).
+    pub peeked: Option<gpui_kit::WeakEntity<EditorView>>,
     title: String,
     /// `-titleAdd`: text after the window's title.
     pub title_add: Option<String>,
@@ -280,6 +310,7 @@ impl Workspace {
             find_bar,
             incremental,
             search_results,
+            peeked: None,
             title: String::new(),
             title_add: None,
             quick_prints: Vec::new(),
@@ -332,7 +363,10 @@ impl Workspace {
                 .unwrap_or(true)
         });
         if !cfg!(target_os = "macos") {
-            this.menu_bar = Some(cx.new(|cx| MenuBar::new(window, cx)));
+            let menu_bar = cx.new(|cx| MenuBar::new(window, cx));
+            // A hidden menu bar shows while a menu is open.
+            cx.observe(&menu_bar, |_, _, cx| cx.notify()).detach();
+            this.menu_bar = Some(menu_bar);
         }
         this
     }
@@ -381,6 +415,10 @@ impl Workspace {
             }
             PaneEvent::Command { view, invocation } => {
                 self.run_tab_command(view.as_ref(), invocation, window, cx);
+            }
+            PaneEvent::Peek(view) => {
+                self.peeked = view.as_ref().map(Entity::downgrade);
+                window.refresh();
             }
         }
     }
@@ -589,7 +627,48 @@ impl Workspace {
     /// Opens a file in a new tab, or switches to its tab if it is already open. The file is read
     /// in the background.
     pub fn open_path(&mut self, path: &Path, window: &mut Window, cx: &mut Context<Self>) {
+        if self.open_by_extension(path, window, cx) {
+            return;
+        }
         self.open_path_with(path, false, window, cx);
+    }
+
+    /// MISC > Session file ext. and Workspace file ext.: a file with one of them opens as a
+    /// session, or in Project Panel 1, rather than as text. Returns whether it did.
+    pub fn open_by_extension(
+        &mut self,
+        path: &Path,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> bool {
+        let session = &AppState::global(cx).settings.session;
+        let matches = |wanted: &str| {
+            let wanted = wanted.trim().trim_start_matches('.');
+            !wanted.is_empty()
+                && path
+                    .extension()
+                    .is_some_and(|extension| extension.eq_ignore_ascii_case(wanted))
+        };
+        if matches(&session.session_extension) {
+            if let Err(error) = self.load_session_file(path, window, cx) {
+                report_error(&error, window, cx);
+            }
+            return true;
+        }
+        if matches(&session.workspace_extension) {
+            let kind = crate::panels::PanelKind::Project(1);
+            self.open_panel(kind, window, cx);
+            if let Some(panel) = self.docks.views.get(&kind).and_then(|view| {
+                view.clone()
+                    .downcast::<crate::panels::project::ProjectPanel>()
+                    .ok()
+            }) {
+                let path = path.to_owned();
+                panel.update(cx, |panel, cx| panel.open_workspace(path, cx));
+            }
+            return true;
+        }
+        false
     }
 
     /// Opens files and places carets as a command line asks (also from a second launch), and
@@ -799,6 +878,8 @@ impl Workspace {
         });
         AppState::remove_recent(&path, cx);
         let options = AppState::global(cx).load_options(None);
+        // -fullReadOnly: every file read-only.
+        let read_only = read_only || AppState::global(cx).full_read_only;
         let buffer = cx.new(|cx| Buffer::open(path, options, read_only, cx));
         let view = self.add_buffer(buffer, window, cx);
         if let Some(pristine) = pristine {
@@ -1061,6 +1142,10 @@ impl Workspace {
         let requested_read_only = self
             .active_view(cx)
             .is_some_and(|view| view.read(cx).buffer.read(cx).requested_read_only());
+        let file_read_only = self.active_view(cx).is_some_and(|view| {
+            view.read(cx).buffer.read(cx).read_only() == Some(crate::buffer::ReadOnly::File)
+        });
+        let zoom_sync = !AppState::global(cx).state.zoom_per_view;
         let close_tags = AppState::global(cx).settings.completion.close_tags;
         let hex_shown = self.active_hex_editor(cx).is_some();
         let checked = |invocation: &Invocation| {
@@ -1075,6 +1160,12 @@ impl Workspace {
             }
             if invocation.command == "edit.toggle-read-only" {
                 return requested_read_only;
+            }
+            if invocation.command == "edit.toggle-read-only-attribute" {
+                return file_read_only;
+            }
+            if invocation.command == "view.zoom-sync" {
+                return zoom_sync;
             }
             if let Some((_, read, _)) = crate::editor::VIEW_SWITCHES
                 .iter()
@@ -1188,6 +1279,34 @@ impl Workspace {
         }
     }
 
+    /// `-fullReadOnly`: every document read-only, those the session brought back too.
+    pub fn apply_full_read_only(&mut self, cx: &mut Context<Self>) {
+        if !AppState::global(cx).full_read_only {
+            return;
+        }
+        for view in self.all_views(cx) {
+            let buffer = view.read(cx).buffer.clone();
+            buffer.update(cx, |buffer, cx| buffer.set_requested_read_only(true, cx));
+        }
+        self.refresh_menus(cx);
+    }
+
+    /// Preferences > New Document > Always open a new document at startup: a new one besides
+    /// the session's and the command line's, unless the only one is an empty untitled one.
+    pub fn open_startup_document(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if !AppState::global(cx).settings.new_document.at_startup {
+            return;
+        }
+        let views = self.all_views(cx);
+        let only_empty = matches!(views.as_slice(), [view] if {
+            let buffer = view.read(cx).buffer.read(cx);
+            buffer.path().is_none() && buffer.doc().text().len_chars() == 0
+        });
+        if !only_empty {
+            self.new_file(window, cx);
+        }
+    }
+
     /// The window's title: `*` for unsaved changes, the active file's path (or only its name,
     /// Preferences > Appearance), and Birchpad.
     pub fn window_title(&self, cx: &App) -> String {
@@ -1222,6 +1341,14 @@ impl Render for Workspace {
             .active_view(cx)
             .map(|view| view.update(cx, |view, cx| StatusInfo::of(view, cx)));
         let ansi = AppState::global(cx).ansi;
+        let appearance = &AppState::global(cx).settings.appearance;
+        let (show_menu_bar, show_status_bar) = (appearance.menu_bar, appearance.status_bar);
+        // Hidden, the menu bar still shows while one of its menus is open (Alt, F10).
+        let menu_bar_shown = show_menu_bar
+            || self
+                .menu_bar
+                .as_ref()
+                .is_some_and(|menu_bar| menu_bar.read(cx).is_active());
         div()
             .id("workspace")
             .key_context("Workspace")
@@ -1237,8 +1364,14 @@ impl Render for Workspace {
             }))
             .on_drop(cx.listener(|this, paths: &ExternalPaths, window, cx| {
                 // A folder goes to Folder as Workspace, as in Notepad++.
+                let opens_files = AppState::global(cx).settings.files.drop_folder_opens_files;
                 for path in paths.paths() {
-                    if path.is_dir() {
+                    if path.is_dir() && opens_files {
+                        // Preferences > Default Directory: open the folder's files instead.
+                        for file in folder_files(path) {
+                            this.open_path(&file, window, cx);
+                        }
+                    } else if path.is_dir() {
                         this.add_workspace_folder(path, window, cx);
                     } else {
                         this.open_path(path, window, cx);
@@ -1252,7 +1385,9 @@ impl Render for Workspace {
             .text_color(crate::theme::paint(crate::theme::ui().text))
             .when_some(self.menu_bar.clone(), birchpad_menu_bar::route_input)
             .when_some(
-                self.menu_bar.clone().filter(|_| !self.modes.text_only()),
+                self.menu_bar
+                    .clone()
+                    .filter(|_| !self.modes.text_only() && menu_bar_shown),
                 |this, menu_bar| {
                     this.child(
                         div()
@@ -1271,12 +1406,19 @@ impl Render for Workspace {
             .child({
                 let center = self.render_main_area(cx);
                 let main = if self.modes.distraction_free {
-                    // The text in a column in the middle.
+                    // The text in a column in the middle, as wide as Preferences > Margins >
+                    // Distraction Free padding leaves it.
+                    let padding = AppState::global(cx)
+                        .settings
+                        .editor
+                        .padding_distraction_free
+                        .min(9);
+                    let width = 1. - f32::from(padding) / 10.;
                     div()
                         .size_full()
                         .flex()
                         .justify_center()
-                        .child(div().h_full().w(relative(0.6)).child(center))
+                        .child(div().h_full().w(relative(width)).child(center))
                         .into_any_element()
                 } else if self.modes.post_it {
                     center
@@ -1298,7 +1440,7 @@ impl Render for Workspace {
             .when(self.incremental.read(cx).visible, |this| {
                 this.child(self.incremental.clone())
             })
-            .when(!self.modes.text_only(), |this| {
+            .when(!self.modes.text_only() && show_status_bar, |this| {
                 this.child(crate::status_bar::render(status, ansi, cx))
             })
     }
@@ -1384,4 +1526,22 @@ impl Focusable for Workspace {
     fn focus_handle(&self, _: &App) -> FocusHandle {
         self.focus_handle.clone()
     }
+}
+
+/// The files of a folder dropped on the window, its subfolders' too, without hidden ones, at
+/// most a thousand.
+pub fn folder_files(folder: &Path) -> Vec<std::path::PathBuf> {
+    let options = birchpad_io::FolderOptions {
+        subfolders: true,
+        hidden: false,
+    };
+    let mut files = birchpad_io::files_in(
+        folder,
+        &birchpad_io::Filters::default(),
+        options,
+        &std::sync::atomic::AtomicBool::new(false),
+    )
+    .unwrap_or_default();
+    files.truncate(1000);
+    files
 }

@@ -266,6 +266,19 @@ impl EditorView {
             .map(|state| state.block)
     }
 
+    /// Preferences > Editing > Column Selection to Multi-editing: a rectangle being typed in
+    /// becomes a selection of each row of its own, which goes on as multi-editing does.
+    pub fn column_to_multi_editing(&mut self, cx: &mut Context<Self>) {
+        if self.block.is_some()
+            && birchpad_ui::AppState::global(cx)
+                .settings
+                .editor
+                .column_to_multi_editing
+        {
+            self.block = None;
+        }
+    }
+
     /// Selects `block`: one range per line, the caret's line primary.
     pub fn set_block(&mut self, block: Block, cx: &mut Context<Self>) {
         let text = self.text(cx).clone();
@@ -491,7 +504,7 @@ impl EditorView {
             &middle,
             LayoutConfig {
                 tab_width,
-                wrap_width: None,
+                ..LayoutConfig::default()
             },
         );
         let first_line = line_of(&middle, start.from());

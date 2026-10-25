@@ -26,13 +26,45 @@ pub enum Case {
 
 /// Converts the text of every non-empty selection, keeping the selections on the result.
 pub fn convert_case(text: &Rope, selection: &Selection, case: Case) -> Option<Transaction> {
-    let mut edits = Vec::new();
-    let mut ranges = Vec::new();
-    let mut shift: isize = 0;
     let mut seed = match case {
         Case::Random(seed) => seed | 1,
         _ => 1,
     };
+    replace_selections(text, selection, |original| {
+        convert(original, case, &mut seed)
+    })
+}
+
+/// What Redact Selection puts in place of each character.
+pub const REDACTED: char = '\u{2588}';
+
+/// Edit > On Selection > Redact Selection: every character of the selections but line breaks
+/// becomes a full block (█), so that the text can be shown without what it says.
+pub fn redact(text: &Rope, selection: &Selection) -> Option<Transaction> {
+    replace_selections(text, selection, |original| {
+        original
+            .chars()
+            .map(|ch| {
+                if matches!(ch, '\r' | '\n') {
+                    ch
+                } else {
+                    REDACTED
+                }
+            })
+            .collect()
+    })
+}
+
+/// Replaces the text of every non-empty selection with what `convert` makes of it, keeping
+/// the selections on the result.
+fn replace_selections(
+    text: &Rope,
+    selection: &Selection,
+    mut convert: impl FnMut(&str) -> String,
+) -> Option<Transaction> {
+    let mut edits = Vec::new();
+    let mut ranges = Vec::new();
+    let mut shift: isize = 0;
     for range in selection.iter() {
         let start = (range.from() as isize + shift) as usize;
         if range.is_empty() {
@@ -40,7 +72,7 @@ pub fn convert_case(text: &Rope, selection: &Selection, case: Case) -> Option<Tr
             continue;
         }
         let original = text.slice(range.from()..range.to()).to_string();
-        let converted = convert(&original, case, &mut seed);
+        let converted = convert(&original);
         let end = start + converted.len();
         ranges.push(if range.is_backward() {
             Span::new(end, start)

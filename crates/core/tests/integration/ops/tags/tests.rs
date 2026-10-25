@@ -50,3 +50,55 @@ fn a_tag_beyond_reach_is_left_alone() {
     let just = format!("<p{}>", " ".repeat(TAG_REACH - 3));
     assert!(close(&just, &[just.len()], true).is_some());
 }
+
+fn names(text: &str, caret: usize, in_comments: bool) -> Option<(String, String)> {
+    let rope = ropey::Rope::from_str(text);
+    let pair = matching_tag(&rope, caret, in_comments)?;
+    Some((
+        text[pair.open.range.clone()].to_owned(),
+        text[pair.close.range.clone()].to_owned(),
+    ))
+}
+
+#[test]
+fn a_tag_finds_its_partner_across_nested_ones() {
+    let text = "<div><div>in</div><p>x</p></div>";
+    let pair = |caret| names(text, caret, false);
+    // In the outer opening tag, and in its closing tag.
+    assert_eq!(pair(2), Some(("<div>".into(), "</div>".into())));
+    let rope = ropey::Rope::from_str(text);
+    let outer = matching_tag(&rope, 2, false).unwrap();
+    assert_eq!(outer.close.range.end, text.len());
+    assert_eq!(outer.open.name, 1..4);
+    let inner = matching_tag(&rope, 7, false).unwrap();
+    assert_eq!(inner.open.range, 5..10);
+    assert_eq!(inner.close.range, 12..18);
+    let from_close = matching_tag(&rope, text.len() - 2, false).unwrap();
+    assert_eq!(from_close.open.range, 0..5);
+}
+
+#[test]
+fn attributes_and_self_closed_tags() {
+    let text = "<a href=\"x\"><br/></a>";
+    let rope = ropey::Rope::from_str(text);
+    let pair = matching_tag(&rope, 3, false).unwrap();
+    assert_eq!(&text[pair.open.range], "<a href=\"x\">");
+    assert_eq!(&text[pair.open.name], "a");
+    // A self-closed tag has no partner; a caret outside tags none either.
+    assert!(matching_tag(&rope, 14, false).is_none());
+    assert!(names("text <b>x</b>", 2, false).is_none());
+    assert!(names("<b>never closed", 1, false).is_none());
+    assert!(names("", 0, false).is_none());
+}
+
+#[test]
+fn comments_count_only_when_asked() {
+    let text = "<b><!-- <b> --></b>";
+    // The tag in the comment is not counted: the outer <b> closes at the end.
+    let rope = ropey::Rope::from_str(text);
+    let pair = matching_tag(&rope, 1, false).unwrap();
+    assert_eq!(pair.close.range.end, text.len());
+    // With comments, the inner one is open and takes the closing tag.
+    assert!(matching_tag(&rope, 1, true).is_none());
+    assert!(matching_tag(&rope, 9, true).is_some());
+}

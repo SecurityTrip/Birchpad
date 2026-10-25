@@ -103,6 +103,25 @@ fn only_catalog_commands_have_handlers() {
     CommandRegistry::default().register("no.such.command", |_: &mut Workspace, (), _, _| Ok(()));
 }
 
+#[derive(Deserialize)]
+struct OptionalArgs {
+    #[serde(default)]
+    _count: usize,
+}
+
+#[test]
+fn commands_whose_arguments_all_have_defaults_run_bare() {
+    let mut registry = registry();
+    registry.register("edit.redo", |_: &mut Editor, _: OptionalArgs, _, _| Ok(()));
+    assert!(registry.runs_bare("file.new"));
+    assert!(registry.runs_bare("edit.redo"));
+    // Its text is required.
+    assert!(!registry.runs_bare("edit.insert-text"));
+    // Not registered.
+    assert!(!registry.runs_bare("file.save"));
+    assert!(!registry.runs_bare("no.such.command"));
+}
+
 #[test]
 #[should_panic(expected = "registered twice")]
 fn a_command_has_one_handler() {

@@ -192,3 +192,36 @@ fn is_hidden(name: &str, metadata: &fs::Metadata) -> bool {
         name.starts_with('.')
     }
 }
+
+/// Path Completion: the names in `folder` that start with `prefix`, without regard to case,
+/// in name order; folders end with the platform's separator. Hidden ones are left out unless
+/// the prefix starts with a dot. A folder that cannot be read has none.
+pub fn path_completions(folder: &Path, prefix: &str) -> Vec<String> {
+    let Ok(entries) = fs::read_dir(folder) else {
+        return Vec::new();
+    };
+    let wanted = prefix.to_lowercase();
+    let mut names: Vec<String> = entries
+        .flatten()
+        .filter_map(|entry| {
+            let name = entry.file_name().to_string_lossy().into_owned();
+            if !name.to_lowercase().starts_with(&wanted)
+                || (name.starts_with('.') && !prefix.starts_with('.'))
+            {
+                return None;
+            }
+            let folder = entry.path().is_dir();
+            Some(if folder {
+                format!("{name}{}", std::path::MAIN_SEPARATOR)
+            } else {
+                name
+            })
+        })
+        .collect();
+    names.sort_by(|a, b| {
+        a.to_lowercase()
+            .cmp(&b.to_lowercase())
+            .then_with(|| a.cmp(b))
+    });
+    names
+}

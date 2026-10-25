@@ -1169,6 +1169,31 @@ command = "edit.block-comment"
 context = "Editor"
 platforms = ["macos"]
 
+# --- Command palette and Go to File -------------------------------------------------------------
+# Not Notepad++'s, which has no palette: Ctrl+Shift+P is its macro playback.
+
+[[binding]]
+keys = "secondary-shift-a"
+command = "view.command-palette"
+
+# Not Notepad++'s either; Ctrl+P, other editors' key for it, is Print.
+[[binding]]
+keys = "secondary-shift-o"
+command = "search.go-to-file"
+
+# --- Expand and Shrink Selection ----------------------------------------------------------------
+# Not Notepad++'s; Alt+Shift+arrows, other editors' keys for them, select columns here.
+
+[[binding]]
+keys = "secondary-alt-up"
+command = "edit.expand-selection"
+context = "Editor"
+
+[[binding]]
+keys = "secondary-alt-down"
+command = "edit.shrink-selection"
+context = "Editor"
+
 # --- Macro --------------------------------------------------------------------------------------
 
 [[binding]]
@@ -1186,6 +1211,17 @@ command = "macro.playback"
 [[binding]]
 keys = "secondary-space"
 command = "completion.complete"
+context = "Editor"
+
+# Notepad++'s Word Completion and Path Completion.
+[[binding]]
+keys = "secondary-enter"
+command = "completion.words"
+context = "Editor"
+
+[[binding]]
+keys = "secondary-alt-space"
+command = "completion.path"
 context = "Editor"
 
 [[binding]]
@@ -1206,11 +1242,13 @@ context = "Completion"
 [[binding]]
 keys = "enter"
 command = "completion.accept"
+args = { key = "enter" }
 context = "Completion"
 
 [[binding]]
 keys = "tab"
 command = "completion.accept"
+args = { key = "tab" }
 context = "Completion"
 
 [[binding]]

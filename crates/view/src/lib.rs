@@ -16,11 +16,13 @@ mod wrap;
 pub use bidi::BidiRow;
 pub use block::{Block, BlockPoint};
 pub use cells::{
-    DisplayText, cells_at, char_cells, column_after, control_picture, pos_at_column, tab_advance,
+    DisplayText, NonPrinting, cells_at, char_cells, column_after, control_picture, non_printing,
+    pos_at_column, tab_advance,
 };
 pub use display_map::{DisplayMap, LayoutConfig, LongLines, Row};
 pub use folding::{
     Fold, fold_at, folds_from_ranges, hidden_lines, innermost_containing, shift_folds,
+    sticky_headers,
 };
 pub use guides::{indent_guides, indentation};
-pub use wrap::{row_count, wrap_line};
+pub use wrap::{WrapIndent, row_count, wrap_indent, wrap_line};

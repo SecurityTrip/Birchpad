@@ -28,3 +28,14 @@ fn random_case_keeps_the_letters() {
     let out = run("[abcdefgh]", |t, s| convert_case(t, s, Case::Random(42)));
     assert_eq!(out.to_lowercase(), "[abcdefgh]");
 }
+
+#[test]
+fn redact_hides_every_character_but_line_breaks() {
+    let hide = |marked: &str| run(marked, redact);
+    assert_eq!(hide("a [pass word] b"), "a [█████████] b");
+    assert_eq!(hide("[ab\r\ncd]"), "[██\r\n██]");
+    assert_eq!(hide("[Мир] [x]"), "[███] [█]");
+    // A caret alone, or nothing selected, changes nothing.
+    assert_eq!(hide("a|b"), "a|b");
+    assert_eq!(hide(""), "|");
+}

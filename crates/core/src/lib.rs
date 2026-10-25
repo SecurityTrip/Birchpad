@@ -10,6 +10,7 @@ pub mod completion;
 mod decoration;
 mod document;
 mod format;
+pub mod fuzzy;
 pub mod hash;
 mod history;
 mod line_ending;

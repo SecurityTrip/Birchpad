@@ -27,7 +27,7 @@ use crate::selection::{Range as Span, Selection};
 use crate::transaction::Transaction;
 
 pub use blank::{Trim, eol_to_space, spaces_to_tabs, tabs_to_spaces, trim};
-pub use case::{Case, convert_case};
+pub use case::{Case, REDACTED, convert_case, redact};
 pub use column::{Base, Leading, NumberSequence, format_number, insert_rows, parse_number};
 pub use comment::{CommentTokens, block_comment, comment_lines, toggle_comment, uncomment_lines};
 pub use encode::{Conversion, EncodeError, encode_selections, encode_text};
@@ -39,10 +39,10 @@ pub use marks::{
 pub use multi::{MatchOptions, select_all, select_next, skip_to_next};
 pub use pairs::{Pairs, delete_pairs, type_with_pairs};
 pub use sort::{
-    SortError, SortKey, remove_duplicate_lines, remove_empty_lines, reverse_lines, shuffle_lines,
-    sort_lines, sort_lines_by_columns,
+    SortError, SortKey, collation_key, remove_duplicate_lines, remove_empty_lines, reverse_lines,
+    shuffle_lines, sort_lines, sort_lines_by_columns,
 };
-pub use tags::close_tags;
+pub use tags::{MATCH_REACH, Tag, TagPair, close_tags, matching_tag};
 
 /// Lines a selection range covers. A non-empty range that ends at the very start of a line does
 /// not take that line, as in Scintilla's line operations (selecting whole lines with the

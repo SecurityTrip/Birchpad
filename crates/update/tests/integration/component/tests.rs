@@ -294,3 +294,28 @@ fn plantuml_has_a_package_for_every_platform_birchpad_runs_on() {
         assert!(platform().is_some_and(|platform| PLANTUML.package(platform).is_some()));
     }
 }
+
+#[test]
+fn a_package_whose_names_leave_its_folder_is_refused_by_name() {
+    let mut zip = zip::ZipWriter::new(std::io::Cursor::new(Vec::new()));
+    let options = zip::write::SimpleFileOptions::default();
+    zip.start_file("../escape.txt", options).unwrap();
+    zip.write_all(b"out").unwrap();
+    let body = zip.finish().unwrap().into_inner();
+    let package: &'static ComponentPackage = Box::leak(Box::new(package_of(&body)));
+    let component = Component {
+        packages: std::slice::from_ref(package),
+        ..COMPONENT
+    };
+    let data = tempfile::tempdir().unwrap();
+    let error = component
+        .install(&Serve::new(body), data.path(), "test-x64", &|_| {})
+        .unwrap_err()
+        .to_string();
+    assert!(
+        error.contains("../escape.txt is outside the package"),
+        "{error}"
+    );
+    assert!(!data.path().join("escape.txt").exists());
+    assert_eq!(component.installed(data.path()), None);
+}

@@ -19,6 +19,10 @@ pub struct AppState {
     pub policies: Vec<(String, String)>,
     /// `-nosession`: neither restore nor save the session.
     pub no_session: bool,
+    /// `-fullReadOnly`: every document read-only for the run, which cannot be changed.
+    pub full_read_only: bool,
+    /// `-fullReadOnlySavingForbidden`: nothing can be saved either.
+    pub saving_forbidden: bool,
 }
 
 /// Where the session is kept.
@@ -63,6 +67,8 @@ impl AppState {
             state,
             policies,
             no_session: false,
+            full_read_only: false,
+            saving_forbidden: false,
         }
     }
 
@@ -90,6 +96,7 @@ impl AppState {
         self.policies = settings.policies();
         self.settings = settings.settings;
         self.ansi = ansi_of(&self.settings);
+        birchpad_core::motion::set_extra_word_chars(&self.settings.delimiters.word_chars);
     }
 
     /// Whether an administrator's policy sets `key`, which the user then cannot change.
@@ -110,9 +117,16 @@ impl AppState {
     }
 
     pub fn load_options(&self, encoding: Option<Encoding>) -> LoadOptions {
+        let new_document = &self.settings.new_document;
+        let ascii_as = new_document
+            .apply_to_ansi
+            .then(|| birchpad_io::parse_encoding(&new_document.encoding, self.ansi))
+            .flatten();
         LoadOptions {
             encoding,
-            ansi: self.ansi,
+            ascii_as,
+            guess: self.settings.misc.detect_encoding,
+            ..LoadOptions::new(self.ansi)
         }
     }
 

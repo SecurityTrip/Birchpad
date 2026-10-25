@@ -5,6 +5,7 @@
 text = "#d4d4d4"
 background = "#1e1e1e"
 selection = "#264f78"
+selection-text = "#ffffff"
 caret = "#aeafad"
 current-line = "#2a2d2e"
 gutter-background = "#1e1e1e"

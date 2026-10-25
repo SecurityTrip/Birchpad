@@ -123,6 +123,8 @@ palette! {
         background,
         /// Behind selected text ("Selected text colour").
         selection,
+        /// Selected text itself, with Preferences > Editing > Selected text's own color.
+        selection_text,
         caret,
         /// The current line's background or frame ("Current line background colour").
         current_line,
@@ -438,6 +440,23 @@ const BUILTIN: [(&str, &str); 2] = [
     (DARK, include_str!("themes/dark.toml")),
 ];
 
+impl UiColors {
+    /// The colors with a hint of the hue `hue` (degrees) in their surfaces, as Notepad++'s Dark
+    /// Mode tones give the dark interface: backgrounds, borders, selected and hovered rows.
+    pub fn toned(mut self, hue: f32) -> Self {
+        for color in [
+            &mut self.background,
+            &mut self.surface,
+            &mut self.border,
+            &mut self.selected,
+            &mut self.hovered,
+        ] {
+            *color = color.tinted(hue, 0.18);
+        }
+        self
+    }
+}
+
 impl Theme {
     /// Every built-in theme: [`DEFAULT`], then [`DARK`].
     pub fn builtins() -> &'static [Theme] {
@@ -483,6 +502,7 @@ impl Theme {
                 text: black,
                 background: black,
                 selection: black,
+                selection_text: black,
                 caret: black,
                 current_line: black,
                 gutter_background: black,

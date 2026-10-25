@@ -1,6 +1,7 @@
 //! More of Notepad++'s Search menu: Change History (go to the next or previous change, clear
 //! all changes) and Find Characters in Range, a small window that finds the next character
-//! whose code is in a range (non-ASCII, ASCII, or one's own), up or down.
+//! whose code is in a range (non-ASCII, ASCII, or one's own), up or down; and the search
+//! results' Find in These Search Results..., which searches the lines a search found.
 
 use std::ops::RangeInclusive;
 
@@ -24,6 +25,13 @@ use crate::workspace::Workspace;
 pub const MAX_CODE: u32 = 0x10_FFFF;
 
 pub fn register_commands(registry: &mut CommandRegistry) {
+    registry.workspace("search.find-in-results", |this, (), window, cx| {
+        if this.search_results.read(cx).run_of(None).is_none() {
+            bail!("{}", t!("search-extras.there-are-no-search-results"));
+        }
+        open_in_results(cx.entity().downgrade(), window, cx);
+        Ok(())
+    });
     for (id, forward) in [
         ("search.next-change", true),
         ("search.previous-change", false),
@@ -277,6 +285,146 @@ impl Render for RangeDialog {
                     Button::new("range-find")
                         .primary()
                         .label(t!("search-extras.find"))
+                        .on_click(cx.listener(|this, _, window, cx| this.find(window, cx))),
+                ),
+            )
+            .children(
+                self.error
+                    .clone()
+                    .map(|error| div().text_color(paint(ui().error)).child(error)),
+            )
+    }
+}
+
+/// Find in These Search Results...: what to find in the lines of the search chosen in the
+/// results, or the newest one.
+pub struct InResultsDialog {
+    workspace: WeakEntity<Workspace>,
+    pub input: Entity<InputState>,
+    pub match_case: bool,
+    pub whole_word: bool,
+    pub regex: bool,
+    pub error: Option<String>,
+}
+
+#[cfg(feature = "test-support")]
+thread_local! {
+    /// The dialog last opened, for tests to drive.
+    pub static IN_RESULTS: std::cell::RefCell<Option<WeakEntity<InResultsDialog>>> =
+        std::cell::RefCell::default();
+}
+
+fn open_in_results(workspace: WeakEntity<Workspace>, window: &mut Window, cx: &mut App) {
+    let dialog = cx.new(|cx| InResultsDialog {
+        workspace,
+        input: cx.new(|cx| InputState::new(window, cx)),
+        match_case: false,
+        whole_word: false,
+        regex: false,
+        error: None,
+    });
+    #[cfg(feature = "test-support")]
+    IN_RESULTS.with(|opened| *opened.borrow_mut() = Some(dialog.downgrade()));
+    let input = dialog.read(cx).input.clone();
+    window.open_dialog(cx, move |modal, _, _| {
+        modal
+            .title(t!("search-extras.find-in-these-search-results"))
+            .w(px(460.))
+            .child(dialog.clone())
+            .footer(DialogFooter::new().child(crate::workspace::dialog_close("common.close")))
+    });
+    input.update(cx, |input, cx| input.focus(window, cx));
+}
+
+impl InResultsDialog {
+    /// Find All: searches the lines and closes the dialog, or says why not.
+    pub fn find(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let pattern = self.input.read(cx).value().to_string();
+        let query = birchpad_core::search::Query {
+            pattern: pattern.clone(),
+            match_case: self.match_case,
+            whole_word: self.whole_word,
+            mode: if self.regex {
+                birchpad_core::search::SearchMode::Regex
+            } else {
+                birchpad_core::search::SearchMode::Normal
+            },
+            dot_matches_newline: false,
+        };
+        let searcher = match birchpad_core::search::Searcher::new(&query) {
+            Ok(searcher) => searcher,
+            Err(error) => {
+                self.error = Some(error.to_string());
+                cx.notify();
+                return;
+            }
+        };
+        let found = self.workspace.update(cx, |workspace, cx| {
+            let results = workspace.search_results.clone();
+            results.update(cx, |results, cx| {
+                let run = results.run_of(results.selected)?;
+                Some(results.search_within(run, &searcher, &pattern, cx))
+            })
+        });
+        match found {
+            Ok(Some(hits)) if hits > 0 => window.close_dialog(cx),
+            Ok(Some(_)) => {
+                self.error = Some(t!("search-extras.nothing-found-in-the-results"));
+                cx.notify();
+            }
+            _ => {
+                self.error = Some(t!("search-extras.there-are-no-search-results"));
+                cx.notify();
+            }
+        }
+    }
+}
+
+impl Render for InResultsDialog {
+    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let switch = |id: &'static str, label: String, on: bool, set: fn(&mut Self, bool)| {
+            Checkbox::new(id)
+                .label(label)
+                .checked(on)
+                .on_click(cx.listener(move |this, checked: &bool, _, cx| {
+                    set(this, *checked);
+                    cx.notify();
+                }))
+        };
+        div()
+            .flex()
+            .flex_col()
+            .gap_2()
+            .child(Input::new(&self.input).id("in-results-pattern"))
+            .child(
+                div()
+                    .flex()
+                    .flex_row()
+                    .gap_3()
+                    .child(switch(
+                        "in-results-match-case",
+                        t!("search-extras.match-case"),
+                        self.match_case,
+                        |this, on| this.match_case = on,
+                    ))
+                    .child(switch(
+                        "in-results-whole-word",
+                        t!("search-extras.match-whole-word-only"),
+                        self.whole_word,
+                        |this, on| this.whole_word = on,
+                    ))
+                    .child(switch(
+                        "in-results-regex",
+                        t!("search-extras.regular-expression"),
+                        self.regex,
+                        |this, on| this.regex = on,
+                    )),
+            )
+            .child(
+                div().child(
+                    Button::new("in-results-find")
+                        .primary()
+                        .label(t!("search-extras.find-all"))
                         .on_click(cx.listener(|this, _, window, cx| this.find(window, cx))),
                 ),
             )

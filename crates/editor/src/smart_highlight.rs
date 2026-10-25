@@ -65,7 +65,22 @@ impl EditorView {
         text: &Rope,
         cx: &App,
     ) -> bool {
-        let Some(query) = self.smart_highlight_query(text, cx) else {
+        let own = self.smart_highlight_query(text, cx);
+        let shares = AppState::global(cx).settings.highlighting.smart_other_view;
+        let me = self.buffer.entity_id();
+        // Preferences > Highlighting > Smart highlighting in the other view: the focused view
+        // shares what it highlights; a view with nothing of its own takes it.
+        if shares && self.focused {
+            SHARED.with(|shared| *shared.borrow_mut() = own.clone().map(|query| (me, query)));
+        }
+        let query = own.or_else(|| {
+            shares
+                .then(|| SHARED.with(|shared| shared.borrow().clone()))
+                .flatten()
+                .filter(|(from, _)| *from != me)
+                .map(|(_, query)| query)
+        });
+        let Some(query) = query else {
             self.smart_highlight = None;
             return false;
         };
@@ -118,7 +133,8 @@ impl EditorView {
         let settings = &AppState::global(cx).settings;
         let smart = &settings.highlighting.smart;
         let limit = u64::from(settings.files.large_file_limit_mb) << 20;
-        if !smart.enabled || text.len() as u64 > limit {
+        let large = text.len() as u64 > limit && !settings.files.large_file_smart_highlighting;
+        if !smart.enabled || large {
             return None;
         }
         let (match_case, whole_word) = if smart.use_find_options {
@@ -142,6 +158,17 @@ impl EditorView {
             ..Query::default()
         })
     }
+}
+
+thread_local! {
+    /// What the focused view smart-highlights, and its document, for the other view.
+    static SHARED: std::cell::RefCell<Option<(gpui_kit::EntityId, Query)>> =
+        const { std::cell::RefCell::new(None) };
+}
+
+/// What the focused view shares with the other one, for the frame that follows its own.
+pub fn shared_query() -> Option<Query> {
+    SHARED.with(|shared| shared.borrow().clone().map(|(_, query)| query))
 }
 
 /// The ranges to search for `shown`: each extended by [`MARGIN`] on both sides (on character

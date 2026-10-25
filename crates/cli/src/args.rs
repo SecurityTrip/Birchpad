@@ -8,6 +8,8 @@
 //!   -l<language>  language for syntax highlighting (`-lcpp`, `-lpython`, `-lnormal`)
 //!   -udl="name"   the user defined language of that name
 //!   -ro           open the files read-only
+//!   -fullReadOnly every document read-only for the run, which cannot be changed
+//!   -fullReadOnlySavingForbidden  and saving turned off too
 //!   -monitor      open the files with Monitoring (tail -f) on
 //!   -r            wildcards in file names match in the folders below too
 //!   -multiInst    start a separate instance instead of handing files to a running one
@@ -55,6 +57,10 @@ pub struct CommandLine {
     /// `-openSession`: the files are session files (Birchpad's or Notepad++'s) to open.
     pub open_session: bool,
     pub read_only: bool,
+    /// `-fullReadOnly`: every document read-only for the run; Read-Only cannot be turned off.
+    pub full_read_only: bool,
+    /// `-fullReadOnlySavingForbidden`: that, and no document can be saved.
+    pub saving_forbidden: bool,
     pub language: Option<String>,
     /// `--generate N`: open N lines of generated text (for development and benchmarks).
     pub generate: Option<usize>,
@@ -155,6 +161,14 @@ pub const OPTIONS: &[CliOption] = &[
         "Highlight as the user defined language of that name",
     ),
     option("-ro", "Open the files read-only"),
+    option(
+        "-fullReadOnly",
+        "Every document read-only for this run, which cannot be changed",
+    ),
+    option(
+        "-fullReadOnlySavingForbidden",
+        "Every document read-only, and nothing saved, for this run",
+    ),
     option("-monitor", "Open the files with Monitoring (tail -f) on"),
     option(
         "-r",
@@ -380,6 +394,11 @@ impl CommandLine {
             "-nosession" => self.no_session = true,
             "-opensession" => self.open_session = true,
             "-ro" => self.read_only = true,
+            "-fullreadonly" => self.full_read_only = true,
+            "-fullreadonlysavingforbidden" => {
+                self.full_read_only = true;
+                self.saving_forbidden = true;
+            }
             "-r" => self.recursive = true,
             "-monitor" => self.monitor = true,
             "-notabbar" => self.no_tab_bar = true,

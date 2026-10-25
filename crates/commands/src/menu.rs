@@ -302,10 +302,28 @@ pub fn main_menu() -> Vec<Menu> {
                     cmd("edit.open-selected-file"),
                     cmd("edit.open-selected-folder"),
                     cmd("edit.search-online"),
+                    cmd("edit.change-search-engine"),
+                    Separator,
+                    cmd("edit.redact-selection"),
                 ],
             )),
+            cmd("edit.column-mode"),
             cmd("edit.begin-end-select"),
             cmd("edit.begin-end-select-column"),
+            cmd("edit.expand-selection"),
+            cmd("edit.shrink-selection"),
+            Separator,
+            Submenu(Menu::new(
+                "Auto-Completion",
+                vec![
+                    cmd("completion.complete"),
+                    cmd("completion.words"),
+                    cmd("completion.parameter-hint"),
+                    cmd("completion.previous-overload"),
+                    cmd("completion.next-overload"),
+                    cmd("completion.path"),
+                ],
+            )),
             Separator,
             cmd("edit.text-direction-rtl"),
             cmd("edit.text-direction-ltr"),
@@ -408,6 +426,8 @@ pub fn main_menu() -> Vec<Menu> {
                         true,
                         "Sort Lines As Decimals (Dot) Descending",
                     ),
+                    sort("locale", false, "Sort Lines In Locale Order Ascending"),
+                    sort("locale", true, "Sort Lines In Locale Order Descending"),
                     sort("length", false, "Sort Lines By Length Ascending"),
                     sort("length", true, "Sort Lines By Length Descending"),
                     cmd("edit.reverse-lines"),
@@ -469,7 +489,10 @@ pub fn main_menu() -> Vec<Menu> {
             cmd("panel.clipboard-history"),
             Separator,
             cmd("edit.toggle-read-only"),
+            cmd("edit.toggle-read-only-attribute"),
             cmd("edit.clear-read-only-flag"),
+            cmd("edit.set-read-only-all"),
+            cmd("edit.clear-read-only-all"),
         ],
     );
 
@@ -521,6 +544,7 @@ pub fn main_menu() -> Vec<Menu> {
             cmd("search.incremental"),
             Separator,
             cmd("search.mark"),
+            cmd("search.copy-marked-text"),
             Separator,
             Submenu(Menu::new(
                 "Change History",
@@ -536,6 +560,7 @@ pub fn main_menu() -> Vec<Menu> {
             cmd("search.previous-result"),
             Separator,
             cmd("search.go-to"),
+            cmd("search.go-to-file"),
             cmd("navigate.back"),
             cmd("navigate.forward"),
             cmd("search.go-to-matching-brace"),
@@ -587,6 +612,8 @@ pub fn main_menu() -> Vec<Menu> {
     let view = Menu::new(
         "View",
         vec![
+            cmd("view.command-palette"),
+            Separator,
             cmd("view.always-on-top"),
             cmd("view.full-screen"),
             cmd("view.post-it"),
@@ -608,6 +635,8 @@ pub fn main_menu() -> Vec<Menu> {
                     cmd("view.show-whitespace"),
                     cmd("view.show-eol"),
                     cmd("view.show-all-characters"),
+                    cmd("view.show-non-printing"),
+                    cmd("view.show-control-chars"),
                     Separator,
                     cmd("view.indent-guides"),
                     cmd("view.wrap-symbol"),
@@ -619,6 +648,8 @@ pub fn main_menu() -> Vec<Menu> {
                     cmd("view.zoom-in"),
                     cmd("view.zoom-out"),
                     cmd("view.zoom-reset"),
+                    Separator,
+                    cmd("view.zoom-sync"),
                 ],
             )),
             Submenu(Menu::new(
@@ -744,6 +775,7 @@ pub fn main_menu() -> Vec<Menu> {
         Submenu(Menu::new(
             title,
             vec![
+                MenuItem::command_with("tools.hash-text", json!({ "hash": id }), "Generate..."),
                 MenuItem::command_with(
                     "tools.hash-files",
                     json!({ "hash": id }),

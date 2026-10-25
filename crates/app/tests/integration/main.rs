@@ -46,6 +46,12 @@ mod file_ops;
 #[path = "find/tests.rs"]
 mod find;
 
+#[path = "files_options/tests.rs"]
+mod files_options;
+
+#[path = "finder/tests.rs"]
+mod finder;
+
 #[path = "find_in_files_tests.rs"]
 mod find_in_files_tests;
 
@@ -76,6 +82,9 @@ mod language_tests;
 #[path = "macros/tests.rs"]
 mod macros;
 
+#[path = "menus_left/tests.rs"]
+mod menus_left;
+
 #[path = "menus/model_tests.rs"]
 mod menus_model_tests;
 
@@ -88,6 +97,9 @@ mod navigation_tests;
 
 #[path = "online/tests.rs"]
 mod online;
+
+#[path = "palette/tests.rs"]
+mod palette;
 
 #[path = "pane/tests.rs"]
 mod pane;
@@ -187,6 +199,9 @@ mod user_languages;
 
 #[path = "view_extras/tests.rs"]
 mod view_extras;
+
+#[path = "window_options/tests.rs"]
+mod window_options;
 
 #[path = "window_menu/tests.rs"]
 mod window_menu;

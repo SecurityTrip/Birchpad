@@ -1,7 +1,7 @@
 [package]
 name = "birchpad-core"
 description = "UI-independent text model of the Birchpad editor: buffer, selections, transactions, undo history."
-version = "0.5.0"
+version = "0.7.0"
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
@@ -12,6 +12,8 @@ authors.workspace = true
 birchpad-i18n.workspace = true
 base64 = "0.23"
 fancy-regex = "0.19"
+# Sort in Locale Order's letters without their accents; the version GPUI builds through `url`.
+icu_normalizer = { version = "2.3", default-features = false, features = ["compiled_data"] }
 memchr = "2"
 md-5 = "0.11"
 ropey.workspace = true

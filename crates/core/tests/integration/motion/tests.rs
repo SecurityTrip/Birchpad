@@ -70,3 +70,18 @@ fn crlf_is_one_step() {
     assert_eq!(next_boundary(&text, 5), 5);
     assert_eq!(prev_boundary(&text, 0), 0);
 }
+
+#[test]
+fn extra_word_characters_join_words_until_cleared() {
+    use birchpad_core::motion::*;
+    let text = ropey::Rope::from_str("a§b c");
+    assert_eq!(word_at(&text, 0), 0..1);
+    set_extra_word_chars("§ ");
+    assert!(is_extra_word_char('§'));
+    assert!(!is_extra_word_char(' '), "spaces never join words");
+    assert_eq!(word_at(&text, 0), 0..4);
+    assert!(birchpad_core::completion::is_word_char('§'));
+    set_extra_word_chars("");
+    assert_eq!(word_at(&text, 0), 0..1);
+    assert!(!is_extra_word_char('§'));
+}

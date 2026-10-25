@@ -10,6 +10,8 @@ use serde::{Deserialize, Serialize};
 
 /// The most recent files any setting can ask to remember.
 pub const MAX_RECENT_FILES: usize = 100;
+/// The most commands the command palette remembers as recently used.
+pub const MAX_RECENT_COMMANDS: usize = 50;
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(default, rename_all = "kebab-case")]
@@ -31,6 +33,10 @@ pub struct UserState {
     pub indent_guides: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub wrap_symbol: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub show_non_printing: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub show_control_chars: Option<bool>,
     /// Settings > Theme as last chosen; unset means `appearance.theme` from the settings.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub theme: Option<String>,
@@ -54,6 +60,13 @@ pub struct UserState {
     /// The offer to open text files with Birchpad was answered "Don't Ask Again".
     #[serde(skip_serializing_if = "std::ops::Not::not")]
     pub default_app_declined: bool,
+    /// View > Zoom > Synchronize Across Views turned off: each view zooms on its own.
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub zoom_per_view: bool,
+    /// The commands last run from the command palette, most recent first: each an invocation
+    /// as JSON (`{"command":"file.save"}`).
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub recent_commands: Vec<String>,
 }
 
 /// The search results' context menu switches.
@@ -199,5 +212,14 @@ impl UserState {
 
     pub fn remove_recent(&mut self, path: &Path) {
         self.recent_files.retain(|existing| existing != path);
+    }
+
+    /// Puts the command `key` at the top of the recently used commands, keeping at most
+    /// `limit`; a limit of 0 forgets them all.
+    pub fn add_recent_command(&mut self, key: &str, limit: usize) {
+        self.recent_commands.retain(|existing| existing != key);
+        self.recent_commands.insert(0, key.to_owned());
+        self.recent_commands
+            .truncate(limit.min(MAX_RECENT_COMMANDS));
     }
 }

@@ -28,6 +28,7 @@ pub mod file_commands;
 pub mod file_ops;
 pub mod find;
 pub mod find_in_files;
+pub mod finder;
 pub mod help;
 pub mod hex_editor;
 pub mod hex_view;
@@ -38,6 +39,7 @@ pub mod macros;
 pub mod menus;
 pub mod navigation;
 pub mod online;
+pub mod palette;
 pub mod pane;
 pub mod panels;
 pub mod path_dialog;
@@ -45,6 +47,7 @@ pub mod plantuml;
 pub mod preferences;
 pub mod preview;
 pub mod print;
+pub mod quick_pick;
 pub mod run_menu;
 pub mod search_extras;
 pub mod search_results;
@@ -160,6 +163,8 @@ pub fn run() {
             let mut app_state = AppState::new(settings, paths);
             // Printing files at once (`-quickPrint`) leaves the session as it was.
             app_state.no_session = command_line.no_session || command_line.quick_print;
+            app_state.full_read_only = command_line.full_read_only;
+            app_state.saving_forbidden = command_line.saving_forbidden;
             cx.set_global(app_state);
             themes::init(cx);
             i18n::apply(cx);
@@ -211,6 +216,8 @@ pub fn run() {
                         workspace.load_plugins(window, cx);
                     }
                     workspace.open_command_line(&command_line, window, cx);
+                    workspace.open_startup_document(window, cx);
+                    workspace.apply_full_read_only(cx);
                     workspace.report_pending_recoveries(window, cx);
                     workspace.start_backups(cx);
                     workspace.start_watching(window, cx);

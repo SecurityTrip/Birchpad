@@ -22,7 +22,7 @@ pub enum Paint {
 }
 
 /// How highlighted text looks. Colors are `0xRRGGBBAA`.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub struct TextStyle {
     /// Unset: the theme's text color.
     pub color: Option<u32>,

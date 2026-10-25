@@ -370,3 +370,18 @@ fn z_ignores_exactly_the_next_argument() {
     assert_eq!(last.files, [PathBuf::from("/work/a.txt")]);
     assert!(last.warnings.is_empty());
 }
+
+#[test]
+fn full_read_only_and_saving_forbidden() {
+    let line = parse(&["-fullReadOnly", "a.txt"]);
+    assert!(line.full_read_only && !line.saving_forbidden);
+    assert!(line.warnings.is_empty());
+    let line = parse(&["-FULLREADONLYSAVINGFORBIDDEN"]);
+    assert!(line.full_read_only && line.saving_forbidden);
+    let line = parse(&["a.txt"]);
+    assert!(!line.full_read_only && !line.saving_forbidden);
+    // After `--`, a file of that name.
+    let line = parse(&["--", "-fullReadOnly"]);
+    assert!(!line.full_read_only);
+    assert_eq!(line.files, [PathBuf::from("/work/-fullReadOnly")]);
+}

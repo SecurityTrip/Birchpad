@@ -671,22 +671,37 @@ each with its tests, docs and a `CHANGELOG.md` entry, its options in Preferences
 
 ### Release 0.7.0: finding your way
 
-- [ ] 7.1 Command palette: every command of the catalog by its name, with its shortcut, the
-      recently used first
-- [ ] 7.2 Fuzzy file finder: the files of the workspace's folders and of the recent files, by
-      parts of their path
-- [ ] 7.3 Syntax-aware selection (expand and shrink by the syntax tree) and sticky scroll (the
+- [x] 7.1 Command palette: every command of the catalog by its name, with its shortcut, the
+      recently used first ([ADR 0052](adr/0052-command-palette.md)): View > Command
+      Palette... (Ctrl+Shift+A, as Ctrl+Shift+P is Notepad++'s macro playback)
+- [x] 7.2 Fuzzy file finder: the files of the workspace's folders and of the recent files, by
+      parts of their path ([ADR 0052](adr/0052-command-palette.md)): Search > Go to File...
+      (Ctrl+Shift+O, as Ctrl+P is Print), with Preferences > Go to File
+- [x] 7.3 Syntax-aware selection (expand and shrink by the syntax tree) and sticky scroll (the
       enclosing scopes' first lines kept at the top)
+      ([ADR 0053](adr/0053-syntax-selection-and-sticky-scroll.md)): Edit > Expand Selection
+      and Shrink Selection (Ctrl+Alt+Up and Down); sticky scroll in Preferences > Editing
 - [ ] 7.4 Minimize to the system tray (Notepad++'s Preferences > MISC), once GPUI has a tray
-      icon; until then, written down why not
-- [ ] 7.4a Menus left from Notepad++ 8 (6.49): Edit > Auto-Completion (the completion commands
+      icon; until then, written down why not. Not in 0.7.0: GPUI (gpui-pre 0.3.9, which
+      gpui-kit 0.7 and 0.8 both build on, checked on 2026-10-25) has no tray or status-bar
+      icon on any platform, nor a way to hide a window from the taskbar and bring it back from
+      outside it; a window minimized there could not come back. A tray icon of Birchpad's own
+      would be three platforms' native code beside GPUI's event loop (a Windows message window,
+      an NSStatusItem, a D-Bus StatusNotifierItem), which is what GPUI should provide.
+      `-systemtray` keeps starting minimized (6.40)
+- [x] 7.4a Menus left from Notepad++ 8 (6.49): Edit > Auto-Completion (the completion commands
       exist, the submenu does not), Line Operations' Sort in Locale Order, On Selection's Redact
       Selection and Change Search Engine..., Column Mode..., Read-Only in Notepad++ (on the
       current or every document) beside the file's read-only attribute; Search > Copy Marked
       Text (only the Mark tab has it) and the search results' Find in These Search Results...;
       View > Show Symbol's Non-Printing Characters and Control Characters & Unicode EOL, Zoom's
-      Synchronize Across Views; Tools' hash Generate... of a typed text
-- [ ] 7.4b Preferences left from Notepad++ 8 for the window and the text (6.49): hide the menu
+      Synchronize Across Views; Tools' hash Generate... of a typed text. Built from the user
+      manual and the menus' behavior. Auto-Completion gains Word Completion (Ctrl+Enter) and
+      Path Completion (Ctrl+Alt+Space); the locale order is Unicode's default order in short
+      (letters, then accents, then case, Cyrillic й a letter of its own), not each language's
+      own rules, as Windows' would be; Read-Only in Notepad++ is Read-Only in Birchpad, the
+      attribute Read-Only Attribute of the File (write permission elsewhere than Windows)
+- [x] 7.4b Preferences left from Notepad++ 8 for the window and the text (6.49): hide the menu
       bar and the status bar; the tab bar's maximum label length, alternate icons, inactive tab
       color, colored bar on the active tab, pinning turned off or only on its button, buttons
       on inactive tabs; Editing's caret width and blink rate, wrapped lines' indent, smooth
@@ -696,8 +711,16 @@ each with its tests, docs and a `CHANGELOG.md` entry, its options in Preferences
       column-to-multi-editing as options, how end of lines and non-printing characters are
       drawn, typing control characters prevented; Dark Mode's tones; Margins' fold style,
       border width, line numbers' width, padding left, right and in Distraction Free mode, the
-      vertical edge as a background
-- [ ] 7.4c Preferences left from Notepad++ 8 for files, search and typing (6.49): New Document's
+      vertical edge as a background. Built from the user manual's Preferences page. The edge
+      as a background was there already (Margins > Vertical edge > Background); selected text
+      can now be dragged, which the option turns off; virtual space takes clicks past the end
+      of a line, and the arrow keys still stop at it. Not done: smooth font, since GPUI draws
+      and smooths the text itself on every platform; how non-printing characters are drawn
+      (abbreviations or code points), since Birchpad gives every character the cells it takes
+      and a label several cells wide would need the column model to change with the setting
+      (they are framed or marked instead); Dark Mode's customized tone, beside the seven tones
+      (the Style Configurator sets the interface's colors)
+- [x] 7.4c Preferences left from Notepad++ 8 for files, search and typing (6.49): New Document's
       encoding applied to opened ANSI files, a new document at startup, the first line as an
       untitled tab's name; opening a folder's files one by one; Recent Files' submenu, file name
       only or full path, maximum length, skipping the existence check; Language's compact menu,
@@ -711,10 +734,20 @@ each with its tests, docs and a `CHANGELOG.md` entry, its options in Preferences
       Delimiter's word characters; Performance's large file restrictions one by one; Cloud &
       Link's full box on hover; MISC's peek on the document map, mute sounds, encoding
       detection, Save All confirmation, following symbolic links in Folder as Workspace, the
-      session and workspace file extensions; Multi-Instance's panels with `-nosession`
-- [ ] 7.4d Command line left from Notepad++ 8 (6.49): `-fullReadOnly` and
-      `-fullReadOnlySavingForbidden`, every document read-only for the run, saving too
-- [ ] Release 0.7.0: the workspace version (0.7.0, set when its branch opens, so that nightly
+      session and workspace file extensions; Multi-Instance's panels with `-nosession`. Built
+      from the user manual's Preferences page. As Birchpad reads ASCII as UTF-8, "Apply to
+      opened ANSI files" gives files of ASCII alone the new document's UTF-8 (with or without
+      its byte order mark) or ANSI; Highlight Matching Tags is new, in HTML and XML; the
+      Auto-Completion pairs, three of one's own too, were there already (any pairs in
+      `completion.auto-close`), and so were Find in Files from the document's folder (Follow
+      current doc., now also a preference) and Style All Occurrences' match case and whole
+      word. Not done: SQL's backslash as an escape, since the SQL grammar decides what a
+      string is and has no such switch; muting sounds, since Birchpad makes none
+- [x] 7.4d Command line left from Notepad++ 8 (6.49): `-fullReadOnly` and
+      `-fullReadOnlySavingForbidden`, every document read-only for the run, saving too: the
+      documents of the session too, Read-Only in Birchpad cannot be turned off, and the second
+      takes Save, Save As, Save a Copy As and Save All away
+- [x] Release 0.7.0: the workspace version (0.7.0, set when its branch opens, so that nightly
       builds are its pre-releases), `CHANGELOG.md` and this roadmap updated; the
       [release checklist](release-checklist.md) gone through
 

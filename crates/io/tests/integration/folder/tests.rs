@@ -217,3 +217,23 @@ fn links_to_folders_are_not_followed() {
     std::os::unix::fs::symlink(dir.path().join("sub/a.txt"), dir.path().join("link.txt")).unwrap();
     assert_eq!(list(dir.path(), "", true, false), ["link.txt", "sub/a.txt"]);
 }
+
+#[test]
+fn path_completions_are_the_names_that_start_so() {
+    let dir = tempfile::tempdir().unwrap();
+    fs::write(dir.path().join("Readme.md"), "").unwrap();
+    fs::write(dir.path().join("report.txt"), "").unwrap();
+    fs::write(dir.path().join(".hidden"), "").unwrap();
+    fs::create_dir(dir.path().join("res")).unwrap();
+    let folder = format!("res{}", std::path::MAIN_SEPARATOR);
+    assert_eq!(
+        path_completions(dir.path(), "re"),
+        ["Readme.md", "report.txt", folder.as_str()]
+    );
+    // Without regard to case; nothing typed: everything but hidden ones.
+    assert_eq!(path_completions(dir.path(), "REP"), ["report.txt"]);
+    assert_eq!(path_completions(dir.path(), "").len(), 3);
+    assert_eq!(path_completions(dir.path(), "."), [".hidden"]);
+    assert!(path_completions(dir.path(), "zzz").is_empty());
+    assert!(path_completions(&dir.path().join("missing"), "").is_empty());
+}

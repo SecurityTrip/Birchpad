@@ -6,7 +6,7 @@
 
 use std::ops::Range as ByteRange;
 
-use birchpad_core::motion::line_count;
+use birchpad_core::motion::{line_count, line_range};
 use birchpad_core::{LineChange, Rope};
 use birchpad_view::{BlockPoint, DisplayMap, DisplayText, LayoutConfig, Row};
 use gpui_kit::{
@@ -59,11 +59,29 @@ struct FrameStyles {
     /// Sorted, non-overlapping.
     spans: Vec<(ByteRange<usize>, TextStyle)>,
     braces: Vec<(ByteRange<usize>, TextStyle)>,
+    /// The selections, and the color of selected text over every other (Preferences >
+    /// Editing > Selected text's own color).
+    selected: Vec<ByteRange<usize>>,
+    selected_color: Option<u32>,
 }
 
 impl FrameStyles {
-    /// The style at document position `pos`: a bracket's, else the highlight's.
+    /// The style at document position `pos`: a bracket's, else the highlight's; in a
+    /// selection, with the selected text's color.
     fn at(&self, pos: usize) -> Option<TextStyle> {
+        let style = self.base_at(pos);
+        match self.selected_color {
+            Some(color) if self.selected.iter().any(|range| range.contains(&pos)) => {
+                Some(TextStyle {
+                    color: Some(color),
+                    ..style.unwrap_or_default()
+                })
+            }
+            _ => style,
+        }
+    }
+
+    fn base_at(&self, pos: usize) -> Option<TextStyle> {
         if let Some((_, style)) = self.braces.iter().find(|(range, _)| range.contains(&pos)) {
             return Some(*style);
         }
@@ -81,7 +99,13 @@ impl FrameStyles {
             .iter()
             .take_while(move |(r, _)| r.start < range.end)
             .chain(self.braces.iter())
-            .flat_map(|(r, _)| [r.start, r.end])
+            .map(|(r, _)| r)
+            .chain(
+                self.selected
+                    .iter()
+                    .filter(|_| self.selected_color.is_some()),
+            )
+            .flat_map(|r| [r.start, r.end])
     }
 }
 
@@ -164,8 +188,12 @@ impl Margins {
                 margin
             })
         };
-        // Wide enough for the largest line number (at least three digits).
-        let digits = line_count.to_string().len().max(3);
+        // Wide enough for the largest line number (at least three digits), or for seven
+        // digits whatever the document's length (Constant width).
+        let digits = match settings.line_number_width {
+            birchpad_config::LineNumberWidth::Dynamic => line_count.to_string().len().max(3),
+            birchpad_config::LineNumberWidth::Constant => 7,
+        };
         let line_numbers = column(settings.line_numbers, metrics.cell * (digits as f32 + 2.));
         let symbols = column(settings.bookmark_margin, metrics.line_height);
         let changes = column(
@@ -187,6 +215,18 @@ impl Margins {
             folding,
         }
     }
+}
+
+/// A line sticky scroll keeps at the top of the view.
+pub struct StickyRow {
+    pub line: usize,
+    /// Top of the row, in window coordinates.
+    pub y: Pixels,
+    /// Where its text starts.
+    pub x: Pixels,
+    pub shaped: ShapedLine,
+    /// Its number in the line number margin.
+    pub number: Option<(Point<Pixels>, ShapedLine)>,
 }
 
 pub struct Layout {
@@ -221,6 +261,13 @@ pub struct Layout {
     pub total_rows: usize,
     /// Rows that fit completely.
     pub full_rows: usize,
+    /// Sticky scroll's lines, from the top.
+    pub sticky: Vec<StickyRow>,
+    /// The carets are blocks over a character, drawn translucent.
+    pub caret_block: bool,
+    /// The line between the margins and the text.
+    pub border_width: Pixels,
+    pub fold_style: birchpad_config::FoldStyle,
 }
 
 impl EditorView {
@@ -256,6 +303,12 @@ impl EditorView {
             )
         };
 
+        // Preferences > Margins > Padding: room taken from the text area on each side.
+        let padding = settings.padding_left + settings.padding_right;
+        if text_bounds.size.width > padding + px(40.) {
+            text_bounds.origin.x += settings.padding_left;
+            text_bounds.size.width -= padding;
+        }
         let wrap_width = settings.word_wrap.then(|| {
             let usable = text_bounds.size.width - TEXT_PADDING * 2.;
             // The wrap symbol takes the last column.
@@ -269,6 +322,11 @@ impl EditorView {
             LayoutConfig {
                 tab_width: settings.tab_width,
                 wrap_width,
+                wrap_indent: match settings.wrap_indent {
+                    birchpad_config::WrapIndent::Default => birchpad_view::WrapIndent::None,
+                    birchpad_config::WrapIndent::Aligned => birchpad_view::WrapIndent::Aligned,
+                    birchpad_config::WrapIndent::Indent => birchpad_view::WrapIndent::Indent,
+                },
             },
             cx,
         );
@@ -311,7 +369,12 @@ impl EditorView {
             }
             self.autoscroll = false;
         }
-        let max_top = total_rows.saturating_sub(full_rows) as f64;
+        // Scrolling beyond the last line: it can go up to the top.
+        let max_top = if settings.scroll_beyond_last_line {
+            total_rows.saturating_sub(1)
+        } else {
+            total_rows.saturating_sub(full_rows)
+        } as f64;
         self.scroll_top = self.scroll_top.clamp(0., max_top);
 
         let column_zero = text_bounds.left() + TEXT_PADDING - self.scroll_left;
@@ -338,20 +401,37 @@ impl EditorView {
                 let start_column = self.display.column(&text, start);
                 let row_cells = self.display.column(&text, row.range.end) - row.start_column;
                 widest = widest.max(cell * row_cells as f32);
-                let display = DisplayText::new(&text, start..end, start_column, settings.tab_width);
+                let display = DisplayText::with_pictures(
+                    &text,
+                    start..end,
+                    start_column,
+                    settings.tab_width,
+                    settings.show_control_chars,
+                );
                 let x = column_zero + cell * (start_column - row.start_column) as f32;
                 (display, x)
             } else {
-                let display = DisplayText::new(
+                let display = DisplayText::with_pictures(
                     &text,
                     row.range.clone(),
                     row.start_column,
                     settings.tab_width,
+                    settings.show_control_chars,
                 );
-                let x = if wrap_width.is_some() {
-                    text_bounds.left() + TEXT_PADDING
-                } else {
-                    column_zero
+                let x = match wrap_width {
+                    // Rows after the first of a line start under its indentation (Line Wrap).
+                    Some(width) if row.index_in_line > 0 => {
+                        let line = birchpad_core::motion::line_range(&text, row.line);
+                        let indent = birchpad_view::wrap_indent(
+                            text.slice(line),
+                            width,
+                            settings.tab_width,
+                            self.display.config().wrap_indent,
+                        );
+                        text_bounds.left() + TEXT_PADDING + cell * indent as f32
+                    }
+                    Some(_) => text_bounds.left() + TEXT_PADDING,
+                    None => column_zero,
                 };
                 (display, x)
             };
@@ -371,11 +451,51 @@ impl EditorView {
             pending.push((row, y, x, display));
         }
         let shown = shown_ranges(&pending);
+        let shared_before = crate::smart_highlight::shared_query();
         if self.update_smart_highlight(&shown, &text, cx) {
             // Searching continues in the next frame.
             window.request_animation_frame();
         }
-        let styles = self.frame_styles(&shown, &text, cx);
+        // The other view highlights what this one shares: it draws again.
+        if self.focused && crate::smart_highlight::shared_query() != shared_before {
+            window.refresh();
+        }
+        // Sticky scroll: the headers of the folds around the top, highlighted with the rest.
+        let sticky_lines = match settings.sticky_scroll {
+            Some(max) if !self.rtl && self.scroll_top > 0. => {
+                let mut lines: Vec<usize> = pending.iter().map(|(row, ..)| row.line).collect();
+                lines.dedup();
+                let folds = self.folds(cx).to_vec();
+                birchpad_view::sticky_headers(&folds, &lines, max.min(full_rows / 2))
+            }
+            _ => Vec::new(),
+        };
+        let sticky_ranges: Vec<ByteRange<usize>> = sticky_lines
+            .iter()
+            .map(|&line| {
+                let range = line_range(&text, line);
+                let end = text.floor_char_boundary(range.end.min(range.start + LONG_ROW));
+                range.start..end
+            })
+            .collect();
+        let mut styles = if sticky_ranges.is_empty() {
+            self.frame_styles(&shown, &text, cx)
+        } else {
+            self.frame_styles(&[sticky_ranges.clone(), shown.clone()].concat(), &text, cx)
+        };
+        if birchpad_ui::AppState::global(cx)
+            .settings
+            .editor
+            .selection_foreground
+        {
+            styles.selected_color = Some(theme::editor().selection_text.0);
+            styles.selected = self
+                .selection
+                .iter()
+                .filter(|range| !range.is_empty())
+                .map(|range| range.from()..range.to())
+                .collect();
+        }
         let mut rows = Vec::with_capacity(pending.len());
         for (row, y, mut x, display) in pending {
             // Rows shaped only in part (very long ones) reorder the part shown.
@@ -399,6 +519,39 @@ impl EditorView {
                 display,
                 shaped,
                 bidi,
+            });
+        }
+        let mut sticky = Vec::with_capacity(sticky_lines.len());
+        for (index, (line, range)) in sticky_lines.into_iter().zip(sticky_ranges).enumerate() {
+            let display = DisplayText::with_pictures(
+                &text,
+                range,
+                0,
+                settings.tab_width,
+                settings.show_control_chars,
+            );
+            let shaped = self.shape_row(&display, &metrics, &styles, window);
+            let y = text_bounds.top() + line_height * index as f32;
+            let x = if wrap_width.is_some() {
+                text_bounds.left() + TEXT_PADDING
+            } else {
+                column_zero
+            };
+            let number = margins.line_numbers.map(|margin| {
+                let shaped = shape(
+                    window,
+                    &(line + 1).to_string(),
+                    &metrics,
+                    theme::paint(theme::editor().gutter_text).into(),
+                );
+                (point(margin.right() - cell - shaped.width(), y), shaped)
+            });
+            sticky.push(StickyRow {
+                line,
+                y,
+                x,
+                shaped,
+                number,
             });
         }
         if wrap_width.is_none() {
@@ -428,6 +581,10 @@ impl EditorView {
             symbols: Symbols::default(),
             total_rows,
             full_rows,
+            sticky,
+            caret_block: false,
+            border_width: settings.border_width,
+            fold_style: settings.fold_style,
         };
         layout.bookmarks = self.bookmark_symbols(&layout, &text, cx);
         layout.change_bars = self.change_bars(&layout, &text, cx);
@@ -435,7 +592,11 @@ impl EditorView {
         self.hidden_marks(&mut layout, &text);
         layout.decorations = self.decoration_bounds(&layout, &text, cx);
         layout.selections = self.selection_bounds(&layout, &text);
-        layout.carets = self.caret_bounds(&layout, &text);
+        layout.carets = self.caret_bounds(&layout, &text, settings.caret_width);
+        layout.caret_block = matches!(
+            settings.caret_width,
+            birchpad_config::CaretWidth::Block | birchpad_config::CaretWidth::BlockAfter
+        );
         self.layout_symbols(&mut layout, &text, &settings, window);
         layout.vertical_bar = vertical_scrollbar(bounds, &layout, self.scroll_top);
         if let Some(bar) = &mut layout.vertical_bar {
@@ -505,8 +666,17 @@ impl EditorView {
     fn frame_styles(&mut self, ranges: &[ByteRange<usize>], text: &Rope, cx: &App) -> FrameStyles {
         let buffer = self.buffer.read(cx);
         let mut styles = FrameStyles::default();
-        if let Some(found) =
-            birchpad_syntax::matching_bracket(text, buffer.syntax(), self.selection.primary().head)
+        let braces = !buffer.is_large(cx)
+            || birchpad_ui::AppState::global(cx)
+                .settings
+                .files
+                .large_file_brace_match;
+        if braces
+            && let Some(found) = birchpad_syntax::matching_bracket(
+                text,
+                buffer.syntax(),
+                self.selection.primary().head,
+            )
         {
             match found.partner {
                 Some(partner) => {
@@ -514,6 +684,34 @@ impl EditorView {
                     styles.braces.push((partner, theme::brace_match()));
                 }
                 None => styles.braces.push((found.bracket, theme::brace_bad())),
+            }
+        }
+        // Preferences > Highlighting > Highlight Matching Tags, in HTML and XML.
+        let highlighting = &birchpad_ui::AppState::global(cx).settings.highlighting;
+        let language = buffer.language().map(|language| language.id);
+        if highlighting.matching_tags
+            && language.is_some_and(|id| crate::completion::tag_language(id).is_some())
+        {
+            let head = self.selection.primary().head;
+            let revision = buffer.doc().revision();
+            let in_comments = highlighting.matching_tags_in_comments;
+            let attributes = highlighting.matching_tag_attributes;
+            let cached = self.tag_match.as_ref().filter(|(known, at, comments, _)| {
+                *known == revision && *at == head && *comments == in_comments
+            });
+            let pair = match cached {
+                Some((.., pair)) => pair.clone(),
+                None => {
+                    let pair = birchpad_core::ops::matching_tag(text, head, in_comments);
+                    self.tag_match = Some((revision, head, in_comments, pair.clone()));
+                    pair
+                }
+            };
+            if let Some(pair) = pair {
+                for tag in [pair.open, pair.close] {
+                    let range = if attributes { tag.range } else { tag.name };
+                    styles.braces.push((range, theme::brace_match()));
+                }
             }
         }
         let Some(syntax) = buffer.syntax() else {
@@ -993,10 +1191,15 @@ impl EditorView {
                 .overlapping(visible.clone())
                 .map(|(range, _)| (range, incremental)),
         );
-        // Clickable links, underlined.
-        let links = &birchpad_ui::AppState::global(cx).settings.links;
-        if links.enabled && links.underline {
-            let paint = Paint::Underline(theme::paint(theme::ui().accent));
+        // Clickable links, underlined; the one under the mouse framed (full box mode).
+        let settings = &birchpad_ui::AppState::global(cx).settings;
+        let links = &settings.links;
+        let large = self.buffer.read(cx).is_large(cx) && !settings.files.large_file_links;
+        if links.enabled && (links.underline || links.hover_box) && !large {
+            let underline = Paint::Underline(theme::paint(theme::ui().accent));
+            let boxed = Paint::Outline(theme::paint(theme::ui().accent));
+            let hovered = self.hovered.filter(|_| links.hover_box);
+            let underlines = links.underline;
             let extra = links.extra_schemes();
             let lines = birchpad_core::motion::line_of(text, visible.start)
                 ..birchpad_core::motion::line_of(text, visible.end) + 1;
@@ -1006,7 +1209,14 @@ impl EditorView {
                 ranges.extend(
                     birchpad_core::links::links_in(&content, &extra)
                         .into_iter()
-                        .map(|link| (bounds.start + link.start..bounds.start + link.end, paint)),
+                        .map(|link| bounds.start + link.start..bounds.start + link.end)
+                        .filter_map(|link| {
+                            if hovered.is_some_and(|at| link.contains(&at)) {
+                                Some((link, boxed))
+                            } else {
+                                underlines.then_some((link, underline))
+                            }
+                        }),
                 );
             }
         }
@@ -1204,8 +1414,17 @@ impl EditorView {
         quads
     }
 
-    fn caret_bounds(&mut self, layout: &Layout, text: &Rope) -> Vec<Bounds<Pixels>> {
+    fn caret_bounds(
+        &mut self,
+        layout: &Layout,
+        text: &Rope,
+        width: birchpad_config::CaretWidth,
+    ) -> Vec<Bounds<Pixels>> {
+        use birchpad_config::CaretWidth;
         let mut carets = Vec::new();
+        if width == CaretWidth::None && !self.overwrite {
+            return carets;
+        }
         let line_height = layout.metrics.line_height;
         let (Some(first), Some(last)) = (layout.rows.first(), layout.rows.last()) else {
             return carets;
@@ -1231,7 +1450,18 @@ impl EditorView {
                     size(layout.metrics.cell, px(2.)),
                 )
             } else {
-                Bounds::new(point(x, row.y), size(px(2.), line_height))
+                let cell = layout.metrics.cell;
+                match width {
+                    CaretWidth::Block => Bounds::new(point(x, row.y), size(cell, line_height)),
+                    CaretWidth::BlockAfter => {
+                        Bounds::new(point(x - cell, row.y), size(cell, line_height))
+                    }
+                    CaretWidth::None | CaretWidth::One => {
+                        Bounds::new(point(x, row.y), size(px(1.), line_height))
+                    }
+                    CaretWidth::Two => Bounds::new(point(x, row.y), size(px(2.), line_height)),
+                    CaretWidth::Three => Bounds::new(point(x, row.y), size(px(3.), line_height)),
+                }
             });
         }
         carets
@@ -1243,6 +1473,15 @@ impl Layout {
     pub fn text_columns(&self) -> usize {
         let usable = self.text_bounds.size.width - TEXT_PADDING * 2.;
         ((usable / self.metrics.cell).floor() as usize).max(1)
+    }
+
+    /// The line of the sticky row at `y`, if one is there.
+    pub fn sticky_at(&self, y: Pixels) -> Option<usize> {
+        let height = self.metrics.line_height;
+        self.sticky
+            .iter()
+            .find(|row| row.y <= y && y < row.y + height)
+            .map(|row| row.line)
     }
 
     /// The visible row at window y, if any.

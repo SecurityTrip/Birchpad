@@ -406,3 +406,20 @@ fn the_page_for_the_browser_has_every_page() {
     assert!(html.contains("rgba(17,34,51,0.502)"));
     assert!(!to_html("x", &pages, &setup, false).contains("window.print()"));
 }
+
+#[test]
+fn a_form_feed_ends_its_page_when_asked_to() {
+    let text = "one\ntwo\u{c}\nthree";
+    let plain = grid(20, 10);
+    assert_eq!(pages_of(text, &plain).pages.len(), 1);
+    let feeding = PageSetup {
+        form_feed: true,
+        ..grid(20, 10)
+    };
+    let pages = pages_of(text, &feeding);
+    assert_eq!(pages.pages.len(), 2);
+    assert_eq!(pages.pages[1].rows.len(), 1);
+    // A form feed on the last line makes no empty page.
+    assert_eq!(pages_of("one\u{c}", &feeding).pages.len(), 1);
+    assert_eq!(pages_of("", &feeding).pages.len(), 1);
+}

@@ -100,6 +100,10 @@ pub fn register_commands(registry: &mut CommandRegistry) {
     registry.editor("edit.convert", |this, args: ConvertArgs, _, cx| {
         convert(this, args.to.into(), cx)
     });
+    registry.workspace("tools.hash-text", |_, args: HashArgs, window, cx| {
+        open_hash_text(args.hash.into(), window, cx);
+        Ok(())
+    });
     registry.workspace("tools.hash-files", |this, args: HashArgs, window, cx| {
         this.hash_files(args.hash.into(), window, cx);
         Ok(())
@@ -282,5 +286,111 @@ impl Workspace {
         self.dispatch(&invocation, window, cx)?;
         let start = birchpad_commands::Invocation::new("cursor.document-start");
         self.dispatch(&start, window, cx)
+    }
+}
+
+/// The hashes Tools > MD5 (SHA-1, ...) > Generate... shows for `text`: of the whole text, or of
+/// each line on its own (`per_line`), one a line, empty lines too.
+pub fn text_hashes(kind: HashKind, text: &str, per_line: bool) -> String {
+    if !per_line {
+        return hash_hex(kind, text.as_bytes());
+    }
+    text.lines()
+        .map(|line| hash_hex(kind, line.as_bytes()))
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+/// Tools > MD5 (SHA-1, ...) > Generate...: a text typed, and its hash as it is typed.
+pub struct HashTextDialog {
+    pub kind: HashKind,
+    pub input: gpui_kit::Entity<gpui_kit::component::input::TextareaState>,
+    /// Treat each line as a separate string.
+    pub per_line: bool,
+}
+
+#[cfg(feature = "test-support")]
+thread_local! {
+    /// The dialog last opened, for tests to drive.
+    pub static HASH_TEXT: std::cell::RefCell<Option<WeakEntity<HashTextDialog>>> =
+        std::cell::RefCell::default();
+}
+
+fn open_hash_text(kind: HashKind, window: &mut Window, cx: &mut App) {
+    let dialog = cx.new(|cx| {
+        let input = cx.new(|cx| gpui_kit::component::input::TextareaState::new(window, cx).rows(6));
+        cx.subscribe(
+            &input,
+            |_, _, _: &gpui_kit::component::input::InputEvent, cx| cx.notify(),
+        )
+        .detach();
+        HashTextDialog {
+            kind,
+            input,
+            per_line: false,
+        }
+    });
+    #[cfg(feature = "test-support")]
+    HASH_TEXT.with(|opened| *opened.borrow_mut() = Some(dialog.downgrade()));
+    let input = dialog.read(cx).input.clone();
+    let title = t!("tools.generate-hash", hash = kind.name());
+    window.open_dialog(cx, move |modal, _, _| {
+        modal
+            .title(title.clone())
+            .w(px(640.))
+            .child(dialog.clone())
+            .footer(DialogFooter::new().child(crate::workspace::dialog_close("common.close")))
+    });
+    input.update(cx, |input, cx| input.focus(window, cx));
+}
+
+impl HashTextDialog {
+    /// The hash, or hashes, of what is typed.
+    pub fn hashes(&self, cx: &App) -> String {
+        let text = self.input.read(cx).value().to_string();
+        text_hashes(self.kind, &text, self.per_line)
+    }
+
+    /// Copy to Clipboard.
+    pub fn copy(&self, cx: &mut App) {
+        cx.write_to_clipboard(ClipboardItem::new_string(self.hashes(cx)));
+    }
+}
+
+impl Render for HashTextDialog {
+    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let hashes = self.hashes(cx);
+        div()
+            .flex()
+            .flex_col()
+            .gap_2()
+            .child(gpui_kit::component::input::Textarea::new(&self.input))
+            .child(
+                gpui_kit::component::checkbox::Checkbox::new("hash-per-line")
+                    .label(t!("tools.treat-each-line-as-a-separate-string"))
+                    .checked(self.per_line)
+                    .on_click(cx.listener(|this, checked: &bool, _, cx| {
+                        this.per_line = *checked;
+                        cx.notify();
+                    })),
+            )
+            .child(
+                div()
+                    .id("hash-text-result")
+                    .h(px(120.))
+                    .overflow_scroll()
+                    .p_2()
+                    .border_1()
+                    .border_color(paint(ui().border))
+                    .font_family(crate::MONOSPACE)
+                    .children(hashes.lines().map(|line| div().child(line.to_owned()))),
+            )
+            .child(
+                div().child(
+                    Button::new("hash-text-copy")
+                        .label(t!("tools.copy-to-clipboard"))
+                        .on_click(cx.listener(|this, _, _, cx| this.copy(cx))),
+                ),
+            )
     }
 }

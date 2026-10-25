@@ -16,6 +16,9 @@ mod language;
 #[path = "outline/tests.rs"]
 mod outline;
 
+#[path = "selection/tests.rs"]
+mod selection;
+
 #[path = "syntax/reparse_properties.rs"]
 mod syntax_reparse_properties;
 

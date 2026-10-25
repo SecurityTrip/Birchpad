@@ -219,7 +219,7 @@ pub struct Docks {
     pub open: Vec<PanelKind>,
     /// The panel each side shows (left, right).
     shown: [Option<PanelKind>; 2],
-    views: HashMap<PanelKind, AnyView>,
+    pub(crate) views: HashMap<PanelKind, AnyView>,
 }
 
 fn side_index(side: Side) -> usize {
@@ -303,13 +303,18 @@ impl Workspace {
             .iter()
             .map(|kind| kind.id().to_owned())
             .collect();
-        AppState::update_state(cx, |state, _| state.panels.open = open);
+        if remembers_panels(cx) {
+            AppState::update_state(cx, |state, _| state.panels.open = open);
+        }
         self.refresh_menus(cx);
         cx.notify();
     }
 
     /// Opens the panels that were open when Birchpad last quit.
     pub fn restore_panels(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if !remembers_panels(cx) {
+            return;
+        }
         let ids = AppState::global(cx).state.panels.open.clone();
         for kind in ids.iter().filter_map(|id| PanelKind::from_id(id)) {
             self.open_panel(kind, window, cx);
@@ -511,4 +516,11 @@ impl FollowView {
 /// Whether a panel's menu item shows a check mark.
 pub fn is_checked(docks: &Docks, invocation: &Invocation) -> Option<bool> {
     PanelKind::of_invocation(invocation).map(|kind| docks.is_open(kind))
+}
+
+/// Without a session (`-nosession`), panels are remembered only if Preferences >
+/// Multi-Instance says so.
+fn remembers_panels(cx: &gpui_kit::App) -> bool {
+    let app = AppState::global(cx);
+    !app.no_session || app.settings.instances.nosession_panels
 }

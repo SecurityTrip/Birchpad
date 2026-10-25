@@ -80,6 +80,8 @@ pub struct PageSetup {
     pub footer: [String; 3],
     pub colors: PrintColors,
     pub tab_width: usize,
+    /// A form feed (U+000C) ends its page: the line after it starts the next one.
+    pub form_feed: bool,
 }
 
 impl Default for PageSetup {
@@ -99,6 +101,7 @@ impl Default for PageSetup {
             footer: Default::default(),
             colors: PrintColors::Wysiwyg,
             tab_width: 4,
+            form_feed: false,
         }
     }
 }
@@ -430,19 +433,35 @@ pub fn paginate(
     let style_of = |style: Style| print_style(style, editor, setup.colors);
     let flat = crate::html::flatten(document.spans, document.text.len());
 
-    let mut rows = Vec::new();
+    // The rows, and the pages they make: full ones, or ended after a form feed's line.
+    let mut groups: Vec<Vec<Row>> = vec![Vec::new()];
     for (index, (start, end)) in lines.into_iter().enumerate() {
-        rows.extend(line_rows(
+        let feeds = setup.form_feed && document.text[start..end].contains('\u{c}');
+        for row in line_rows(
             document.text,
             runs(&flat, document.spans, start, end),
             document.first_line + index,
             columns,
             setup.tab_width,
             &style_of,
-        ));
+        ) {
+            if groups
+                .last()
+                .is_some_and(|page| page.len() >= rows_per_page)
+            {
+                groups.push(Vec::new());
+            }
+            groups.last_mut().expect("one page at least").push(row);
+        }
+        if feeds {
+            groups.push(Vec::new());
+        }
     }
-    let pages = rows
-        .chunks(rows_per_page)
+    if groups.len() > 1 && groups.last().is_some_and(Vec::is_empty) {
+        groups.pop();
+    }
+    let pages = groups
+        .iter()
         .enumerate()
         .map(|(index, rows)| {
             let number = index + 1;

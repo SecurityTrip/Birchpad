@@ -25,6 +25,7 @@ pub mod multi;
 pub mod operations;
 pub mod smart_highlight;
 pub mod symbols;
+pub mod syntax_selection;
 pub mod theme;
 
 pub use hooks::{ActiveFindOptions, EditorHooks, Ranges};
@@ -104,7 +105,6 @@ pub struct TabMarks {
 const BASE_FONT_SIZE: f32 = 14.;
 /// Zoom levels are font size steps of one pixel, like Notepad++'s points.
 pub const ZOOM_RANGE: std::ops::RangeInclusive<i32> = -8..=40;
-const CARET_BLINK: Duration = Duration::from_millis(530);
 
 /// Caret motions; each is registered as `cursor.<name>` and `select.<name>`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -205,6 +205,12 @@ pub fn register_commands(registry: &mut CommandRegistry) {
         Ok(())
     });
     registry.editor("edit.backspace", |this, (), _, cx| {
+        // Preferences > Auto-Completion > Backspace unindents: in the indentation, the
+        // line goes out a level instead of losing a space.
+        if this.in_indentation(cx) && AppState::global(cx).settings.editor.backspace_unindents {
+            this.indent(false, cx);
+            return Ok(());
+        }
         if !this.backspace_pair(cx) {
             this.delete_with(cx, motion::prev_boundary);
         }
@@ -223,6 +229,14 @@ pub fn register_commands(registry: &mut CommandRegistry) {
     });
     registry.editor("edit.delete-word-right", |this, (), _, cx| {
         this.delete_with(cx, motion::word_right);
+        Ok(())
+    });
+    registry.editor("edit.expand-selection", |this, (), _, cx| {
+        this.expand_selection(cx);
+        Ok(())
+    });
+    registry.editor("edit.shrink-selection", |this, (), _, cx| {
+        this.shrink_selection(cx);
         Ok(())
     });
     registry.editor("edit.select-all", |this, (), _, cx| {
@@ -325,6 +339,11 @@ enum Drag {
     Block {
         anchor: BlockPoint,
     },
+    /// Dragging the selected text, pressed at `from`, now over `to`.
+    Text {
+        from: usize,
+        to: usize,
+    },
     /// Dragging a scrollbar thumb; `grab` is where in the thumb it was grabbed.
     VerticalThumb {
         grab: Pixels,
@@ -367,6 +386,16 @@ pub const VIEW_SWITCHES: &[ViewSwitch] = &[
         |view| view.wrap_symbol,
         |state, on| state.wrap_symbol = Some(on),
     ),
+    (
+        "view.show-non-printing",
+        |view| view.show_non_printing,
+        |state, on| state.show_non_printing = Some(on),
+    ),
+    (
+        "view.show-control-chars",
+        |view| view.show_control_chars,
+        |state, on| state.show_control_chars = Some(on),
+    ),
 ];
 
 /// View > Show Symbol > Show All Characters: whitespace and line ends both shown.
@@ -393,10 +422,25 @@ pub struct ViewSettings {
     pub show_eol: bool,
     pub indent_guides: bool,
     pub wrap_symbol: bool,
+    pub show_non_printing: bool,
+    pub show_control_chars: bool,
     pub current_line: CurrentLine,
     pub current_line_frame_width: Pixels,
+    pub caret_width: birchpad_config::CaretWidth,
+    pub scroll_beyond_last_line: bool,
+    pub wrap_indent: birchpad_config::WrapIndent,
+    pub eol_style: birchpad_config::EolStyle,
+    pub fold_style: birchpad_config::FoldStyle,
+    /// The line between the margins and the text.
+    pub border_width: Pixels,
+    pub line_number_width: birchpad_config::LineNumberWidth,
+    /// Room left and right of the text, besides the editor's own few pixels.
+    pub padding_left: Pixels,
+    pub padding_right: Pixels,
     pub edge: Edge,
     pub edge_columns: Vec<usize>,
+    /// Sticky scroll, and the most lines it keeps.
+    pub sticky_scroll: Option<usize>,
 }
 
 impl ViewSettings {
@@ -422,7 +466,24 @@ impl ViewSettings {
             show_eol: app.state.show_eol.unwrap_or(editor.show_eol),
             indent_guides: app.state.indent_guides.unwrap_or(editor.indent_guides),
             wrap_symbol: app.state.wrap_symbol.unwrap_or(editor.wrap_symbol),
+            show_non_printing: app
+                .state
+                .show_non_printing
+                .unwrap_or(editor.show_non_printing),
+            show_control_chars: app
+                .state
+                .show_control_chars
+                .unwrap_or(editor.show_control_chars),
             current_line: editor.current_line,
+            caret_width: editor.caret_width,
+            scroll_beyond_last_line: editor.scroll_beyond_last_line,
+            wrap_indent: editor.wrap_indent,
+            eol_style: editor.eol_style,
+            fold_style: editor.fold_style,
+            border_width: px(f32::from(editor.border_width.min(30))),
+            line_number_width: editor.line_number_width,
+            padding_left: px(f32::from(editor.padding_left.min(30))),
+            padding_right: px(f32::from(editor.padding_right.min(30))),
             current_line_frame_width: px(f32::from(editor.current_line_frame_width.clamp(1, 6))),
             edge: if editor.edge_columns.is_empty() {
                 Edge::Off
@@ -434,6 +495,7 @@ impl ViewSettings {
                 .iter()
                 .map(|&c| usize::from(c))
                 .collect(),
+            sticky_scroll: editor.sticky_scroll.then(|| editor.sticky_lines()),
         }
     }
 
@@ -504,6 +566,10 @@ pub struct EditorView {
     pub overwrite: bool,
     /// Edit > Text Direction RTL: rows run right to left and end at the right edge.
     pub rtl: bool,
+    /// Its own zoom level, while View > Zoom > Synchronize Across Views is off.
+    pub zoom: Option<i32>,
+    /// Where the mouse is over the text, for the link it frames.
+    pub hovered: Option<usize>,
     /// The completion list, while it shows.
     pub completion: Option<completion::Popup>,
     /// A function's parameters, while they show.
@@ -551,6 +617,17 @@ pub struct EditorView {
     /// The order in which Multi-select added ranges, valid while `selection` is still the one
     /// they make.
     multi_order: Option<(Vec<Range>, Selection)>,
+    /// The selections Expand Selection grew from, the last one last, valid while `selection`
+    /// is still the one it made.
+    expansions: Option<(Vec<Selection>, Selection)>,
+    /// Highlight Matching Tags of the last frame: for which text, caret and comments setting,
+    /// and the tags found.
+    tag_match: Option<(
+        birchpad_core::RevisionId,
+        usize,
+        bool,
+        Option<birchpad_core::ops::TagPair>,
+    )>,
     /// Begin/End Select: where the first invocation put the start, and in which mode.
     begin_select: Option<multi::BeginSelect>,
     /// The scroll position of the last frame, to report scrolling.
@@ -637,7 +714,7 @@ impl EditorView {
             &text,
             LayoutConfig {
                 tab_width: settings.tab_width,
-                wrap_width: None,
+                ..LayoutConfig::default()
             },
         );
         Self {
@@ -673,6 +750,10 @@ impl EditorView {
             fold_cache: None,
             block: None,
             multi_order: None,
+            expansions: None,
+            tag_match: None,
+            zoom: None,
+            hovered: None,
             begin_select: None,
             last_scroll: None,
             synced_scroll: false,
@@ -845,9 +926,20 @@ impl EditorView {
         if !self.focused {
             return;
         }
+        // Preferences > Editing > Caret blink rate; 0 does not blink.
+        let period = AppState::global(cx)
+            .settings
+            .editor
+            .caret_blink_ms
+            .min(2000);
+        if period == 0 {
+            self.blink = Task::ready(());
+            return;
+        }
+        let period = Duration::from_millis(u64::from(period));
         self.blink = cx.spawn(async move |this, cx| {
             loop {
-                cx.background_executor().timer(CARET_BLINK).await;
+                cx.background_executor().timer(period).await;
                 let blinking = this.update(cx, |this, cx| {
                     this.caret_visible = !this.caret_visible;
                     cx.notify();
@@ -1054,7 +1146,16 @@ impl EditorView {
 
     /// The view settings for this document's language.
     pub fn view_settings(&self, cx: &App) -> ViewSettings {
-        ViewSettings::for_buffer(self.buffer.read(cx), cx)
+        let mut settings = ViewSettings::for_buffer(self.buffer.read(cx), cx);
+        if let Some(own) = self.zoom {
+            let shared = AppState::global(cx)
+                .state
+                .zoom
+                .clamp(*ZOOM_RANGE.start(), *ZOOM_RANGE.end());
+            let own = own.clamp(*ZOOM_RANGE.start(), *ZOOM_RANGE.end());
+            settings.font_size += px((own - shared) as f32);
+        }
+        settings
     }
 
     pub fn tab_width(&self) -> usize {
@@ -1136,6 +1237,7 @@ impl EditorView {
         if !self.is_editable(cx) {
             return;
         }
+        self.column_to_multi_editing(cx);
         let block = self.active_block();
         let transaction = Transaction::replace_selections(self.text(cx), &self.selection, text)
             .expect("the selection always lies on character boundaries of the document");
@@ -1150,6 +1252,7 @@ impl EditorView {
     /// Text typed by the user. In overwrite mode each typed character replaces the next one,
     /// up to the end of the line.
     fn type_text(&mut self, typed: &str, cx: &mut Context<Self>) {
+        self.column_to_multi_editing(cx);
         if self.type_paired(typed, cx) {
             self.after_typing(typed, cx);
             return;
@@ -1409,12 +1512,56 @@ impl EditorView {
             cx.write_to_clipboard(ClipboardItem::new_string(text));
             return true;
         }
+        // Preferences > Editing > Copy/Cut Line without selection: the caret's line, with
+        // its line break.
+        if let Some(line) = self.unselected_line(cx) {
+            let text = self.text(cx).slice(line).to_string();
+            cx.write_to_clipboard(ClipboardItem::new_string(text));
+        }
         false
+    }
+
+    /// Whether every caret is in its line's indentation, past its start, with nothing
+    /// selected.
+    pub fn in_indentation(&self, cx: &App) -> bool {
+        let text = self.text(cx);
+        self.selection.iter().all(|range| {
+            let line_start = line_range(text, line_of(text, range.head)).start;
+            range.is_empty()
+                && range.head > line_start
+                && text
+                    .slice(line_start..range.head)
+                    .chars()
+                    .all(|ch| ch == ' ' || ch == '\t')
+        })
+    }
+
+    /// The caret's whole line, when nothing is selected and Copy and Cut take it.
+    fn unselected_line(&self, cx: &App) -> Option<ByteRange<usize>> {
+        if !AppState::global(cx)
+            .settings
+            .editor
+            .copy_line_without_selection
+            || self.selection.iter().any(|range| !range.is_empty())
+        {
+            return None;
+        }
+        let text = self.text(cx);
+        let line = line_of(text, self.selection.primary().head);
+        Some(motion::line_range_with_break(text, line))
     }
 
     fn cut(&mut self, cx: &mut Context<Self>) {
         if self.copy(cx) {
             self.insert("", LastEdit::None, cx);
+        } else if let Some(line) = self.unselected_line(cx)
+            && !line.is_empty()
+            && self.is_editable(cx)
+        {
+            let text = self.text(cx).clone();
+            if let Ok(transaction) = Transaction::from_edits(&text, [Edit::replace(line, "")]) {
+                self.apply(transaction, LastEdit::None, cx);
+            }
         }
     }
 
@@ -1540,7 +1687,13 @@ impl EditorView {
             .selection
             .iter()
             .any(|range| !range.is_empty() && range.from() <= pos && pos <= range.to());
-        if !in_selection {
+        // Preferences > Editing > Keep selection when right-click outside of selection.
+        let keep = AppState::global(cx)
+            .settings
+            .editor
+            .keep_selection_on_right_click
+            && self.selection.iter().any(|range| !range.is_empty());
+        if !in_selection && !keep {
             self.go_to(pos, cx);
         }
     }
@@ -1574,6 +1727,23 @@ impl EditorView {
             };
             self.drag = Some(Drag::HorizontalThumb { grab });
             self.drag_scrollbar(event.position, cx);
+            return;
+        }
+        // A click on a line sticky scroll keeps goes there, shown under the lines above it.
+        if let Some(line) = layout.sticky_at(event.position.y)
+            && (layout.text_bounds.contains(&event.position)
+                || layout.margins.gutter.contains(&event.position))
+        {
+            let above = layout
+                .sticky
+                .iter()
+                .position(|row| row.line == line)
+                .unwrap_or(0);
+            let text = self.text(cx).clone();
+            self.go_to(birchpad_core::motion::line_range(&text, line).start, cx);
+            self.scroll_to_line(line, cx);
+            self.scroll_top = (self.scroll_top - above as f64).max(0.);
+            self.autoscroll = false;
             return;
         }
         // A click in the margins of a line with hidden lines below shows them again.
@@ -1642,11 +1812,40 @@ impl EditorView {
         if !in_line_numbers && !event.modifiers.shift && self.link_or_delimiters(event, pos, cx) {
             return;
         }
+        let editor_settings = AppState::global(cx).settings.editor.clone();
+        // A press in the selection may start dragging it elsewhere.
+        if editor_settings.drag_text
+            && granularity == Granularity::Char
+            && !event.modifiers.shift
+            && !event.modifiers.alt
+            && !in_line_numbers
+            && self
+                .selection
+                .iter()
+                .any(|range| !range.is_empty() && range.from() < pos && pos < range.to())
+        {
+            self.drag = Some(Drag::Text { from: pos, to: pos });
+            cx.notify();
+            return;
+        }
         let unit = Self::unit_at(&text, pos, granularity);
         self.selection = if event.modifiers.shift {
             self.with_primary(Range::new(self.selection.primary().anchor, pos))
-        } else if event.modifiers.secondary() && granularity == Granularity::Char {
+        } else if event.modifiers.secondary()
+            && granularity == Granularity::Char
+            && editor_settings.multi_editing
+        {
             self.selection.clone().push(Range::point(pos))
+        } else if editor_settings.virtual_space
+            && granularity == Granularity::Char
+            && let Some(point) = self.block_point_for_point(event.position, cx)
+            && let line_end = line_range(&text, point.line).end
+            && let end_column = self.display.column(&text, line_end)
+            && point.column > end_column
+        {
+            // Virtual space: past the end of the line, the caret stays where it was put.
+            let past = point.column - end_column;
+            Selection::single(Range::point(line_end).with_virtual(past, past))
         } else {
             Selection::single(Range::new(unit.start, unit.end))
         };
@@ -1662,6 +1861,14 @@ impl EditorView {
 
     pub fn mouse_move(&mut self, event: &MouseMoveEvent, _: &mut Window, cx: &mut Context<Self>) {
         let Some(drag) = self.drag.clone() else {
+            // Cloud & Link > full box mode: the link under the mouse is framed.
+            if event.pressed_button.is_none() && AppState::global(cx).settings.links.hover_box {
+                let hovered = self.position_for_point(event.position, cx);
+                if hovered != self.hovered {
+                    self.hovered = hovered;
+                    cx.notify();
+                }
+            }
             return;
         };
         if event.pressed_button != Some(MouseButton::Left) {
@@ -1681,6 +1888,13 @@ impl EditorView {
         if let Drag::Block { anchor } = drag {
             if let Some(head) = self.block_point_for_point(event.position, cx) {
                 self.set_block(Block::new(anchor, head), cx);
+            }
+            return;
+        }
+        if let Drag::Text { from, .. } = drag {
+            if let Some(to) = self.position_for_point(event.position, cx) {
+                self.drag = Some(Drag::Text { from, to });
+                cx.notify();
             }
             return;
         }
@@ -1715,8 +1929,44 @@ impl EditorView {
         cx.notify();
     }
 
-    fn mouse_up(&mut self, _: &MouseUpEvent, _: &mut Window, _: &mut Context<Self>) {
+    fn mouse_up(&mut self, event: &MouseUpEvent, _: &mut Window, cx: &mut Context<Self>) {
+        if let Some(Drag::Text { from, to }) = self.drag.take() {
+            if from == to {
+                // A click in the selection without dragging puts the caret there.
+                self.go_to(to, cx);
+            } else {
+                self.drop_selection(to, event.modifiers.secondary(), cx);
+            }
+        }
         self.drag = None;
+    }
+
+    /// The selected text dragged to `to`: moved there, or copied with Ctrl, as one undo step.
+    /// Dropped inside the selection, nothing changes.
+    pub fn drop_selection(&mut self, to: usize, copy: bool, cx: &mut Context<Self>) {
+        let primary = self.selection.primary();
+        let range = primary.from()..primary.to();
+        if range.is_empty() || !self.is_editable(cx) || (range.start <= to && to <= range.end) {
+            return;
+        }
+        let text = self.text(cx).clone();
+        let moved = text.slice(range.clone()).to_string();
+        let mut edits = vec![Edit::replace(to..to, moved.clone())];
+        if !copy {
+            edits.push(Edit::replace(range.clone(), String::new()));
+        }
+        edits.sort_by_key(|edit| edit.range.start);
+        let Ok(transaction) = Transaction::from_edits(&text, edits) else {
+            return;
+        };
+        // The text where it landed is selected.
+        let start = if !copy && to > range.end {
+            to - range.len()
+        } else {
+            to
+        };
+        let selection = Selection::single(Range::new(start, start + moved.len()));
+        self.apply(transaction.with_selection(selection), LastEdit::None, cx);
     }
 
     fn drag_scrollbar(&mut self, position: Point<Pixels>, cx: &mut Context<Self>) {
@@ -1894,6 +2144,17 @@ impl EntityInputHandler for EditorView {
         _: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        // Keys such as Ctrl+E may type a control character: nothing, unless asked for.
+        let filtered;
+        let text = if AppState::global(cx).settings.editor.prevent_control_typing {
+            filtered = without_control_characters(text);
+            if filtered.is_empty() && !text.is_empty() {
+                return;
+            }
+            filtered.as_str()
+        } else {
+            text
+        };
         let target = range_utf16
             .map(|range| self.bytes_from_utf16(&range, cx))
             .or(self.marked.take());
@@ -1978,4 +2239,11 @@ fn utf16_to_byte_offset(text: &str, utf16: usize) -> usize {
         units += ch.len_utf16();
     }
     text.len()
+}
+
+/// `text` without the control characters keys may type (C0, but tab and line breaks).
+pub fn without_control_characters(text: &str) -> String {
+    text.chars()
+        .filter(|&ch| !(ch < ' ' && !matches!(ch, '\t' | '\n' | '\r')))
+        .collect()
 }

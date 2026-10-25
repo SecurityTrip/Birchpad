@@ -141,8 +141,14 @@ fn system_dark(cx: &App) -> bool {
 
 /// Draws everything with `theme` from now on, the interface as Preferences say.
 pub fn apply(theme: Theme, cx: &mut App) {
-    let mode = AppState::global(cx).settings.appearance.interface;
+    let appearance = &AppState::global(cx).settings.appearance;
+    let (mode, tone) = (appearance.interface, appearance.dark_tone);
     let (dark, interface) = interface(mode, theme.dark, system_dark(cx));
+    // Dark Mode's tones: a dark interface of Birchpad's own takes a hint of color.
+    let interface = match (interface, tone.hue()) {
+        (Some(ui), Some(hue)) if dark => Some(ui.toned(hue)),
+        (interface, _) => interface,
+    };
     let ui = interface.unwrap_or(theme.ui);
     crate::theme::set_interface(interface);
     crate::theme::set(theme);

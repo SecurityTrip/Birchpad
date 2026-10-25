@@ -8,8 +8,9 @@
 //! within the line, as Notepad++ does: an edit above a match moves it away from its result.
 //!
 //! Delete removes the selected line, document or search from the list; the right-click menu
-//! does too, and copies the selected line or path, folds and unfolds everything, and clears the
-//! list.
+//! does too, and copies the selected line or path, folds and unfolds everything, clears the
+//! list, and searches the lines of a search again (Find in These Search Results...), which
+//! lists what it finds as a search of its own.
 
 use std::ops::Range;
 use std::path::PathBuf;
@@ -100,6 +101,27 @@ impl SearchRun {
     }
 }
 
+/// The lines found, a line with several matches once for each of them.
+pub fn entry_per_match(lines: Vec<LineHit>) -> Vec<LineHit> {
+    let mut split = Vec::with_capacity(lines.len());
+    for line in lines {
+        if line.highlights.len() <= 1 {
+            split.push(line);
+            continue;
+        }
+        for range in &line.highlights {
+            split.push(LineHit {
+                line: line.line,
+                text: line.text.clone(),
+                highlights: vec![range.clone()],
+                target: range.clone(),
+                matches: 1,
+            });
+        }
+    }
+    split
+}
+
 /// A row of the list.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Row {
@@ -162,7 +184,16 @@ impl SearchResults {
     }
 
     /// Shows a new search above the earlier ones, with its first line selected.
-    pub fn add(&mut self, run: SearchRun, cx: &mut Context<Self>) {
+    pub fn add(&mut self, mut run: SearchRun, cx: &mut Context<Self>) {
+        // Preferences > Searching: off, a line with several matches has a row for each.
+        let one_per_line = cx
+            .try_global::<AppState>()
+            .is_none_or(|state| state.settings.searching.one_entry_per_line);
+        if !one_per_line {
+            for file in &mut run.files {
+                file.lines = entry_per_match(std::mem::take(&mut file.lines));
+            }
+        }
         self.visible = true;
         if self.purge {
             self.runs.clear();
@@ -275,6 +306,64 @@ impl SearchResults {
         cx.notify();
     }
 
+    /// The search that row `index` belongs to, or the newest one.
+    pub fn run_of(&self, index: Option<usize>) -> Option<usize> {
+        match index.and_then(|index| self.rows.get(index)) {
+            Some(Row::Run(r) | Row::File(r, _) | Row::Line(r, ..)) => Some(*r),
+            None => (!self.runs.is_empty()).then_some(0),
+        }
+    }
+
+    /// Find in These Search Results: the lines of search `run` that `searcher` finds
+    /// something in, with what it found, as a new search above the others named `pattern`.
+    /// Returns how many matches it found; nothing is added when there are none.
+    pub fn search_within(
+        &mut self,
+        run: usize,
+        searcher: &birchpad_core::search::Searcher,
+        pattern: &str,
+        cx: &mut Context<Self>,
+    ) -> usize {
+        let Some(source) = self.runs.get(run) else {
+            return 0;
+        };
+        let mut files = Vec::new();
+        for file in &source.files {
+            let mut lines = Vec::new();
+            let mut hits = 0;
+            for hit in &file.lines {
+                let found = searcher.find_all(&birchpad_core::Rope::from_str(&hit.text));
+                let Some(first) = found.first() else {
+                    continue;
+                };
+                hits += found.len();
+                lines.push(LineHit {
+                    line: hit.line,
+                    text: hit.text.clone(),
+                    target: first.clone(),
+                    matches: found.len(),
+                    highlights: found,
+                });
+            }
+            if !lines.is_empty() {
+                files.push(FileResults::new(
+                    file.location.clone(),
+                    file.name.clone(),
+                    lines,
+                    hits,
+                ));
+            }
+        }
+        let searched = source.files.len();
+        let hits = files.iter().map(|file| file.hits).sum();
+        if hits > 0 {
+            let purge = std::mem::replace(&mut self.purge, false);
+            self.add(SearchRun::new(pattern, files, searched), cx);
+            self.purge = purge;
+        }
+        hits
+    }
+
     /// The text of the line in row `index`, without its "Line N:".
     pub fn line_text(&self, index: usize) -> Option<SharedString> {
         match self.rows.get(index)? {
@@ -368,6 +457,16 @@ impl SearchResults {
                     })),
             )
             .separator()
+            .item(
+                PopupMenuItem::new(t!("search-results.find-in-these-search-results")).on_click(
+                    |_: &ClickEvent, window: &mut Window, cx: &mut App| {
+                        window.dispatch_action(
+                            Box::new(crate::commands::RunCommand::new("search.find-in-results")),
+                            cx,
+                        );
+                    },
+                ),
+            )
             .item(
                 PopupMenuItem::new(t!("search-results.clear-all"))
                     .on_click(act(|this, _, cx| this.clear(cx))),

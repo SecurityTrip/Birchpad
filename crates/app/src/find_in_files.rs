@@ -227,8 +227,11 @@ impl Workspace {
     /// empty field is filled in that way too.
     pub fn follow_current_document(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let bar = self.find_bar.read(cx);
+        let always = AppState::global(cx).settings.searching.folder_from_document;
         if bar.tab != FindTab::FindInFiles
-            || !(bar.folder.follow_current_document || bar.directory(cx).trim().is_empty())
+            || !(always
+                || bar.folder.follow_current_document
+                || bar.directory(cx).trim().is_empty())
         {
             return;
         }
@@ -340,7 +343,15 @@ impl Workspace {
         source: FileSource,
         cx: &mut Context<Self>,
     ) {
-        let open = self.open_files(cx);
+        let mut open = self.open_files(cx);
+        // Preferences > Searching > Find in Files: Ignore unsaved changes.
+        if AppState::global(cx)
+            .settings
+            .searching
+            .ignore_unsaved_changes
+        {
+            open.retain(|_, view| !view.read(cx).buffer.read(cx).is_modified());
+        }
         let texts: Arc<HashMap<PathBuf, Rope>> = Arc::new(
             open.iter()
                 .map(|(path, view)| (path.clone(), view.read(cx).text(cx).clone()))

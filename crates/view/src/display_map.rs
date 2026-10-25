@@ -22,7 +22,7 @@ use birchpad_core::motion::{line_count, line_of, line_range};
 use birchpad_core::{ChangeSet, LINE_TYPE, Operation, Rope};
 
 use crate::cells::{cells_at, column_after, pos_at_column};
-use crate::wrap::{count_rows, line_rows, rewrap, row_count};
+use crate::wrap::{WrapIndent, count_rows, line_rows, rewrap, row_count, wrap_indent};
 
 /// Which lines are long: those longer than `length` bytes get a column index, a point every
 /// `checkpoint` bytes, so that horizontal positions deep in a multi-megabyte line are found
@@ -47,6 +47,8 @@ pub struct LayoutConfig {
     pub tab_width: usize,
     /// Wrap width in cells; `None` disables word wrap.
     pub wrap_width: Option<usize>,
+    /// Where the rows after the first of a wrapped line start.
+    pub wrap_indent: WrapIndent,
 }
 
 impl Default for LayoutConfig {
@@ -54,6 +56,7 @@ impl Default for LayoutConfig {
         Self {
             tab_width: 4,
             wrap_width: None,
+            wrap_indent: WrapIndent::None,
         }
     }
 }
@@ -360,7 +363,9 @@ impl DisplayMap {
             let content = line
                 .trailing_line_break_idx(LINE_TYPE)
                 .unwrap_or(line.len());
-            rows.push(count_rows(line.slice(..content), width, config.tab_width) as u32);
+            let line = line.slice(..content);
+            let indent = wrap_indent(line, width, config.tab_width, config.wrap_indent);
+            rows.push(count_rows(line, width, config.tab_width, indent) as u32);
         }
         // `lines()` yields nothing for an empty text but there is one (empty) line.
         while rows.len() < line_count(text) {
@@ -400,8 +405,13 @@ impl DisplayMap {
                 let range = line_range(text, line);
                 if range.len() > self.long_lines.length {
                     self.row_starts(text, line).1.len() as u32
-                } else {
+                } else if self.config.wrap_indent == WrapIndent::None {
                     row_count(text, range, width, self.config.tab_width) as u32
+                } else {
+                    let line = text.slice(range);
+                    let indent =
+                        wrap_indent(line, width, self.config.tab_width, self.config.wrap_indent);
+                    count_rows(line, width, self.config.tab_width, indent) as u32
                 }
             })
             .collect();
@@ -463,15 +473,26 @@ impl DisplayMap {
                     );
                 }
                 if let (Some(rows), Some(width)) = (&layout.rows, config.wrap_width) {
-                    let rows = rewrap(
-                        text,
-                        range.clone(),
-                        rows,
-                        changed,
-                        new_end,
-                        width,
-                        config.tab_width,
-                    );
+                    // With an indent the edit may have changed, the whole line again.
+                    let rows = if config.wrap_indent == WrapIndent::None {
+                        rewrap(
+                            text,
+                            range.clone(),
+                            rows,
+                            changed,
+                            new_end,
+                            width,
+                            config.tab_width,
+                        )
+                    } else {
+                        let indent = wrap_indent(
+                            text.slice(range.clone()),
+                            width,
+                            config.tab_width,
+                            config.wrap_indent,
+                        );
+                        line_rows(text, range.clone(), width, config.tab_width, indent)
+                    };
                     layout.rows = Some(Arc::new(rows));
                 }
             }
@@ -738,15 +759,17 @@ impl DisplayMap {
         let LayoutConfig {
             tab_width,
             wrap_width,
+            wrap_indent: mode,
         } = self.config;
         let Some(width) = wrap_width else {
             return (line_range(text, line).start, Arc::new(vec![(0, 0)]));
         };
         let layout = self.line_layout(text, line);
         let range = layout.range.clone();
-        let rows = layout
-            .rows
-            .get_or_insert_with(|| Arc::new(line_rows(text, range.clone(), width, tab_width)));
+        let rows = layout.rows.get_or_insert_with(|| {
+            let indent = wrap_indent(text.slice(range.clone()), width, tab_width, mode);
+            Arc::new(line_rows(text, range.clone(), width, tab_width, indent))
+        });
         (range.start, rows.clone())
     }
 

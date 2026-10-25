@@ -122,3 +122,36 @@ pub fn hidden_lines(folds: &[Fold], collapsed: &[usize]) -> Vec<Range<usize>> {
     }
     merged
 }
+
+/// Sticky scroll: the headers of the folds around the top of the view, outermost first, at
+/// most `max`. `lines` are the lines the view shows from its top, in order. The headers cover
+/// the first rows, so the line under them is the one that counts: with `k` headers shown, the
+/// folds around `lines[k]` whose headers are above it.
+pub fn sticky_headers(folds: &[Fold], lines: &[usize], max: usize) -> Vec<usize> {
+    let around = |line: usize| -> Vec<usize> {
+        let candidates = folds.partition_point(|fold| fold.header < line);
+        folds[..candidates]
+            .iter()
+            .filter(|fold| fold.last >= line)
+            .map(|fold| fold.header)
+            .take(max)
+            .collect()
+    };
+    let mut headers: Vec<usize> = Vec::new();
+    // Each header shown pushes the line that counts down a row; stop once that settles.
+    for _ in 0..=max {
+        let Some(&line) = lines.get(headers.len()) else {
+            break;
+        };
+        let next = around(line);
+        if next == headers {
+            break;
+        }
+        let settled = next.len() <= headers.len();
+        headers = next;
+        if settled {
+            break;
+        }
+    }
+    headers
+}

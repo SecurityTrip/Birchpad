@@ -41,13 +41,23 @@ pub struct Entry {
 /// The contents of `folder`: folders first, then files, each in name order without regard to
 /// case. Entries whose kind cannot be read are left out.
 pub fn list_folder(folder: &Path) -> io::Result<Vec<Entry>> {
+    list_folder_with(folder, true)
+}
+
+/// As [`list_folder`]; without `follow_links` (MISC > Allow loading symlinks in Folder as
+/// Workspace off), links to folders are left out.
+pub fn list_folder_with(folder: &Path, follow_links: bool) -> io::Result<Vec<Entry>> {
     let mut entries: Vec<Entry> = std::fs::read_dir(folder)?
         .flatten()
         .filter_map(|entry| {
             let kind = entry.file_type().ok()?;
             // A link to a folder is a folder; to a file, a file.
-            let is_dir = kind.is_dir()
-                || (kind.is_symlink() && std::fs::metadata(entry.path()).is_ok_and(|m| m.is_dir()));
+            let link_to_folder =
+                kind.is_symlink() && std::fs::metadata(entry.path()).is_ok_and(|m| m.is_dir());
+            if link_to_folder && !follow_links {
+                return None;
+            }
+            let is_dir = kind.is_dir() || link_to_folder;
             Some(Entry {
                 name: entry.file_name().to_string_lossy().into_owned(),
                 is_dir,
@@ -277,6 +287,7 @@ impl FolderWorkspace {
 
     /// Unfolds the folder at `path`, reading it first if it has not been read.
     pub fn expand(&mut self, path: &Path, cx: &mut Context<Self>) {
+        let follow = AppState::global(cx).settings.misc.follow_symlinks;
         let Some(node) = self.node_mut(path) else {
             return;
         };
@@ -285,7 +296,7 @@ impl FolderWorkspace {
         }
         node.expanded = true;
         if node.children.is_none() {
-            node.set_listing(list_folder(path));
+            node.set_listing(list_folder_with(path, follow));
         }
         cx.notify();
     }
@@ -323,11 +334,12 @@ impl FolderWorkspace {
         if folders.is_empty() {
             return;
         }
+        let follow = AppState::global(cx).settings.misc.follow_symlinks;
         let listing = cx.background_spawn(async move {
             folders
                 .into_iter()
                 .map(|folder| {
-                    let listing = list_folder(&folder);
+                    let listing = list_folder_with(&folder, follow);
                     (folder, listing)
                 })
                 .collect::<Vec<_>>()

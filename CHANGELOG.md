@@ -6,6 +6,91 @@ version's release notes from its section here.
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-10-26
+
+### Added
+
+- View > Command Palette... (Ctrl+Shift+A) finds any command by a few letters of its name:
+  the commands of the menus, the macros, the Run menu's command lines and the plugins' and
+  scripts' commands, each with its shortcut. The commands you ran from it last come first;
+  Preferences > Command Palette sets how many.
+- Search > Go to File... (Ctrl+Shift+O) finds a file of the folders open as workspace, or a
+  recent file, by parts of its path (`app work` finds `crates/app/src/workspace.rs`); Enter
+  opens it. Preferences > Go to File chooses the files listed (by default not those in `.git`,
+  `node_modules` and `target`), hidden ones too, and how many at most.
+- Edit > Expand Selection (Ctrl+Alt+Up) grows the selection to the piece of syntax around it:
+  a word, a string's text, the string, what is between brackets, the brackets, the statement,
+  the function; Shrink Selection (Ctrl+Alt+Down) goes back. In plain text it grows to the
+  word, the line, then everything.
+- Edit > Auto-Completion lists the completion commands, with Word Completion (Ctrl+Enter, the
+  document's words only) and Path Completion (Ctrl+Alt+Space, the names in the folder of the
+  path typed before the caret).
+- Edit > Line Operations > Sort Lines In Locale Order: letters first, then accents, then case.
+- Edit > On Selection > Redact Selection turns the selected characters into █; Change Search
+  Engine... opens Preferences > Search Engine. Edit > Column Mode... tells how to select
+  columns.
+- Edit > Read-Only Attribute of the File sets or clears the file's attribute, Set and Clear
+  Read-Only for All Documents act on every tab; Set Read-Only is now Read-Only in Birchpad.
+- Search > Copy Marked Text; the search results' Find in These Search Results... searches the
+  lines a search found and lists what it finds as a search of its own.
+- View > Show Symbol > Show Non-Printing Characters frames spaces that are not plain ones and
+  marks characters without width; Show Control Characters & Unicode EOL (on by default) shows
+  control characters and the line and paragraph separators as pictures, or as spaces.
+- View > Zoom > Synchronize Across Views: turned off, each view zooms on its own.
+- Tools > MD5 (SHA-1, SHA-256, SHA-512) > Generate... hashes a text you type, as a whole or
+  line by line.
+- Preferences > Appearance hides the menu bar (Alt or F10 shows it) and the status bar, and
+  gives the dark interface a tone: red, green, blue, purple, cyan or olive.
+- Preferences > Tab Bar: a maximum label length, alternate icons (a check mark, a pencil, a
+  padlock), the inactive tabs' own color and the active tab's colored bar as options, pinning
+  turned off or a pin button on every tab, and buttons on inactive tabs.
+- Preferences > Editing: the caret's width (0 to 3 pixels, or a block) and blink rate, where
+  wrapped rows start (aligned or indented), virtual space, scrolling beyond the last line,
+  keeping the selection on a right click, copying and cutting the line with nothing selected,
+  the selected text's own color, multi-editing and column selection to multi-editing,
+  end-of-line labels without their box, and typing control characters prevented. The
+  selected text can be dragged and dropped (Ctrl copies it); an option turns this off.
+- Preferences > Margins: the fold margin's style (simple, arrow, circle tree, box tree, none),
+  the border's width, a line number margin of constant width, and padding left, right and in
+  Distraction Free mode.
+- Preferences > New Document: files of ASCII alone take the new document's encoding, a new
+  document opens at startup besides the others, and an untitled tab can be named after its
+  first line. A folder dropped on the window can open its files instead of Folder as
+  Workspace.
+- Recent files: in a submenu, by their name only, cut to a maximum length, and kept when they
+  are gone if you wish. The Language menu can be one list instead of letters, and leave out
+  languages.
+- Highlight Matching Tags in HTML and XML (with their attributes, and in comments, if asked);
+  smart highlighting in the other view too.
+- Preferences > Searching: when In selection is checked and the find field filled from the
+  selection or the word at the caret, a monospaced find panel, the panel closing after Find
+  All, Replace All in All Opened Documents confirmed, Replace staying on what it replaced,
+  search results with a row for each match, Find in Files ignoring unsaved changes or always
+  starting in the document's folder.
+- Auto-Completion: which of Tab and Enter take an entry, a brief list, and Backspace
+  unindenting. Delimiter: characters of your own that are part of words.
+- Performance: large files can keep auto-completion, smart highlighting, brace matching and
+  links, or turn word wrap off everywhere. Print can break pages at form feeds.
+- Cloud & Link frames the link under the mouse; Multi-Instance remembers panels with
+  `-nosession` if you wish.
+- MISC: the document peeker in the Document Map, encoding detection turned off, Save All
+  confirmed, symbolic links followed in Folder as Workspace, and extensions that open a file
+  as a session or as a project workspace.
+- The command line takes `-fullReadOnly` (every document read-only for the run) and
+  `-fullReadOnlySavingForbidden` (nothing saved either).
+- Sticky scroll, in Preferences > Editing: the first lines of the blocks around the top of the
+  view stay there while you scroll, five at most by default; a click on one goes to it.
+
+### Changed
+
+- Edit > Set Read-Only is now Read-Only in Birchpad, beside Read-Only Attribute of the File.
+- File > Recent Files leaves out files that are gone; Preferences > Files keeps them.
+- Replace All in All Opened Documents asks first; a selection of 1024 characters or more
+  checks In selection when the find panel opens; keys such as Ctrl+E no longer type control
+  characters (Preferences > Searching, Editing).
+- The ZIP library is version 9 (plugins, PlantUML and the online catalog's packages), with
+  interprocess 2.4.6 and the Scala grammar 0.26.3.
+
 ## [0.6.0] - 2026-10-22
 
 ### Added
@@ -613,7 +698,8 @@ The first release: a Notepad++-like editor for Windows, Linux and macOS.
   entirely (`updates.mode = "off"`).
 - Nightly builds of `main` on the nightly channel.
 
-[Unreleased]: https://github.com/SecurityTrip/Birchpad/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/SecurityTrip/Birchpad/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/SecurityTrip/Birchpad/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/SecurityTrip/Birchpad/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/SecurityTrip/Birchpad/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/SecurityTrip/Birchpad/compare/v0.3.0...v0.4.0

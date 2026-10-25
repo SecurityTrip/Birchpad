@@ -26,6 +26,10 @@ pub enum SortKey {
     DecimalDot,
     /// By length in characters.
     Length,
+    /// Sort in Locale Order: letters first without regard to accents and case, then accents,
+    /// then lower case before capitals (Unicode's default order in short, not each language's
+    /// own rules).
+    Locale,
 }
 
 /// A line that has no number to sort by.
@@ -82,6 +86,44 @@ pub fn sort_lines_by_columns(
     sort_with_keys(text, block, lines, contents, keys, key, descending, eol)
 }
 
+/// Whether `ch` is a combining mark that an accented letter decomposes into.
+fn is_mark(ch: char) -> bool {
+    matches!(
+        ch,
+        '\u{0300}'..='\u{036F}'
+            | '\u{1AB0}'..='\u{1AFF}'
+            | '\u{1DC0}'..='\u{1DFF}'
+            | '\u{20D0}'..='\u{20FF}'
+            | '\u{FE20}'..='\u{FE2F}'
+    )
+}
+
+/// What Sort in Locale Order compares, in turn: the letters in lower case without accents,
+/// then with them, then the case of each letter (lower case first). Cyrillic й, a letter of its
+/// own though it decomposes, stays one, after и.
+pub fn collation_key(text: &str) -> (String, String, String) {
+    let decomposed = icu_normalizer::DecomposingNormalizerBorrowed::new_nfd().normalize(text);
+    let mut primary = String::with_capacity(text.len());
+    let mut secondary = String::with_capacity(text.len());
+    let mut previous: Option<char> = None;
+    for ch in decomposed.chars() {
+        let lower = ch.to_lowercase().next().unwrap_or(ch);
+        secondary.push(lower);
+        if ch == '\u{0306}' && matches!(previous, Some('и' | 'И')) {
+            primary.pop();
+            primary.push('й');
+        } else if !is_mark(ch) {
+            primary.push(lower);
+        }
+        previous = Some(ch);
+    }
+    let tertiary = text
+        .chars()
+        .map(|ch| if ch.is_uppercase() { '1' } else { '0' })
+        .collect();
+    (primary, secondary, tertiary)
+}
+
 /// Reorders `contents` (the lines `lines`) by `keys`, stably.
 #[expect(
     clippy::too_many_arguments,
@@ -111,6 +153,17 @@ fn sort_with_keys(
         SortKey::IgnoreCase => {
             let folded: Vec<String> = keys.iter().map(|key| key.to_lowercase()).collect();
             order.sort_by(|&a, &b| direction(folded[a].cmp(&folded[b])));
+        }
+        SortKey::Locale => {
+            let collated: Vec<(String, String, String)> =
+                keys.iter().map(|key| collation_key(key)).collect();
+            order.sort_by(|&a, &b| {
+                direction(
+                    collated[a]
+                        .cmp(&collated[b])
+                        .then_with(|| keys[a].cmp(&keys[b])),
+                )
+            });
         }
         SortKey::Length => {
             let lengths: Vec<usize> = keys.iter().map(|key| key.chars().count()).collect();

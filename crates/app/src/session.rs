@@ -483,7 +483,7 @@ impl Workspace {
             // Birchpad's copies are UTF-8; Notepad++'s are in the document's encoding.
             let options = LoadOptions {
                 encoding: own.then_some(Encoding::Utf8),
-                ansi,
+                ..LoadOptions::new(ansi)
             };
             let file = birchpad_io::load(&path, options, &AtomicU64::new(0)).ok()?;
             Some((own.then(|| name.to_owned()), file.text))

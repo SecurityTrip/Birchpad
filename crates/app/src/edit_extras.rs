@@ -1,7 +1,9 @@
-//! More of Notepad++'s Edit menu: Set Read-Only and Clear Read-Only Flag; Paste Special (copy,
+//! More of Notepad++'s Edit menu: Read-Only in Birchpad (for the document or every one), the
+//! file's read-only attribute and Clear Read-Only Flag; Column Mode...; Paste Special (copy,
 //! cut and paste binary content, which keeps NUL characters, and paste the clipboard's HTML or
 //! RTF as text); On Selection (open the file named by the selection, show its folder, or
-//! search for it on the Internet with Preferences > Search Engine's engine).
+//! search for it on the Internet with Preferences > Search Engine's engine, which Change Search
+//! Engine... opens, or redact it).
 
 use std::path::{Path, PathBuf};
 
@@ -27,6 +29,59 @@ pub fn register_commands(registry: &mut CommandRegistry) {
             buffer.set_requested_read_only(on, cx);
         });
         this.refresh_menus(cx);
+        Ok(())
+    });
+    for (id, on) in [
+        ("edit.set-read-only-all", true),
+        ("edit.clear-read-only-all", false),
+    ] {
+        registry.workspace(id, move |this, (), _, cx| {
+            for view in this.all_views(cx) {
+                let buffer = view.read(cx).buffer.clone();
+                buffer.update(cx, |buffer, cx| buffer.set_requested_read_only(on, cx));
+            }
+            this.refresh_menus(cx);
+            Ok(())
+        });
+    }
+    // -fullReadOnly: Read-Only stays on for the run.
+    for id in [
+        "edit.toggle-read-only",
+        "edit.set-read-only-all",
+        "edit.clear-read-only-all",
+    ] {
+        registry.enabled_when(id, |cx| !AppState::global(cx).full_read_only);
+    }
+    registry.workspace("edit.toggle-read-only-attribute", |this, (), _, cx| {
+        let view = this
+            .active_view(cx)
+            .ok_or_else(|| anyhow!("{}", t!("file-ops.no-document")))?;
+        let buffer = view.read(cx).buffer.clone();
+        let Some(path) = buffer.read(cx).path().map(Path::to_owned) else {
+            bail!(
+                "{}",
+                t!(
+                    "file-commands.has-no-file-yet",
+                    name = buffer.read(cx).display_name()
+                )
+            );
+        };
+        if file_is_read_only(&path)? {
+            clear_read_only_flag(&path)?;
+            buffer.update(cx, |buffer, cx| buffer.file_made_writable(cx));
+        } else {
+            set_read_only_flag(&path)?;
+            buffer.update(cx, |buffer, cx| buffer.file_made_read_only(cx));
+        }
+        this.refresh_menus(cx);
+        Ok(())
+    });
+    registry.workspace("edit.column-mode", |_, (), window, cx| {
+        show_column_mode(window, cx);
+        Ok(())
+    });
+    registry.workspace("edit.change-search-engine", |_, (), window, cx| {
+        crate::preferences::open_at(cx.entity().downgrade(), Some("Search Engine"), window, cx);
         Ok(())
     });
     registry.workspace("edit.clear-read-only-flag", |this, (), _, cx| {
@@ -159,6 +214,52 @@ fn binary_text(item: &ClipboardItem) -> Option<String> {
 }
 
 /// Makes a read-only file writable for its owner.
+/// Whether the file at `path` has its read-only attribute (no write permission elsewhere).
+pub fn file_is_read_only(path: &Path) -> Result<bool> {
+    let metadata = std::fs::metadata(path).map_err(|error| {
+        anyhow!(
+            "{}",
+            t!(
+                "edit-extras.cannot-read",
+                path = path.display(),
+                error = error
+            )
+        )
+    })?;
+    Ok(metadata.permissions().readonly())
+}
+
+/// Gives the file at `path` the read-only attribute (takes write permission away elsewhere).
+fn set_read_only_flag(path: &Path) -> Result<()> {
+    let mut permissions = std::fs::metadata(path)?.permissions();
+    permissions.set_readonly(true);
+    std::fs::set_permissions(path, permissions).map_err(|error| {
+        anyhow!(
+            "{}",
+            t!(
+                "edit-extras.cannot-make-read-only",
+                path = path.display(),
+                error = error
+            )
+        )
+    })
+}
+
+/// Edit > Column Mode...: how to select columns, as Notepad++ tells it.
+fn show_column_mode(window: &mut gpui_kit::Window, cx: &mut App) {
+    use gpui_kit::component::WindowExt as _;
+    use gpui_kit::component::dialog::DialogFooter;
+    use gpui_kit::{ParentElement as _, Styled as _, div, px};
+    let text = t!("edit-extras.column-mode-help");
+    window.open_dialog(cx, move |dialog, _, _| {
+        dialog
+            .title(t!("edit-extras.column-mode"))
+            .w(px(520.))
+            .child(div().whitespace_normal().child(text.clone()))
+            .footer(DialogFooter::new().child(crate::workspace::dialog_close("common.ok")))
+    });
+}
+
 fn clear_read_only_flag(path: &Path) -> Result<()> {
     let mut permissions = std::fs::metadata(path)?.permissions();
     #[cfg(unix)]

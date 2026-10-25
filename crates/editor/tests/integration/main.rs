@@ -19,6 +19,9 @@ mod completion;
 #[path = "edge_tests.rs"]
 mod edge_tests;
 
+#[path = "editing_options/tests.rs"]
+mod editing_options;
+
 #[allow(
     clippy::single_range_in_vec_init,
     reason = "hidden lines are lists of line ranges, some with one range"
@@ -51,6 +54,9 @@ mod smart_highlight;
 
 #[path = "symbols/tests.rs"]
 mod symbols;
+
+#[path = "syntax_selection/tests.rs"]
+mod syntax_selection;
 
 #[path = "test_support.rs"]
 mod test_support;

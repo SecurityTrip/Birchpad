@@ -293,7 +293,7 @@ impl Workspace {
                 let path = path.ok_or_else(|| anyhow!("{}", t!("compare.save-it-first")))?;
                 let options = birchpad_io::LoadOptions {
                     encoding: Some(format.encoding),
-                    ansi: AppState::global(cx).ansi,
+                    ..birchpad_io::LoadOptions::new(AppState::global(cx).ansi)
                 };
                 let file = birchpad_io::load(&path, options, &std::sync::atomic::AtomicU64::new(0))
                     .with_context(|| path.display().to_string())?;

@@ -120,6 +120,7 @@ fn editor_colors(
         text: foreground("Default Style"),
         background: background("Default Style"),
         selection: background("Selected text colour"),
+        selection_text: foreground("Selected text colour"),
         caret: foreground("Caret colour"),
         current_line: background("Current line background colour"),
         gutter_background: background("Line number margin"),
@@ -227,7 +228,11 @@ pub(crate) fn export(xml: &str, theme: &Theme) -> Result<String, ThemeError> {
     let editor = &theme.editor;
     let widgets: Vec<(&str, Option<Color>, Option<Color>)> = vec![
         ("Default Style", Some(editor.text), Some(editor.background)),
-        ("Selected text colour", None, Some(editor.selection)),
+        (
+            "Selected text colour",
+            Some(editor.selection_text),
+            Some(editor.selection),
+        ),
         ("Caret colour", Some(editor.caret), None),
         (
             "Current line background colour",

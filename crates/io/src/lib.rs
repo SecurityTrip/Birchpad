@@ -21,7 +21,7 @@ pub mod search_files;
 
 pub use changes::{ByteChange, ByteChanges, LISTED, byte_changes};
 pub use decode::{DecodeProblem, Decoded, bom_bytes, decode, sniff_bom};
-pub use detect::{DetectedBy, Detection, detect};
+pub use detect::{DetectedBy, Detection, detect, detect_without_guess};
 pub use disk::{DiskStamp, HEAD_LEN, Head, decode_appended, read_from, stamp};
 pub use encode::{Unencodable, check_encodable, encode, encode_document, is_ebcdic};
 pub use encoding::{
@@ -31,4 +31,4 @@ pub use file::{
     FileInfo, LoadOptions, LoadedFile, MAX_FILE_SIZE, ReadError, Recovery, SaveError, decode_file,
     discard_recovery, load, pending_recoveries, read_file, read_file_within, save,
 };
-pub use folder::{FilterError, Filters, FolderOptions, files_in};
+pub use folder::{FilterError, Filters, FolderOptions, files_in, path_completions};

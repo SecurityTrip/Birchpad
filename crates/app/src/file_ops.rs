@@ -60,10 +60,35 @@ pub fn register_commands(registry: &mut CommandRegistry) {
         this.save(view, SaveMode::SaveAs, window, cx).detach();
         Ok(())
     });
+    // -fullReadOnlySavingForbidden: nothing is saved.
+    for id in ["file.save", "file.save-as"] {
+        registry.enabled_when(id, |cx| !AppState::global(cx).saving_forbidden);
+    }
     registry.workspace("file.save-all", |this, (), window, cx| {
-        this.save_all(window, cx).detach();
+        // MISC > Enable Save All confirm dialog.
+        if !AppState::global(cx).settings.misc.confirm_save_all {
+            this.save_all(window, cx).detach();
+            return Ok(());
+        }
+        let answers = [t!("file-ops.save-all"), t!("common.cancel")];
+        let answers: Vec<&str> = answers.iter().map(String::as_str).collect();
+        let answer = window.prompt(
+            gpui_kit::PromptLevel::Info,
+            &t!("file-ops.save-every-changed-document"),
+            None,
+            &answers,
+            cx,
+        );
+        cx.spawn_in(window, async move |this, cx| {
+            if answer.await.ok() == Some(0) {
+                this.update_in(cx, |this, window, cx| this.save_all(window, cx).detach())
+                    .ok();
+            }
+        })
+        .detach();
         Ok(())
     });
+    registry.enabled_when("file.save-all", |cx| !AppState::global(cx).saving_forbidden);
     registry.workspace("file.close", |this, (), window, cx| {
         let views = this.active_view(cx).into_iter().collect();
         this.close_with_confirmation(views, window, cx).detach();
@@ -244,6 +269,12 @@ impl Workspace {
                 buffer.read(cx).display_name()
             )),
             _ => None,
+        };
+        // -fullReadOnlySavingForbidden: nothing at all is saved in this run.
+        let blocked = if AppState::global(cx).saving_forbidden {
+            Some(t!("file-ops.saving-is-forbidden"))
+        } else {
+            blocked
         };
         if let Some(reason) = blocked {
             report_error(
