@@ -34,6 +34,8 @@ version's release notes from its section here.
 
 ### Fixed
 
+- Birchpad builds for Linux again: the release of 0.7.1 had no Linux package, as Minimize to
+  system tray left the application without code for systems that have no tray.
 - PlantUML diagrams that include other files by a relative path (`!include common.puml`)
   are drawn in the preview: PlantUML runs in the document's folder
   ([#50](https://github.com/SecurityTrip/Birchpad/issues/50)).
