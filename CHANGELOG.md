@@ -6,6 +6,16 @@ version's release notes from its section here.
 
 ## [Unreleased]
 
+### Added
+
+- PlantUML diagrams are drawn on white in the preview, as they are made for paper, whatever
+  the theme; the button above them (View > Preview > White Diagram Background) puts them on
+  the theme's background instead, and the choice is kept for the diagrams shown later
+  (`preview.plantuml-background`, Preferences > Preview)
+  ([#53](https://github.com/SecurityTrip/Birchpad/issues/53)).
+- Preferences > Preview: the PlantUML to run (`preview.plantuml`) and the diagrams'
+  background.
+
 ### Changed
 
 - The PlantUML preview lists the mistakes PlantUML finds by the line of the document they are

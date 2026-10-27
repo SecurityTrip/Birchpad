@@ -913,6 +913,18 @@ pub const ENTRIES: &[Entry] = &[
         Kind::Bool,
     ),
     entry(
+        "Preview",
+        "preview.plantuml",
+        "PlantUML (command or plantuml.jar)",
+        Kind::Text,
+    ),
+    entry(
+        "Preview",
+        "preview.plantuml-background",
+        "Diagram background",
+        Kind::Choice(&[("white", "White"), ("theme", "As the theme")]),
+    ),
+    entry(
         "Files",
         "files.recent-limit",
         "Recent files",

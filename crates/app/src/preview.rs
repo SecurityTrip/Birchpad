@@ -17,14 +17,15 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use anyhow::bail;
-use birchpad_config::PreviewMode;
+use birchpad_commands::Invocation;
+use birchpad_config::{DiagramBackground, PreviewMode};
 use birchpad_core::RevisionId;
 use gpui_kit::base::text::{TextView, TextViewState};
 use gpui_kit::component::button::{Button, ButtonVariants as _};
 use gpui_kit::component::{IconName, Selectable as _, Sizable};
 use gpui_kit::{
-    AnyElement, App, AppContext as _, Context, Entity, Image, ImageFormat, ImageSource, ObjectFit,
-    Resource, SharedString, SharedUri, Subscription, Task, WeakEntity, Window, div, img,
+    AnyElement, App, AppContext as _, ClickEvent, Context, Entity, Image, ImageFormat, ImageSource,
+    ObjectFit, Resource, SharedString, SharedUri, Subscription, Task, WeakEntity, Window, div, img,
     prelude::*, px,
 };
 
@@ -36,8 +37,9 @@ use crate::theme::{paint, ui};
 use crate::workspace::Workspace;
 
 pub use diagrams::{
-    DIAGRAM_END, Drawn, Mistake, NotDrawn, PLANTUML_DELAY, Stop, StopOnDrop, diagram_starts,
-    line_offset, mistakes, plantuml_command, run_plantuml, setting_path, split_diagrams,
+    DIAGRAM_END, Drawn, Mistake, NotDrawn, PLANTUML_DELAY, Stop, StopOnDrop, background,
+    diagram_starts, line_offset, mistakes, plantuml_command, run_plantuml, setting_path,
+    split_diagrams,
 };
 
 /// What a document's preview shows.
@@ -77,6 +79,7 @@ pub const COMMANDS: [(&str, PreviewMode); 3] = [
 ];
 
 pub fn register_commands(registry: &mut CommandRegistry) {
+    diagrams::register_commands(registry);
     for (id, mode) in COMMANDS {
         registry.workspace(id, move |this, (), _, cx| {
             let pane = this.active_pane().clone();
@@ -508,6 +511,7 @@ impl Preview {
     }
 
     fn render_diagrams(diagrams: &Diagrams, this: &WeakEntity<Self>, cx: &App) -> AnyElement {
+        let white = background(cx) == DiagramBackground::White;
         let message = match (&diagrams.error, &diagrams.drawing) {
             (Some(error), _) => Some((error.clone(), ui().error)),
             (None, Some(_)) if diagrams.images.is_empty() => {
@@ -534,12 +538,57 @@ impl Preview {
                 list.child(Self::render_install(cx))
             })
             .children(diagrams.images.iter().map(|image| {
-                img(ImageSource::Image(image.clone()))
+                // Diagrams are made for paper: on white, unless the theme's background is asked.
+                div()
                     .flex_none()
                     .max_w_full()
-                    .object_fit(ObjectFit::Contain)
+                    .when(white, |card| card.bg(gpui_kit::white()))
+                    .child(
+                        img(ImageSource::Image(image.clone()))
+                            .max_w_full()
+                            .object_fit(ObjectFit::Contain),
+                    )
             }))
             .into_any_element()
+    }
+
+    /// The bar above the diagrams: the background they are drawn on.
+    fn render_toolbar(&self, cx: &App) -> impl IntoElement {
+        let white = background(cx) == DiagramBackground::White;
+        let workspace = self.workspace.clone();
+        let run = move |command: &'static str| {
+            let workspace = workspace.clone();
+            move |_: &ClickEvent, window: &mut Window, cx: &mut App| {
+                workspace
+                    .update(cx, |workspace, cx| {
+                        let invocation = Invocation::new(command);
+                        if let Err(error) = workspace.dispatch(&invocation, window, cx) {
+                            crate::workspace::report_error(&error, window, cx);
+                        }
+                    })
+                    .ok();
+            }
+        };
+        div()
+            .flex_none()
+            .flex()
+            .flex_row()
+            .items_center()
+            .gap_1()
+            .px_2()
+            .py_1()
+            .border_b_1()
+            .border_color(paint(ui().border))
+            .bg(paint(ui().surface))
+            .child(
+                Button::new("diagram-background")
+                    .xsmall()
+                    .ghost()
+                    .icon(if white { IconName::Sun } else { IconName::Moon })
+                    .tooltip(crate::menus::command_title("preview.white-background"))
+                    .selected(white)
+                    .on_click(run("preview.white-background")),
+            )
     }
 }
 
@@ -559,9 +608,17 @@ impl Render for Preview {
         let colors = crate::theme::current().editor;
         let body = match &self.content {
             Content::Markdown(markdown) => self.render_markdown(markdown, cx),
-            Content::PlantUml(diagrams) => {
-                Self::render_diagrams(diagrams, &cx.entity().downgrade(), cx)
-            }
+            Content::PlantUml(diagrams) => div()
+                .size_full()
+                .flex()
+                .flex_col()
+                .child(self.render_toolbar(cx))
+                .child(div().flex_1().min_h_0().child(Self::render_diagrams(
+                    diagrams,
+                    &cx.entity().downgrade(),
+                    cx,
+                )))
+                .into_any_element(),
         };
         div()
             .id("preview")

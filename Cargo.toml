@@ -13,7 +13,7 @@ authors = ["The Birchpad Contributors"]
 [workspace.dependencies]
 birchpad-cli = { path = "crates/cli", version = "0.7.1" }
 birchpad-commands = { path = "crates/commands", version = "0.7.0" }
-birchpad-config = { path = "crates/config", version = "0.7.1" }
+birchpad-config = { path = "crates/config", version = "0.7.2" }
 birchpad-core = { path = "crates/core", version = "0.7.0" }
 birchpad-editor = { path = "crates/editor", version = "0.7.1" }
 birchpad-i18n = { path = "crates/i18n", version = "0.7.2" }

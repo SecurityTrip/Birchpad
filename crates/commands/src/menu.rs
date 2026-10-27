@@ -703,6 +703,8 @@ pub fn main_menu() -> Vec<Menu> {
                     cmd("view.preview-split"),
                     cmd("view.preview-only"),
                     Separator,
+                    cmd("preview.white-background"),
+                    Separator,
                     cmd("preview.install-plantuml"),
                 ],
             )),

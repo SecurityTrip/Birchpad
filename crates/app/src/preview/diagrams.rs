@@ -8,11 +8,39 @@ use std::process::{Child, Command, Stdio};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
+use birchpad_config::DiagramBackground;
+use gpui_kit::App;
+use toml::Value;
+
+use crate::app_state::AppState;
+use crate::commands::{CommandRegistry, Register as _};
+
 /// What PlantUML writes after each diagram, to tell the diagrams of a file apart.
 pub const DIAGRAM_END: &str = "<!--birchpad-diagram-end-->";
 
 /// How long the text rests before PlantUML draws it again: it starts a Java program each time.
 pub const PLANTUML_DELAY: Duration = Duration::from_millis(400);
+
+/// View > Preview > White Diagram Background: switches the background of PlantUML diagrams
+/// between white and the theme's, saved in the settings for the diagrams shown later.
+pub(super) fn register_commands(registry: &mut CommandRegistry) {
+    registry.workspace("preview.white-background", |_, (), _, cx| {
+        let next = match background(cx) {
+            DiagramBackground::White => "theme",
+            DiagramBackground::Theme => "white",
+        };
+        crate::preferences::set(
+            "preview.plantuml-background",
+            Some(Value::String(next.to_owned())),
+            cx,
+        )
+    });
+}
+
+/// What the preview draws PlantUML diagrams on (`preview.plantuml-background`).
+pub fn background(cx: &App) -> DiagramBackground {
+    AppState::global(cx).settings.preview.plantuml_background
+}
 
 /// The program and arguments that draw PlantUML's diagrams as SVG from the standard input, for
 /// the `preview.plantuml` setting: a `.jar` runs with `java -jar`. With the setting as it comes

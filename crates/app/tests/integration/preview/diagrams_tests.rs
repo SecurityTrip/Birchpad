@@ -10,6 +10,7 @@ use crate::workspace::open_workspace;
 use birchpad::app_state::AppState;
 use birchpad::preview::*;
 use birchpad::workspace::Workspace;
+use birchpad_config::DiagramBackground;
 
 #[test]
 fn diagrams_start_at_their_start_lines() {
@@ -335,5 +336,72 @@ fn plantuml_runs_in_the_documents_folder(cx: &mut TestAppContext) {
     assert!(
         svg.contains(tmp) && svg.ends_with("diagram folder</svg>"),
         "{svg}"
+    );
+}
+
+fn run(workspace: &Entity<Workspace>, id: &str, cx: &mut VisualTestContext) -> anyhow::Result<()> {
+    let result = workspace.update_in(cx, |workspace, window, cx| {
+        workspace.dispatch(&birchpad_commands::Invocation::new(id), window, cx)
+    });
+    cx.run_until_parked();
+    result
+}
+
+#[gpui_kit::test]
+fn the_diagram_background_switches_and_is_saved(cx: &mut TestAppContext) {
+    let (workspace, cx) = open_workspace(cx);
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("settings.toml");
+    cx.update(|_, cx| cx.global_mut::<AppState>().paths.user_settings = Some(path.clone()));
+    assert_eq!(
+        cx.update(|_, cx| background(cx)),
+        DiagramBackground::White,
+        "white by default"
+    );
+    run(&workspace, "preview.white-background", cx).unwrap();
+    assert_eq!(cx.update(|_, cx| background(cx)), DiagramBackground::Theme);
+    let written = std::fs::read_to_string(&path).unwrap();
+    assert!(
+        written.contains("plantuml-background = \"theme\""),
+        "{written}"
+    );
+    run(&workspace, "preview.white-background", cx).unwrap();
+    assert_eq!(cx.update(|_, cx| background(cx)), DiagramBackground::White);
+    assert!(
+        std::fs::read_to_string(&path)
+            .unwrap()
+            .contains("plantuml-background = \"white\"")
+    );
+}
+
+#[gpui_kit::test]
+fn the_diagram_background_is_not_switched_without_a_settings_file(cx: &mut TestAppContext) {
+    let (workspace, cx) = open_workspace(cx);
+    cx.update(|_, cx| cx.global_mut::<AppState>().paths.user_settings = None);
+    assert!(run(&workspace, "preview.white-background", cx).is_err());
+    assert_eq!(cx.update(|_, cx| background(cx)), DiagramBackground::White);
+}
+
+#[test]
+fn preferences_show_the_preview_settings() {
+    use birchpad::preferences::{ENTRIES, Kind};
+    let find = |key: &str| ENTRIES.iter().find(|entry| entry.key == key).unwrap();
+    assert_eq!(find("preview.plantuml").kind, Kind::Text);
+    let Kind::Choice(values) = find("preview.plantuml-background").kind else {
+        panic!("a choice");
+    };
+    for (value, _) in values {
+        birchpad_config::check_setting(
+            "preview.plantuml-background",
+            &toml::Value::String((*value).into()),
+        )
+        .unwrap();
+    }
+    assert_eq!(values.len(), 2);
+    assert!(
+        ENTRIES
+            .iter()
+            .filter(|entry| entry.key.starts_with("preview."))
+            .all(|entry| entry.section == "Preview")
     );
 }
