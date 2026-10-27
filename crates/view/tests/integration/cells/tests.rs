@@ -285,7 +285,8 @@ fn columns_count_labels() {
         column_after(&text, 0, 0, text.len(), grid),
         1 + 6 + 1 + 6 + 1
     );
-    assert_eq!(column_after(&text, 0, 0, text.len(), 4), 1 + 1 + 1 + 0 + 1);
+    // The zero-width space takes no cell of its own.
+    assert_eq!(column_after(&text, 0, 0, text.len(), 4), 4);
     // A column inside the label rounds to its nearer end.
     assert_eq!(pos_at_column(&text, 0..text.len(), 0, 3, grid), (1, 1));
     assert_eq!(pos_at_column(&text, 0..text.len(), 0, 5, grid), (3, 7));
