@@ -759,10 +759,18 @@ written down why not.
       `-systemtray` keeps starting minimized (6.40). Not in 0.7.1 either: gpui-pre 0.3.10 and
       gpui-kit 0.8.1, checked on 2026-10-27, add no tray icon and no way to take a window off
       the taskbar; their only hiding is macOS's Hide of the whole application
-- [ ] 7.4e What 7.4b left: how non-printing characters are drawn, as abbreviations (NBSP,
+- [x] 7.4e What 7.4b left: how non-printing characters are drawn, as abbreviations (NBSP,
       ZWSP) or code points, which needs the column model to give such a character the cells
       of its label while the setting is on; Dark Mode's customized tone beside the seven
-      tones; smooth font, once GPUI lets an application choose how text is smoothed
+      tones; smooth font, once GPUI lets an application choose how text is smoothed. Built
+      from the user manual's Preferences page. Preferences > Editing > Non-printing characters
+      (framed and marked by default, as before; abbreviation; code point): the column model
+      takes a grid of the tab width and the labels, a labeled character the cells of its label
+      ([ADR 0054](adr/0054-non-printing-labels-in-the-column-model.md)); characters without an
+      abbreviation show their code point. Dark Mode's tone Customized, with ten colors of the
+      dark interface in Preferences > Appearance (`appearance.dark-tone-colors`). Enable smooth
+      font: GPUI (gpui-pre 0.3.9) lets an application choose subpixel smoothing, which Windows
+      and Linux draw; macOS draws text in grayscale only, so there it changes nothing
 - [ ] 7.4f What 7.4c left: SQL's backslash as an escape character, which needs SQL strings
       read by a grammar or a query of Birchpad's own rather than the SQL grammar's
 - [ ] Release 0.7.1: the workspace version (0.7.1, set when its branch opens, so that nightly

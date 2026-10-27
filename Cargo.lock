@@ -636,7 +636,7 @@ dependencies = [
 
 [[package]]
 name = "birchpad-config"
-version = "0.7.0"
+version = "0.7.1"
 dependencies = [
  "birchpad-core",
  "birchpad-i18n",
@@ -670,7 +670,7 @@ dependencies = [
 
 [[package]]
 name = "birchpad-editor"
-version = "0.7.0"
+version = "0.7.1"
 dependencies = [
  "anyhow",
  "birchpad-cli",
@@ -713,7 +713,7 @@ dependencies = [
 
 [[package]]
 name = "birchpad-i18n"
-version = "0.7.0"
+version = "0.7.1"
 dependencies = [
  "anyhow",
  "sys-locale",
@@ -842,7 +842,7 @@ dependencies = [
 
 [[package]]
 name = "birchpad-theme"
-version = "0.7.0"
+version = "0.7.1"
 dependencies = [
  "birchpad-i18n",
  "roxmltree 0.21.1",
@@ -905,7 +905,7 @@ dependencies = [
 
 [[package]]
 name = "birchpad-view"
-version = "0.7.0"
+version = "0.7.1"
 dependencies = [
  "birchpad-core",
  "proptest",

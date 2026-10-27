@@ -499,11 +499,14 @@ impl EditorView {
             };
             (ChangeSet::identity(text.len()), text.clone(), start)
         };
-        let tab_width = self.display.config().tab_width;
+        let LayoutConfig {
+            tab_width, labels, ..
+        } = self.display.config();
         let mut display = DisplayMap::new(
             &middle,
             LayoutConfig {
                 tab_width,
+                labels,
                 ..LayoutConfig::default()
             },
         );

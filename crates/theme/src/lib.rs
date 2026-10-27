@@ -455,6 +455,20 @@ impl UiColors {
         }
         self
     }
+
+    /// The colors with those of `colors` (key and `#rrggbb`) in their place, as Notepad++'s
+    /// customized Dark Mode tone gives them; unknown keys and what is no color are passed over.
+    pub fn customized<'k, 'c>(
+        mut self,
+        colors: impl IntoIterator<Item = (&'k str, &'c str)>,
+    ) -> Self {
+        for (key, color) in colors {
+            if let Ok(color) = color.parse() {
+                self.set(key, color);
+            }
+        }
+        self
+    }
 }
 
 impl Theme {

@@ -327,6 +327,7 @@ impl EditorView {
                     birchpad_config::WrapIndent::Aligned => birchpad_view::WrapIndent::Aligned,
                     birchpad_config::WrapIndent::Indent => birchpad_view::WrapIndent::Indent,
                 },
+                labels: settings.labels(),
             },
             cx,
         );
@@ -383,6 +384,8 @@ impl EditorView {
         let visible_count = full_rows + 2;
 
         // First the rows and the part of each that is shown, then their highlights, then shaping.
+        // The grid the display map lays out with, which the text drawn follows.
+        let grid = self.display.config().grid();
         let mut pending = Vec::with_capacity(visible_count);
         let mut line_numbers = Vec::new();
         let mut widest = px(0.);
@@ -405,7 +408,7 @@ impl EditorView {
                     &text,
                     start..end,
                     start_column,
-                    settings.tab_width,
+                    grid,
                     settings.show_control_chars,
                 );
                 let x = column_zero + cell * (start_column - row.start_column) as f32;
@@ -415,7 +418,7 @@ impl EditorView {
                     &text,
                     row.range.clone(),
                     row.start_column,
-                    settings.tab_width,
+                    grid,
                     settings.show_control_chars,
                 );
                 let x = match wrap_width {
@@ -523,13 +526,8 @@ impl EditorView {
         }
         let mut sticky = Vec::with_capacity(sticky_lines.len());
         for (index, (line, range)) in sticky_lines.into_iter().zip(sticky_ranges).enumerate() {
-            let display = DisplayText::with_pictures(
-                &text,
-                range,
-                0,
-                settings.tab_width,
-                settings.show_control_chars,
-            );
+            let display =
+                DisplayText::with_pictures(&text, range, 0, grid, settings.show_control_chars);
             let shaped = self.shape_row(&display, &metrics, &styles, window);
             let y = text_bounds.top() + line_height * index as f32;
             let x = if wrap_width.is_some() {

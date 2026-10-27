@@ -423,6 +423,7 @@ pub struct ViewSettings {
     pub indent_guides: bool,
     pub wrap_symbol: bool,
     pub show_non_printing: bool,
+    pub non_printing_style: birchpad_config::NonPrintingStyle,
     pub show_control_chars: bool,
     pub current_line: CurrentLine,
     pub current_line_frame_width: Pixels,
@@ -470,6 +471,7 @@ impl ViewSettings {
                 .state
                 .show_non_printing
                 .unwrap_or(editor.show_non_printing),
+            non_printing_style: editor.non_printing_style,
             show_control_chars: app
                 .state
                 .show_control_chars
@@ -512,6 +514,19 @@ impl ViewSettings {
             }
         }
         settings
+    }
+
+    /// The labels non-printing characters take the cells of: none unless View > Show Symbol >
+    /// Show Non-Printing Characters draws them by label.
+    pub fn labels(&self) -> birchpad_view::NonPrintingLabel {
+        use birchpad_config::NonPrintingStyle;
+        use birchpad_view::NonPrintingLabel;
+        match self.non_printing_style {
+            _ if !self.show_non_printing => NonPrintingLabel::Off,
+            NonPrintingStyle::Marks => NonPrintingLabel::Off,
+            NonPrintingStyle::Abbreviation => NonPrintingLabel::Abbreviation,
+            NonPrintingStyle::CodePoint => NonPrintingLabel::CodePoint,
+        }
     }
 
     /// The settings for `buffer`'s document.
@@ -714,6 +729,7 @@ impl EditorView {
             &text,
             LayoutConfig {
                 tab_width: settings.tab_width,
+                labels: settings.labels(),
                 ..LayoutConfig::default()
             },
         );
@@ -1089,8 +1105,8 @@ impl EditorView {
                     birchpad_core::motion::GoToTarget::Line(line),
                 );
                 let line_range = line_range(&text, line_of(&text, start));
-                let tab_width = self.display.config().tab_width;
-                birchpad_view::pos_at_column(&text, line_range, 0, column - 1, tab_width).0
+                let grid = self.display.config().grid();
+                birchpad_view::pos_at_column(&text, line_range, 0, column - 1, grid).0
             }
         };
         self.go_to(pos, cx);

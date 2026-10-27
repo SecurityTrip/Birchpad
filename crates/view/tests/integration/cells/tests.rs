@@ -144,3 +144,152 @@ fn non_printing_characters_are_odd_spaces_or_marks() {
         assert_eq!(non_printing(ch), None, "{ch:?}");
     }
 }
+
+fn labeled(labels: NonPrintingLabel) -> Grid {
+    Grid {
+        tab_width: 4,
+        labels,
+    }
+}
+
+#[test]
+fn non_printing_labels_by_abbreviation_or_code_point() {
+    use NonPrintingLabel::*;
+    assert_eq!(
+        non_printing_label('\u{A0}', Abbreviation).as_deref(),
+        Some("NBSP")
+    );
+    assert_eq!(
+        non_printing_label('\u{A0}', CodePoint).as_deref(),
+        Some("U+00A0")
+    );
+    assert_eq!(
+        non_printing_label('\u{200B}', Abbreviation).as_deref(),
+        Some("ZWSP")
+    );
+    // Without an abbreviation, the code point.
+    assert_eq!(
+        non_printing_label('\u{2061}', Abbreviation).as_deref(),
+        Some("U+2061")
+    );
+    assert_eq!(
+        non_printing_label('\u{1680}', Abbreviation).as_deref(),
+        Some("U+1680")
+    );
+}
+
+#[test]
+fn non_printing_labels_off_or_for_other_characters_are_none() {
+    use NonPrintingLabel::*;
+    assert_eq!(non_printing_label('\u{A0}', Off), None);
+    for ch in ['a', ' ', '\t', '\0', '\u{2028}', '日'] {
+        assert_eq!(non_printing_label(ch, Abbreviation), None, "{ch:?}");
+        assert_eq!(non_printing_label(ch, CodePoint), None, "{ch:?}");
+    }
+    assert_eq!(abbreviation('a'), None);
+}
+
+#[test]
+fn non_printing_labels_at_the_ends_of_their_ranges() {
+    use NonPrintingLabel::*;
+    for (ch, short) in [
+        ('\u{2000}', "NQSP"),
+        ('\u{200A}', "HSP"),
+        ('\u{202F}', "NNBSP"),
+        ('\u{3000}', "IDSP"),
+        ('\u{FEFF}', "BOM"),
+    ] {
+        assert_eq!(non_printing_label(ch, Abbreviation).as_deref(), Some(short));
+    }
+    assert_eq!(
+        non_printing_label('\u{2064}', Abbreviation).as_deref(),
+        Some("U+2064")
+    );
+    assert_eq!(
+        non_printing_label('\u{FEFF}', CodePoint).as_deref(),
+        Some("U+FEFF")
+    );
+    // Just past the ranges.
+    for ch in ['\u{9F}', '\u{1FFF}', '\u{2065}', '\u{3001}', '\u{FF00}'] {
+        assert_eq!(non_printing_label(ch, CodePoint), None, "{ch:?}");
+    }
+}
+
+#[test]
+fn labeled_characters_take_the_cells_of_their_label() {
+    use NonPrintingLabel::*;
+    for ch in ['\u{A0}', '\u{200B}', '\u{FEFF}'] {
+        let label = non_printing_label(ch, Abbreviation).expect("labeled");
+        assert_eq!(
+            cells_at(ch, 0, labeled(Abbreviation)),
+            label.len(),
+            "{ch:?}"
+        );
+        assert_eq!(cells_at(ch, 3, labeled(CodePoint)), 6, "{ch:?}");
+    }
+    // Others keep their width, tabs their stops.
+    assert_eq!(cells_at('a', 0, labeled(CodePoint)), 1);
+    assert_eq!(cells_at('日', 0, labeled(CodePoint)), 2);
+    assert_eq!(cells_at('\t', 1, labeled(CodePoint)), 3);
+    // Without labels, as before: a framed space one cell, a mark none.
+    assert_eq!(cells_at('\u{A0}', 0, 4), 1);
+    assert_eq!(cells_at('\u{200B}', 0, labeled(Off)), 0);
+    assert!(labeled(Off).cells_within_bytes());
+    assert!(!labeled(Abbreviation).cells_within_bytes());
+}
+
+#[test]
+fn display_text_draws_labels_and_maps_through_them() {
+    let text = Rope::from_str("a\u{A0}b");
+    let display = DisplayText::new(
+        &text,
+        0..text.len(),
+        0,
+        labeled(NonPrintingLabel::Abbreviation),
+    );
+    assert_eq!(display.text, "aNBSPb");
+    assert_eq!(display.to_display(1), 1);
+    assert_eq!(display.to_display(3), 5, "b after the label");
+    assert_eq!(display.to_doc(2), 1, "the label's left half");
+    assert_eq!(display.to_doc(4), 3, "its right half");
+    assert_eq!(display.to_doc(6), 4);
+    let chars: Vec<_> = display.chars(&text).collect();
+    assert_eq!(chars[1], (1, '\u{A0}', 1..5));
+    // Without labels the character stays.
+    let plain = DisplayText::new(&text, 0..text.len(), 0, 4);
+    assert_eq!(plain.text, text.to_string());
+}
+
+#[test]
+fn a_label_as_long_as_its_character_still_maps_to_its_ends() {
+    // ZWJ is three bytes in UTF-8, and so is "ZWJ": an offset inside the label is still not
+    // one of the document's.
+    let text = Rope::from_str("a\u{200D}b");
+    let display = DisplayText::new(
+        &text,
+        0..text.len(),
+        0,
+        labeled(NonPrintingLabel::Abbreviation),
+    );
+    assert_eq!(display.text, "aZWJb");
+    assert_eq!(display.to_doc(2), 1);
+    assert_eq!(display.to_doc(3), 4);
+    assert_eq!(display.to_display(4), 4);
+}
+
+#[test]
+fn columns_count_labels() {
+    let text = Rope::from_str("a\u{A0}b\u{200B}c");
+    let grid = labeled(NonPrintingLabel::CodePoint);
+    assert_eq!(
+        column_after(&text, 0, 0, text.len(), grid),
+        1 + 6 + 1 + 6 + 1
+    );
+    assert_eq!(column_after(&text, 0, 0, text.len(), 4), 1 + 1 + 1 + 0 + 1);
+    // A column inside the label rounds to its nearer end.
+    assert_eq!(pos_at_column(&text, 0..text.len(), 0, 3, grid), (1, 1));
+    assert_eq!(pos_at_column(&text, 0..text.len(), 0, 5, grid), (3, 7));
+    // Empty text.
+    let empty = Rope::from_str("");
+    assert_eq!(column_after(&empty, 0, 0, 0, grid), 0);
+}

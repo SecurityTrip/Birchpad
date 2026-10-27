@@ -336,6 +336,9 @@ pub struct AppearanceSettings {
     pub interface: InterfaceMode,
     /// A hint of color in the dark interface (Dark Mode's tones).
     pub dark_tone: DarkTone,
+    /// Dark Mode's customized tone: colors of the dark interface, over its own while the tone
+    /// is `custom`.
+    pub dark_tone_colors: DarkToneColors,
     /// The menu bar shows; hidden, Alt or F10 shows it while a menu is open ("Hide menu bar").
     pub menu_bar: bool,
     /// The status bar shows ("Status Bar > Hide" off).
@@ -354,13 +357,15 @@ pub enum DarkTone {
     Purple,
     Cyan,
     Olive,
+    /// The colors of [`DarkToneColors`] ("Customized tone").
+    Custom,
 }
 
 impl DarkTone {
-    /// The hue of the tone, in degrees; none for black.
+    /// The hue of the tone, in degrees; none for black and the customized tone.
     pub fn hue(self) -> Option<f32> {
         match self {
-            Self::Black => None,
+            Self::Black | Self::Custom => None,
             Self::Red => Some(0.),
             Self::Olive => Some(60.),
             Self::Green => Some(120.),
@@ -368,6 +373,73 @@ impl DarkTone {
             Self::Blue => Some(220.),
             Self::Purple => Some(280.),
         }
+    }
+}
+
+/// The colors of Dark Mode's customized tone, each `#rrggbb`, or empty for the dark interface's
+/// own: its parts as theme files name them.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, rename_all = "kebab-case")]
+pub struct DarkToneColors {
+    /// Panels, lists and tabs.
+    #[serde(deserialize_with = "hex_color")]
+    pub background: String,
+    /// Bars and headings.
+    #[serde(deserialize_with = "hex_color")]
+    pub surface: String,
+    #[serde(deserialize_with = "hex_color")]
+    pub border: String,
+    #[serde(deserialize_with = "hex_color")]
+    pub text: String,
+    /// Secondary text.
+    #[serde(deserialize_with = "hex_color")]
+    pub muted: String,
+    /// Disabled text.
+    #[serde(deserialize_with = "hex_color")]
+    pub faint: String,
+    /// The selected row of a list.
+    #[serde(deserialize_with = "hex_color")]
+    pub selected: String,
+    #[serde(deserialize_with = "hex_color")]
+    pub hovered: String,
+    /// The active view.
+    #[serde(deserialize_with = "hex_color")]
+    pub accent: String,
+    #[serde(deserialize_with = "hex_color")]
+    pub error: String,
+}
+
+impl DarkToneColors {
+    /// The colors set, by their keys (`background`).
+    pub fn set(&self) -> impl Iterator<Item = (&'static str, &str)> {
+        [
+            ("background", &self.background),
+            ("surface", &self.surface),
+            ("border", &self.border),
+            ("text", &self.text),
+            ("muted", &self.muted),
+            ("faint", &self.faint),
+            ("selected", &self.selected),
+            ("hovered", &self.hovered),
+            ("accent", &self.accent),
+            ("error", &self.error),
+        ]
+        .into_iter()
+        .filter(|(_, color)| !color.is_empty())
+        .map(|(key, color)| (key, color.as_str()))
+    }
+}
+
+/// A color written `#rrggbb`, or empty.
+fn hex_color<'de, D: serde::Deserializer<'de>>(deserializer: D) -> Result<String, D::Error> {
+    let text = String::deserialize(deserializer)?;
+    let digits = text.strip_prefix('#').unwrap_or_default();
+    if text.is_empty() || (digits.len() == 6 && digits.bytes().all(|b| b.is_ascii_hexdigit())) {
+        Ok(text)
+    } else {
+        Err(serde::de::Error::custom(format!(
+            "{text:?} is not a color written #rrggbb"
+        )))
     }
 }
 
@@ -393,6 +465,7 @@ impl Default for AppearanceSettings {
             title_file_name_only: false,
             interface: InterfaceMode::default(),
             dark_tone: DarkTone::default(),
+            dark_tone_colors: DarkToneColors::default(),
             menu_bar: true,
             status_bar: true,
         }
@@ -424,6 +497,8 @@ pub struct EditorSettings {
     pub show_non_printing: bool,
     /// Control characters and Unicode's other line breaks as pictures (␀, ␤); off, as spaces.
     pub show_control_chars: bool,
+    /// How Show Non-Printing Characters draws them ("Non-Printing Characters").
+    pub non_printing_style: NonPrintingStyle,
     /// How the line of the caret stands out.
     pub current_line: CurrentLine,
     /// Width of the frame around the current line in pixels (1 to 6), as in Notepad++.
@@ -467,6 +542,9 @@ pub struct EditorSettings {
     pub column_to_multi_editing: bool,
     /// How line endings show with View > Show Symbol ("EOL (CRLF) rendering").
     pub eol_style: EolStyle,
+    /// Text drawn with subpixel smoothing where the platform has it ("Enable smooth font");
+    /// off, as the platform smooths text by default.
+    pub smooth_font: bool,
     /// Keys that would type a control character (Ctrl+E) type nothing ("Prevent control
     /// character (C0 code) typing into document").
     pub prevent_control_typing: bool,
@@ -545,6 +623,19 @@ pub enum WrapIndent {
     Aligned,
     /// One indentation step further in than the line.
     Indent,
+}
+
+/// How Show Non-Printing Characters draws the characters it shows.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum NonPrintingStyle {
+    /// In their own cells: spaces framed, characters without width marked by a line.
+    #[default]
+    Marks,
+    /// Their abbreviation in a box (NBSP, ZWSP), or their code point when they have none.
+    Abbreviation,
+    /// Their code point in a box (U+00A0).
+    CodePoint,
 }
 
 /// How line endings show.
@@ -631,6 +722,7 @@ impl Default for EditorSettings {
             wrap_symbol: false,
             show_non_printing: false,
             show_control_chars: true,
+            non_printing_style: NonPrintingStyle::default(),
             current_line: CurrentLine::default(),
             current_line_frame_width: 1,
             edge: Edge::default(),
@@ -649,6 +741,7 @@ impl Default for EditorSettings {
             multi_editing: true,
             column_to_multi_editing: false,
             eol_style: EolStyle::default(),
+            smooth_font: false,
             prevent_control_typing: true,
             backspace_unindents: false,
             fold_style: FoldStyle::default(),

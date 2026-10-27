@@ -6,6 +6,19 @@ version's release notes from its section here.
 
 ## [Unreleased]
 
+### Added
+
+- Preferences > Editing > Non-printing characters: with View > Show Symbol > Show Non-Printing
+  Characters on, each such character can show as its abbreviation (NBSP, ZWSP) or its code
+  point (U+00A0) in a frame, taking the label's columns; framed and marked in its own cells,
+  as before, by default.
+- Preferences > Appearance > Dark Mode tone: Customized, with the dark interface's background,
+  bars, borders, text, secondary and faint text, selected and hovered rows, accent and error
+  colors each set in `#rrggbb` (`appearance.dark-tone-colors`); those left empty stay as they
+  are.
+- Preferences > Editing > Enable smooth font: text drawn with subpixel smoothing where the
+  platform has it (Windows, Linux); off, as the platform smooths text by default.
+
 ## [0.7.0] - 2026-10-26
 
 ### Added

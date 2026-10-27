@@ -430,3 +430,50 @@ fn padding_follows_lines_through_edits() {
     map.edit(&longer, &typed);
     assert_eq!(map.padding(), [(0, 1), (2, 1)]);
 }
+
+#[test]
+fn labels_change_columns_and_rows() {
+    let text = Rope::from_str("a\u{A0}b\nc");
+    let labeled = LayoutConfig {
+        labels: NonPrintingLabel::Abbreviation,
+        ..LayoutConfig::default()
+    };
+    let mut map = DisplayMap::new(&text, labeled);
+    assert_eq!(map.column(&text, 3), 5, "b after NBSP");
+    assert_eq!(
+        map.pos_at_line_column(&text, 0, 2),
+        (1, 0),
+        "inside the label"
+    );
+    assert_eq!(map.pos_at_line_column(&text, 0, 4), (3, 0));
+    // Turned off, the columns are the characters' own again.
+    map.set_config(&text, LayoutConfig::default());
+    assert_eq!(map.column(&text, 3), 2);
+    // Wrapped at 5 cells, the labeled line takes two rows.
+    let mut wrapped_map = DisplayMap::new(
+        &text,
+        LayoutConfig {
+            wrap_width: Some(5),
+            ..labeled
+        },
+    );
+    assert_eq!(wrapped_map.row_count(&text), 3);
+}
+
+#[test]
+fn labels_in_long_lines_through_edits() {
+    // A long line's column index counts labels, and keeps counting them through an edit.
+    let mut text = Rope::from_str(&"x\u{200B}".repeat(10));
+    let config = LayoutConfig {
+        labels: NonPrintingLabel::Abbreviation,
+        ..LayoutConfig::default()
+    };
+    let mut map = map_of(&text, config);
+    let end = text.len();
+    assert_eq!(map.column(&text, end), 10 * 5);
+    let changes = ChangeSet::from_edits(&text, [Edit::insert(0, "\u{200B}")]).unwrap();
+    changes.apply(&mut text);
+    map.edit(&text, &changes);
+    assert_eq!(map.column(&text, text.len()), 11 * 5 - 1);
+    check_kept(&mut map, &text).unwrap();
+}

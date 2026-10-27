@@ -4,7 +4,7 @@ use std::ops::Range;
 
 use birchpad_core::{Rope, RopeSlice};
 
-use crate::cells::cells_at;
+use crate::cells::{Grid, cells_at};
 
 /// Where the rows after the first of a wrapped line start.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
@@ -42,7 +42,7 @@ struct Wrapper {
     width: usize,
     /// Cells the rows after the first lose to their indentation.
     indent: usize,
-    tab_width: usize,
+    grid: Grid,
     row_start: usize,
     row_start_column: usize,
     column: usize,
@@ -54,11 +54,11 @@ struct Wrapper {
 impl Wrapper {
     /// Starts wrapping at a row start: `start`, at `column` from the line start. Starting again
     /// at any row start a line wrapped into gives the same rows after it.
-    fn new(start: usize, column: usize, width: usize, tab_width: usize, indent: usize) -> Self {
+    fn new(start: usize, column: usize, width: usize, grid: Grid, indent: usize) -> Self {
         Self {
             width: width.max(1),
             indent,
-            tab_width,
+            grid,
             row_start: start,
             row_start_column: column,
             column,
@@ -70,7 +70,7 @@ impl Wrapper {
     /// Takes one character; returns the start of a new row if one begins before it.
     #[inline]
     fn push(&mut self, ch: char) -> Option<(usize, usize)> {
-        let cells = cells_at(ch, self.column, self.tab_width);
+        let cells = cells_at(ch, self.column, self.grid);
         let wide = cells >= 2 && ch != '\t';
         if wide && self.pos > self.row_start {
             self.opportunity = Some((self.pos, self.column));
@@ -106,11 +106,11 @@ impl Wrapper {
 }
 
 /// Rows of a line given as a slice (without its line break): counts without allocating.
-pub(crate) fn count_rows(line: RopeSlice, width: usize, tab_width: usize, indent: usize) -> usize {
-    if line.len() <= width && !line.bytes().any(|b| b == b'\t') {
+pub(crate) fn count_rows(line: RopeSlice, width: usize, grid: Grid, indent: usize) -> usize {
+    if grid.cells_within_bytes() && line.len() <= width && !line.bytes().any(|b| b == b'\t') {
         return 1;
     }
-    let mut wrapper = Wrapper::new(0, 0, width, tab_width, indent);
+    let mut wrapper = Wrapper::new(0, 0, width, grid, indent);
     1 + line
         .chars()
         .filter(|&ch| wrapper.push(ch).is_some())
@@ -127,9 +127,9 @@ pub fn wrap_line(
     text: &Rope,
     range: Range<usize>,
     width: usize,
-    tab_width: usize,
+    grid: impl Into<Grid>,
 ) -> Vec<(usize, usize)> {
-    let mut wrapper = Wrapper::new(range.start, 0, width, tab_width, 0);
+    let mut wrapper = Wrapper::new(range.start, 0, width, grid.into(), 0);
     let mut rows = vec![(range.start, 0)];
     rows.extend(text.slice(range).chars().filter_map(|ch| wrapper.push(ch)));
     rows
@@ -140,11 +140,11 @@ pub(crate) fn line_rows(
     text: &Rope,
     line: Range<usize>,
     width: usize,
-    tab_width: usize,
+    grid: Grid,
     indent: usize,
 ) -> Vec<(usize, usize)> {
     let mut rows = vec![(0, 0)];
-    rows.extend(rows_after(text, line, (0, 0), width, tab_width, indent));
+    rows.extend(rows_after(text, line, (0, 0), width, grid, indent));
     rows
 }
 
@@ -154,10 +154,10 @@ fn rows_after(
     line: Range<usize>,
     (offset, column): (usize, usize),
     width: usize,
-    tab_width: usize,
+    grid: Grid,
     indent: usize,
 ) -> impl Iterator<Item = (usize, usize)> {
-    let mut wrapper = Wrapper::new(line.start + offset, column, width, tab_width, indent);
+    let mut wrapper = Wrapper::new(line.start + offset, column, width, grid, indent);
     text.slice(line.start + offset..line.end)
         .chars()
         .filter_map(move |ch| wrapper.push(ch))
@@ -180,10 +180,10 @@ pub(crate) fn rewrap(
     old: Range<usize>,
     new_end: usize,
     width: usize,
-    tab_width: usize,
+    grid: Grid,
 ) -> Vec<(usize, usize)> {
     let delta = new_end as isize - old.end as isize;
-    let stop = tab_width.max(1) as isize;
+    let stop = grid.tab_width.max(1) as isize;
     let moved = |(offset, column): (usize, usize), columns: isize| {
         (
             offset.strict_add_signed(delta),
@@ -198,7 +198,7 @@ pub(crate) fn rewrap(
     // Rows starting before this may still change.
     let mut settled = new_end;
     'wrapping: loop {
-        for (offset, column) in rows_after(text, line.clone(), from, width, tab_width, 0) {
+        for (offset, column) in rows_after(text, line.clone(), from, width, grid, 0) {
             wrapped.push((offset, column));
             if offset < settled {
                 continue;
@@ -250,8 +250,8 @@ pub(crate) fn next_tab(text: &Rope, range: Range<usize>) -> Option<usize> {
 
 /// Number of rows `range` wraps into; fast for lines that obviously fit.
 ///
-/// Characters never take more cells than bytes (wide ones are 3-4 bytes in UTF-8), so a line
-/// without tabs and no longer than the width in bytes fits in one row.
-pub fn row_count(text: &Rope, range: Range<usize>, width: usize, tab_width: usize) -> usize {
-    count_rows(text.slice(range), width, tab_width, 0)
+/// Without labels characters never take more cells than bytes (wide ones are 3-4 bytes in
+/// UTF-8), so a line without tabs and no longer than the width in bytes fits in one row.
+pub fn row_count(text: &Rope, range: Range<usize>, width: usize, grid: impl Into<Grid>) -> usize {
+    count_rows(text.slice(range), width, grid.into(), 0)
 }

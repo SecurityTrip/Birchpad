@@ -1,7 +1,9 @@
 //! Preferences > Editing and Margins left from Notepad++ 8 (roadmap 7.4b).
 
 use birchpad_commands::Invocation;
-use birchpad_config::{CaretWidth, EditorSettings, EolStyle, FoldStyle, WrapIndent};
+use birchpad_config::{
+    CaretWidth, EditorSettings, EolStyle, FoldStyle, NonPrintingStyle, WrapIndent,
+};
 use birchpad_core::{Range, Selection};
 use birchpad_editor::*;
 use birchpad_ui::AppState;
@@ -360,4 +362,60 @@ fn wrapped_rows_start_under_the_indentation(cx: &mut TestAppContext) {
     let (first, second) = xs(cx);
     let cell = view.read_with(cx, |view, _| view.layout.as_ref().unwrap().metrics.cell);
     assert_eq!(second, first + cell * 8.);
+}
+
+#[gpui_kit::test]
+fn non_printing_characters_show_by_label_when_asked_to(cx: &mut TestAppContext) {
+    let (workspace, cx) = open_workspace(cx);
+    cx.simulate_input("a\u{A0}b\u{200B}c");
+    let view = view(&workspace, cx);
+    let shown = |cx: &mut VisualTestContext| {
+        view.read_with(cx, |view, _| {
+            let layout = view.layout.as_ref().unwrap();
+            (
+                layout.rows[0].display.text.clone(),
+                layout.symbols.odd_spaces.len(),
+                layout.symbols.zero_widths.len(),
+            )
+        })
+    };
+    let end_column = |cx: &mut VisualTestContext| {
+        view.update(cx, |view, cx| {
+            let text = view.buffer.read(cx).doc().text().clone();
+            view.display.column(&text, text.len())
+        })
+    };
+    // A label alone does nothing while the characters are not shown.
+    set(cx, |editor| {
+        editor.non_printing_style = NonPrintingStyle::Abbreviation
+    });
+    redraw(&view, cx);
+    assert_eq!(shown(cx), ("a\u{A0}b\u{200B}c".to_owned(), 0, 0));
+    assert_eq!(end_column(cx), 4);
+    // Shown: framed and marked by default, in their own cells.
+    set(cx, |editor| {
+        editor.non_printing_style = NonPrintingStyle::Marks
+    });
+    run(&workspace, "view.show-non-printing", cx);
+    assert_eq!(shown(cx), ("a\u{A0}b\u{200B}c".to_owned(), 1, 1));
+    // By abbreviation, each in a frame of its own, the label's cells taken.
+    set(cx, |editor| {
+        editor.non_printing_style = NonPrintingStyle::Abbreviation
+    });
+    redraw(&view, cx);
+    assert_eq!(shown(cx), ("aNBSPbZWSPc".to_owned(), 2, 0));
+    assert_eq!(end_column(cx), 11);
+    // By code point.
+    set(cx, |editor| {
+        editor.non_printing_style = NonPrintingStyle::CodePoint
+    });
+    redraw(&view, cx);
+    assert_eq!(shown(cx).0, "aU+00A0bU+200Bc");
+    assert_eq!(end_column(cx), 15);
+    // The caret steps over a label as over one character.
+    view.update(cx, |view, cx| view.select_range(1..1, cx));
+    cx.simulate_keystrokes("right");
+    assert_eq!(selection(&view, cx).primary().head, 3);
+    // The text is unchanged.
+    assert_eq!(active_text(&workspace, cx), "a\u{A0}b\u{200B}c");
 }

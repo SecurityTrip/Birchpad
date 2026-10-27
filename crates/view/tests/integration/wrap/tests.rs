@@ -84,6 +84,7 @@ fn indented_rows(text: &str, width: usize, mode: WrapIndent) -> Vec<String> {
             tab_width: 4,
             wrap_width: Some(width),
             wrap_indent: mode,
+            ..LayoutConfig::default()
         },
     );
     (0..map.row_count(&rope))
@@ -115,4 +116,24 @@ fn indented_rows_after_the_first_hold_less() {
         indented_rows("aaa bbb ccc ddd", 8, WrapIndent::Aligned),
         indented_rows("aaa bbb ccc ddd", 8, WrapIndent::None)
     );
+}
+
+#[test]
+fn labels_wrap_a_line_short_in_bytes() {
+    // Three no-break spaces are six bytes, three cells, or twelve by label.
+    let rope = Rope::from_str("\u{A0}\u{A0}\u{A0}");
+    let labels = Grid {
+        tab_width: 4,
+        labels: NonPrintingLabel::Abbreviation,
+    };
+    assert_eq!(row_count(&rope, 0..rope.len(), 8, 4), 1);
+    assert_eq!(row_count(&rope, 0..rope.len(), 8, labels), 2);
+    assert_eq!(
+        wrap_line(&rope, 0..rope.len(), 8, labels),
+        vec![(0, 0), (4, 8)]
+    );
+    // Exactly as wide as the labels: one row.
+    assert_eq!(row_count(&rope, 0..rope.len(), 12, labels), 1);
+    // A label wider than the width still makes a row of its own.
+    assert_eq!(row_count(&rope, 0..rope.len(), 1, labels), 3);
 }
