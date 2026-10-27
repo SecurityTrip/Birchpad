@@ -1148,6 +1148,8 @@ impl Workspace {
         let zoom_sync = !AppState::global(cx).state.zoom_per_view;
         let close_tags = AppState::global(cx).settings.completion.close_tags;
         let hex_shown = self.active_hex_editor(cx).is_some();
+        let white_diagrams =
+            crate::preview::background(cx) == birchpad_config::DiagramBackground::White;
         let checked = |invocation: &Invocation| {
             if let Some(on) = crate::pane::is_checked(invocation, tab_marks) {
                 return on;
@@ -1166,6 +1168,9 @@ impl Workspace {
             }
             if invocation.command == "view.zoom-sync" {
                 return zoom_sync;
+            }
+            if invocation.command == "preview.white-background" {
+                return white_diagrams;
             }
             if let Some((_, read, _)) = crate::editor::VIEW_SWITCHES
                 .iter()

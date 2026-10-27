@@ -789,7 +789,7 @@ written down why not.
 
 ### Release 0.7.2: PlantUML again
 
-- [ ] 7.4g PlantUML redone: the preview of a PlantUML document worked out anew (rendering,
+- [x] 7.4g PlantUML redone: the preview of a PlantUML document worked out anew (rendering,
       updates while typing, errors), with what its users asked for:
       [#50](https://github.com/SecurityTrip/Birchpad/issues/50) relative paths (`!include` and
       the like) from the document's folder;
@@ -797,8 +797,16 @@ written down why not.
       [#52](https://github.com/SecurityTrip/Birchpad/issues/52) zooming and scrolling the
       diagram; [#53](https://github.com/SecurityTrip/Birchpad/issues/53) a default background
       for diagrams; an ADR for the new design, over
-      [ADR 0045](adr/0045-plantuml-installed-on-request.md)
-- [ ] Release 0.7.2: the workspace version (0.7.2, set when its branch opens, so that nightly
+      [ADR 0045](adr/0045-plantuml-installed-on-request.md). Built from the issues and
+      PlantUML's command line as its users run it
+      ([ADR 0057](adr/0057-plantuml-preview-redone.md)): PlantUML runs in the document's
+      folder; a run the text moved past is stopped; mistakes are listed by the document's line,
+      as links to it; diagrams on white by default (`preview.plantuml-background`), switched
+      from the bar above them; Zoom In, Zoom Out, Actual Size and Fit there and with Ctrl and
+      the mouse wheel, from 25% to 400%, drawn sharp; Copy Diagram and Export Diagram as PNG or
+      SVG from a diagram's context menu, the PNG drawn by Birchpad from PlantUML's SVG at
+      `preview.plantuml-png-scale`
+- [x] Release 0.7.2: the workspace version (0.7.2, set when its branch opens, so that nightly
       builds are its pre-releases), `CHANGELOG.md` and this roadmap updated; the
       [release checklist](release-checklist.md) gone through
 

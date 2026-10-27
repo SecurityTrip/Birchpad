@@ -143,6 +143,9 @@ mod preferences;
 #[path = "preview/tests.rs"]
 mod preview;
 
+#[path = "preview/diagrams_tests.rs"]
+mod preview_diagrams;
+
 #[path = "print/tests.rs"]
 mod print;
 

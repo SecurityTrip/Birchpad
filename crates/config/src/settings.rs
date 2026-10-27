@@ -1545,14 +1545,32 @@ pub struct PreviewSettings {
     /// default, the PlantUML Birchpad installed (View > Preview > Install PlantUML) runs when
     /// there is one.
     pub plantuml: String,
+    /// What PlantUML diagrams are drawn on in the preview: white, as PlantUML draws them for
+    /// paper (the default), or the theme's background.
+    pub plantuml_background: DiagramBackground,
+    /// How many times its size a diagram copied or exported as PNG is drawn, from 1 to 8.
+    pub plantuml_png_scale: u32,
 }
 
 impl Default for PreviewSettings {
     fn default() -> Self {
         Self {
             plantuml: "plantuml".to_owned(),
+            plantuml_background: DiagramBackground::default(),
+            plantuml_png_scale: 2,
         }
     }
+}
+
+/// What the preview draws PlantUML diagrams on.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum DiagramBackground {
+    /// White, whatever the theme: diagrams are made for paper.
+    #[default]
+    White,
+    /// The theme's background, as the text around it.
+    Theme,
 }
 
 /// File > Print... and Print Now: the page and what is on it (Notepad++'s Preferences > Print,

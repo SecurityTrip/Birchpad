@@ -1,6 +1,7 @@
 # ADR 0042: Previews beside the text
 
-- Status: accepted, changed by [ADR 0045](0045-plantuml-installed-on-request.md)
+- Status: accepted, changed by [ADR 0045](0045-plantuml-installed-on-request.md) and
+  [ADR 0057](0057-plantuml-preview-redone.md)
 - Date: 2026-10-19
 
 ## Context

@@ -11,22 +11,23 @@
 //! are drawn by PlantUML itself: the one `preview.plantuml` names, or the one Birchpad installs
 //! when the user asks (`plantuml.rs`).
 
-use std::io::Write as _;
+mod diagrams;
+
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
 use std::sync::Arc;
-use std::time::Duration;
 
 use anyhow::bail;
-use birchpad_config::PreviewMode;
+use birchpad_commands::Invocation;
+use birchpad_config::{DiagramBackground, PreviewMode};
 use birchpad_core::RevisionId;
 use gpui_kit::base::text::{TextView, TextViewState};
 use gpui_kit::component::button::{Button, ButtonVariants as _};
+use gpui_kit::component::menu::{ContextMenuExt as _, PopupMenu, PopupMenuItem};
 use gpui_kit::component::{IconName, Selectable as _, Sizable};
 use gpui_kit::{
-    AnyElement, App, AppContext as _, Context, Entity, Image, ImageFormat, ImageSource, ObjectFit,
-    Resource, SharedString, SharedUri, Subscription, Task, WeakEntity, Window, div, img,
-    prelude::*, px,
+    AnyElement, App, AppContext as _, ClickEvent, Context, Entity, Image, ImageFormat, ImageSource,
+    ObjectFit, Resource, ScrollWheelEvent, SharedString, SharedUri, Subscription, Task, WeakEntity,
+    Window, div, img, prelude::*, px,
 };
 
 use crate::app_state::AppState;
@@ -35,6 +36,13 @@ use crate::commands::{CommandRegistry, Register as _};
 use crate::editor::EditorView;
 use crate::theme::{paint, ui};
 use crate::workspace::Workspace;
+
+pub use diagrams::{
+    DIAGRAM_END, Drawn, MAX_PNG_SIDE, MAX_ZOOMED_PIXELS, Mistake, NotDrawn, PLANTUML_DELAY, Stop,
+    StopOnDrop, ZOOM_COMMANDS, ZOOM_STEPS, Zoom, ZoomChange, active_diagrams, background,
+    diagram_starts, export_name, line_offset, mistakes, plantuml_command, raster_factor,
+    run_plantuml, setting_path, sized_svg, split_diagrams, svg_size, svg_to_pixels, svg_to_png,
+};
 
 /// What a document's preview shows.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -65,6 +73,9 @@ pub fn kind_for(language: Option<&str>, path: Option<&Path>) -> Option<PreviewKi
         .then_some(PreviewKind::PlantUml)
 }
 
+/// How far Ctrl with the mouse wheel scrolls for a step of zoom, in pixels: a notch of a wheel.
+const WHEEL_STEP: f32 = 40.;
+
 /// The commands of View > Preview and the mode each one shows.
 pub const COMMANDS: [(&str, PreviewMode); 3] = [
     ("view.preview-editor", PreviewMode::Editor),
@@ -73,6 +84,7 @@ pub const COMMANDS: [(&str, PreviewMode); 3] = [
 ];
 
 pub fn register_commands(registry: &mut CommandRegistry) {
+    diagrams::register_commands(registry);
     for (id, mode) in COMMANDS {
         registry.workspace(id, move |this, (), _, cx| {
             let pane = this.active_pane().clone();
@@ -195,134 +207,71 @@ fn image_source(uri: &SharedUri, folder: Option<&Path>) -> ImageSource {
     }
 }
 
-/// What PlantUML writes after each diagram, to tell the diagrams of a file apart.
-pub const DIAGRAM_END: &str = "<!--birchpad-diagram-end-->";
-
-/// How long the text rests before PlantUML draws it again: it starts a Java program each time.
-pub const PLANTUML_DELAY: Duration = Duration::from_millis(400);
-
-/// The program and arguments that draw PlantUML's diagrams as SVG from the standard input, for
-/// the `preview.plantuml` setting: a `.jar` runs with `java -jar`. With the setting as it comes
-/// (`plantuml`) and PlantUML installed by Birchpad in `installed`, that one runs, with its own
-/// Java and the layout that needs no Graphviz.
-pub fn plantuml_command(setting: &str, installed: Option<&Path>) -> (String, Vec<String>) {
-    let setting = match setting.trim() {
-        "" => "plantuml",
-        setting => setting,
-    };
-    let options = [
-        "-tsvg",
-        "-pipe",
-        "-charset",
-        "UTF-8",
-        "-pipedelimitor",
-        DIAGRAM_END,
-    ]
-    .map(str::to_owned);
-    if let Some(folder) = installed.filter(|_| setting == "plantuml") {
-        let java =
-            folder
-                .join("jre")
-                .join("bin")
-                .join(if cfg!(windows) { "java.exe" } else { "java" });
-        let mut args = vec![
-            "-Djava.awt.headless=true".to_owned(),
-            "-jar".to_owned(),
-            folder.join("plantuml.jar").display().to_string(),
-        ];
-        args.extend(options);
-        args.push("-Playout=smetana".to_owned());
-        return (java.display().to_string(), args);
-    }
-    let is_jar = Path::new(setting)
-        .extension()
-        .is_some_and(|extension| extension.eq_ignore_ascii_case("jar"));
-    if is_jar {
-        let mut args = vec!["-jar".to_owned(), setting.to_owned()];
-        args.extend(options);
-        ("java".to_owned(), args)
-    } else {
-        (setting.to_owned(), options.to_vec())
-    }
-}
-
-/// The SVG images in PlantUML's output, one per diagram.
-pub fn split_diagrams(output: &[u8]) -> Vec<Vec<u8>> {
-    String::from_utf8_lossy(output)
-        .split(DIAGRAM_END)
-        .map(str::trim)
-        .filter(|part| part.contains("<svg"))
-        .map(|part| part.as_bytes().to_vec())
-        .collect()
-}
-
-/// Why PlantUML drew nothing.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum NotDrawn {
-    /// There is no PlantUML to run: Birchpad can install it.
-    Missing(String),
-    Failed(String),
-}
-
-/// Runs PlantUML on `text`: the diagrams, or why there are none.
-fn run_plantuml(
-    setting: &str,
-    installed: Option<&Path>,
-    text: &str,
-) -> Result<Vec<Vec<u8>>, NotDrawn> {
-    let (program, args) = plantuml_command(setting, installed);
-    let mut command = Command::new(&program);
-    command
-        .args(&args)
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped());
-    #[cfg(windows)]
-    {
-        use std::os::windows::process::CommandExt as _;
-        // CREATE_NO_WINDOW: no console flashes up for Java.
-        command.creation_flags(0x0800_0000);
-    }
-    let mut child = command.spawn().map_err(|error| {
-        if error.kind() == std::io::ErrorKind::NotFound {
-            NotDrawn::Missing(t!("preview.plantuml-not-found", program = program))
-        } else {
-            NotDrawn::Failed(t!("preview.plantuml-failed", error = error))
-        }
-    })?;
-    let mut stdin = child.stdin.take().expect("piped");
-    let input = text.to_owned();
-    // Written from another thread, so that a large diagram cannot block on a full pipe.
-    let writer = std::thread::spawn(move || stdin.write_all(input.as_bytes()));
-    let output = child
-        .wait_with_output()
-        .map_err(|error| NotDrawn::Failed(t!("preview.plantuml-failed", error = error)))?;
-    let _ = writer.join();
-    // A diagram with mistakes is drawn as a picture of them, with a status that is not 0.
-    let diagrams = split_diagrams(&output.stdout);
-    if diagrams.is_empty() {
-        let message = String::from_utf8_lossy(&output.stderr).trim().to_owned();
-        return Err(NotDrawn::Failed(if message.is_empty() {
-            t!("preview.plantuml-no-diagram")
-        } else {
-            message
-        }));
-    }
-    Ok(diagrams)
-}
-
 /// What a PlantUML preview shows.
 #[derive(Default)]
 struct Diagrams {
-    images: Vec<Arc<Image>>,
+    images: Vec<Diagram>,
+    /// How large the diagrams are shown.
+    zoom: Zoom,
+    /// Ctrl with the mouse wheel: the scrolling not yet turned into a zoom step.
+    wheel: f32,
+    /// The mistakes PlantUML found in the text the diagrams show.
+    mistakes: Vec<Mistake>,
     /// Why PlantUML drew nothing; the diagrams it drew last stay.
     error: Option<String>,
     /// There was no PlantUML to run.
     missing: bool,
-    /// PlantUML drawing the text.
+    /// PlantUML drawing the text; dropping it stops the run ([`StopOnDrop`]).
     drawing: Option<Task<()>>,
     /// The installations of PlantUML when it last drew ([`crate::plantuml::PlantUmlInstall`]).
     installs: u64,
+}
+
+/// One diagram PlantUML drew.
+struct Diagram {
+    /// Its SVG, drawn at its own size.
+    image: Arc<Image>,
+    size: Option<(f32, f32)>,
+    /// Drawn again larger for a zoom above 100%, so that it stays sharp: the factor and the
+    /// image.
+    zoomed: Option<(f32, Arc<Image>)>,
+}
+
+impl Diagram {
+    fn new(svg: Vec<u8>, zoom: Zoom) -> Self {
+        let mut diagram = Self {
+            size: svg_size(&svg),
+            image: Arc::new(Image::from_bytes(ImageFormat::Svg, svg)),
+            zoomed: None,
+        };
+        diagram.prepare(zoom);
+        diagram
+    }
+
+    /// Draws the SVG again for `zoom`, if it needs to be larger than it is.
+    fn prepare(&mut self, zoom: Zoom) {
+        let (Some(percent), Some(size)) = (zoom.percent(), self.size) else {
+            self.zoomed = None;
+            return;
+        };
+        let factor = raster_factor(size, percent as f32 / 100.);
+        if factor <= 1. {
+            self.zoomed = None;
+        } else if self
+            .zoomed
+            .as_ref()
+            .is_none_or(|(drawn, _)| *drawn != factor)
+        {
+            let svg = sized_svg(self.image.bytes(), (size.0 * factor, size.1 * factor));
+            self.zoomed = Some((factor, Arc::new(Image::from_bytes(ImageFormat::Svg, svg))));
+        }
+    }
+
+    fn shown(&self) -> Arc<Image> {
+        self.zoomed
+            .as_ref()
+            .map_or_else(|| self.image.clone(), |(_, image)| image.clone())
+    }
 }
 
 enum Content {
@@ -386,18 +335,34 @@ impl Preview {
                 markdown.update(cx, |markdown, cx| markdown.set_text(&text, cx));
             }
             Content::PlantUml(diagrams) => {
-                let setting = AppState::global(cx).settings.preview.plantuml.clone();
+                let setting = &AppState::global(cx).settings.preview.plantuml;
+                // PlantUML runs in the document's folder: a relative setting is Birchpad's.
+                let setting = match std::env::current_dir() {
+                    Ok(base) => setting_path(setting, &base),
+                    Err(_) => setting.clone(),
+                };
+                let folder = buffer
+                    .read(cx)
+                    .path()
+                    .and_then(Path::parent)
+                    .map(Path::to_path_buf);
                 let installed = crate::plantuml::installed(cx);
                 diagrams.installs = crate::plantuml::state(cx).map_or(0, |state| state.generation);
                 let executor = cx.background_executor().clone();
-                // A new drawing replaces the one under way.
+                // A new drawing replaces the one under way, which stops.
                 diagrams.drawing = Some(cx.spawn(async move |this, cx| {
                     if !first {
                         executor.timer(PLANTUML_DELAY).await;
                     }
+                    let stop = StopOnDrop(Stop::default());
+                    let running = stop.0.clone();
                     let drawn = executor
-                        .spawn(async move { run_plantuml(&setting, installed.as_deref(), &text) })
+                        .spawn(async move {
+                            let (program, args) = plantuml_command(&setting, installed.as_deref());
+                            run_plantuml(&program, &args, folder.as_deref(), &text, &running)
+                        })
                         .await;
+                    drop(stop);
                     this.update(cx, |this, cx| {
                         this.show_diagrams(drawn);
                         cx.notify();
@@ -409,20 +374,24 @@ impl Preview {
         cx.notify();
     }
 
-    fn show_diagrams(&mut self, drawn: Result<Vec<Vec<u8>>, NotDrawn>) {
+    fn show_diagrams(&mut self, drawn: Result<Drawn, NotDrawn>) {
         let Content::PlantUml(diagrams) = &mut self.content else {
             return;
         };
-        diagrams.drawing = None;
         match drawn {
-            Ok(images) => {
-                diagrams.images = images
+            Ok(drawn) => {
+                let zoom = diagrams.zoom;
+                diagrams.images = drawn
+                    .diagrams
                     .into_iter()
-                    .map(|svg| Arc::new(Image::from_bytes(ImageFormat::Svg, svg)))
+                    .map(|svg| Diagram::new(svg, zoom))
                     .collect();
+                diagrams.mistakes = drawn.mistakes;
                 diagrams.error = None;
                 diagrams.missing = false;
             }
+            // A newer drawing is on its way.
+            Err(NotDrawn::Stopped) => return,
             Err(NotDrawn::Missing(error)) => {
                 diagrams.error = Some(error);
                 diagrams.missing = true;
@@ -432,6 +401,107 @@ impl Preview {
                 diagrams.missing = false;
             }
         }
+        diagrams.drawing = None;
+    }
+
+    /// The SVG of each diagram shown (for tests).
+    #[cfg(feature = "test-support")]
+    pub fn svgs(&self) -> Vec<Vec<u8>> {
+        match &self.content {
+            Content::PlantUml(diagrams) => diagrams
+                .images
+                .iter()
+                .map(|diagram| diagram.image.bytes().to_vec())
+                .collect(),
+            Content::Markdown(_) => Vec::new(),
+        }
+    }
+
+    /// The SVG of diagram `index` (from 0), if PlantUML drew it.
+    pub fn diagram_svg(&self, index: usize) -> Option<Vec<u8>> {
+        match &self.content {
+            Content::PlantUml(diagrams) => diagrams
+                .images
+                .get(index)
+                .map(|diagram| diagram.image.bytes().to_vec()),
+            Content::Markdown(_) => None,
+        }
+    }
+
+    /// The file of the document shown, if it has one.
+    pub fn path(&self, cx: &App) -> Option<PathBuf> {
+        let view = self.view.upgrade()?;
+        view.read(cx).buffer.read(cx).path().map(Path::to_path_buf)
+    }
+
+    /// How large the diagrams are shown; Fit for a Markdown preview.
+    pub fn zoom(&self) -> Zoom {
+        match &self.content {
+            Content::PlantUml(diagrams) => diagrams.zoom,
+            Content::Markdown(_) => Zoom::Fit,
+        }
+    }
+
+    /// Shows the diagrams at `zoom`.
+    pub fn set_zoom(&mut self, zoom: Zoom, cx: &mut Context<Self>) {
+        if let Content::PlantUml(diagrams) = &mut self.content {
+            diagrams.zoom = zoom;
+            for diagram in &mut diagrams.images {
+                diagram.prepare(zoom);
+            }
+            cx.notify();
+        }
+    }
+
+    /// Ctrl with the mouse wheel over the diagrams: a step of zoom for each notch.
+    fn wheel_zoom(&mut self, event: &ScrollWheelEvent, cx: &mut Context<Self>) {
+        let Content::PlantUml(diagrams) = &mut self.content else {
+            return;
+        };
+        diagrams.wheel += f32::from(event.delta.pixel_delta(px(20.)).y);
+        let zoom = diagrams.zoom;
+        let zoom = if diagrams.wheel >= WHEEL_STEP {
+            zoom.zoom_in()
+        } else if diagrams.wheel <= -WHEEL_STEP {
+            zoom.zoom_out()
+        } else {
+            return;
+        };
+        diagrams.wheel = 0.;
+        self.set_zoom(zoom, cx);
+    }
+
+    /// The mistakes PlantUML found in the text shown (for tests).
+    #[cfg(feature = "test-support")]
+    pub fn mistakes(&self) -> Vec<Mistake> {
+        match &self.content {
+            Content::PlantUml(diagrams) => diagrams.mistakes.clone(),
+            Content::Markdown(_) => Vec::new(),
+        }
+    }
+
+    /// Puts the caret at the start of `line` (from 0) of the text `this` shows, in its view: a
+    /// mistake's line. Not while `this` is being updated: activating the view draws its preview.
+    pub fn go_to_line(this: &Entity<Self>, line: usize, window: &mut Window, cx: &mut App) {
+        let (view, workspace) = {
+            let preview = this.read(cx);
+            (preview.view.upgrade(), preview.workspace.upgrade())
+        };
+        let Some(view) = view else {
+            return;
+        };
+        if let Some(workspace) = workspace {
+            workspace.update(cx, |workspace, cx| {
+                workspace.activate_view(&view, window, cx);
+            });
+        }
+        view.update(cx, |view, cx| {
+            let text = view.text(cx).to_string();
+            let at = line_offset(&text, line);
+            view.select_range(at..at, cx);
+        });
+        let focus = view.read(cx).focus_handle.clone();
+        window.focus(&focus, cx);
     }
 
     /// The text the preview shows, without its formatting, or what PlantUML did (for tests).
@@ -521,7 +591,49 @@ impl Preview {
             .into_any_element()
     }
 
-    fn render_diagrams(diagrams: &Diagrams, cx: &App) -> AnyElement {
+    /// PlantUML's mistakes, each a link to its line.
+    fn render_mistakes(mistakes: &[Mistake], this: &WeakEntity<Self>) -> impl IntoElement {
+        div()
+            .w_full()
+            .flex()
+            .flex_col()
+            .gap_1()
+            .children(mistakes.iter().enumerate().map(|(index, mistake)| {
+                let text = match mistake.line {
+                    Some(line) => t!(
+                        "preview.plantuml-mistake",
+                        line = line + 1,
+                        message = mistake.message.as_str()
+                    ),
+                    None => mistake.message.clone(),
+                };
+                let this = this.clone();
+                let line = mistake.line;
+                div()
+                    .id(("plantuml-mistake", index))
+                    .text_color(paint(ui().error))
+                    .when(line.is_some(), |row| {
+                        row.cursor_pointer().hover(|row| row.underline())
+                    })
+                    .on_click(move |_, window, cx| {
+                        if let Some(line) = line
+                            && let Some(this) = this.upgrade()
+                        {
+                            Self::go_to_line(&this, line, window, cx);
+                        }
+                    })
+                    .child(text)
+            }))
+    }
+
+    fn render_diagrams(
+        diagrams: &Diagrams,
+        workspace: &WeakEntity<Workspace>,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
+        let this = &cx.entity().downgrade();
+        let white = background(cx) == DiagramBackground::White;
+        let zoom = diagrams.zoom.percent().map(|percent| percent as f32 / 100.);
         let message = match (&diagrams.error, &diagrams.drawing) {
             (Some(error), _) => Some((error.clone(), ui().error)),
             (None, Some(_)) if diagrams.images.is_empty() => {
@@ -529,28 +641,158 @@ impl Preview {
             }
             _ => None,
         };
-        div()
-            .id("plantuml-diagrams")
-            .size_full()
-            .overflow_scroll()
+        let content = div()
+            .min_w_full()
+            .min_h_full()
             .p_4()
             .flex()
             .flex_col()
-            .items_center()
+            .items_start()
             .gap_4()
+            .on_scroll_wheel(cx.listener(|this, event: &ScrollWheelEvent, _, cx| {
+                if event.modifiers.secondary() {
+                    this.wheel_zoom(event, cx);
+                    cx.stop_propagation();
+                }
+            }))
             .when_some(message, |list, (message, color)| {
                 list.child(div().w_full().text_color(paint(color)).child(message))
+            })
+            .when(!diagrams.mistakes.is_empty(), |list| {
+                list.child(Self::render_mistakes(&diagrams.mistakes, this))
             })
             .when(diagrams.missing, |list| {
                 list.child(Self::render_install(cx))
             })
-            .children(diagrams.images.iter().map(|image| {
-                img(ImageSource::Image(image.clone()))
+            .children(diagrams.images.iter().enumerate().map(|(index, diagram)| {
+                let image = img(ImageSource::Image(diagram.shown()));
+                // At a zoom, the diagram's size times it; at Fit, no wider than the preview.
+                let image = match (zoom, diagram.size) {
+                    (Some(zoom), Some((width, height))) => {
+                        image.w(px(width * zoom)).h(px(height * zoom))
+                    }
+                    _ => image.max_w_full().object_fit(ObjectFit::Contain),
+                };
+                // Diagrams are made for paper: on white, unless the theme's background is asked.
+                // Centered while it fits; a wider one starts at the left, to scroll to.
+                div()
+                    .id(("plantuml-diagram", index))
                     .flex_none()
-                    .max_w_full()
-                    .object_fit(ObjectFit::Contain)
-            }))
+                    .mx_auto()
+                    .when(zoom.is_none(), |card| card.max_w_full())
+                    .when(white, |card| card.bg(gpui_kit::white()))
+                    .child(image)
+                    .context_menu(Self::diagram_menu(index, workspace.clone()))
+            }));
+        div()
+            .id("plantuml-diagrams")
+            .size_full()
+            .overflow_scroll()
+            .child(content)
             .into_any_element()
+    }
+
+    /// The context menu of diagram `index`: copied as a picture, or exported as PNG or SVG.
+    fn diagram_menu(
+        index: usize,
+        workspace: WeakEntity<Workspace>,
+    ) -> impl Fn(PopupMenu, &mut Window, &mut Context<PopupMenu>) -> PopupMenu + 'static {
+        move |menu, _, _| {
+            let item = |command: &'static str| {
+                let workspace = workspace.clone();
+                PopupMenuItem::new(crate::menus::command_title(command)).on_click(
+                    move |_: &ClickEvent, window, cx| {
+                        let invocation =
+                            Invocation::with_args(command, serde_json::json!({ "diagram": index }));
+                        workspace
+                            .update(cx, |workspace, cx| {
+                                if let Err(error) = workspace.dispatch(&invocation, window, cx) {
+                                    crate::workspace::report_error(&error, window, cx);
+                                }
+                            })
+                            .ok();
+                    },
+                )
+            };
+            menu.item(item("preview.copy-diagram"))
+                .separator()
+                .item(item("preview.export-png"))
+                .item(item("preview.export-svg"))
+        }
+    }
+
+    /// The bar above the diagrams: their zoom, and the background they are drawn on.
+    fn render_toolbar(&self, cx: &App) -> impl IntoElement {
+        let white = background(cx) == DiagramBackground::White;
+        let zoom = self.zoom();
+        let workspace = self.workspace.clone();
+        let run = move |command: &'static str| {
+            let workspace = workspace.clone();
+            move |_: &ClickEvent, window: &mut Window, cx: &mut App| {
+                workspace
+                    .update(cx, |workspace, cx| {
+                        let invocation = Invocation::new(command);
+                        if let Err(error) = workspace.dispatch(&invocation, window, cx) {
+                            crate::workspace::report_error(&error, window, cx);
+                        }
+                    })
+                    .ok();
+            }
+        };
+        div()
+            .flex_none()
+            .flex()
+            .flex_row()
+            .items_center()
+            .gap_1()
+            .px_2()
+            .py_1()
+            .border_b_1()
+            .border_color(paint(ui().border))
+            .bg(paint(ui().surface))
+            .child(
+                Button::new("zoom-out")
+                    .xsmall()
+                    .ghost()
+                    .icon(IconName::Minus)
+                    .tooltip(crate::menus::command_title("preview.zoom-out"))
+                    .on_click(run("preview.zoom-out")),
+            )
+            .child(
+                Button::new("zoom")
+                    .xsmall()
+                    .ghost()
+                    .label(zoom.label())
+                    .tooltip(crate::menus::command_title("preview.actual-size"))
+                    .on_click(run("preview.actual-size")),
+            )
+            .child(
+                Button::new("zoom-in")
+                    .xsmall()
+                    .ghost()
+                    .icon(IconName::Plus)
+                    .tooltip(crate::menus::command_title("preview.zoom-in"))
+                    .on_click(run("preview.zoom-in")),
+            )
+            .child(
+                Button::new("zoom-fit")
+                    .xsmall()
+                    .ghost()
+                    .icon(IconName::Maximize)
+                    .tooltip(crate::menus::command_title("preview.fit"))
+                    .selected(zoom == Zoom::Fit)
+                    .on_click(run("preview.fit")),
+            )
+            .child(div().w(px(1.)).h(px(16.)).bg(paint(ui().border)))
+            .child(
+                Button::new("diagram-background")
+                    .xsmall()
+                    .ghost()
+                    .icon(if white { IconName::Sun } else { IconName::Moon })
+                    .tooltip(crate::menus::command_title("preview.white-background"))
+                    .selected(white)
+                    .on_click(run("preview.white-background")),
+            )
     }
 }
 
@@ -570,7 +812,17 @@ impl Render for Preview {
         let colors = crate::theme::current().editor;
         let body = match &self.content {
             Content::Markdown(markdown) => self.render_markdown(markdown, cx),
-            Content::PlantUml(diagrams) => Self::render_diagrams(diagrams, cx),
+            Content::PlantUml(diagrams) => div()
+                .size_full()
+                .flex()
+                .flex_col()
+                .child(self.render_toolbar(cx))
+                .child(div().flex_1().min_h_0().child(Self::render_diagrams(
+                    diagrams,
+                    &self.workspace,
+                    cx,
+                )))
+                .into_any_element(),
         };
         div()
             .id("preview")

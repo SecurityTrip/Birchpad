@@ -292,6 +292,22 @@ mod native {
     }
 }
 
+/// Elsewhere (Linux) there is no tray Birchpad can use: the callers check [`SUPPORTED`] first,
+/// and these only keep the release build whole.
+#[cfg(all(not(any(windows, target_os = "macos")), not(feature = "test-support")))]
+mod native {
+    use anyhow::{Result, bail};
+    use raw_window_handle::RawWindowHandle;
+
+    pub(super) fn watch(_: RawWindowHandle) -> Result<()> {
+        bail!("this system has no tray Birchpad can use")
+    }
+
+    pub(super) fn send(_: RawWindowHandle) -> Result<()> {
+        bail!("this system has no tray Birchpad can use")
+    }
+}
+
 #[cfg(all(target_os = "macos", not(feature = "test-support")))]
 mod native {
     use std::cell::RefCell;

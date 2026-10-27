@@ -6,6 +6,42 @@ version's release notes from its section here.
 
 ## [Unreleased]
 
+## [0.7.2] - 2026-10-28
+
+### Added
+
+- PlantUML diagrams are drawn on white in the preview, as they are made for paper, whatever
+  the theme; the button above them (View > Preview > White Diagram Background) puts them on
+  the theme's background instead, and the choice is kept for the diagrams shown later
+  (`preview.plantuml-background`, Preferences > Preview)
+  ([#53](https://github.com/SecurityTrip/Birchpad/issues/53)).
+- Zoom in the PlantUML preview: Zoom Out, the zoom (a click sets 100%), Zoom In and Fit above
+  the diagrams, Ctrl with the mouse wheel, and the same in View > Preview. From 25% to 400%;
+  a zoomed diagram keeps its size, stays sharp, and the preview scrolls both ways. Fit, as
+  before, shrinks a diagram wider than the preview to its width
+  ([#52](https://github.com/SecurityTrip/Birchpad/issues/52)).
+- Copy Diagram, Export Diagram as PNG... and Export Diagram as SVG... in a PlantUML diagram's
+  context menu, and View > Preview for the first diagram. The SVG is PlantUML's; the PNG is
+  drawn by Birchpad from it, twice its size by default (`preview.plantuml-png-scale`, 1 to
+  8), on the diagram's background ([#51](https://github.com/SecurityTrip/Birchpad/issues/51)).
+- Preferences > Preview: the PlantUML to run (`preview.plantuml`), the diagrams' background
+  and the scale of PNG diagrams.
+
+### Changed
+
+- The PlantUML preview lists the mistakes PlantUML finds by the line of the document they are
+  on ("Line 9: Syntax Error?"); a click puts the caret there. When the text changes while
+  PlantUML is drawing, that run is stopped, so fast typing no longer leaves Java processes
+  behind.
+
+### Fixed
+
+- Birchpad builds for Linux again: the release of 0.7.1 had no Linux package, as Minimize to
+  system tray left the application without code for systems that have no tray.
+- PlantUML diagrams that include other files by a relative path (`!include common.puml`)
+  are drawn in the preview: PlantUML runs in the document's folder
+  ([#50](https://github.com/SecurityTrip/Birchpad/issues/50)).
+
 ## [0.7.1] - 2026-10-28
 
 ### Added
@@ -718,7 +754,8 @@ The first release: a Notepad++-like editor for Windows, Linux and macOS.
   entirely (`updates.mode = "off"`).
 - Nightly builds of `main` on the nightly channel.
 
-[Unreleased]: https://github.com/SecurityTrip/Birchpad/compare/v0.7.1...HEAD
+[Unreleased]: https://github.com/SecurityTrip/Birchpad/compare/v0.7.2...HEAD
+[0.7.2]: https://github.com/SecurityTrip/Birchpad/compare/v0.7.1...v0.7.2
 [0.7.1]: https://github.com/SecurityTrip/Birchpad/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/SecurityTrip/Birchpad/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/SecurityTrip/Birchpad/compare/v0.5.0...v0.6.0
