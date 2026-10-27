@@ -1305,6 +1305,7 @@ preferences:
   this-setting-has-no-text-field: "у этой настройки нет текстового поля"
   toolbar: "Панель инструментов"
   top-margin-mm: "Верхнее поле (мм)"
+  treat-backslash-as-escape-character-for-sql: "Обратная косая черта в SQL экранирует"
   underline-them: "Подчёркивать их"
   unix-lf: "Unix (LF)"
   updates: "Обновления"

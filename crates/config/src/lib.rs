@@ -43,8 +43,8 @@ pub use settings::{
     NewDocumentSettings, NonPrintingStyle, PaletteSettings, Paper, PluginInstall, PluginSettings,
     PreviewSettings, PrintColors, PrintSettings, SearchEngine, SearchEngineSettings,
     SearchingSettings, SessionSettings, Settings, SmartHighlighting, SpellScope, SpellSettings,
-    TabSettings, TokenMatching, ToolbarSettings, ToolbarSize, UpdateChannel, UpdateMode,
-    UpdateSettings, WrapIndent,
+    SqlSettings, TabSettings, TokenMatching, ToolbarSettings, ToolbarSize, UpdateChannel,
+    UpdateMode, UpdateSettings, WrapIndent,
 };
 pub use state::{
     FindInFilesState, MAX_RECENT_COMMANDS, MAX_RECENT_FILES, PanelsState, PreviewMode,

@@ -18,6 +18,8 @@ version's release notes from its section here.
   are.
 - Preferences > Editing > Enable smooth font: text drawn with subpixel smoothing where the
   platform has it (Windows, Linux); off, as the platform smooths text by default.
+- Preferences > Language > Treat backslash as escape character for SQL: `'it\'s'` is one
+  string, as MySQL reads it; off, as standard SQL reads it, only a doubled quote stays inside.
 
 ## [0.7.0] - 2026-10-26
 

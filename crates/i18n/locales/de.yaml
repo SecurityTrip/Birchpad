@@ -1291,6 +1291,7 @@ preferences:
   this-setting-has-no-text-field: "diese Einstellung hat kein Textfeld"
   toolbar: "Werkzeugleiste"
   top-margin-mm: "Oberer Rand (mm)"
+  treat-backslash-as-escape-character-for-sql: "Backslash in SQL als Escape-Zeichen"
   underline-them: "Unterstreichen"
   unix-lf: "Unix (LF)"
   updates: "Aktualisierungen"

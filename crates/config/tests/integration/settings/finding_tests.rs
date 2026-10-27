@@ -262,3 +262,13 @@ fn what_7_4b_left_refuses_what_is_not_one_of_its_values() {
     ));
     assert!(check_setting("editor.smooth-font", &toml::Value::Integer(1)).is_err());
 }
+
+#[test]
+fn sql_backslash_escapes_are_off_by_default() {
+    assert!(!Settings::default().sql.backslash_escapes);
+    let settings: Settings = toml::from_str("[sql]\nbackslash-escapes = true\n").unwrap();
+    assert!(settings.sql.backslash_escapes);
+    check_setting("sql.backslash-escapes", &toml::Value::Boolean(true)).unwrap();
+    assert!(check_setting("sql.backslash-escapes", &toml::Value::String("yes".into())).is_err());
+    assert!(check_setting("sql.escapes", &toml::Value::Boolean(true)).is_err());
+}

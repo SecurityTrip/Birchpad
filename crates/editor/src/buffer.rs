@@ -787,7 +787,11 @@ impl Buffer {
         self.syntax.language = language;
         self.syntax.syntax =
             language.and_then(|language| match birchpad_syntax::config(language) {
-                Ok(config) => Some(Syntax::new(config)),
+                Ok(config) => {
+                    let mut syntax = Syntax::new(config);
+                    syntax.set_backslash_escapes(backslash_escapes(cx));
+                    Some(syntax)
+                }
                 Err(error) => {
                     eprintln!("syntax: {error}");
                     None
@@ -801,6 +805,22 @@ impl Buffer {
         cx.emit(BufferEvent::SyntaxChanged);
         cx.emit(BufferEvent::StateChanged);
         cx.notify();
+    }
+
+    /// Follows the settings the parse reads the text by (Preferences > Language > SQL's
+    /// backslash): a change parses the whole text again.
+    pub fn sync_syntax_options(&mut self, cx: &mut Context<Self>) {
+        let escapes = backslash_escapes(cx);
+        let Some(syntax) = &mut self.syntax.syntax else {
+            return;
+        };
+        if syntax.set_backslash_escapes(escapes) {
+            // A parse running reads the text the old way.
+            self.syntax.parsing = None;
+            self.start_parse(cx);
+            cx.emit(BufferEvent::SyntaxChanged);
+            cx.notify();
+        }
     }
 
     /// Starts parsing the current text in the background, unless a parse is running.
@@ -1224,4 +1244,9 @@ impl Buffer {
         cx.emit(BufferEvent::StateChanged);
         cx.notify();
     }
+}
+
+/// Whether SQL's strings take backslash escapes (Preferences > Language).
+fn backslash_escapes(cx: &gpui_kit::App) -> bool {
+    AppState::global(cx).settings.sql.backslash_escapes
 }

@@ -771,8 +771,12 @@ written down why not.
       dark interface in Preferences > Appearance (`appearance.dark-tone-colors`). Enable smooth
       font: GPUI (gpui-pre 0.3.9) lets an application choose subpixel smoothing, which Windows
       and Linux draw; macOS draws text in grayscale only, so there it changes nothing
-- [ ] 7.4f What 7.4c left: SQL's backslash as an escape character, which needs SQL strings
-      read by a grammar or a query of Birchpad's own rather than the SQL grammar's
+- [x] 7.4f What 7.4c left: SQL's backslash as an escape character, which needs SQL strings
+      read by a grammar or a query of Birchpad's own rather than the SQL grammar's. Built from
+      the user manual's Preferences page. Neither: with Preferences > Language > Treat
+      backslash as escape character for SQL, the parser reads a quote after an odd run of
+      backslashes as a backslash, the same length, so the grammar's strings go on past it
+      ([ADR 0055](adr/0055-sql-backslash-escapes.md))
 - [ ] Release 0.7.1: the workspace version (0.7.1, set when its branch opens, so that nightly
       builds are its pre-releases), `CHANGELOG.md` and this roadmap updated; the
       [release checklist](release-checklist.md) gone through

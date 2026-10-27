@@ -19,8 +19,8 @@ pub use language::{LANGUAGES, Language, all as all_languages, by_id, detect, inj
 pub use outline::{Symbol, SymbolKind, has_outline, outline, outline_query_error};
 pub use selection::expand_selection;
 pub use syntax::{
-    LanguageConfig, Layer, MAX_DEPTH, ParseJob, Parsed, Syntax, config, lua_matches_to_regex,
-    lua_pattern_to_regex,
+    LanguageConfig, Layer, MAX_DEPTH, ParseJob, Parsed, Syntax, backslash_escaped, config,
+    lua_matches_to_regex, lua_pattern_to_regex,
 };
 pub use tree_sitter::{Node, Tree};
 pub use udl::{

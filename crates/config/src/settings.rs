@@ -38,6 +38,7 @@ pub struct Settings {
     pub searching: SearchingSettings,
     pub misc: MiscSettings,
     pub language_menu: LanguageMenuSettings,
+    pub sql: SqlSettings,
 }
 
 /// Notepad++'s Preferences > Searching.
@@ -110,6 +111,16 @@ impl Default for MiscSettings {
             follow_symlinks: false,
         }
     }
+}
+
+/// How SQL documents are read: Notepad++'s Preferences > Language > SQL.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, rename_all = "kebab-case")]
+pub struct SqlSettings {
+    /// A backslash escapes the quote after it in strings (`'it\'s'`), as MySQL reads them;
+    /// off, as standard SQL does, only a doubled quote does ("Treat backslash as escape
+    /// character for SQL").
+    pub backslash_escapes: bool,
 }
 
 /// Notepad++'s Preferences > Language: the Language menu.

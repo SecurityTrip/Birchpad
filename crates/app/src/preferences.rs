@@ -356,6 +356,12 @@ pub const ENTRIES: &[Entry] = &[
         Kind::Text,
     ),
     entry(
+        "Language",
+        "sql.backslash-escapes",
+        "Treat backslash as escape character for SQL",
+        Kind::Bool,
+    ),
+    entry(
         "Default Directory",
         "files.default-directory",
         "Open and Save As start in",

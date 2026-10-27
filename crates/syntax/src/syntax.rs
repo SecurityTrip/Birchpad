@@ -7,6 +7,7 @@
 //! (Markdown, its inline syntax, HTML in it, a script in that). A layer whose text did not
 //! change keeps its tree; one that did is reparsed incrementally from its old tree.
 
+use std::borrow::Cow;
 use std::cmp::Reverse;
 use std::collections::HashMap;
 use std::ops::{ControlFlow, Range};
@@ -249,6 +250,8 @@ pub struct Syntax {
     layers: Vec<Layer>,
     /// Bumped whenever the tree changes, so views can cache what they computed from it.
     version: u64,
+    /// SQL's strings take backslash escapes (Preferences > Language).
+    backslash_escapes: bool,
 }
 
 impl Syntax {
@@ -259,7 +262,23 @@ impl Syntax {
             tree: None,
             layers: Vec::new(),
             version: 0,
+            backslash_escapes: false,
         }
+    }
+
+    /// Whether a backslash escapes the quote after it in SQL's strings (`'it\'s'`), as MySQL
+    /// reads them; off, as standard SQL does, only a doubled quote does (`'it''s'`). A change
+    /// drops the trees, so that the next parse reads the whole text again; returns whether it
+    /// changed.
+    pub fn set_backslash_escapes(&mut self, on: bool) -> bool {
+        if self.backslash_escapes == on {
+            return false;
+        }
+        self.backslash_escapes = on;
+        self.tree = None;
+        self.layers.clear();
+        self.version += 1;
+        true
     }
 
     pub fn language(&self) -> &'static Language {
@@ -324,6 +343,7 @@ impl Syntax {
             old_tree: self.tree.clone(),
             old_layers: self.layers.clone(),
             text,
+            backslash_escapes: self.backslash_escapes,
         }
     }
 
@@ -514,6 +534,7 @@ pub struct ParseJob {
     old_tree: Option<Tree>,
     old_layers: Vec<Layer>,
     text: Rope,
+    backslash_escapes: bool,
 }
 
 impl ParseJob {
@@ -526,10 +547,14 @@ impl ParseJob {
     /// did not change. Returns `None` if `cancel` was set meanwhile.
     pub fn run(self, cancel: &AtomicBool) -> Option<Parsed> {
         let mut parser = Parser::new();
+        let read = Reading {
+            text: &self.text,
+            backslash_escapes: self.backslash_escapes,
+        };
         let tree = parse(
             &mut parser,
             &self.config,
-            &self.text,
+            read,
             None,
             self.old_tree.as_ref(),
             cancel,
@@ -538,7 +563,7 @@ impl ParseJob {
             &mut parser,
             &self.config,
             &tree,
-            &self.text,
+            read,
             self.old_layers,
             cancel,
         )?;
@@ -546,11 +571,41 @@ impl ParseJob {
     }
 }
 
+/// The text a parse reads, and how.
+#[derive(Clone, Copy)]
+struct Reading<'a> {
+    text: &'a Rope,
+    /// SQL's strings take backslash escapes.
+    backslash_escapes: bool,
+}
+
+/// What the parser of SQL reads of `chunk`, the text from `byte` on, when backslashes escape
+/// quotes: a quote after an odd run of backslashes (`\'`, not `\\'`) as a backslash, so that
+/// the grammar, which ends a string at any quote not doubled, reads on. The text keeps its
+/// length, so the tree's positions are the text's.
+pub fn backslash_escaped<'a>(text: &Rope, byte: usize, chunk: &'a [u8]) -> Cow<'a, [u8]> {
+    let mut run = (0..byte.min(text.len()))
+        .rev()
+        .take_while(|&at| text.byte(at) == b'\\')
+        .count();
+    let mut read = Cow::Borrowed(chunk);
+    for (at, &b) in chunk.iter().enumerate() {
+        if matches!(b, b'\'' | b'"') && run % 2 == 1 {
+            read.to_mut()[at] = b'\\';
+        }
+        run = if b == b'\\' { run + 1 } else { 0 };
+    }
+    read
+}
+
 /// Parses `text` (or only `ranges` of it) in `config`'s language. `None` if cancelled.
 fn parse(
     parser: &mut Parser,
     config: &LanguageConfig,
-    text: &Rope,
+    Reading {
+        text,
+        backslash_escapes,
+    }: Reading,
     ranges: Option<&[tree_sitter::Range]>,
     old_tree: Option<&Tree>,
     cancel: &AtomicBool,
@@ -559,12 +614,18 @@ fn parse(
         .set_language(&config.grammar)
         .expect("grammars are built against a compatible tree-sitter");
     parser.set_included_ranges(ranges.unwrap_or(&[])).ok()?;
-    let mut read = |byte: usize, _: Point| -> &[u8] {
+    let escapes = backslash_escapes && config.language.id == "sql";
+    let mut read = |byte: usize, _: Point| -> Cow<'_, [u8]> {
         if byte >= text.len() {
-            return &[];
+            return Cow::Borrowed(&[]);
         }
         let (chunk, start) = text.chunk(byte);
-        &chunk.as_bytes()[byte - start..]
+        let chunk = &chunk.as_bytes()[byte - start..];
+        if escapes {
+            backslash_escaped(text, byte, chunk)
+        } else {
+            Cow::Borrowed(chunk)
+        }
     };
     let mut progress = |_: &tree_sitter::ParseState| {
         if cancel.load(Ordering::Relaxed) {
@@ -590,10 +651,11 @@ fn parse_layers(
     parser: &mut Parser,
     config: &Arc<LanguageConfig>,
     tree: &Tree,
-    text: &Rope,
+    read: Reading,
     old_layers: Vec<Layer>,
     cancel: &AtomicBool,
 ) -> Option<Vec<Layer>> {
+    let text = read.text;
     let mut old = OldLayers::new(old_layers);
     let mut layers: Vec<Layer> = Vec::new();
     let mut hosts = vec![(config.clone(), tree.clone(), 0)];
@@ -623,7 +685,7 @@ fn parse_layers(
                     let tree = parse(
                         parser,
                         &injection.config,
-                        text,
+                        read,
                         Some(&injection.ranges),
                         previous.as_ref().map(|layer| &layer.tree),
                         cancel,

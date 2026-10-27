@@ -1293,6 +1293,7 @@ preferences:
   this-setting-has-no-text-field: "this setting has no text field"
   toolbar: "Toolbar"
   top-margin-mm: "Top margin (mm)"
+  treat-backslash-as-escape-character-for-sql: "Treat backslash as escape character for SQL"
   underline-them: "Underline them"
   unix-lf: "Unix (LF)"
   updates: "Updates"

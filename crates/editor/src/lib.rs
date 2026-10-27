@@ -969,6 +969,8 @@ impl EditorView {
 
     /// Zoom, word wrap or Show Symbol changed: keep the caret in view after the relayout.
     pub fn settings_changed(&mut self, cx: &mut Context<Self>) {
+        self.buffer
+            .update(cx, |buffer, cx| buffer.sync_syntax_options(cx));
         self.scroll_width = px(0.);
         self.request_autoscroll(cx);
     }

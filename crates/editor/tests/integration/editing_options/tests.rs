@@ -419,3 +419,52 @@ fn non_printing_characters_show_by_label_when_asked_to(cx: &mut TestAppContext) 
     // The text is unchanged.
     assert_eq!(active_text(&workspace, cx), "a\u{A0}b\u{200B}c");
 }
+
+#[gpui_kit::test]
+fn sql_strings_follow_the_backslash_setting(cx: &mut TestAppContext) {
+    let (workspace, cx) = open_workspace(cx);
+    workspace.update_in(cx, |workspace, window, cx| {
+        workspace
+            .dispatch(
+                &Invocation::with_args("language.set", serde_json::json!({ "language": "sql" })),
+                window,
+                cx,
+            )
+            .unwrap();
+    });
+    cx.run_until_parked();
+    let source = r"SELECT 'it\'s', 2;";
+    workspace.update_in(cx, |workspace, window, cx| {
+        workspace
+            .dispatch(
+                &Invocation::with_args("edit.insert-text", serde_json::json!({ "text": source })),
+                window,
+                cx,
+            )
+            .unwrap();
+    });
+    cx.run_until_parked();
+    let view = view(&workspace, cx);
+    let whole_string = |cx: &mut VisualTestContext| {
+        view.read_with(cx, |view, cx| {
+            let buffer = view.buffer.read(cx);
+            let text = buffer.doc().text().clone();
+            let syntax = buffer.syntax().expect("SQL has a grammar");
+            syntax
+                .highlights(&text, 0..text.len())
+                .iter()
+                .any(|(range, highlight)| {
+                    highlight.name() == "string" && text.slice(range.clone()) == r"'it\'s'"
+                })
+        })
+    };
+    assert!(!whole_string(cx), "off by default, as standard SQL");
+    cx.update(|_, cx| cx.global_mut::<AppState>().settings.sql.backslash_escapes = true);
+    redraw(&view, cx);
+    assert!(whole_string(cx));
+    // Off again, the text is read as before.
+    cx.update(|_, cx| cx.global_mut::<AppState>().settings.sql.backslash_escapes = false);
+    redraw(&view, cx);
+    assert!(!whole_string(cx));
+    assert_eq!(active_text(&workspace, cx), source);
+}
