@@ -1172,6 +1172,12 @@ pub const ENTRIES: &[Entry] = &[
     ),
     entry(
         "MISC",
+        "misc.minimize-to-tray",
+        "Minimize to system tray",
+        Kind::Bool,
+    ),
+    entry(
+        "MISC",
         "session.session-extension",
         "Session file extension",
         Kind::Text,
@@ -1313,6 +1319,12 @@ pub const ENTRIES: &[Entry] = &[
     ),
 ];
 
+/// Whether the setting `key` does anything on this platform: minimizing to the tray does on
+/// Windows and macOS only.
+pub fn available_here(key: &str) -> bool {
+    key != "misc.minimize-to-tray" || crate::tray::SUPPORTED
+}
+
 /// The sections in the order listed.
 pub fn sections() -> Vec<&'static str> {
     let mut sections: Vec<&str> = Vec::new();
@@ -1422,6 +1434,8 @@ pub fn set(key: &str, value: Option<Value>, cx: &mut App) -> Result<()> {
     crate::i18n::apply(cx);
     // Preferences > Appearance > Interface.
     crate::themes::reapply(cx);
+    // Preferences > MISC > Minimize to system tray.
+    crate::tray::apply(cx);
     cx.refresh_windows();
     Ok(())
 }
@@ -1918,7 +1932,7 @@ impl Render for Preferences {
                             .debug_selector(move || format!("preferences-{key}"))
                             .label(label(entry.label))
                             .checked(checked)
-                            .disabled(locked)
+                            .disabled(locked || !available_here(key))
                             .on_click(cx.listener(move |this, _, _, cx| {
                                 this.apply(key, Ok(Some(Value::Boolean(!checked))), cx);
                             }))

@@ -8,6 +8,9 @@ version's release notes from its section here.
 
 ### Added
 
+- Preferences > MISC > Minimize to system tray, on Windows and macOS: the minimized window
+  leaves the taskbar (the Dock) for an icon in the notification area (the menu bar), whose click
+  brings it back. `-systemtray` now starts Birchpad there; on Linux it still starts minimized.
 - Preferences > Editing > Non-printing characters: with View > Show Symbol > Show Non-Printing
   Characters on, each such character can show as its abbreviation (NBSP, ZWSP) or its code
   point (U+00A0) in a frame, taking the label's columns; framed and marked in its own cells,

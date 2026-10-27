@@ -59,6 +59,7 @@ pub mod style_configurator;
 pub mod themes;
 pub mod toolbar;
 pub mod tools;
+pub mod tray;
 pub mod updates;
 pub mod user_languages;
 pub mod view_extras;
@@ -257,9 +258,23 @@ pub fn run() {
                             workspace::report_error(&error, window, cx);
                         }
                     }
-                    // `-systemtray`: GPUI has no tray icon; the window starts minimized.
-                    if command_line.minimized {
-                        window.minimize_window();
+                    // Preferences > MISC > Minimize to system tray, on Windows and macOS.
+                    crate::tray::apply(cx);
+                    if crate::tray::SUPPORTED
+                        && let Err(error) = crate::tray::watch(window)
+                    {
+                        eprintln!("tray: {error:#}");
+                    }
+                    // `-systemtray`: in the tray, or minimized where there is none.
+                    match crate::tray::start(command_line.minimized, crate::tray::SUPPORTED) {
+                        crate::tray::Start::Normal => {}
+                        crate::tray::Start::Minimized => window.minimize_window(),
+                        crate::tray::Start::InTray => {
+                            if let Err(error) = crate::tray::send(window) {
+                                eprintln!("tray: {error:#}");
+                                window.minimize_window();
+                            }
+                        }
                     }
                 })
                 .ok();

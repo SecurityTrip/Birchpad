@@ -188,6 +188,9 @@ mod toolbar;
 #[path = "tools/tests.rs"]
 mod tools;
 
+#[path = "tray/tests.rs"]
+mod tray;
+
 #[path = "updates/tests.rs"]
 mod updates;
 

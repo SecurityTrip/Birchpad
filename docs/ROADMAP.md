@@ -749,7 +749,7 @@ each with its tests, docs and a `CHANGELOG.md` entry, its options in Preferences
 What the steps of 0.7.0 could not do, each as soon as it can be done; until then, as before,
 written down why not.
 
-- [ ] 7.4 Minimize to the system tray (Notepad++'s Preferences > MISC), once GPUI has a tray
+- [x] 7.4 Minimize to the system tray (Notepad++'s Preferences > MISC), once GPUI has a tray
       icon; until then, written down why not. Not in 0.7.0: GPUI (gpui-pre 0.3.9, which
       gpui-kit 0.7 and 0.8 both build on, checked on 2026-10-25) has no tray or status-bar
       icon on any platform, nor a way to hide a window from the taskbar and bring it back from
@@ -758,7 +758,13 @@ written down why not.
       an NSStatusItem, a D-Bus StatusNotifierItem), which is what GPUI should provide.
       `-systemtray` keeps starting minimized (6.40). Not in 0.7.1 either: gpui-pre 0.3.10 and
       gpui-kit 0.8.1, checked on 2026-10-27, add no tray icon and no way to take a window off
-      the taskbar; their only hiding is macOS's Hide of the whole application
+      the taskbar; their only hiding is macOS's Hide of the whole application. Done in 0.7.1
+      without GPUI, on Windows and macOS: Preferences > MISC > Minimize to system tray, and
+      `-systemtray` starts there; on Windows a subclass of the window's procedure and
+      `Shell_NotifyIconW`, on macOS an `NSStatusItem` and the application hidden out of the
+      Dock ([ADR 0056](adr/0056-system-tray-on-windows-and-macos.md)). Not on Linux: GNOME shows
+      a StatusNotifierItem only with an extension, and Wayland lets no application hide its
+      window and show it again; there `-systemtray` still starts minimized
 - [x] 7.4e What 7.4b left: how non-printing characters are drawn, as abbreviations (NBSP,
       ZWSP) or code points, which needs the column model to give such a character the cells
       of its label while the setting is on; Dark Mode's customized tone beside the seven

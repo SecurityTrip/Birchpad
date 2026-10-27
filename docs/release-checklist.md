@@ -82,3 +82,6 @@ desktops are welcome but not required.
       endings; Clipboard History lists what other programs copied
 - [ ] A file changed by another program is reloaded or asked about when the window comes back
 - [ ] A 100 MB file opens, scrolls and searches without freezing the window
+- [ ] Windows and macOS: with Preferences > MISC > Minimize to system tray, minimizing the window
+      takes it off the taskbar (out of the Dock) to an icon in the notification area (the menu
+      bar), and a click on the icon brings it back; `-systemtray` starts it there

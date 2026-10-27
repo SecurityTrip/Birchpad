@@ -272,3 +272,13 @@ fn sql_backslash_escapes_are_off_by_default() {
     assert!(check_setting("sql.backslash-escapes", &toml::Value::String("yes".into())).is_err());
     assert!(check_setting("sql.escapes", &toml::Value::Boolean(true)).is_err());
 }
+
+#[test]
+fn minimizing_to_the_tray_is_off_by_default() {
+    assert!(!Settings::default().misc.minimize_to_tray);
+    let settings: Settings = toml::from_str("[misc]\nminimize-to-tray = true\n").unwrap();
+    assert!(settings.misc.minimize_to_tray);
+    check_setting("misc.minimize-to-tray", &toml::Value::Boolean(false)).unwrap();
+    assert!(check_setting("misc.minimize-to-tray", &toml::Value::Integer(1)).is_err());
+    assert!(check_setting("misc.minimize-to-system-tray", &toml::Value::Boolean(true)).is_err());
+}

@@ -587,6 +587,7 @@ dependencies = [
  "birchpad-ui",
  "birchpad-update",
  "birchpad-view",
+ "block2 0.6.2",
  "chrono",
  "embed-resource",
  "futures",
@@ -612,7 +613,7 @@ dependencies = [
 
 [[package]]
 name = "birchpad-cli"
-version = "0.7.0"
+version = "0.7.1"
 dependencies = [
  "interprocess",
  "serde",

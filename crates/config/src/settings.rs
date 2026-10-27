@@ -100,6 +100,10 @@ pub struct MiscSettings {
     pub confirm_save_all: bool,
     /// Folder as Workspace follows links to folders.
     pub follow_symlinks: bool,
+    /// Minimizing the window takes it off the taskbar to an icon in the notification area (the
+    /// menu bar on macOS), which brings it back ("Minimize to system tray"). Windows and macOS
+    /// only.
+    pub minimize_to_tray: bool,
 }
 
 impl Default for MiscSettings {
@@ -109,6 +113,7 @@ impl Default for MiscSettings {
             detect_encoding: true,
             confirm_save_all: false,
             follow_symlinks: false,
+            minimize_to_tray: false,
         }
     }
 }
