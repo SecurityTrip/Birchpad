@@ -480,9 +480,12 @@ fn zoomed_diagrams_are_drawn_larger_within_a_limit() {
         "never smaller than itself"
     );
     assert_eq!(raster_factor((500., 400.), 1.), 1.);
-    let large = raster_factor((4000., 3000.), 4.);
-    assert!((1. ..4.).contains(&large));
-    assert!((4000. * large) * (3000. * large) <= MAX_ZOOMED_PIXELS * 1.001);
+    // A million pixels at 400%: drawn at twice its size, the most pixels there may be.
+    let large = raster_factor((1000., 1000.), 4.);
+    assert!((1. ..4.).contains(&large), "{large}");
+    assert!((1000. * large) * (1000. * large) <= MAX_ZOOMED_PIXELS * 1.001);
+    // Past the limit at its own size: not drawn again.
+    assert_eq!(raster_factor((4000., 3000.), 4.), 1.);
     assert_eq!(raster_factor((0., 0.), 3.), 1.);
 }
 
