@@ -806,7 +806,7 @@ written down why not.
       the mouse wheel, from 25% to 400%, drawn sharp; Copy Diagram and Export Diagram as PNG or
       SVG from a diagram's context menu, the PNG drawn by Birchpad from PlantUML's SVG at
       `preview.plantuml-png-scale`
-- [ ] Release 0.7.2: the workspace version (0.7.2, set when its branch opens, so that nightly
+- [x] Release 0.7.2: the workspace version (0.7.2, set when its branch opens, so that nightly
       builds are its pre-releases), `CHANGELOG.md` and this roadmap updated; the
       [release checklist](release-checklist.md) gone through
 
