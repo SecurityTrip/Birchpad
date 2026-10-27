@@ -783,7 +783,7 @@ written down why not.
       backslash as escape character for SQL, the parser reads a quote after an odd run of
       backslashes as a backslash, the same length, so the grammar's strings go on past it
       ([ADR 0055](adr/0055-sql-backslash-escapes.md))
-- [ ] Release 0.7.1: the workspace version (0.7.1, set when its branch opens, so that nightly
+- [x] Release 0.7.1: the workspace version (0.7.1, set when its branch opens, so that nightly
       builds are its pre-releases), `CHANGELOG.md` and this roadmap updated; the
       [release checklist](release-checklist.md) gone through
 
