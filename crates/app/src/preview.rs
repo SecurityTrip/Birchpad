@@ -480,13 +480,17 @@ impl Preview {
         }
     }
 
-    /// Puts the caret at the start of `line` (from 0) of the text, in its view: a mistake's
-    /// line.
-    pub fn go_to_line(&self, line: usize, window: &mut Window, cx: &mut App) {
-        let Some(view) = self.view.upgrade() else {
+    /// Puts the caret at the start of `line` (from 0) of the text `this` shows, in its view: a
+    /// mistake's line. Not while `this` is being updated: activating the view draws its preview.
+    pub fn go_to_line(this: &Entity<Self>, line: usize, window: &mut Window, cx: &mut App) {
+        let (view, workspace) = {
+            let preview = this.read(cx);
+            (preview.view.upgrade(), preview.workspace.upgrade())
+        };
+        let Some(view) = view else {
             return;
         };
-        if let Some(workspace) = self.workspace.upgrade() {
+        if let Some(workspace) = workspace {
             workspace.update(cx, |workspace, cx| {
                 workspace.activate_view(&view, window, cx);
             });
@@ -612,9 +616,10 @@ impl Preview {
                         row.cursor_pointer().hover(|row| row.underline())
                     })
                     .on_click(move |_, window, cx| {
-                        if let Some(line) = line {
-                            this.update(cx, |this, cx| this.go_to_line(line, window, cx))
-                                .ok();
+                        if let Some(line) = line
+                            && let Some(this) = this.upgrade()
+                        {
+                            Self::go_to_line(&this, line, window, cx);
                         }
                     })
                     .child(text)

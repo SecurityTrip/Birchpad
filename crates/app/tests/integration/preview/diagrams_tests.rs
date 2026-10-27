@@ -240,7 +240,7 @@ fn the_preview_lists_mistakes_and_goes_to_their_lines(cx: &mut TestAppContext) {
             message: "Syntax Error?".into()
         }]
     );
-    shown.update_in(cx, |preview, window, cx| preview.go_to_line(2, window, cx));
+    cx.update(|window, cx| Preview::go_to_line(&shown, 2, window, cx));
     let caret = workspace.read_with(cx, |workspace, cx| {
         workspace
             .active_view(cx)
