@@ -481,7 +481,7 @@ fn zoomed_diagrams_are_drawn_larger_within_a_limit() {
     );
     assert_eq!(raster_factor((500., 400.), 1.), 1.);
     let large = raster_factor((4000., 3000.), 4.);
-    assert!(large < 4. && large >= 1.);
+    assert!((1. ..4.).contains(&large));
     assert!((4000. * large) * (3000. * large) <= MAX_ZOOMED_PIXELS * 1.001);
     assert_eq!(raster_factor((0., 0.), 3.), 1.);
 }
