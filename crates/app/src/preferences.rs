@@ -925,6 +925,12 @@ pub const ENTRIES: &[Entry] = &[
         Kind::Choice(&[("white", "White"), ("theme", "As the theme")]),
     ),
     entry(
+        "Preview",
+        "preview.plantuml-png-scale",
+        "Diagrams copied or exported as PNG: scale",
+        Kind::Number { min: 1, max: 8 },
+    ),
+    entry(
         "Files",
         "files.recent-limit",
         "Recent files",

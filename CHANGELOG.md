@@ -18,8 +18,12 @@ version's release notes from its section here.
   a zoomed diagram keeps its size, stays sharp, and the preview scrolls both ways. Fit, as
   before, shrinks a diagram wider than the preview to its width
   ([#52](https://github.com/SecurityTrip/Birchpad/issues/52)).
-- Preferences > Preview: the PlantUML to run (`preview.plantuml`) and the diagrams'
-  background.
+- Copy Diagram, Export Diagram as PNG... and Export Diagram as SVG... in a PlantUML diagram's
+  context menu, and View > Preview for the first diagram. The SVG is PlantUML's; the PNG is
+  drawn by Birchpad from it, twice its size by default (`preview.plantuml-png-scale`, 1 to
+  8), on the diagram's background ([#51](https://github.com/SecurityTrip/Birchpad/issues/51)).
+- Preferences > Preview: the PlantUML to run (`preview.plantuml`), the diagrams' background
+  and the scale of PNG diagrams.
 
 ### Changed
 

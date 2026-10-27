@@ -8,15 +8,19 @@ use std::process::{Child, Command, Stdio};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use anyhow::{Result, anyhow};
+use std::path::PathBuf;
+use std::sync::LazyLock;
+
+use anyhow::{Context as _, Result, anyhow, bail};
 use birchpad_config::DiagramBackground;
-use gpui_kit::{App, Entity};
+use gpui_kit::{App, AppContext as _, ClipboardItem, Context, Entity, Image, ImageFormat, Window};
+use resvg::{tiny_skia, usvg};
 use toml::Value;
 
 use super::{Preview, PreviewKind};
 use crate::app_state::AppState;
 use crate::commands::{CommandRegistry, Register as _};
-use crate::workspace::Workspace;
+use crate::workspace::{Workspace, report_error};
 
 /// What PlantUML writes after each diagram, to tell the diagrams of a file apart.
 pub const DIAGRAM_END: &str = "<!--birchpad-diagram-end-->";
@@ -38,6 +42,50 @@ pub(super) fn register_commands(registry: &mut CommandRegistry) {
             cx,
         )
     });
+    registry.workspace(
+        "preview.copy-diagram",
+        |this, args: ExportArgs, window, cx| {
+            let (svg, _) = diagram_to_export(this, args.diagram, cx)?;
+            let (scale, background) = png_options(cx);
+            cx.spawn_in(window, async move |_, cx| {
+                let png = cx
+                    .background_spawn(async move { svg_to_png(&svg, scale, background) })
+                    .await;
+                cx.update(|window, cx| match png {
+                    Ok(png) => cx.write_to_clipboard(ClipboardItem::new_image(&Image::from_bytes(
+                        ImageFormat::Png,
+                        png,
+                    ))),
+                    Err(error) => report_error(&error, window, cx),
+                })
+                .ok();
+            })
+            .detach();
+            Ok(())
+        },
+    );
+    registry.workspace(
+        "preview.export-png",
+        |this, args: ExportArgs, window, cx| {
+            let (svg, export) = diagram_to_export(this, args.diagram, cx)?;
+            let (scale, background) = png_options(cx);
+            export_file(export, "png", args.path, window, cx, move |path| {
+                let png = svg_to_png(&svg, scale, background)?;
+                std::fs::write(path, png).with_context(|| path.display().to_string())
+            });
+            Ok(())
+        },
+    );
+    registry.workspace(
+        "preview.export-svg",
+        |this, args: ExportArgs, window, cx| {
+            let (svg, export) = diagram_to_export(this, args.diagram, cx)?;
+            export_file(export, "svg", args.path, window, cx, move |path| {
+                std::fs::write(path, &svg).with_context(|| path.display().to_string())
+            });
+            Ok(())
+        },
+    );
     for (id, change) in ZOOM_COMMANDS {
         registry.workspace(id, move |this, (), _, cx| {
             let preview = active_diagrams(this, cx)?;
@@ -68,6 +116,210 @@ pub fn active_diagrams(workspace: &Workspace, cx: &mut App) -> Result<Entity<Pre
         .update(cx, |pane, cx| pane.preview(&view, cx))
         .filter(|preview| preview.read(cx).kind == PreviewKind::PlantUml)
         .ok_or_else(|| anyhow!("{}", t!("preview.no-diagrams")))
+}
+
+/// Copy Diagram and Export Diagram as PNG or SVG: which diagram of the active document (the
+/// first by default), and the file to write, or none to ask for one.
+#[derive(Debug, Default, serde::Deserialize)]
+struct ExportArgs {
+    #[serde(default)]
+    diagram: usize,
+    #[serde(default)]
+    path: Option<PathBuf>,
+}
+
+/// Where an exported diagram goes by default: the document's folder and name.
+struct Export {
+    folder: PathBuf,
+    stem: Option<String>,
+    diagram: usize,
+}
+
+/// The SVG of diagram `index` of the active document's preview, and where it is exported.
+fn diagram_to_export(
+    workspace: &Workspace,
+    index: usize,
+    cx: &mut Context<Workspace>,
+) -> Result<(Vec<u8>, Export)> {
+    let preview = active_diagrams(workspace, cx)?;
+    let preview = preview.read(cx);
+    let svg = preview
+        .diagram_svg(index)
+        .ok_or_else(|| anyhow!("{}", t!("preview.no-diagram-to-export")))?;
+    let path = preview.path(cx);
+    let export = Export {
+        folder: path
+            .as_deref()
+            .and_then(Path::parent)
+            .map_or_else(|| workspace.default_directory(cx), Path::to_path_buf),
+        stem: path
+            .as_deref()
+            .and_then(Path::file_stem)
+            .map(|stem| stem.to_string_lossy().into_owned()),
+        diagram: index,
+    };
+    Ok((svg, export))
+}
+
+/// The name an exported diagram is offered: the document's (`flow.png`), with the diagram's
+/// number after the first (`flow-2.png`); `diagram` for an untitled document.
+pub fn export_name(stem: Option<&str>, diagram: usize, extension: &str) -> String {
+    let stem = stem.filter(|stem| !stem.is_empty()).unwrap_or("diagram");
+    match diagram {
+        0 => format!("{stem}.{extension}"),
+        index => format!("{stem}-{}.{extension}", index + 1),
+    }
+}
+
+/// Writes a diagram with `write` to `path`, or to the file the user chooses.
+fn export_file(
+    export: Export,
+    extension: &'static str,
+    path: Option<PathBuf>,
+    window: &mut Window,
+    cx: &mut Context<Workspace>,
+    write: impl FnOnce(&Path) -> Result<()> + Send + 'static,
+) {
+    let start = export.folder;
+    let name = export_name(export.stem.as_deref(), export.diagram, extension);
+    cx.spawn_in(window, async move |_, cx| {
+        let path = match path {
+            Some(path) => path,
+            None => match crate::path_dialog::ask_save(start, name, cx).await {
+                Some(path) => path,
+                None => return,
+            },
+        };
+        let written = cx.background_spawn(async move { write(&path) }).await;
+        if let Err(error) = written {
+            let error = anyhow!(
+                "{}",
+                t!("preview.cannot-export", error = format!("{error:#}"))
+            );
+            cx.update(|window, cx| report_error(&error, window, cx))
+                .ok();
+        }
+    })
+    .detach();
+}
+
+/// The scale (`preview.plantuml-png-scale`, 1 to 8) and the background of PNG diagrams: white,
+/// or transparent with the theme's.
+fn png_options(cx: &App) -> (f32, Option<[u8; 4]>) {
+    let settings = &AppState::global(cx).settings.preview;
+    let scale = settings.plantuml_png_scale.clamp(1, 8) as f32;
+    let background = match settings.plantuml_background {
+        DiagramBackground::White => Some([255, 255, 255, 255]),
+        DiagramBackground::Theme => None,
+    };
+    (scale, background)
+}
+
+/// The longest side a PNG diagram has, in pixels; a larger scale is lowered to it.
+pub const MAX_PNG_SIDE: f32 = 16_384.;
+
+/// The system's fonts, read once, with the generic families set to fonts that are there.
+fn fonts() -> Arc<usvg::fontdb::Database> {
+    static FONTS: LazyLock<Arc<usvg::fontdb::Database>> = LazyLock::new(|| {
+        let mut fonts = usvg::fontdb::Database::new();
+        fonts.load_system_fonts();
+        // The first of `names` the system has.
+        fn first(fonts: &usvg::fontdb::Database, names: &[&str]) -> Option<String> {
+            names
+                .iter()
+                .find(|name| {
+                    fonts
+                        .faces()
+                        .any(|face| face.families.iter().any(|(family, _)| family == *name))
+                })
+                .map(|name| (*name).to_owned())
+        }
+        let sans = [
+            "Arial",
+            "Helvetica",
+            "Liberation Sans",
+            "DejaVu Sans",
+            "Noto Sans",
+        ];
+        if let Some(name) = first(&fonts, &sans) {
+            fonts.set_sans_serif_family(name);
+        }
+        let serif = [
+            "Times New Roman",
+            "Times",
+            "Liberation Serif",
+            "DejaVu Serif",
+            "Noto Serif",
+        ];
+        if let Some(name) = first(&fonts, &serif) {
+            fonts.set_serif_family(name);
+        }
+        let mono = [
+            "Consolas",
+            "Courier New",
+            "Menlo",
+            "Liberation Mono",
+            "DejaVu Sans Mono",
+        ];
+        if let Some(name) = first(&fonts, &mono) {
+            fonts.set_monospace_family(name);
+        }
+        Arc::new(fonts)
+    });
+    FONTS.clone()
+}
+
+/// `svg` drawn at `scale` times its size (lowered so that no side passes [`MAX_PNG_SIDE`]), on
+/// `background` (RGBA) or transparent: its width, height and RGBA pixels, not premultiplied.
+pub fn svg_to_pixels(
+    svg: &[u8],
+    scale: f32,
+    background: Option<[u8; 4]>,
+) -> Result<(u32, u32, Vec<u8>)> {
+    let pixmap = render_svg(svg, scale, background)?;
+    let pixels = pixmap
+        .pixels()
+        .iter()
+        .flat_map(|pixel| {
+            let color = pixel.demultiply();
+            [color.red(), color.green(), color.blue(), color.alpha()]
+        })
+        .collect();
+    Ok((pixmap.width(), pixmap.height(), pixels))
+}
+
+/// `svg` as a PNG, drawn as [`svg_to_pixels`] draws it.
+pub fn svg_to_png(svg: &[u8], scale: f32, background: Option<[u8; 4]>) -> Result<Vec<u8>> {
+    let pixmap = render_svg(svg, scale, background)?;
+    pixmap.encode_png().map_err(|error| anyhow!("{error}"))
+}
+
+fn render_svg(svg: &[u8], scale: f32, background: Option<[u8; 4]>) -> Result<tiny_skia::Pixmap> {
+    if !(scale > 0.) {
+        bail!("{}", t!("preview.not-a-picture"));
+    }
+    let options = usvg::Options {
+        fontdb: fonts(),
+        ..usvg::Options::default()
+    };
+    let tree = usvg::Tree::from_data(svg, &options)
+        .map_err(|error| anyhow!("{}: {error}", t!("preview.not-a-picture")))?;
+    let size = tree.size();
+    let longest = size.width().max(size.height());
+    let scale = scale.min(MAX_PNG_SIDE / longest);
+    let width = (size.width() * scale).ceil().max(1.) as u32;
+    let height = (size.height() * scale).ceil().max(1.) as u32;
+    let mut pixmap = tiny_skia::Pixmap::new(width, height)
+        .ok_or_else(|| anyhow!("{}", t!("preview.not-a-picture")))?;
+    if let Some([red, green, blue, alpha]) = background {
+        pixmap.fill(tiny_skia::Color::from_rgba8(red, green, blue, alpha));
+    }
+    resvg::render(
+        &tree,
+        tiny_skia::Transform::from_scale(scale, scale),
+        &mut pixmap.as_mut(),
+    );
+    Ok(pixmap)
 }
 
 /// What the preview draws PlantUML diagrams on (`preview.plantuml-background`).

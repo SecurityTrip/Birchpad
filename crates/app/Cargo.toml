@@ -29,6 +29,8 @@ chrono = { version = "0.4", default-features = false, features = ["clock", "std"
 futures = "0.3"
 gpui-kit = "0.7"
 raw-window-handle = "0.6"
+# PlantUML diagrams exported as PNG: the SVG renderer GPUI draws them with.
+resvg = "0.46"
 semver = "1"
 serde.workspace = true
 serde_json.workspace = true

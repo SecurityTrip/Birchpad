@@ -302,6 +302,9 @@ pub const COMMANDS: &[CommandSpec] = &[
     workspace("preview.actual-size", "Diagrams at Actual Size"),
     workspace("preview.fit", "Fit Diagrams to Width"),
     workspace("preview.white-background", "White Diagram Background"),
+    workspace("preview.copy-diagram", "Copy Diagram"),
+    workspace("preview.export-png", "Export Diagram as PNG..."),
+    workspace("preview.export-svg", "Export Diagram as SVG..."),
     workspace("preview.install-plantuml", "Install PlantUML"),
     editor("search.go-to-matching-brace", "Go to Matching Brace"),
     editor(

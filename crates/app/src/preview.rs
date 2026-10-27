@@ -22,6 +22,7 @@ use birchpad_config::{DiagramBackground, PreviewMode};
 use birchpad_core::RevisionId;
 use gpui_kit::base::text::{TextView, TextViewState};
 use gpui_kit::component::button::{Button, ButtonVariants as _};
+use gpui_kit::component::menu::{ContextMenuExt as _, PopupMenu, PopupMenuItem};
 use gpui_kit::component::{IconName, Selectable as _, Sizable};
 use gpui_kit::{
     AnyElement, App, AppContext as _, ClickEvent, Context, Entity, Image, ImageFormat, ImageSource,
@@ -37,10 +38,10 @@ use crate::theme::{paint, ui};
 use crate::workspace::Workspace;
 
 pub use diagrams::{
-    DIAGRAM_END, Drawn, MAX_ZOOMED_PIXELS, Mistake, NotDrawn, PLANTUML_DELAY, Stop, StopOnDrop,
-    ZOOM_COMMANDS, ZOOM_STEPS, Zoom, active_diagrams, background, diagram_starts, line_offset,
-    mistakes, plantuml_command, raster_factor, run_plantuml, setting_path, sized_svg,
-    split_diagrams, svg_size,
+    DIAGRAM_END, Drawn, MAX_PNG_SIDE, MAX_ZOOMED_PIXELS, Mistake, NotDrawn, PLANTUML_DELAY, Stop,
+    StopOnDrop, ZOOM_COMMANDS, ZOOM_STEPS, Zoom, active_diagrams, background, diagram_starts,
+    export_name, line_offset, mistakes, plantuml_command, raster_factor, run_plantuml,
+    setting_path, sized_svg, split_diagrams, svg_size, svg_to_pixels, svg_to_png,
 };
 
 /// What a document's preview shows.
@@ -416,6 +417,23 @@ impl Preview {
         }
     }
 
+    /// The SVG of diagram `index` (from 0), if PlantUML drew it.
+    pub fn diagram_svg(&self, index: usize) -> Option<Vec<u8>> {
+        match &self.content {
+            Content::PlantUml(diagrams) => diagrams
+                .images
+                .get(index)
+                .map(|diagram| diagram.image.bytes().to_vec()),
+            Content::Markdown(_) => None,
+        }
+    }
+
+    /// The file of the document shown, if it has one.
+    pub fn path(&self, cx: &App) -> Option<PathBuf> {
+        let view = self.view.upgrade()?;
+        view.read(cx).buffer.read(cx).path().map(Path::to_path_buf)
+    }
+
     /// How large the diagrams are shown; Fit for a Markdown preview.
     pub fn zoom(&self) -> Zoom {
         match &self.content {
@@ -603,7 +621,11 @@ impl Preview {
             }))
     }
 
-    fn render_diagrams(diagrams: &Diagrams, cx: &mut Context<Self>) -> AnyElement {
+    fn render_diagrams(
+        diagrams: &Diagrams,
+        workspace: &WeakEntity<Workspace>,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
         let this = &cx.entity().downgrade();
         let white = background(cx) == DiagramBackground::White;
         let zoom = diagrams.zoom.percent().map(|percent| percent as f32 / 100.);
@@ -637,7 +659,7 @@ impl Preview {
             .when(diagrams.missing, |list| {
                 list.child(Self::render_install(cx))
             })
-            .children(diagrams.images.iter().map(|diagram| {
+            .children(diagrams.images.iter().enumerate().map(|(index, diagram)| {
                 let image = img(ImageSource::Image(diagram.shown()));
                 // At a zoom, the diagram's size times it; at Fit, no wider than the preview.
                 let image = match (zoom, diagram.size) {
@@ -649,11 +671,13 @@ impl Preview {
                 // Diagrams are made for paper: on white, unless the theme's background is asked.
                 // Centered while it fits; a wider one starts at the left, to scroll to.
                 div()
+                    .id(("plantuml-diagram", index))
                     .flex_none()
                     .mx_auto()
                     .when(zoom.is_none(), |card| card.max_w_full())
                     .when(white, |card| card.bg(gpui_kit::white()))
                     .child(image)
+                    .context_menu(Self::diagram_menu(index, workspace.clone()))
             }));
         div()
             .id("plantuml-diagrams")
@@ -661,6 +685,35 @@ impl Preview {
             .overflow_scroll()
             .child(content)
             .into_any_element()
+    }
+
+    /// The context menu of diagram `index`: copied as a picture, or exported as PNG or SVG.
+    fn diagram_menu(
+        index: usize,
+        workspace: WeakEntity<Workspace>,
+    ) -> impl Fn(PopupMenu, &mut Window, &mut Context<PopupMenu>) -> PopupMenu + 'static {
+        move |menu, _, _| {
+            let item = |command: &'static str| {
+                let workspace = workspace.clone();
+                PopupMenuItem::new(crate::menus::command_title(command)).on_click(
+                    move |_: &ClickEvent, window, cx| {
+                        let invocation =
+                            Invocation::with_args(command, serde_json::json!({ "diagram": index }));
+                        workspace
+                            .update(cx, |workspace, cx| {
+                                if let Err(error) = workspace.dispatch(&invocation, window, cx) {
+                                    crate::workspace::report_error(&error, window, cx);
+                                }
+                            })
+                            .ok();
+                    },
+                )
+            };
+            menu.item(item("preview.copy-diagram"))
+                .separator()
+                .item(item("preview.export-png"))
+                .item(item("preview.export-svg"))
+        }
     }
 
     /// The bar above the diagrams: their zoom, and the background they are drawn on.
@@ -759,12 +812,11 @@ impl Render for Preview {
                 .flex()
                 .flex_col()
                 .child(self.render_toolbar(cx))
-                .child(
-                    div()
-                        .flex_1()
-                        .min_h_0()
-                        .child(Self::render_diagrams(diagrams, cx)),
-                )
+                .child(div().flex_1().min_h_0().child(Self::render_diagrams(
+                    diagrams,
+                    &self.workspace,
+                    cx,
+                )))
                 .into_any_element(),
         };
         div()

@@ -1548,6 +1548,8 @@ pub struct PreviewSettings {
     /// What PlantUML diagrams are drawn on in the preview: white, as PlantUML draws them for
     /// paper (the default), or the theme's background.
     pub plantuml_background: DiagramBackground,
+    /// How many times its size a diagram copied or exported as PNG is drawn, from 1 to 8.
+    pub plantuml_png_scale: u32,
 }
 
 impl Default for PreviewSettings {
@@ -1555,6 +1557,7 @@ impl Default for PreviewSettings {
         Self {
             plantuml: "plantuml".to_owned(),
             plantuml_background: DiagramBackground::default(),
+            plantuml_png_scale: 2,
         }
     }
 }

@@ -539,3 +539,173 @@ fn the_zoom_commands_need_plantuml_diagrams(cx: &mut TestAppContext) {
         assert!(error.contains("PlantUML"), "{id}: {error}");
     }
 }
+
+#[test]
+fn exported_diagrams_are_named_after_the_document() {
+    assert_eq!(export_name(Some("flow"), 0, "png"), "flow.png");
+    assert_eq!(export_name(Some("flow"), 1, "svg"), "flow-2.svg");
+    assert_eq!(export_name(Some("a.b"), 9, "png"), "a.b-10.png");
+    assert_eq!(export_name(None, 0, "png"), "diagram.png", "untitled");
+    assert_eq!(export_name(Some(""), 0, "png"), "diagram.png");
+}
+
+/// A 4 by 2 picture: red on its left half, nothing on its right.
+const HALF_RED: &[u8] = br##"<svg xmlns="http://www.w3.org/2000/svg" width="4" height="2" viewBox="0 0 4 2"><rect width="2" height="2" fill="#ff0000"/></svg>"##;
+
+fn pixel(pixels: &(u32, u32, Vec<u8>), x: u32, y: u32) -> [u8; 4] {
+    let at = ((y * pixels.0 + x) * 4) as usize;
+    pixels.2[at..at + 4].try_into().unwrap()
+}
+
+#[test]
+fn diagrams_are_drawn_at_a_scale_on_their_background() {
+    let drawn = svg_to_pixels(HALF_RED, 2., Some([255, 255, 255, 255])).unwrap();
+    assert_eq!((drawn.0, drawn.1), (8, 4));
+    assert_eq!(pixel(&drawn, 1, 1), [255, 0, 0, 255]);
+    assert_eq!(pixel(&drawn, 6, 2), [255, 255, 255, 255], "white");
+    let drawn = svg_to_pixels(HALF_RED, 1., None).unwrap();
+    assert_eq!((drawn.0, drawn.1), (4, 2));
+    assert_eq!(pixel(&drawn, 3, 1)[3], 0, "transparent");
+    let drawn = svg_to_pixels(HALF_RED, 8., None).unwrap();
+    assert_eq!((drawn.0, drawn.1), (32, 16));
+}
+
+#[test]
+fn a_huge_scale_is_lowered_and_no_picture_is_refused() {
+    let wide = br#"<svg xmlns="http://www.w3.org/2000/svg" width="10000" height="10"><rect width="10" height="10"/></svg>"#;
+    let drawn = svg_to_pixels(wide, 8., None).unwrap();
+    assert!(drawn.0 as f32 <= MAX_PNG_SIDE, "{}", drawn.0);
+    assert!(svg_to_pixels(b"not an svg", 2., None).is_err());
+    assert!(svg_to_pixels(HALF_RED, 0., None).is_err());
+    assert!(svg_to_pixels(HALF_RED, f32::NAN, None).is_err());
+}
+
+/// The width and height a PNG file says it has.
+fn png_size(png: &[u8]) -> (u32, u32) {
+    assert_eq!(&png[..8], b"\x89PNG\r\n\x1a\n");
+    let number = |at: usize| u32::from_be_bytes(png[at..at + 4].try_into().unwrap());
+    (number(16), number(20))
+}
+
+#[test]
+fn a_png_is_the_picture_encoded() {
+    assert_eq!(png_size(&svg_to_png(HALF_RED, 3., None).unwrap()), (12, 6));
+}
+
+#[gpui_kit::test]
+fn diagrams_are_exported_as_svg_and_png(cx: &mut TestAppContext) {
+    let (workspace, cx) = open_workspace(cx);
+    let dir = tempfile::tempdir().unwrap();
+    let plantuml = simple_plantuml(dir.path());
+    let shown = draw(
+        &workspace,
+        &plantuml,
+        dir.path(),
+        "flow.puml",
+        "@startuml\nA -> B\n@enduml\n",
+        cx,
+    );
+    let drawn = shown
+        .read_with(cx, |preview, _| preview.diagram_svg(0))
+        .unwrap();
+    let export = |id: &str, path: &Path, cx: &mut VisualTestContext| {
+        let invocation = birchpad_commands::Invocation::with_args(
+            id,
+            serde_json::json!({ "diagram": 0, "path": path }),
+        );
+        workspace
+            .update_in(cx, |workspace, window, cx| {
+                workspace.dispatch(&invocation, window, cx)
+            })
+            .unwrap();
+        for _ in 0..20 {
+            cx.run_until_parked();
+        }
+    };
+    let svg = dir.path().join("out.svg");
+    export("preview.export-svg", &svg, cx);
+    assert_eq!(std::fs::read(&svg).unwrap(), drawn, "PlantUML's own SVG");
+    let png = dir.path().join("out.png");
+    export("preview.export-png", &png, cx);
+    assert_eq!(png_size(&std::fs::read(&png).unwrap()), (400, 200), "twice");
+    cx.update(|_, cx| {
+        cx.global_mut::<AppState>()
+            .settings
+            .preview
+            .plantuml_png_scale = 1;
+    });
+    export("preview.export-png", &png, cx);
+    assert_eq!(png_size(&std::fs::read(&png).unwrap()), (200, 100));
+    // A scale out of its range is brought into it.
+    cx.update(|_, cx| {
+        cx.global_mut::<AppState>()
+            .settings
+            .preview
+            .plantuml_png_scale = 0;
+    });
+    export("preview.export-png", &png, cx);
+    assert_eq!(png_size(&std::fs::read(&png).unwrap()), (200, 100));
+}
+
+#[gpui_kit::test]
+fn a_diagram_is_copied_as_a_picture(cx: &mut TestAppContext) {
+    let (workspace, cx) = open_workspace(cx);
+    let dir = tempfile::tempdir().unwrap();
+    let plantuml = simple_plantuml(dir.path());
+    draw(
+        &workspace,
+        &plantuml,
+        dir.path(),
+        "flow.puml",
+        "@startuml\nA -> B\n@enduml\n",
+        cx,
+    );
+    run(&workspace, "preview.copy-diagram", cx).unwrap();
+    for _ in 0..20 {
+        cx.run_until_parked();
+    }
+    let copied = cx.update(|_, cx| cx.read_from_clipboard()).unwrap();
+    let image = copied
+        .entries()
+        .iter()
+        .find_map(|entry| match entry {
+            gpui_kit::ClipboardEntry::Image(image) => Some(image.clone()),
+            _ => None,
+        })
+        .expect("an image");
+    assert_eq!(image.format(), gpui_kit::ImageFormat::Png);
+    assert_eq!(png_size(image.bytes()), (400, 200));
+}
+
+#[gpui_kit::test]
+fn only_diagrams_that_were_drawn_are_exported(cx: &mut TestAppContext) {
+    let (workspace, cx) = open_workspace(cx);
+    let dir = tempfile::tempdir().unwrap();
+    let plantuml = simple_plantuml(dir.path());
+    draw(
+        &workspace,
+        &plantuml,
+        dir.path(),
+        "flow.puml",
+        "@startuml\nA -> B\n@enduml\n",
+        cx,
+    );
+    let path = dir.path().join("second.svg");
+    let invocation = birchpad_commands::Invocation::with_args(
+        "preview.export-svg",
+        serde_json::json!({ "diagram": 1, "path": path }),
+    );
+    let refused = workspace.update_in(cx, |workspace, window, cx| {
+        workspace.dispatch(&invocation, window, cx)
+    });
+    assert!(refused.is_err(), "there is one diagram");
+    assert!(!path.exists());
+    // A Markdown document has none.
+    let notes = dir.path().join("notes.md");
+    std::fs::write(&notes, "# Notes\n").unwrap();
+    workspace.update_in(cx, |workspace, window, cx| {
+        workspace.open_path(&notes, window, cx);
+    });
+    cx.run_until_parked();
+    assert!(run(&workspace, "preview.copy-diagram", cx).is_err());
+}
