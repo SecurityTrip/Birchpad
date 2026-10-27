@@ -756,7 +756,9 @@ written down why not.
       outside it; a window minimized there could not come back. A tray icon of Birchpad's own
       would be three platforms' native code beside GPUI's event loop (a Windows message window,
       an NSStatusItem, a D-Bus StatusNotifierItem), which is what GPUI should provide.
-      `-systemtray` keeps starting minimized (6.40)
+      `-systemtray` keeps starting minimized (6.40). Not in 0.7.1 either: gpui-pre 0.3.10 and
+      gpui-kit 0.8.1, checked on 2026-10-27, add no tray icon and no way to take a window off
+      the taskbar; their only hiding is macOS's Hide of the whole application
 - [ ] 7.4e What 7.4b left: how non-printing characters are drawn, as abbreviations (NBSP,
       ZWSP) or code points, which needs the column model to give such a character the cells
       of its label while the setting is on; Dark Mode's customized tone beside the seven
