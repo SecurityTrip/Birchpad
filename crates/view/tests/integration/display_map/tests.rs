@@ -477,3 +477,39 @@ fn labels_in_long_lines_through_edits() {
     assert_eq!(map.column(&text, text.len()), 11 * 5 - 1);
     check_kept(&mut map, &text).unwrap();
 }
+
+#[test]
+fn labels_with_a_wrap_indent_through_edits() {
+    // Short and long lines, wrapped under their indentation, with labels: kept through an
+    // edit as a map made afresh lays them out.
+    for long in [false, true] {
+        let mut text = Rope::from_str("  a\u{A0}b c\u{200B}d e f g\n  h i\u{A0}j k l m n o p q\n");
+        let config = LayoutConfig {
+            wrap_indent: WrapIndent::Aligned,
+            labels: NonPrintingLabel::Abbreviation,
+            ..wrapped(8)
+        };
+        let mut map = if long {
+            map_of(&text, config)
+        } else {
+            DisplayMap::new(&text, config)
+        };
+        show_all(&mut map, &text);
+        let changes = ChangeSet::from_edits(&text, [Edit::insert(3, "\u{A0}x")]).unwrap();
+        changes.apply(&mut text);
+        map.edit(&text, &changes);
+        check_kept(&mut map, &text).unwrap();
+    }
+}
+
+#[test]
+fn an_empty_text_wraps_into_one_row() {
+    let text = Rope::from_str("");
+    let config = LayoutConfig {
+        labels: NonPrintingLabel::CodePoint,
+        ..wrapped(4)
+    };
+    let mut map = DisplayMap::new(&text, config);
+    assert_eq!(map.row_count(&text), 1);
+    assert_eq!(map.column(&text, 0), 0);
+}

@@ -294,3 +294,72 @@ fn columns_count_labels() {
     let empty = Rope::from_str("");
     assert_eq!(column_after(&empty, 0, 0, 0, grid), 0);
 }
+
+#[test]
+fn every_non_printing_character_has_its_label() {
+    use NonPrintingLabel::*;
+    let abbreviations = [
+        ('\u{A0}', "NBSP"),
+        ('\u{AD}', "SHY"),
+        ('\u{180E}', "MVS"),
+        ('\u{2000}', "NQSP"),
+        ('\u{2001}', "MQSP"),
+        ('\u{2002}', "ENSP"),
+        ('\u{2003}', "EMSP"),
+        ('\u{2004}', "3/MSP"),
+        ('\u{2005}', "4/MSP"),
+        ('\u{2006}', "6/MSP"),
+        ('\u{2007}', "FSP"),
+        ('\u{2008}', "PSP"),
+        ('\u{2009}', "THSP"),
+        ('\u{200A}', "HSP"),
+        ('\u{200B}', "ZWSP"),
+        ('\u{200C}', "ZWNJ"),
+        ('\u{200D}', "ZWJ"),
+        ('\u{200E}', "LRM"),
+        ('\u{200F}', "RLM"),
+        ('\u{202A}', "LRE"),
+        ('\u{202B}', "RLE"),
+        ('\u{202C}', "PDF"),
+        ('\u{202D}', "LRO"),
+        ('\u{202E}', "RLO"),
+        ('\u{202F}', "NNBSP"),
+        ('\u{205F}', "MMSP"),
+        ('\u{2060}', "WJ"),
+        ('\u{2066}', "LRI"),
+        ('\u{2067}', "RLI"),
+        ('\u{2068}', "FSI"),
+        ('\u{2069}', "PDI"),
+        ('\u{3000}', "IDSP"),
+        ('\u{FEFF}', "BOM"),
+    ];
+    for (ch, short) in abbreviations {
+        assert_eq!(abbreviation(ch), Some(short), "{ch:?}");
+        assert!(non_printing(ch).is_some(), "{ch:?}");
+    }
+    // Every character Show Non-Printing Characters shows has a label of either kind, ASCII
+    // and as wide as the cells it takes.
+    let shown = ('\u{0}'..='\u{FFFF}').filter(|&ch| non_printing(ch).is_some());
+    let mut count = 0;
+    for ch in shown {
+        count += 1;
+        for labels in [Abbreviation, CodePoint] {
+            let label = non_printing_label(ch, labels).expect("labeled");
+            assert!(label.is_ascii(), "{ch:?}");
+            let grid = Grid {
+                tab_width: 4,
+                labels,
+            };
+            assert_eq!(cells_at(ch, 0, grid), label.len(), "{ch:?}");
+        }
+        assert_eq!(
+            non_printing_label(ch, CodePoint).as_deref(),
+            Some(format!("U+{:04X}", ch as u32).as_str())
+        );
+    }
+    assert_eq!(
+        count,
+        abbreviations.len() + 5,
+        "and U+1680, U+2061 to U+2064"
+    );
+}
