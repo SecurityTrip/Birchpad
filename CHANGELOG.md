@@ -6,6 +6,13 @@ version's release notes from its section here.
 
 ## [Unreleased]
 
+### Changed
+
+- The PlantUML preview lists the mistakes PlantUML finds by the line of the document they are
+  on ("Line 9: Syntax Error?"); a click puts the caret there. When the text changes while
+  PlantUML is drawing, that run is stopped, so fast typing no longer leaves Java processes
+  behind.
+
 ## [0.7.1] - 2026-10-28
 
 ### Added

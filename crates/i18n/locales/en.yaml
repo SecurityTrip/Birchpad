@@ -1315,6 +1315,7 @@ preview:
   no-preview: "the document has no preview: it is neither Markdown nor PlantUML"
   plantuml-drawing: "PlantUML is drawing the diagram..."
   plantuml-failed: "PlantUML did not run: {error}"
+  plantuml-mistake: "Line {line}: {message}"
   plantuml-no-diagram: "PlantUML drew no diagram: the text needs @startuml and @enduml"
   plantuml-not-found: "PlantUML was not found ({program}). Install it, or set preview.plantuml in the settings to the plantuml command or to plantuml.jar (Java is needed)."
   preview-only: "Preview Only"

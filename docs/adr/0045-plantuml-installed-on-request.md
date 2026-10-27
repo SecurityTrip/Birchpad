@@ -1,6 +1,6 @@
 # ADR 0045: PlantUML installed on request
 
-- Status: accepted
+- Status: accepted, changed by [ADR 0057](0057-plantuml-preview-redone.md)
 - Date: 2026-10-20
 - Changes [ADR 0042](0042-previews.md): PlantUML previews no longer need PlantUML installed
   apart from Birchpad.

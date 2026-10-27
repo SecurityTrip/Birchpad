@@ -11,11 +11,10 @@
 //! are drawn by PlantUML itself: the one `preview.plantuml` names, or the one Birchpad installs
 //! when the user asks (`plantuml.rs`).
 
-use std::io::Write as _;
+mod diagrams;
+
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
 use std::sync::Arc;
-use std::time::Duration;
 
 use anyhow::bail;
 use birchpad_config::PreviewMode;
@@ -35,6 +34,11 @@ use crate::commands::{CommandRegistry, Register as _};
 use crate::editor::EditorView;
 use crate::theme::{paint, ui};
 use crate::workspace::Workspace;
+
+pub use diagrams::{
+    DIAGRAM_END, Drawn, Mistake, NotDrawn, PLANTUML_DELAY, Stop, StopOnDrop, diagram_starts,
+    line_offset, mistakes, plantuml_command, run_plantuml, split_diagrams,
+};
 
 /// What a document's preview shows.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -195,131 +199,17 @@ fn image_source(uri: &SharedUri, folder: Option<&Path>) -> ImageSource {
     }
 }
 
-/// What PlantUML writes after each diagram, to tell the diagrams of a file apart.
-pub const DIAGRAM_END: &str = "<!--birchpad-diagram-end-->";
-
-/// How long the text rests before PlantUML draws it again: it starts a Java program each time.
-pub const PLANTUML_DELAY: Duration = Duration::from_millis(400);
-
-/// The program and arguments that draw PlantUML's diagrams as SVG from the standard input, for
-/// the `preview.plantuml` setting: a `.jar` runs with `java -jar`. With the setting as it comes
-/// (`plantuml`) and PlantUML installed by Birchpad in `installed`, that one runs, with its own
-/// Java and the layout that needs no Graphviz.
-pub fn plantuml_command(setting: &str, installed: Option<&Path>) -> (String, Vec<String>) {
-    let setting = match setting.trim() {
-        "" => "plantuml",
-        setting => setting,
-    };
-    let options = [
-        "-tsvg",
-        "-pipe",
-        "-charset",
-        "UTF-8",
-        "-pipedelimitor",
-        DIAGRAM_END,
-    ]
-    .map(str::to_owned);
-    if let Some(folder) = installed.filter(|_| setting == "plantuml") {
-        let java =
-            folder
-                .join("jre")
-                .join("bin")
-                .join(if cfg!(windows) { "java.exe" } else { "java" });
-        let mut args = vec![
-            "-Djava.awt.headless=true".to_owned(),
-            "-jar".to_owned(),
-            folder.join("plantuml.jar").display().to_string(),
-        ];
-        args.extend(options);
-        args.push("-Playout=smetana".to_owned());
-        return (java.display().to_string(), args);
-    }
-    let is_jar = Path::new(setting)
-        .extension()
-        .is_some_and(|extension| extension.eq_ignore_ascii_case("jar"));
-    if is_jar {
-        let mut args = vec!["-jar".to_owned(), setting.to_owned()];
-        args.extend(options);
-        ("java".to_owned(), args)
-    } else {
-        (setting.to_owned(), options.to_vec())
-    }
-}
-
-/// The SVG images in PlantUML's output, one per diagram.
-pub fn split_diagrams(output: &[u8]) -> Vec<Vec<u8>> {
-    String::from_utf8_lossy(output)
-        .split(DIAGRAM_END)
-        .map(str::trim)
-        .filter(|part| part.contains("<svg"))
-        .map(|part| part.as_bytes().to_vec())
-        .collect()
-}
-
-/// Why PlantUML drew nothing.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum NotDrawn {
-    /// There is no PlantUML to run: Birchpad can install it.
-    Missing(String),
-    Failed(String),
-}
-
-/// Runs PlantUML on `text`: the diagrams, or why there are none.
-fn run_plantuml(
-    setting: &str,
-    installed: Option<&Path>,
-    text: &str,
-) -> Result<Vec<Vec<u8>>, NotDrawn> {
-    let (program, args) = plantuml_command(setting, installed);
-    let mut command = Command::new(&program);
-    command
-        .args(&args)
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped());
-    #[cfg(windows)]
-    {
-        use std::os::windows::process::CommandExt as _;
-        // CREATE_NO_WINDOW: no console flashes up for Java.
-        command.creation_flags(0x0800_0000);
-    }
-    let mut child = command.spawn().map_err(|error| {
-        if error.kind() == std::io::ErrorKind::NotFound {
-            NotDrawn::Missing(t!("preview.plantuml-not-found", program = program))
-        } else {
-            NotDrawn::Failed(t!("preview.plantuml-failed", error = error))
-        }
-    })?;
-    let mut stdin = child.stdin.take().expect("piped");
-    let input = text.to_owned();
-    // Written from another thread, so that a large diagram cannot block on a full pipe.
-    let writer = std::thread::spawn(move || stdin.write_all(input.as_bytes()));
-    let output = child
-        .wait_with_output()
-        .map_err(|error| NotDrawn::Failed(t!("preview.plantuml-failed", error = error)))?;
-    let _ = writer.join();
-    // A diagram with mistakes is drawn as a picture of them, with a status that is not 0.
-    let diagrams = split_diagrams(&output.stdout);
-    if diagrams.is_empty() {
-        let message = String::from_utf8_lossy(&output.stderr).trim().to_owned();
-        return Err(NotDrawn::Failed(if message.is_empty() {
-            t!("preview.plantuml-no-diagram")
-        } else {
-            message
-        }));
-    }
-    Ok(diagrams)
-}
-
 /// What a PlantUML preview shows.
 #[derive(Default)]
 struct Diagrams {
     images: Vec<Arc<Image>>,
+    /// The mistakes PlantUML found in the text the diagrams show.
+    mistakes: Vec<Mistake>,
     /// Why PlantUML drew nothing; the diagrams it drew last stay.
     error: Option<String>,
     /// There was no PlantUML to run.
     missing: bool,
-    /// PlantUML drawing the text.
+    /// PlantUML drawing the text; dropping it stops the run ([`StopOnDrop`]).
     drawing: Option<Task<()>>,
     /// The installations of PlantUML when it last drew ([`crate::plantuml::PlantUmlInstall`]).
     installs: u64,
@@ -390,14 +280,20 @@ impl Preview {
                 let installed = crate::plantuml::installed(cx);
                 diagrams.installs = crate::plantuml::state(cx).map_or(0, |state| state.generation);
                 let executor = cx.background_executor().clone();
-                // A new drawing replaces the one under way.
+                // A new drawing replaces the one under way, which stops.
                 diagrams.drawing = Some(cx.spawn(async move |this, cx| {
                     if !first {
                         executor.timer(PLANTUML_DELAY).await;
                     }
+                    let stop = StopOnDrop(Stop::default());
+                    let running = stop.0.clone();
                     let drawn = executor
-                        .spawn(async move { run_plantuml(&setting, installed.as_deref(), &text) })
+                        .spawn(async move {
+                            let (program, args) = plantuml_command(&setting, installed.as_deref());
+                            run_plantuml(&program, &args, &text, &running)
+                        })
                         .await;
+                    drop(stop);
                     this.update(cx, |this, cx| {
                         this.show_diagrams(drawn);
                         cx.notify();
@@ -409,20 +305,23 @@ impl Preview {
         cx.notify();
     }
 
-    fn show_diagrams(&mut self, drawn: Result<Vec<Vec<u8>>, NotDrawn>) {
+    fn show_diagrams(&mut self, drawn: Result<Drawn, NotDrawn>) {
         let Content::PlantUml(diagrams) = &mut self.content else {
             return;
         };
-        diagrams.drawing = None;
         match drawn {
-            Ok(images) => {
-                diagrams.images = images
+            Ok(drawn) => {
+                diagrams.images = drawn
+                    .diagrams
                     .into_iter()
                     .map(|svg| Arc::new(Image::from_bytes(ImageFormat::Svg, svg)))
                     .collect();
+                diagrams.mistakes = drawn.mistakes;
                 diagrams.error = None;
                 diagrams.missing = false;
             }
+            // A newer drawing is on its way.
+            Err(NotDrawn::Stopped) => return,
             Err(NotDrawn::Missing(error)) => {
                 diagrams.error = Some(error);
                 diagrams.missing = true;
@@ -432,6 +331,36 @@ impl Preview {
                 diagrams.missing = false;
             }
         }
+        diagrams.drawing = None;
+    }
+
+    /// The mistakes PlantUML found in the text shown (for tests).
+    #[cfg(feature = "test-support")]
+    pub fn mistakes(&self) -> Vec<Mistake> {
+        match &self.content {
+            Content::PlantUml(diagrams) => diagrams.mistakes.clone(),
+            Content::Markdown(_) => Vec::new(),
+        }
+    }
+
+    /// Puts the caret at the start of `line` (from 0) of the text, in its view: a mistake's
+    /// line.
+    pub fn go_to_line(&self, line: usize, window: &mut Window, cx: &mut App) {
+        let Some(view) = self.view.upgrade() else {
+            return;
+        };
+        if let Some(workspace) = self.workspace.upgrade() {
+            workspace.update(cx, |workspace, cx| {
+                workspace.activate_view(&view, window, cx);
+            });
+        }
+        view.update(cx, |view, cx| {
+            let text = view.text(cx).to_string();
+            let at = line_offset(&text, line);
+            view.select_range(at..at, cx);
+        });
+        let focus = view.read(cx).focus_handle.clone();
+        window.focus(&focus, cx);
     }
 
     /// The text the preview shows, without its formatting, or what PlantUML did (for tests).
@@ -521,7 +450,41 @@ impl Preview {
             .into_any_element()
     }
 
-    fn render_diagrams(diagrams: &Diagrams, cx: &App) -> AnyElement {
+    /// PlantUML's mistakes, each a link to its line.
+    fn render_mistakes(mistakes: &[Mistake], this: &WeakEntity<Self>) -> impl IntoElement {
+        div()
+            .w_full()
+            .flex()
+            .flex_col()
+            .gap_1()
+            .children(mistakes.iter().enumerate().map(|(index, mistake)| {
+                let text = match mistake.line {
+                    Some(line) => t!(
+                        "preview.plantuml-mistake",
+                        line = line + 1,
+                        message = mistake.message.as_str()
+                    ),
+                    None => mistake.message.clone(),
+                };
+                let this = this.clone();
+                let line = mistake.line;
+                div()
+                    .id(("plantuml-mistake", index))
+                    .text_color(paint(ui().error))
+                    .when(line.is_some(), |row| {
+                        row.cursor_pointer().hover(|row| row.underline())
+                    })
+                    .on_click(move |_, window, cx| {
+                        if let Some(line) = line {
+                            this.update(cx, |this, cx| this.go_to_line(line, window, cx))
+                                .ok();
+                        }
+                    })
+                    .child(text)
+            }))
+    }
+
+    fn render_diagrams(diagrams: &Diagrams, this: &WeakEntity<Self>, cx: &App) -> AnyElement {
         let message = match (&diagrams.error, &diagrams.drawing) {
             (Some(error), _) => Some((error.clone(), ui().error)),
             (None, Some(_)) if diagrams.images.is_empty() => {
@@ -540,6 +503,9 @@ impl Preview {
             .gap_4()
             .when_some(message, |list, (message, color)| {
                 list.child(div().w_full().text_color(paint(color)).child(message))
+            })
+            .when(!diagrams.mistakes.is_empty(), |list| {
+                list.child(Self::render_mistakes(&diagrams.mistakes, this))
             })
             .when(diagrams.missing, |list| {
                 list.child(Self::render_install(cx))
@@ -570,7 +536,9 @@ impl Render for Preview {
         let colors = crate::theme::current().editor;
         let body = match &self.content {
             Content::Markdown(markdown) => self.render_markdown(markdown, cx),
-            Content::PlantUml(diagrams) => Self::render_diagrams(diagrams, cx),
+            Content::PlantUml(diagrams) => {
+                Self::render_diagrams(diagrams, &cx.entity().downgrade(), cx)
+            }
         };
         div()
             .id("preview")
