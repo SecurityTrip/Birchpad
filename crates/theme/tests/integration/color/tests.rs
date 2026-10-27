@@ -77,3 +77,29 @@ fn tones_tint_the_interface_s_surfaces_only() {
     assert_eq!(toned.text, ui.text);
     assert_eq!(toned.accent, ui.accent);
 }
+
+#[test]
+fn a_customized_tone_sets_the_colors_given() {
+    let ui = Theme::builtin(DARK).unwrap().ui;
+    let custom = ui.customized([("background", "#102030"), ("text", "#f0e0d0")]);
+    assert_eq!(custom.background, Color::rgb(0x102030));
+    assert_eq!(custom.text, Color::rgb(0xf0e0d0));
+    assert_eq!(custom.accent, ui.accent, "the others stay");
+    // Nothing given, nothing changes.
+    assert_eq!(ui.customized([]), ui);
+}
+
+#[test]
+fn a_customized_tone_passes_over_what_is_no_color() {
+    let ui = Theme::builtin(DARK).unwrap().ui;
+    let custom = ui.customized([
+        ("background", "blue"),
+        ("text", "#12345"),
+        ("", "#102030"),
+        ("no-such-part", "#102030"),
+        ("surface", "#102030"),
+    ]);
+    assert_eq!(custom.background, ui.background);
+    assert_eq!(custom.text, ui.text);
+    assert_eq!(custom.surface, Color::rgb(0x102030));
+}

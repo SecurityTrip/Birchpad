@@ -131,7 +131,68 @@ pub const ENTRIES: &[Entry] = &[
             ("purple", "Purple"),
             ("cyan", "Cyan"),
             ("olive", "Olive"),
+            ("custom", "Customized"),
         ]),
+    ),
+    entry(
+        "Appearance",
+        "appearance.dark-tone-colors.background",
+        "Customized tone: background",
+        Kind::Text,
+    ),
+    entry(
+        "Appearance",
+        "appearance.dark-tone-colors.surface",
+        "Customized tone: surface",
+        Kind::Text,
+    ),
+    entry(
+        "Appearance",
+        "appearance.dark-tone-colors.border",
+        "Customized tone: border",
+        Kind::Text,
+    ),
+    entry(
+        "Appearance",
+        "appearance.dark-tone-colors.text",
+        "Customized tone: text",
+        Kind::Text,
+    ),
+    entry(
+        "Appearance",
+        "appearance.dark-tone-colors.muted",
+        "Customized tone: muted",
+        Kind::Text,
+    ),
+    entry(
+        "Appearance",
+        "appearance.dark-tone-colors.faint",
+        "Customized tone: faint",
+        Kind::Text,
+    ),
+    entry(
+        "Appearance",
+        "appearance.dark-tone-colors.selected",
+        "Customized tone: selected",
+        Kind::Text,
+    ),
+    entry(
+        "Appearance",
+        "appearance.dark-tone-colors.hovered",
+        "Customized tone: hovered",
+        Kind::Text,
+    ),
+    entry(
+        "Appearance",
+        "appearance.dark-tone-colors.accent",
+        "Customized tone: accent",
+        Kind::Text,
+    ),
+    entry(
+        "Appearance",
+        "appearance.dark-tone-colors.error",
+        "Customized tone: error",
+        Kind::Text,
     ),
     entry(
         "Appearance",
@@ -293,6 +354,12 @@ pub const ENTRIES: &[Entry] = &[
         "language-menu.hidden",
         "Languages hidden from the menu (ids)",
         Kind::Text,
+    ),
+    entry(
+        "Language",
+        "sql.backslash-escapes",
+        "Treat backslash as escape character for SQL",
+        Kind::Bool,
     ),
     entry(
         "Default Directory",
@@ -545,6 +612,22 @@ pub const ENTRIES: &[Entry] = &[
         "editor.eol-style",
         "End of line rendering",
         Kind::Choice(&[("box", "Default"), ("plain-text", "Plain text")]),
+    ),
+    entry(
+        "Editing",
+        "editor.non-printing-style",
+        "Non-printing characters",
+        Kind::Choice(&[
+            ("marks", "Framed and marked"),
+            ("abbreviation", "Abbreviation"),
+            ("code-point", "Code point"),
+        ]),
+    ),
+    entry(
+        "Editing",
+        "editor.smooth-font",
+        "Enable smooth font",
+        Kind::Bool,
     ),
     entry(
         "Editing",
@@ -1089,6 +1172,12 @@ pub const ENTRIES: &[Entry] = &[
     ),
     entry(
         "MISC",
+        "misc.minimize-to-tray",
+        "Minimize to system tray",
+        Kind::Bool,
+    ),
+    entry(
+        "MISC",
         "session.session-extension",
         "Session file extension",
         Kind::Text,
@@ -1230,6 +1319,12 @@ pub const ENTRIES: &[Entry] = &[
     ),
 ];
 
+/// Whether the setting `key` does anything on this platform: minimizing to the tray does on
+/// Windows and macOS only.
+pub fn available_here(key: &str) -> bool {
+    key != "misc.minimize-to-tray" || crate::tray::SUPPORTED
+}
+
 /// The sections in the order listed.
 pub fn sections() -> Vec<&'static str> {
     let mut sections: Vec<&str> = Vec::new();
@@ -1339,6 +1434,8 @@ pub fn set(key: &str, value: Option<Value>, cx: &mut App) -> Result<()> {
     crate::i18n::apply(cx);
     // Preferences > Appearance > Interface.
     crate::themes::reapply(cx);
+    // Preferences > MISC > Minimize to system tray.
+    crate::tray::apply(cx);
     cx.refresh_windows();
     Ok(())
 }
@@ -1835,7 +1932,7 @@ impl Render for Preferences {
                             .debug_selector(move || format!("preferences-{key}"))
                             .label(label(entry.label))
                             .checked(checked)
-                            .disabled(locked)
+                            .disabled(locked || !available_here(key))
                             .on_click(cx.listener(move |this, _, _, cx| {
                                 this.apply(key, Ok(Some(Value::Boolean(!checked))), cx);
                             }))

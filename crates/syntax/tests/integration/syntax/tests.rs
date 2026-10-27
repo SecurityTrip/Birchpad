@@ -408,3 +408,90 @@ fn every_language_highlights_something() {
         );
     }
 }
+
+fn parse_sql(source: &str, escapes: bool) -> Vec<(String, &'static str)> {
+    let text = Rope::from_str(source);
+    let mut syntax = Syntax::new(config(by_id("sql").unwrap()).unwrap());
+    syntax.set_backslash_escapes(escapes);
+    let parsed = syntax
+        .parse_job(text.clone())
+        .run(&AtomicBool::new(false))
+        .unwrap();
+    syntax.install(parsed);
+    named(&syntax.highlights(&text, 0..text.len()), source)
+}
+
+#[test]
+fn sql_strings_take_backslash_escapes_when_asked_to() {
+    let source = r"SELECT 'it\'s', 2 FROM t WHERE a = 'b\\';";
+    let on = parse_sql(source, true);
+    assert!(on.contains(&(r"'it\'s'".to_owned(), "string")), "{on:?}");
+    assert!(on.contains(&("2".to_owned(), "number")), "{on:?}");
+    // An escaped backslash does not escape the quote after it.
+    assert!(on.contains(&(r"'b\\'".to_owned(), "string")), "{on:?}");
+    // Off, as standard SQL reads it: the string ends at the quote after the backslash.
+    let off = parse_sql(source, false);
+    assert!(!off.contains(&(r"'it\'s'".to_owned(), "string")), "{off:?}");
+    // Doubled quotes are a quote either way.
+    let doubled = r"SELECT 'it''s', 2;";
+    for escapes in [false, true] {
+        let spans = parse_sql(doubled, escapes);
+        assert!(
+            spans.contains(&("'it''s'".to_owned(), "string")),
+            "{spans:?}"
+        );
+    }
+}
+
+#[test]
+fn backslash_escapes_are_sql_s_alone() {
+    // Another language reads its text as it is, the setting on or not: in Pascal, as in
+    // standard SQL, a backslash escapes nothing.
+    let text = Rope::from_str("begin s := 'a\\'; t := 'b' end.");
+    let config = config(by_id("pascal").unwrap()).unwrap();
+    let mut syntax = Syntax::new(config);
+    assert!(syntax.set_backslash_escapes(true));
+    assert!(!syntax.set_backslash_escapes(true), "no change");
+    let parsed = syntax
+        .parse_job(text.clone())
+        .run(&AtomicBool::new(false))
+        .unwrap();
+    syntax.install(parsed);
+    let plain = parse("pascal", &text);
+    assert_eq!(
+        syntax.tree().unwrap().root_node().to_sexp(),
+        plain.tree().unwrap().root_node().to_sexp()
+    );
+}
+
+#[test]
+fn backslash_escaped_quotes_read_as_backslashes() {
+    let read = |source: &str, from: usize| {
+        let text = Rope::from_str(source);
+        backslash_escaped(&text, from, &source.as_bytes()[from..]).into_owned()
+    };
+    assert_eq!(read(r"'a\'b'", 0), br"'a\\b'");
+    assert_eq!(read(r#""a\"b""#, 0), br#""a\\b""#);
+    // An even run of backslashes escapes itself, an odd one the quote.
+    assert_eq!(read(r"'a\\'", 0), br"'a\\'");
+    assert_eq!(read(r"'a\\\'", 0), br"'a\\\\");
+    // Other characters stay.
+    assert_eq!(read(r"\n\t\x", 0), br"\n\t\x");
+}
+
+#[test]
+fn backslash_escapes_read_across_chunks() {
+    // The run of backslashes before the chunk counts.
+    let text = Rope::from_str(r"x\\\'y");
+    assert_eq!(backslash_escaped(&text, 4, b"'y").as_ref(), br"\y");
+    assert_eq!(backslash_escaped(&text, 3, br"\'y").as_ref(), br"\\y");
+    // At the very start, past the end, and an empty chunk.
+    assert_eq!(backslash_escaped(&text, 0, b"'").as_ref(), b"'");
+    assert_eq!(backslash_escaped(&text, 99, b"").as_ref(), b"");
+    // Nothing to change: the chunk itself.
+    let plain = Rope::from_str("abc");
+    assert!(matches!(
+        backslash_escaped(&plain, 0, b"abc"),
+        std::borrow::Cow::Borrowed(_)
+    ));
+}

@@ -430,3 +430,86 @@ fn padding_follows_lines_through_edits() {
     map.edit(&longer, &typed);
     assert_eq!(map.padding(), [(0, 1), (2, 1)]);
 }
+
+#[test]
+fn labels_change_columns_and_rows() {
+    let text = Rope::from_str("a\u{A0}b\nc");
+    let labeled = LayoutConfig {
+        labels: NonPrintingLabel::Abbreviation,
+        ..LayoutConfig::default()
+    };
+    let mut map = DisplayMap::new(&text, labeled);
+    assert_eq!(map.column(&text, 3), 5, "b after NBSP");
+    assert_eq!(
+        map.pos_at_line_column(&text, 0, 2),
+        (1, 0),
+        "inside the label"
+    );
+    assert_eq!(map.pos_at_line_column(&text, 0, 4), (3, 0));
+    // Turned off, the columns are the characters' own again.
+    map.set_config(&text, LayoutConfig::default());
+    assert_eq!(map.column(&text, 3), 2);
+    // Wrapped at 5 cells, the labeled line takes two rows.
+    let mut wrapped_map = DisplayMap::new(
+        &text,
+        LayoutConfig {
+            wrap_width: Some(5),
+            ..labeled
+        },
+    );
+    assert_eq!(wrapped_map.row_count(&text), 3);
+}
+
+#[test]
+fn labels_in_long_lines_through_edits() {
+    // A long line's column index counts labels, and keeps counting them through an edit.
+    let mut text = Rope::from_str(&"x\u{200B}".repeat(10));
+    let config = LayoutConfig {
+        labels: NonPrintingLabel::Abbreviation,
+        ..LayoutConfig::default()
+    };
+    let mut map = map_of(&text, config);
+    let end = text.len();
+    assert_eq!(map.column(&text, end), 10 * 5);
+    let changes = ChangeSet::from_edits(&text, [Edit::insert(0, "\u{200B}")]).unwrap();
+    changes.apply(&mut text);
+    map.edit(&text, &changes);
+    assert_eq!(map.column(&text, text.len()), 11 * 5 - 1);
+    check_kept(&mut map, &text).unwrap();
+}
+
+#[test]
+fn labels_with_a_wrap_indent_through_edits() {
+    // Short and long lines, wrapped under their indentation, with labels: kept through an
+    // edit as a map made afresh lays them out.
+    for long in [false, true] {
+        let mut text = Rope::from_str("  a\u{A0}b c\u{200B}d e f g\n  h i\u{A0}j k l m n o p q\n");
+        let config = LayoutConfig {
+            wrap_indent: WrapIndent::Aligned,
+            labels: NonPrintingLabel::Abbreviation,
+            ..wrapped(8)
+        };
+        let mut map = if long {
+            map_of(&text, config)
+        } else {
+            DisplayMap::new(&text, config)
+        };
+        show_all(&mut map, &text);
+        let changes = ChangeSet::from_edits(&text, [Edit::insert(3, "\u{A0}x")]).unwrap();
+        changes.apply(&mut text);
+        map.edit(&text, &changes);
+        check_kept(&mut map, &text).unwrap();
+    }
+}
+
+#[test]
+fn an_empty_text_wraps_into_one_row() {
+    let text = Rope::from_str("");
+    let config = LayoutConfig {
+        labels: NonPrintingLabel::CodePoint,
+        ..wrapped(4)
+    };
+    let mut map = DisplayMap::new(&text, config);
+    assert_eq!(map.row_count(&text), 1);
+    assert_eq!(map.column(&text, 0), 0);
+}

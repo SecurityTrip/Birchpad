@@ -94,3 +94,53 @@ fn a_dark_tone_tints_the_dark_interface(cx: &mut TestAppContext) {
     cx.update(|_, cx| birchpad::themes::reapply(cx));
     assert_eq!(birchpad::theme::ui().background, light);
 }
+
+#[gpui_kit::test]
+fn a_customized_tone_colors_the_dark_interface(cx: &mut TestAppContext) {
+    let (_workspace, cx) = open_workspace(cx);
+    appearance(cx, |appearance| {
+        appearance.interface = InterfaceMode::Dark;
+        appearance.dark_tone = DarkTone::Custom;
+    });
+    cx.update(|_, cx| birchpad::themes::reapply(cx));
+    let plain = birchpad::theme::ui();
+    // Customized without colors: the dark interface as it is.
+    appearance(cx, |appearance| appearance.dark_tone = DarkTone::Black);
+    cx.update(|_, cx| birchpad::themes::reapply(cx));
+    assert_eq!(birchpad::theme::ui().background, plain.background);
+    appearance(cx, |appearance| {
+        appearance.dark_tone = DarkTone::Custom;
+        appearance.dark_tone_colors.background = "#203040".into();
+        appearance.dark_tone_colors.text = "#e0e0a0".into();
+    });
+    cx.update(|_, cx| birchpad::themes::reapply(cx));
+    let ui = birchpad::theme::ui();
+    assert_eq!(ui.background.to_string(), "#203040");
+    assert_eq!(ui.text.to_string(), "#e0e0a0");
+    assert_eq!(ui.accent, plain.accent);
+    // A light interface keeps its colors.
+    appearance(cx, |appearance| appearance.interface = InterfaceMode::Light);
+    cx.update(|_, cx| birchpad::themes::reapply(cx));
+    assert_ne!(birchpad::theme::ui().background.to_string(), "#203040");
+}
+
+#[gpui_kit::test]
+fn smooth_font_draws_text_with_subpixel_smoothing(cx: &mut TestAppContext) {
+    let (_workspace, cx) = open_workspace(cx);
+    let mode = |cx: &mut VisualTestContext| cx.update(|_, cx| cx.text_rendering_mode());
+    assert_eq!(mode(cx), gpui_kit::TextRenderingMode::PlatformDefault);
+    cx.update(|_, cx| {
+        cx.global_mut::<AppState>().settings.editor.smooth_font = true;
+        birchpad::themes::reapply(cx);
+    });
+    assert_eq!(mode(cx), gpui_kit::TextRenderingMode::Subpixel);
+    cx.update(|_, cx| {
+        cx.global_mut::<AppState>().settings.editor.smooth_font = false;
+        birchpad::themes::reapply(cx);
+    });
+    assert_eq!(mode(cx), gpui_kit::TextRenderingMode::PlatformDefault);
+    assert_eq!(
+        birchpad::themes::text_rendering(true),
+        gpui_kit::TextRenderingMode::Subpixel
+    );
+}

@@ -6,6 +6,26 @@ version's release notes from its section here.
 
 ## [Unreleased]
 
+## [0.7.1] - 2026-10-28
+
+### Added
+
+- Preferences > MISC > Minimize to system tray, on Windows and macOS: the minimized window
+  leaves the taskbar (the Dock) for an icon in the notification area (the menu bar), whose click
+  brings it back. `-systemtray` now starts Birchpad there; on Linux it still starts minimized.
+- Preferences > Editing > Non-printing characters: with View > Show Symbol > Show Non-Printing
+  Characters on, each such character can show as its abbreviation (NBSP, ZWSP) or its code
+  point (U+00A0) in a frame, taking the label's columns; framed and marked in its own cells,
+  as before, by default.
+- Preferences > Appearance > Dark Mode tone: Customized, with the dark interface's background,
+  bars, borders, text, secondary and faint text, selected and hovered rows, accent and error
+  colors each set in `#rrggbb` (`appearance.dark-tone-colors`); those left empty stay as they
+  are.
+- Preferences > Editing > Enable smooth font: text drawn with subpixel smoothing where the
+  platform has it (Windows, Linux); off, as the platform smooths text by default.
+- Preferences > Language > Treat backslash as escape character for SQL: `'it\'s'` is one
+  string, as MySQL reads it; off, as standard SQL reads it, only a doubled quote stays inside.
+
 ## [0.7.0] - 2026-10-26
 
 ### Added
@@ -698,7 +718,8 @@ The first release: a Notepad++-like editor for Windows, Linux and macOS.
   entirely (`updates.mode = "off"`).
 - Nightly builds of `main` on the nightly channel.
 
-[Unreleased]: https://github.com/SecurityTrip/Birchpad/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/SecurityTrip/Birchpad/compare/v0.7.1...HEAD
+[0.7.1]: https://github.com/SecurityTrip/Birchpad/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/SecurityTrip/Birchpad/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/SecurityTrip/Birchpad/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/SecurityTrip/Birchpad/compare/v0.4.0...v0.5.0

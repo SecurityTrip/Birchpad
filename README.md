@@ -116,8 +116,9 @@ Notepad++'s language names (`-lcpp`, `-lpython`, `-lnormal`), `-openSession` ope
 sessions. File names with `*` and `?` open every file they match, in the folders below too with
 `-r`. `-quickPrint` prints the files on the default printer and quits; `-qt` and `-qf` type a
 text into a new document. The options of the window (`-notabbar`, `-alwaysOnTop`, `-x`, `-y`,
-`-titleAdd`, `-settingsDir`, ...) apply when Birchpad starts. `-systemtray` starts minimized, as
-there is no tray icon yet; `-pluginMessage` hands its text to the plugins that ask for it;
+`-titleAdd`, `-settingsDir`, ...) apply when Birchpad starts. `-systemtray` starts in the
+system tray on Windows and macOS, and minimized on Linux, which has no tray icon yet;
+`-pluginMessage` hands its text to the plugins that ask for it;
 `-qn` (Notepad++'s own easter eggs) is accepted and does nothing. `-L` (the one option whose case
 counts) shows the interface in a language this time (`-Lde`, `-Lru`). To stand in for Windows
 Notepad, `-notepadStyleCmdline -z` skips Notepad's path and reads the rest as one file name with

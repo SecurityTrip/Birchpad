@@ -1,6 +1,8 @@
 //! Character cells: how many columns of a monospace grid a character takes, and what is drawn in
-//! place of characters that have no glyph of their own (tabs, control characters).
+//! place of characters that have no glyph of their own (tabs, control characters, the labels of
+//! non-printing characters).
 
+use std::borrow::Cow;
 use std::ops::Range;
 
 use birchpad_core::Rope;
@@ -25,10 +27,54 @@ pub fn tab_advance(column: usize, tab_width: usize) -> usize {
     tab_width - column % tab_width
 }
 
-/// Cells taken by `ch` starting at `column` (tabs depend on the column).
-pub fn cells_at(ch: char, column: usize, tab_width: usize) -> usize {
+/// How Show Non-Printing Characters draws the characters it shows (Preferences > Editing 2 >
+/// Non-Printing Characters).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
+pub enum NonPrintingLabel {
+    /// In their own cells: spaces framed, characters without width marked by a line.
+    #[default]
+    Off,
+    /// By their abbreviation (NBSP, ZWSP), or their code point when they have none, in cells of
+    /// its own.
+    Abbreviation,
+    /// By their code point (U+00A0), in cells of its own.
+    CodePoint,
+}
+
+/// The monospace grid text is laid out on: its tab stops, and the labels whose cells
+/// non-printing characters take while they are shown by label. A tab width alone is a grid
+/// without labels.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Grid {
+    pub tab_width: usize,
+    pub labels: NonPrintingLabel,
+}
+
+impl From<usize> for Grid {
+    fn from(tab_width: usize) -> Self {
+        Self {
+            tab_width,
+            labels: NonPrintingLabel::Off,
+        }
+    }
+}
+
+impl Grid {
+    /// Whether no character takes more cells than its bytes in UTF-8, tabs aside: then a line no
+    /// longer in bytes than a width, without tabs, fits in it.
+    pub fn cells_within_bytes(self) -> bool {
+        self.labels == NonPrintingLabel::Off
+    }
+}
+
+/// Cells taken by `ch` starting at `column` (tabs depend on the column) on `grid`, a tab width
+/// or a [`Grid`].
+pub fn cells_at(ch: char, column: usize, grid: impl Into<Grid>) -> usize {
+    let grid = grid.into();
     if ch == '\t' {
-        tab_advance(column, tab_width)
+        tab_advance(column, grid.tab_width)
+    } else if grid.labels != NonPrintingLabel::Off && non_printing(ch).is_some() {
+        label_len(ch, grid.labels)
     } else {
         char_cells(ch)
     }
@@ -78,37 +124,101 @@ pub fn non_printing(ch: char) -> Option<NonPrinting> {
     }
 }
 
-/// The column at which `pos` starts, scanning from `start` (at column `start_column`).
+/// The abbreviation of a non-printing character: Unicode's for those it gives one, the short
+/// form its code charts print for the other spaces; none for the rest.
+pub fn abbreviation(ch: char) -> Option<&'static str> {
+    Some(match ch {
+        '\u{A0}' => "NBSP",
+        '\u{AD}' => "SHY",
+        '\u{180E}' => "MVS",
+        '\u{2000}' => "NQSP",
+        '\u{2001}' => "MQSP",
+        '\u{2002}' => "ENSP",
+        '\u{2003}' => "EMSP",
+        '\u{2004}' => "3/MSP",
+        '\u{2005}' => "4/MSP",
+        '\u{2006}' => "6/MSP",
+        '\u{2007}' => "FSP",
+        '\u{2008}' => "PSP",
+        '\u{2009}' => "THSP",
+        '\u{200A}' => "HSP",
+        '\u{200B}' => "ZWSP",
+        '\u{200C}' => "ZWNJ",
+        '\u{200D}' => "ZWJ",
+        '\u{200E}' => "LRM",
+        '\u{200F}' => "RLM",
+        '\u{202A}' => "LRE",
+        '\u{202B}' => "RLE",
+        '\u{202C}' => "PDF",
+        '\u{202D}' => "LRO",
+        '\u{202E}' => "RLO",
+        '\u{202F}' => "NNBSP",
+        '\u{205F}' => "MMSP",
+        '\u{2060}' => "WJ",
+        '\u{2066}' => "LRI",
+        '\u{2067}' => "RLI",
+        '\u{2068}' => "FSI",
+        '\u{2069}' => "PDI",
+        '\u{3000}' => "IDSP",
+        '\u{FEFF}' => "BOM",
+        _ => return None,
+    })
+}
+
+/// The label `labels` draws for `ch`, if it is a character [`NonPrinting`] shows.
+pub fn non_printing_label(ch: char, labels: NonPrintingLabel) -> Option<Cow<'static, str>> {
+    non_printing(ch)?;
+    match (labels, abbreviation(ch)) {
+        (NonPrintingLabel::Off, _) => None,
+        (NonPrintingLabel::Abbreviation, Some(short)) => Some(Cow::Borrowed(short)),
+        _ => Some(Cow::Owned(format!("U+{:04X}", ch as u32))),
+    }
+}
+
+/// Cells of the label of `ch`, a character [`NonPrinting`] shows, without building it: its
+/// characters are all ASCII.
+fn label_len(ch: char, labels: NonPrintingLabel) -> usize {
+    match (labels, abbreviation(ch)) {
+        (NonPrintingLabel::Abbreviation, Some(short)) => short.len(),
+        // "U+" and the hex digits, at least four.
+        _ => 2 + (ch as u32).max(0x1000).ilog(16) as usize + 1,
+    }
+}
+
+/// The column at which `pos` starts, scanning from `start` (at column `start_column`), on
+/// `grid`.
 pub fn column_after(
     text: &Rope,
     start: usize,
     start_column: usize,
     pos: usize,
-    tab_width: usize,
+    grid: impl Into<Grid>,
 ) -> usize {
+    let grid = grid.into();
     let mut column = start_column;
     for ch in text.slice(start..pos).chars() {
-        column += cells_at(ch, column, tab_width);
+        column += cells_at(ch, column, grid);
     }
     column
 }
 
 /// The character boundary in `range` closest to `target` columns, scanning from `range.start`
-/// at `start_column`. A position in the right half of a character rounds up.
+/// at `start_column`, on `grid`. A position in the right half of a character rounds up.
 pub fn pos_at_column(
     text: &Rope,
     range: Range<usize>,
     start_column: usize,
     target: usize,
-    tab_width: usize,
+    grid: impl Into<Grid>,
 ) -> (usize, usize) {
+    let grid = grid.into();
     let mut column = start_column;
     let mut pos = range.start;
     for ch in text.slice(range.clone()).chars() {
         if column >= target {
             break;
         }
-        let cells = cells_at(ch, column, tab_width);
+        let cells = cells_at(ch, column, grid);
         // Past the middle of the character: the caret goes after it.
         if column + cells > target && (target - column) * 2 < cells {
             break;
@@ -119,8 +229,9 @@ pub fn pos_at_column(
     (pos, column)
 }
 
-/// Text to draw for a range of the document, with tabs expanded to spaces and control
-/// characters replaced by pictures, and the mapping between document and display offsets.
+/// Text to draw for a range of the document, with tabs expanded to spaces, control characters
+/// replaced by pictures and non-printing characters by their labels while the grid has them,
+/// and the mapping between document and display offsets.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DisplayText {
     pub text: String,
@@ -131,8 +242,13 @@ pub struct DisplayText {
 
 impl DisplayText {
     /// Builds the display text of `range`, which starts at column `start_column` of its line.
-    pub fn new(text: &Rope, range: Range<usize>, start_column: usize, tab_width: usize) -> Self {
-        Self::with_pictures(text, range, start_column, tab_width, true)
+    pub fn new(
+        text: &Rope,
+        range: Range<usize>,
+        start_column: usize,
+        grid: impl Into<Grid>,
+    ) -> Self {
+        Self::with_pictures(text, range, start_column, grid, true)
     }
 
     /// As [`Self::new`]; without `pictures` (View > Show Symbol > Show Control Characters &
@@ -141,24 +257,33 @@ impl DisplayText {
         text: &Rope,
         range: Range<usize>,
         start_column: usize,
-        tab_width: usize,
+        grid: impl Into<Grid>,
         pictures: bool,
     ) -> Self {
+        let grid = grid.into();
         let mut out = String::with_capacity(range.len());
         let mut substitutions = Vec::new();
         let mut column = start_column;
         let mut pos = range.start;
         for ch in text.slice(range.clone()).chars() {
-            let cells = cells_at(ch, column, tab_width);
+            let cells = cells_at(ch, column, grid);
             let display_start = out.len();
-            if ch == '\t' {
+            let replaced = if ch == '\t' {
                 out.extend(std::iter::repeat_n(' ', cells));
+                true
             } else if let Some(picture) = control_picture(ch) {
                 out.push(if pictures { picture } else { ' ' });
+                true
+            } else if let Some(label) = non_printing_label(ch, grid.labels) {
+                out.push_str(&label);
+                true
             } else {
                 out.push(ch);
-            }
-            if out.len() - display_start != ch.len_utf8() || ch == '\t' {
+                false
+            };
+            // Even a replacement as long as the character: an offset inside it is none of the
+            // document's.
+            if replaced {
                 substitutions.push((pos..pos + ch.len_utf8(), display_start..out.len()));
             }
             column += cells;

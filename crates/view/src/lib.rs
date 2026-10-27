@@ -2,7 +2,7 @@
 //!
 //! The editor draws text on a monospace grid of cells: a character takes one or two cells (wide
 //! CJK characters and emoji take two), tabs advance to the next tab stop, control characters
-//! are drawn as one-cell pictures. Rows, word wrap and horizontal positions are computed in
+//! are drawn as one-cell pictures, non-printing characters shown by label take its cells. Rows, word wrap and horizontal positions are computed in
 //! cells here; the UI only converts cells to pixels and shapes the text of visible rows.
 
 mod bidi;
@@ -16,8 +16,8 @@ mod wrap;
 pub use bidi::BidiRow;
 pub use block::{Block, BlockPoint};
 pub use cells::{
-    DisplayText, NonPrinting, cells_at, char_cells, column_after, control_picture, non_printing,
-    pos_at_column, tab_advance,
+    DisplayText, Grid, NonPrinting, NonPrintingLabel, abbreviation, cells_at, char_cells,
+    column_after, control_picture, non_printing, non_printing_label, pos_at_column, tab_advance,
 };
 pub use display_map::{DisplayMap, LayoutConfig, LongLines, Row};
 pub use folding::{

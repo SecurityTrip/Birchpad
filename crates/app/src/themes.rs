@@ -144,11 +144,18 @@ pub fn apply(theme: Theme, cx: &mut App) {
     let appearance = &AppState::global(cx).settings.appearance;
     let (mode, tone) = (appearance.interface, appearance.dark_tone);
     let (dark, interface) = interface(mode, theme.dark, system_dark(cx));
-    // Dark Mode's tones: a dark interface of Birchpad's own takes a hint of color.
-    let interface = match (interface, tone.hue()) {
-        (Some(ui), Some(hue)) if dark => Some(ui.toned(hue)),
-        (interface, _) => interface,
+    // Dark Mode's tones: a dark interface of Birchpad's own takes a hint of color, or the
+    // colors of the customized tone.
+    let interface = match (interface, tone, tone.hue()) {
+        (Some(ui), birchpad_config::DarkTone::Custom, _) if dark => {
+            Some(ui.customized(appearance.dark_tone_colors.set()))
+        }
+        (Some(ui), _, Some(hue)) if dark => Some(ui.toned(hue)),
+        (interface, ..) => interface,
     };
+    // Preferences > Editing > Smooth font.
+    let smooth = AppState::global(cx).settings.editor.smooth_font;
+    cx.set_text_rendering_mode(text_rendering(smooth));
     let ui = interface.unwrap_or(theme.ui);
     crate::theme::set_interface(interface);
     crate::theme::set(theme);
@@ -167,6 +174,15 @@ pub fn apply(theme: Theme, cx: &mut App) {
         muted: ui.faint.to_rgb(),
     });
     cx.refresh_windows();
+}
+
+/// How text is smoothed: subpixel with Smooth font, else as the platform does by default.
+pub fn text_rendering(smooth: bool) -> gpui_kit::TextRenderingMode {
+    if smooth {
+        gpui_kit::TextRenderingMode::Subpixel
+    } else {
+        gpui_kit::TextRenderingMode::PlatformDefault
+    }
 }
 
 #[derive(serde::Deserialize)]

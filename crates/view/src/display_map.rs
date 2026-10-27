@@ -21,7 +21,7 @@ use std::sync::Arc;
 use birchpad_core::motion::{line_count, line_of, line_range};
 use birchpad_core::{ChangeSet, LINE_TYPE, Operation, Rope};
 
-use crate::cells::{cells_at, column_after, pos_at_column};
+use crate::cells::{Grid, NonPrintingLabel, cells_at, column_after, pos_at_column};
 use crate::wrap::{WrapIndent, count_rows, line_rows, rewrap, row_count, wrap_indent};
 
 /// Which lines are long: those longer than `length` bytes get a column index, a point every
@@ -49,6 +49,9 @@ pub struct LayoutConfig {
     pub wrap_width: Option<usize>,
     /// Where the rows after the first of a wrapped line start.
     pub wrap_indent: WrapIndent,
+    /// The labels non-printing characters take the cells of: off unless they are shown by
+    /// label.
+    pub labels: NonPrintingLabel,
 }
 
 impl Default for LayoutConfig {
@@ -57,6 +60,17 @@ impl Default for LayoutConfig {
             tab_width: 4,
             wrap_width: None,
             wrap_indent: WrapIndent::None,
+            labels: NonPrintingLabel::Off,
+        }
+    }
+}
+
+impl LayoutConfig {
+    /// The grid the text is laid out on.
+    pub fn grid(&self) -> Grid {
+        Grid {
+            tab_width: self.tab_width,
+            labels: self.labels,
         }
     }
 }
@@ -94,7 +108,7 @@ struct ColumnIndex {
 }
 
 impl ColumnIndex {
-    fn build(text: &Rope, line: Range<usize>, tab_width: usize, checkpoint: usize) -> Self {
+    fn build(text: &Rope, line: Range<usize>, grid: Grid, checkpoint: usize) -> Self {
         let mut index = Self {
             points: vec![Checkpoint {
                 offset: 0,
@@ -102,7 +116,7 @@ impl ColumnIndex {
                 tab: false,
             }],
         };
-        index.scan(text, line.start, line.len(), tab_width, checkpoint);
+        index.scan(text, line.start, line.len(), grid, checkpoint);
         index
     }
 
@@ -112,7 +126,7 @@ impl ColumnIndex {
         text: &Rope,
         line_start: usize,
         until: usize,
-        tab_width: usize,
+        grid: Grid,
         checkpoint: usize,
     ) -> usize {
         let last = self.points.last_mut().expect("starts non-empty");
@@ -130,7 +144,7 @@ impl ColumnIndex {
             if ch == '\t' {
                 self.points.last_mut().expect("starts non-empty").tab = true;
             }
-            column += cells_at(ch, column, tab_width);
+            column += cells_at(ch, column, grid);
             offset += ch.len_utf8();
         }
         column
@@ -149,7 +163,7 @@ impl ColumnIndex {
         line: Range<usize>,
         old: Range<usize>,
         new_end: usize,
-        tab_width: usize,
+        grid: Grid,
         checkpoint: usize,
     ) {
         let delta = new_end as isize - old.end as isize;
@@ -163,17 +177,17 @@ impl ColumnIndex {
         let later = self.points.split_off(after);
         self.points.truncate(keep);
         let Some(first) = later.first() else {
-            self.scan(text, line.start, line.len(), tab_width, checkpoint);
+            self.scan(text, line.start, line.len(), grid, checkpoint);
             return;
         };
         let column = self.scan(
             text,
             line.start,
             first.offset.strict_add_signed(delta),
-            tab_width,
+            grid,
             checkpoint,
         );
-        let stop = tab_width.max(1) as isize;
+        let stop = grid.tab_width.max(1) as isize;
         let mut shift = column as isize - first.column as isize;
         for (index, point) in later.iter().enumerate() {
             let offset = point.offset.strict_add_signed(delta);
@@ -199,7 +213,7 @@ impl ColumnIndex {
                     line.start + offset,
                     column,
                     line.start + next_offset,
-                    tab_width,
+                    grid,
                 );
                 shift = next_column as isize - next.column as isize;
             }
@@ -365,7 +379,7 @@ impl DisplayMap {
                 .unwrap_or(line.len());
             let line = line.slice(..content);
             let indent = wrap_indent(line, width, config.tab_width, config.wrap_indent);
-            rows.push(count_rows(line, width, config.tab_width, indent) as u32);
+            rows.push(count_rows(line, width, config.grid(), indent) as u32);
         }
         // `lines()` yields nothing for an empty text but there is one (empty) line.
         while rows.len() < line_count(text) {
@@ -406,12 +420,12 @@ impl DisplayMap {
                 if range.len() > self.long_lines.length {
                     self.row_starts(text, line).1.len() as u32
                 } else if self.config.wrap_indent == WrapIndent::None {
-                    row_count(text, range, width, self.config.tab_width) as u32
+                    row_count(text, range, width, self.config.grid()) as u32
                 } else {
                     let line = text.slice(range);
                     let indent =
                         wrap_indent(line, width, self.config.tab_width, self.config.wrap_indent);
-                    count_rows(line, width, self.config.tab_width, indent) as u32
+                    count_rows(line, width, self.config.grid(), indent) as u32
                 }
             })
             .collect();
@@ -468,7 +482,7 @@ impl DisplayMap {
                         range.clone(),
                         changed.clone(),
                         new_end,
-                        config.tab_width,
+                        config.grid(),
                         long_lines.checkpoint,
                     );
                 }
@@ -482,7 +496,7 @@ impl DisplayMap {
                             changed,
                             new_end,
                             width,
-                            config.tab_width,
+                            config.grid(),
                         )
                     } else {
                         let indent = wrap_indent(
@@ -491,7 +505,7 @@ impl DisplayMap {
                             config.tab_width,
                             config.wrap_indent,
                         );
-                        line_rows(text, range.clone(), width, config.tab_width, indent)
+                        line_rows(text, range.clone(), width, config.grid(), indent)
                     };
                     layout.rows = Some(Arc::new(rows));
                 }
@@ -756,10 +770,12 @@ impl DisplayMap {
     /// The start of a line and where its rows start (offsets from it, and columns), wrapped
     /// or not.
     fn row_starts(&mut self, text: &Rope, line: usize) -> (usize, Arc<Vec<(usize, usize)>>) {
+        let grid = self.config.grid();
         let LayoutConfig {
             tab_width,
             wrap_width,
             wrap_indent: mode,
+            ..
         } = self.config;
         let Some(width) = wrap_width else {
             return (line_range(text, line).start, Arc::new(vec![(0, 0)]));
@@ -768,7 +784,7 @@ impl DisplayMap {
         let range = layout.range.clone();
         let rows = layout.rows.get_or_insert_with(|| {
             let indent = wrap_indent(text.slice(range.clone()), width, tab_width, mode);
-            Arc::new(line_rows(text, range.clone(), width, tab_width, indent))
+            Arc::new(line_rows(text, range.clone(), width, grid, indent))
         });
         (range.start, rows.clone())
     }
@@ -876,7 +892,7 @@ impl DisplayMap {
         } else {
             (range.start, 0)
         };
-        column_after(text, from, column, pos, self.config.tab_width)
+        column_after(text, from, column, pos, self.config.grid())
     }
 
     /// The position in `row` closest to `column` (counted from the start of the line).
@@ -898,7 +914,7 @@ impl DisplayMap {
             from..row.range.end,
             from_column,
             column,
-            self.config.tab_width,
+            self.config.grid(),
         );
         // A wrapped row's end is the next row's start: stay on this row.
         if !row.last_in_line && pos == row.range.end && pos > row.range.start {
@@ -929,7 +945,7 @@ impl DisplayMap {
             from..range.end,
             from_column,
             column,
-            self.config.tab_width,
+            self.config.grid(),
         );
         let virtual_cells = if pos == range.end {
             column.saturating_sub(reached)
@@ -940,13 +956,13 @@ impl DisplayMap {
     }
 
     fn column_index(&mut self, text: &Rope, line: usize) -> &ColumnIndex {
-        let tab_width = self.config.tab_width;
+        let grid = self.config.grid();
         let checkpoint = self.long_lines.checkpoint;
         let layout = self.line_layout(text, line);
         let range = layout.range.clone();
         layout
             .columns
-            .get_or_insert_with(|| ColumnIndex::build(text, range, tab_width, checkpoint))
+            .get_or_insert_with(|| ColumnIndex::build(text, range, grid, checkpoint))
     }
 
     /// Moves `pos` by `rows` visual rows, aiming for `goal` columns from the start of the row

@@ -33,7 +33,8 @@ pub struct Symbols {
     pub eol_plain: bool,
     /// The cells where wrapped rows show the wrap symbol.
     pub wrap_marks: Vec<Bounds<Pixels>>,
-    /// Show Non-Printing Characters: frames around spaces that are not plain ones.
+    /// Show Non-Printing Characters: frames around spaces that are not plain ones, or around
+    /// the label of each character it shows.
     pub odd_spaces: Vec<Bounds<Pixels>>,
     /// Show Non-Printing Characters: a line where a character without width is.
     pub zero_widths: Vec<Bounds<Pixels>>,
@@ -85,7 +86,8 @@ impl EditorView {
             symbols.line_breaks = self.line_break_marks(layout, text, symbols.eol_plain, window);
         }
         if settings.show_non_printing {
-            non_printing_marks(layout, text, &mut symbols);
+            let labeled = self.display.config().labels != birchpad_view::NonPrintingLabel::Off;
+            non_printing_marks(layout, text, labeled, &mut symbols);
         }
         if settings.wrap_symbol
             && let Some(wrap_width) = self.display.config().wrap_width
@@ -253,8 +255,8 @@ fn whitespace_marks(layout: &Layout, text: &Rope, symbols: &mut Symbols) {
 }
 
 /// Show Non-Printing Characters: a frame around each space that is not a plain one, a line
-/// where each character without width is.
-fn non_printing_marks(layout: &Layout, text: &Rope, symbols: &mut Symbols) {
+/// where each character without width is; with `labeled`, a frame around each label.
+fn non_printing_marks(layout: &Layout, text: &Rope, labeled: bool, symbols: &mut Symbols) {
     let height = layout.metrics.line_height;
     for row in &layout.rows {
         let mut glyphs = GlyphCursor::new(row);
@@ -264,6 +266,13 @@ fn non_printing_marks(layout: &Layout, text: &Rope, symbols: &mut Symbols) {
             };
             let left = glyphs.x_at(display.start);
             match kind {
+                _ if labeled => {
+                    let right = glyphs.x_at(display.end);
+                    symbols.odd_spaces.push(Bounds::from_corners(
+                        point(left, row.y + px(1.)),
+                        point(right.max(left + px(2.)), row.y + height - px(1.)),
+                    ));
+                }
                 birchpad_view::NonPrinting::Space => {
                     let right = glyphs.x_at(display.end);
                     symbols.odd_spaces.push(Bounds::from_corners(

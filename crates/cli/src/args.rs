@@ -18,7 +18,7 @@
 //!   -openFoldersAsWorkspace  folders go to Folder as Workspace (as they always do)
 //!   -notabbar     no tab bar
 //!   -alwaysOnTop  the window stays above the others
-//!   -systemtray   start minimized
+//!   -systemtray   start in the system tray (minimized where there is none)
 //!   -x<left> -y<top>  where the window opens, in pixels
 //!   -titleAdd="text"  text after the window's title
 //!   -settingsDir="folder"  settings and data in that folder
@@ -77,7 +77,8 @@ pub struct CommandLine {
     pub no_tab_bar: bool,
     /// `-alwaysOnTop`.
     pub always_on_top: bool,
-    /// `-systemtray`: the window starts minimized (GPUI has no tray icon to go to).
+    /// `-systemtray`: the window starts in the system tray on Windows and macOS, minimized
+    /// elsewhere.
     pub minimized: bool,
     /// `-x<left>` and `-y<top>`: where the window opens.
     pub x: Option<i32>,
@@ -186,7 +187,7 @@ pub const OPTIONS: &[CliOption] = &[
     ),
     option("-notabbar", "Hide the tab bar"),
     option("-alwaysOnTop", "Keep the window above the others"),
-    option("-systemtray", "Start minimized"),
+    option("-systemtray", "Start in the system tray"),
     option("-x<left>", "Open the window this many pixels from the left"),
     option("-y<top>", "Open the window this many pixels from the top"),
     option("-titleAdd=<text>", "Add the text to the window's title"),

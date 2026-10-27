@@ -67,23 +67,46 @@ zip = { version = "9.0", default-features = false, features = ["deflate"] }
 [lints]
 workspace = true
 
-# View > Always on Top, Edit > Paste Special > Paste HTML/RTF Content, File > Print: the
-# platforms' own calls.
+# View > Always on Top, Edit > Paste Special > Paste HTML/RTF Content, File > Print, minimizing
+# to the tray: the platforms' own calls.
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.61", features = [
     "Win32_Foundation",
     "Win32_Graphics_Gdi",
     "Win32_Storage_Xps",
     "Win32_System_DataExchange",
+    "Win32_System_LibraryLoader",
     "Win32_System_Memory",
     "Win32_UI_Controls_Dialogs",
+    "Win32_UI_Shell",
     "Win32_UI_WindowsAndMessaging",
 ] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
+# The version GPUI builds.
+block2 = "0.6"
 objc2 = "0.6"
-objc2-app-kit = { version = "0.3", features = ["NSPasteboard", "NSResponder", "NSView", "NSWindow"] }
-objc2-foundation = { version = "0.3", features = ["NSString"] }
+objc2-app-kit = { version = "0.3", features = [
+    "NSApplication",
+    "NSButton",
+    "NSControl",
+    "NSImage",
+    "NSPasteboard",
+    "NSResponder",
+    "NSRunningApplication",
+    "NSStatusBar",
+    "NSStatusBarButton",
+    "NSStatusItem",
+    "NSView",
+    "NSWindow",
+] }
+objc2-foundation = { version = "0.3", features = [
+    "NSGeometry",
+    "NSNotification",
+    "NSOperation",
+    "NSString",
+    "block2",
+] }
 
 [target.'cfg(all(unix, not(target_os = "macos")))'.dependencies]
 # The version GPUI uses (`.github/dependabot.yml`).

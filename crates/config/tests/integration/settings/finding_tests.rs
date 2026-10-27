@@ -198,3 +198,87 @@ fn hidden_languages_are_ids_separated_by_spaces() {
     assert!(LanguageMenuSettings::default().shows("cobol"));
     assert!(LanguageMenuSettings::default().shows(""));
 }
+
+#[test]
+fn what_7_4b_left_defaults_to_what_birchpad_did() {
+    let settings = Settings::default();
+    assert_eq!(settings.editor.non_printing_style, NonPrintingStyle::Marks);
+    assert!(!settings.editor.smooth_font);
+    assert_eq!(
+        settings.appearance.dark_tone_colors,
+        DarkToneColors::default()
+    );
+    assert_eq!(settings.appearance.dark_tone_colors.set().count(), 0);
+    assert_eq!(DarkTone::Custom.hue(), None);
+}
+
+#[test]
+fn what_7_4b_left_reads_its_names() {
+    let settings: Settings = toml::from_str(
+        "[editor]\nnon-printing-style = \"code-point\"\nsmooth-font = true\n[appearance]\ndark-tone = \"custom\"\n[appearance.dark-tone-colors]\nbackground = \"#102030\"\ntext = \"#ABCdef\"\naccent = \"\"\n",
+    )
+    .unwrap();
+    assert_eq!(
+        settings.editor.non_printing_style,
+        NonPrintingStyle::CodePoint
+    );
+    assert!(settings.editor.smooth_font);
+    assert_eq!(settings.appearance.dark_tone, DarkTone::Custom);
+    let colors: Vec<_> = settings.appearance.dark_tone_colors.set().collect();
+    assert_eq!(colors, [("background", "#102030"), ("text", "#ABCdef")]);
+    check_setting(
+        "editor.non-printing-style",
+        &toml::Value::String("abbreviation".into()),
+    )
+    .unwrap();
+    check_setting(
+        "appearance.dark-tone-colors.error",
+        &toml::Value::String("#ff0000".into()),
+    )
+    .unwrap();
+    // Empty: the dark interface's own color.
+    check_setting(
+        "appearance.dark-tone-colors.error",
+        &toml::Value::String(String::new()),
+    )
+    .unwrap();
+}
+
+#[test]
+fn what_7_4b_left_refuses_what_is_not_one_of_its_values() {
+    let refused =
+        |key: &str, value: &str| check_setting(key, &toml::Value::String(value.into())).is_err();
+    assert!(refused("editor.non-printing-style", "boxes"));
+    for color in ["red", "102030", "#12345", "#1234567", "#12345g", "#"] {
+        assert!(
+            refused("appearance.dark-tone-colors.text", color),
+            "{color}"
+        );
+    }
+    // A part the tone does not color.
+    assert!(refused(
+        "appearance.dark-tone-colors.tab-color-1",
+        "#102030"
+    ));
+    assert!(check_setting("editor.smooth-font", &toml::Value::Integer(1)).is_err());
+}
+
+#[test]
+fn sql_backslash_escapes_are_off_by_default() {
+    assert!(!Settings::default().sql.backslash_escapes);
+    let settings: Settings = toml::from_str("[sql]\nbackslash-escapes = true\n").unwrap();
+    assert!(settings.sql.backslash_escapes);
+    check_setting("sql.backslash-escapes", &toml::Value::Boolean(true)).unwrap();
+    assert!(check_setting("sql.backslash-escapes", &toml::Value::String("yes".into())).is_err());
+    assert!(check_setting("sql.escapes", &toml::Value::Boolean(true)).is_err());
+}
+
+#[test]
+fn minimizing_to_the_tray_is_off_by_default() {
+    assert!(!Settings::default().misc.minimize_to_tray);
+    let settings: Settings = toml::from_str("[misc]\nminimize-to-tray = true\n").unwrap();
+    assert!(settings.misc.minimize_to_tray);
+    check_setting("misc.minimize-to-tray", &toml::Value::Boolean(false)).unwrap();
+    assert!(check_setting("misc.minimize-to-tray", &toml::Value::Integer(1)).is_err());
+    assert!(check_setting("misc.minimize-to-system-tray", &toml::Value::Boolean(true)).is_err());
+}
