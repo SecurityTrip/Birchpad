@@ -8,12 +8,15 @@ use std::process::{Child, Command, Stdio};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
+use anyhow::{Result, anyhow};
 use birchpad_config::DiagramBackground;
-use gpui_kit::App;
+use gpui_kit::{App, Entity};
 use toml::Value;
 
+use super::{Preview, PreviewKind};
 use crate::app_state::AppState;
 use crate::commands::{CommandRegistry, Register as _};
+use crate::workspace::Workspace;
 
 /// What PlantUML writes after each diagram, to tell the diagrams of a file apart.
 pub const DIAGRAM_END: &str = "<!--birchpad-diagram-end-->";
@@ -35,6 +38,36 @@ pub(super) fn register_commands(registry: &mut CommandRegistry) {
             cx,
         )
     });
+    for (id, change) in ZOOM_COMMANDS {
+        registry.workspace(id, move |this, (), _, cx| {
+            let preview = active_diagrams(this, cx)?;
+            preview.update(cx, |preview, cx| {
+                preview.set_zoom(change(preview.zoom()), cx)
+            });
+            Ok(())
+        });
+    }
+}
+
+/// View > Preview's zoom commands, and how each changes the zoom.
+pub const ZOOM_COMMANDS: [(&str, fn(Zoom) -> Zoom); 4] = [
+    ("preview.zoom-in", Zoom::zoom_in),
+    ("preview.zoom-out", Zoom::zoom_out),
+    ("preview.actual-size", |_| Zoom::Percent(100)),
+    ("preview.fit", |_| Zoom::Fit),
+];
+
+/// The preview of the active document, if it shows PlantUML diagrams.
+pub fn active_diagrams(workspace: &Workspace, cx: &mut App) -> Result<Entity<Preview>> {
+    let view = workspace
+        .active_view(cx)
+        .ok_or_else(|| anyhow!("{}", t!("preview.no-diagrams")))?;
+    workspace
+        .active_pane()
+        .clone()
+        .update(cx, |pane, cx| pane.preview(&view, cx))
+        .filter(|preview| preview.read(cx).kind == PreviewKind::PlantUml)
+        .ok_or_else(|| anyhow!("{}", t!("preview.no-diagrams")))
 }
 
 /// What the preview draws PlantUML diagrams on (`preview.plantuml-background`).
@@ -112,6 +145,161 @@ pub fn split_diagrams(output: &[u8]) -> Vec<Vec<u8>> {
         .filter(|part| part.contains("<svg"))
         .map(|part| part.as_bytes().to_vec())
         .collect()
+}
+
+/// How large the diagrams of a PlantUML preview are shown.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum Zoom {
+    /// A diagram wider than the preview shrunk to its width; others at their size.
+    #[default]
+    Fit,
+    /// This percentage of their size, the preview scrolling both ways.
+    Percent(u32),
+}
+
+/// The steps Zoom In and Zoom Out go by, in percent.
+pub const ZOOM_STEPS: [u32; 15] = [
+    25, 33, 50, 67, 75, 90, 100, 110, 125, 150, 175, 200, 250, 300, 400,
+];
+
+impl Zoom {
+    /// The next step up; from Fit, the one above 100%; the largest stays.
+    pub fn zoom_in(self) -> Self {
+        let from = self.percent().unwrap_or(100);
+        let last = ZOOM_STEPS[ZOOM_STEPS.len() - 1];
+        Zoom::Percent(
+            ZOOM_STEPS
+                .into_iter()
+                .find(|&step| step > from)
+                .unwrap_or(last),
+        )
+    }
+
+    /// The next step down; from Fit, the one below 100%; the smallest stays.
+    pub fn zoom_out(self) -> Self {
+        let from = self.percent().unwrap_or(100);
+        Zoom::Percent(
+            ZOOM_STEPS
+                .into_iter()
+                .rev()
+                .find(|&step| step < from)
+                .unwrap_or(ZOOM_STEPS[0]),
+        )
+    }
+
+    pub fn percent(self) -> Option<u32> {
+        match self {
+            Zoom::Fit => None,
+            Zoom::Percent(percent) => Some(percent),
+        }
+    }
+
+    /// What the preview's toolbar shows: `Fit` or `125%`.
+    pub fn label(self) -> String {
+        match self {
+            Zoom::Fit => t!("preview.zoom-fit"),
+            Zoom::Percent(percent) => format!("{percent}%"),
+        }
+    }
+}
+
+/// The most pixels a zoomed diagram is drawn with (before GPUI's own doubling); a larger one is
+/// enlarged as a picture rather than drawn again.
+pub const MAX_ZOOMED_PIXELS: f32 = 4_000_000.;
+
+/// How many times its size a diagram of `size` is drawn for `zoom` (a factor): the zoom, unless
+/// that passes [`MAX_ZOOMED_PIXELS`]; never below 1, its own size.
+pub fn raster_factor(size: (f32, f32), zoom: f32) -> f32 {
+    let pixels = size.0 * size.1;
+    let most = if pixels > 0. {
+        (MAX_ZOOMED_PIXELS / pixels).sqrt()
+    } else {
+        1.
+    };
+    zoom.min(most).max(1.)
+}
+
+/// The root `<svg ...>` tag of `svg`: where it starts and ends (past its `>`).
+fn root_tag(svg: &str) -> Option<(usize, usize)> {
+    let start = svg.find("<svg")?;
+    let end = start + svg[start..].find('>')? + 1;
+    Some((start, end))
+}
+
+/// The value of attribute `name` in `tag`.
+fn attribute<'a>(tag: &'a str, name: &str) -> Option<&'a str> {
+    let pattern = format!(" {name}=\"");
+    let start = tag.find(&pattern)? + pattern.len();
+    let end = start + tag[start..].find('"')?;
+    Some(&tag[start..end])
+}
+
+/// A length in pixels: `533`, `533px`, `533.5`. Other units (`%`, `em`) are no size.
+fn pixels(length: &str) -> Option<f32> {
+    let length = length.trim();
+    let number = length.strip_suffix("px").unwrap_or(length);
+    number.parse::<f32>().ok().filter(|value| *value > 0.)
+}
+
+/// The size of an SVG image in pixels: its `width` and `height`, else its `viewBox`.
+pub fn svg_size(svg: &[u8]) -> Option<(f32, f32)> {
+    let svg = std::str::from_utf8(svg).ok()?;
+    let (start, end) = root_tag(svg)?;
+    let tag = &svg[start..end];
+    let sized = attribute(tag, "width")
+        .and_then(pixels)
+        .zip(attribute(tag, "height").and_then(pixels));
+    sized.or_else(|| {
+        let view_box: Vec<f32> = attribute(tag, "viewBox")?
+            .split([' ', ','])
+            .filter(|part| !part.is_empty())
+            .map(|part| part.parse().ok())
+            .collect::<Option<_>>()?;
+        match view_box[..] {
+            [_, _, width, height] if width > 0. && height > 0. => Some((width, height)),
+            _ => None,
+        }
+    })
+}
+
+/// `svg` set to `size` in pixels: its root's `width` and `height` (and those of its `style`,
+/// which PlantUML writes too), its `viewBox` kept, so that it is drawn at that size.
+pub fn sized_svg(svg: &[u8], size: (f32, f32)) -> Vec<u8> {
+    let Ok(text) = std::str::from_utf8(svg) else {
+        return svg.to_vec();
+    };
+    let Some((start, end)) = root_tag(text) else {
+        return svg.to_vec();
+    };
+    let mut tag = text[start..end].to_owned();
+    for (name, value) in [("width", size.0), ("height", size.1)] {
+        let value = format!("{value}px");
+        match attribute(&tag, name) {
+            Some(old) => {
+                let old = format!(" {name}=\"{old}\"");
+                tag = tag.replacen(&old, &format!(" {name}=\"{value}\""), 1);
+            }
+            None => tag.insert_str(4, &format!(" {name}=\"{value}\"")),
+        }
+    }
+    if let Some(style) = attribute(&tag, "style") {
+        let resized: Vec<String> = style
+            .split(';')
+            .filter(|part| !part.trim().is_empty())
+            .map(|part| match part.split_once(':') {
+                Some((name, _)) if name.trim() == "width" => format!("width:{}px", size.0),
+                Some((name, _)) if name.trim() == "height" => format!("height:{}px", size.1),
+                _ => part.to_owned(),
+            })
+            .collect();
+        let old = format!(" style=\"{style}\"");
+        tag = tag.replacen(&old, &format!(" style=\"{};\"", resized.join(";")), 1);
+    }
+    let mut sized = String::with_capacity(text.len() + 16);
+    sized.push_str(&text[..start]);
+    sized.push_str(&tag);
+    sized.push_str(&text[end..]);
+    sized.into_bytes()
 }
 
 /// A mistake PlantUML found: what it says, and the line of the document it is on (from 0),

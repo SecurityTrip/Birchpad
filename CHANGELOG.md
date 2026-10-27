@@ -13,6 +13,11 @@ version's release notes from its section here.
   the theme's background instead, and the choice is kept for the diagrams shown later
   (`preview.plantuml-background`, Preferences > Preview)
   ([#53](https://github.com/SecurityTrip/Birchpad/issues/53)).
+- Zoom in the PlantUML preview: Zoom Out, the zoom (a click sets 100%), Zoom In and Fit above
+  the diagrams, Ctrl with the mouse wheel, and the same in View > Preview. From 25% to 400%;
+  a zoomed diagram keeps its size, stays sharp, and the preview scrolls both ways. Fit, as
+  before, shrinks a diagram wider than the preview to its width
+  ([#52](https://github.com/SecurityTrip/Birchpad/issues/52)).
 - Preferences > Preview: the PlantUML to run (`preview.plantuml`) and the diagrams'
   background.
 

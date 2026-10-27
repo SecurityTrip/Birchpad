@@ -271,8 +271,12 @@ command:
     set-setting: "Plugin-Einstellung setzen"
     uninstall: "Plugin entfernen"
   preview:
+    actual-size: "Diagramme in Originalgröße"
+    fit: "Diagramme an Breite anpassen"
     install-plantuml: "PlantUML installieren"
     white-background: "Weißer Diagrammhintergrund"
+    zoom-in: "Diagramme vergrößern"
+    zoom-out: "Diagramme verkleinern"
   run:
     builtin: "Eingebauten Befehl ausführen"
     run: "Ausführen..."
@@ -1315,6 +1319,7 @@ preferences:
 preview:
   editor-and-preview: "Editor und Vorschau"
   editor-only: "Nur Editor"
+  no-diagrams: "das Dokument hat keine PlantUML-Diagramme"
   no-preview: "das Dokument hat keine Vorschau: Es ist weder Markdown noch PlantUML"
   plantuml-drawing: "PlantUML zeichnet das Diagramm..."
   plantuml-failed: "PlantUML lief nicht: {error}"
@@ -1322,6 +1327,7 @@ preview:
   plantuml-no-diagram: "PlantUML hat kein Diagramm gezeichnet: Der Text braucht @startuml und @enduml"
   plantuml-not-found: "PlantUML wurde nicht gefunden ({program}). Installieren Sie es oder setzen Sie preview.plantuml in den Einstellungen auf den Befehl plantuml oder auf plantuml.jar (Java wird benötigt)."
   preview-only: "Nur Vorschau"
+  zoom-fit: "Breite"
 print:
   cannot-print: "Drucken nicht möglich: {error}"
   cannot-write: "{path} kann nicht geschrieben werden: {error}"

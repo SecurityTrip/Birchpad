@@ -25,8 +25,8 @@ use gpui_kit::component::button::{Button, ButtonVariants as _};
 use gpui_kit::component::{IconName, Selectable as _, Sizable};
 use gpui_kit::{
     AnyElement, App, AppContext as _, ClickEvent, Context, Entity, Image, ImageFormat, ImageSource,
-    ObjectFit, Resource, SharedString, SharedUri, Subscription, Task, WeakEntity, Window, div, img,
-    prelude::*, px,
+    ObjectFit, Resource, ScrollWheelEvent, SharedString, SharedUri, Subscription, Task, WeakEntity,
+    Window, div, img, prelude::*, px,
 };
 
 use crate::app_state::AppState;
@@ -37,9 +37,10 @@ use crate::theme::{paint, ui};
 use crate::workspace::Workspace;
 
 pub use diagrams::{
-    DIAGRAM_END, Drawn, Mistake, NotDrawn, PLANTUML_DELAY, Stop, StopOnDrop, background,
-    diagram_starts, line_offset, mistakes, plantuml_command, run_plantuml, setting_path,
-    split_diagrams,
+    DIAGRAM_END, Drawn, MAX_ZOOMED_PIXELS, Mistake, NotDrawn, PLANTUML_DELAY, Stop, StopOnDrop,
+    ZOOM_COMMANDS, ZOOM_STEPS, Zoom, active_diagrams, background, diagram_starts, line_offset,
+    mistakes, plantuml_command, raster_factor, run_plantuml, setting_path, sized_svg,
+    split_diagrams, svg_size,
 };
 
 /// What a document's preview shows.
@@ -70,6 +71,9 @@ pub fn kind_for(language: Option<&str>, path: Option<&Path>) -> Option<PreviewKi
         .any(|known| known.eq_ignore_ascii_case(extension))
         .then_some(PreviewKind::PlantUml)
 }
+
+/// How far Ctrl with the mouse wheel scrolls for a step of zoom, in pixels: a notch of a wheel.
+const WHEEL_STEP: f32 = 40.;
 
 /// The commands of View > Preview and the mode each one shows.
 pub const COMMANDS: [(&str, PreviewMode); 3] = [
@@ -205,7 +209,11 @@ fn image_source(uri: &SharedUri, folder: Option<&Path>) -> ImageSource {
 /// What a PlantUML preview shows.
 #[derive(Default)]
 struct Diagrams {
-    images: Vec<Arc<Image>>,
+    images: Vec<Diagram>,
+    /// How large the diagrams are shown.
+    zoom: Zoom,
+    /// Ctrl with the mouse wheel: the scrolling not yet turned into a zoom step.
+    wheel: f32,
     /// The mistakes PlantUML found in the text the diagrams show.
     mistakes: Vec<Mistake>,
     /// Why PlantUML drew nothing; the diagrams it drew last stay.
@@ -216,6 +224,53 @@ struct Diagrams {
     drawing: Option<Task<()>>,
     /// The installations of PlantUML when it last drew ([`crate::plantuml::PlantUmlInstall`]).
     installs: u64,
+}
+
+/// One diagram PlantUML drew.
+struct Diagram {
+    /// Its SVG, drawn at its own size.
+    image: Arc<Image>,
+    size: Option<(f32, f32)>,
+    /// Drawn again larger for a zoom above 100%, so that it stays sharp: the factor and the
+    /// image.
+    zoomed: Option<(f32, Arc<Image>)>,
+}
+
+impl Diagram {
+    fn new(svg: Vec<u8>, zoom: Zoom) -> Self {
+        let mut diagram = Self {
+            size: svg_size(&svg),
+            image: Arc::new(Image::from_bytes(ImageFormat::Svg, svg)),
+            zoomed: None,
+        };
+        diagram.prepare(zoom);
+        diagram
+    }
+
+    /// Draws the SVG again for `zoom`, if it needs to be larger than it is.
+    fn prepare(&mut self, zoom: Zoom) {
+        let (Some(percent), Some(size)) = (zoom.percent(), self.size) else {
+            self.zoomed = None;
+            return;
+        };
+        let factor = raster_factor(size, percent as f32 / 100.);
+        if factor <= 1. {
+            self.zoomed = None;
+        } else if self
+            .zoomed
+            .as_ref()
+            .is_none_or(|(drawn, _)| *drawn != factor)
+        {
+            let svg = sized_svg(self.image.bytes(), (size.0 * factor, size.1 * factor));
+            self.zoomed = Some((factor, Arc::new(Image::from_bytes(ImageFormat::Svg, svg))));
+        }
+    }
+
+    fn shown(&self) -> Arc<Image> {
+        self.zoomed
+            .as_ref()
+            .map_or_else(|| self.image.clone(), |(_, image)| image.clone())
+    }
 }
 
 enum Content {
@@ -324,10 +379,11 @@ impl Preview {
         };
         match drawn {
             Ok(drawn) => {
+                let zoom = diagrams.zoom;
                 diagrams.images = drawn
                     .diagrams
                     .into_iter()
-                    .map(|svg| Arc::new(Image::from_bytes(ImageFormat::Svg, svg)))
+                    .map(|svg| Diagram::new(svg, zoom))
                     .collect();
                 diagrams.mistakes = drawn.mistakes;
                 diagrams.error = None;
@@ -354,10 +410,47 @@ impl Preview {
             Content::PlantUml(diagrams) => diagrams
                 .images
                 .iter()
-                .map(|image| image.bytes().to_vec())
+                .map(|diagram| diagram.image.bytes().to_vec())
                 .collect(),
             Content::Markdown(_) => Vec::new(),
         }
+    }
+
+    /// How large the diagrams are shown; Fit for a Markdown preview.
+    pub fn zoom(&self) -> Zoom {
+        match &self.content {
+            Content::PlantUml(diagrams) => diagrams.zoom,
+            Content::Markdown(_) => Zoom::Fit,
+        }
+    }
+
+    /// Shows the diagrams at `zoom`.
+    pub fn set_zoom(&mut self, zoom: Zoom, cx: &mut Context<Self>) {
+        if let Content::PlantUml(diagrams) = &mut self.content {
+            diagrams.zoom = zoom;
+            for diagram in &mut diagrams.images {
+                diagram.prepare(zoom);
+            }
+            cx.notify();
+        }
+    }
+
+    /// Ctrl with the mouse wheel over the diagrams: a step of zoom for each notch.
+    fn wheel_zoom(&mut self, event: &ScrollWheelEvent, cx: &mut Context<Self>) {
+        let Content::PlantUml(diagrams) = &mut self.content else {
+            return;
+        };
+        diagrams.wheel += f32::from(event.delta.pixel_delta(px(20.)).y);
+        let zoom = diagrams.zoom;
+        let zoom = if diagrams.wheel >= WHEEL_STEP {
+            zoom.zoom_in()
+        } else if diagrams.wheel <= -WHEEL_STEP {
+            zoom.zoom_out()
+        } else {
+            return;
+        };
+        diagrams.wheel = 0.;
+        self.set_zoom(zoom, cx);
     }
 
     /// The mistakes PlantUML found in the text shown (for tests).
@@ -510,8 +603,10 @@ impl Preview {
             }))
     }
 
-    fn render_diagrams(diagrams: &Diagrams, this: &WeakEntity<Self>, cx: &App) -> AnyElement {
+    fn render_diagrams(diagrams: &Diagrams, cx: &mut Context<Self>) -> AnyElement {
+        let this = &cx.entity().downgrade();
         let white = background(cx) == DiagramBackground::White;
+        let zoom = diagrams.zoom.percent().map(|percent| percent as f32 / 100.);
         let message = match (&diagrams.error, &diagrams.drawing) {
             (Some(error), _) => Some((error.clone(), ui().error)),
             (None, Some(_)) if diagrams.images.is_empty() => {
@@ -519,15 +614,20 @@ impl Preview {
             }
             _ => None,
         };
-        div()
-            .id("plantuml-diagrams")
-            .size_full()
-            .overflow_scroll()
+        let content = div()
+            .min_w_full()
+            .min_h_full()
             .p_4()
             .flex()
             .flex_col()
-            .items_center()
+            .items_start()
             .gap_4()
+            .on_scroll_wheel(cx.listener(|this, event: &ScrollWheelEvent, _, cx| {
+                if event.modifiers.secondary() {
+                    this.wheel_zoom(event, cx);
+                    cx.stop_propagation();
+                }
+            }))
             .when_some(message, |list, (message, color)| {
                 list.child(div().w_full().text_color(paint(color)).child(message))
             })
@@ -537,24 +637,36 @@ impl Preview {
             .when(diagrams.missing, |list| {
                 list.child(Self::render_install(cx))
             })
-            .children(diagrams.images.iter().map(|image| {
+            .children(diagrams.images.iter().map(|diagram| {
+                let image = img(ImageSource::Image(diagram.shown()));
+                // At a zoom, the diagram's size times it; at Fit, no wider than the preview.
+                let image = match (zoom, diagram.size) {
+                    (Some(zoom), Some((width, height))) => {
+                        image.w(px(width * zoom)).h(px(height * zoom))
+                    }
+                    _ => image.max_w_full().object_fit(ObjectFit::Contain),
+                };
                 // Diagrams are made for paper: on white, unless the theme's background is asked.
+                // Centered while it fits; a wider one starts at the left, to scroll to.
                 div()
                     .flex_none()
-                    .max_w_full()
+                    .mx_auto()
+                    .when(zoom.is_none(), |card| card.max_w_full())
                     .when(white, |card| card.bg(gpui_kit::white()))
-                    .child(
-                        img(ImageSource::Image(image.clone()))
-                            .max_w_full()
-                            .object_fit(ObjectFit::Contain),
-                    )
-            }))
+                    .child(image)
+            }));
+        div()
+            .id("plantuml-diagrams")
+            .size_full()
+            .overflow_scroll()
+            .child(content)
             .into_any_element()
     }
 
-    /// The bar above the diagrams: the background they are drawn on.
+    /// The bar above the diagrams: their zoom, and the background they are drawn on.
     fn render_toolbar(&self, cx: &App) -> impl IntoElement {
         let white = background(cx) == DiagramBackground::White;
+        let zoom = self.zoom();
         let workspace = self.workspace.clone();
         let run = move |command: &'static str| {
             let workspace = workspace.clone();
@@ -580,6 +692,40 @@ impl Preview {
             .border_b_1()
             .border_color(paint(ui().border))
             .bg(paint(ui().surface))
+            .child(
+                Button::new("zoom-out")
+                    .xsmall()
+                    .ghost()
+                    .icon(IconName::Minus)
+                    .tooltip(crate::menus::command_title("preview.zoom-out"))
+                    .on_click(run("preview.zoom-out")),
+            )
+            .child(
+                Button::new("zoom")
+                    .xsmall()
+                    .ghost()
+                    .label(zoom.label())
+                    .tooltip(crate::menus::command_title("preview.actual-size"))
+                    .on_click(run("preview.actual-size")),
+            )
+            .child(
+                Button::new("zoom-in")
+                    .xsmall()
+                    .ghost()
+                    .icon(IconName::Plus)
+                    .tooltip(crate::menus::command_title("preview.zoom-in"))
+                    .on_click(run("preview.zoom-in")),
+            )
+            .child(
+                Button::new("zoom-fit")
+                    .xsmall()
+                    .ghost()
+                    .icon(IconName::Maximize)
+                    .tooltip(crate::menus::command_title("preview.fit"))
+                    .selected(zoom == Zoom::Fit)
+                    .on_click(run("preview.fit")),
+            )
+            .child(div().w(px(1.)).h(px(16.)).bg(paint(ui().border)))
             .child(
                 Button::new("diagram-background")
                     .xsmall()
@@ -613,11 +759,12 @@ impl Render for Preview {
                 .flex()
                 .flex_col()
                 .child(self.render_toolbar(cx))
-                .child(div().flex_1().min_h_0().child(Self::render_diagrams(
-                    diagrams,
-                    &cx.entity().downgrade(),
-                    cx,
-                )))
+                .child(
+                    div()
+                        .flex_1()
+                        .min_h_0()
+                        .child(Self::render_diagrams(diagrams, cx)),
+                )
                 .into_any_element(),
         };
         div()

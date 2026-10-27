@@ -273,8 +273,12 @@ command:
     set-setting: "Set Plugin Setting"
     uninstall: "Remove Plugin"
   preview:
+    actual-size: "Diagrams at Actual Size"
+    fit: "Fit Diagrams to Width"
     install-plantuml: "Install PlantUML"
     white-background: "White Diagram Background"
+    zoom-in: "Zoom In on Diagrams"
+    zoom-out: "Zoom Out of Diagrams"
   run:
     builtin: "Run Built-in Command"
     run: "Run..."
@@ -1317,6 +1321,7 @@ preferences:
 preview:
   editor-and-preview: "Editor and Preview"
   editor-only: "Editor Only"
+  no-diagrams: "the document has no PlantUML diagrams"
   no-preview: "the document has no preview: it is neither Markdown nor PlantUML"
   plantuml-drawing: "PlantUML is drawing the diagram..."
   plantuml-failed: "PlantUML did not run: {error}"
@@ -1324,6 +1329,7 @@ preview:
   plantuml-no-diagram: "PlantUML drew no diagram: the text needs @startuml and @enduml"
   plantuml-not-found: "PlantUML was not found ({program}). Install it, or set preview.plantuml in the settings to the plantuml command or to plantuml.jar (Java is needed)."
   preview-only: "Preview Only"
+  zoom-fit: "Fit"
 print:
   cannot-print: "cannot print: {error}"
   cannot-write: "cannot write {path}: {error}"

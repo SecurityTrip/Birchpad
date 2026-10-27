@@ -405,3 +405,137 @@ fn preferences_show_the_preview_settings() {
             .all(|entry| entry.section == "Preview")
     );
 }
+
+#[test]
+fn zoom_goes_by_steps_and_stops_at_the_ends() {
+    assert_eq!(Zoom::default(), Zoom::Fit);
+    assert_eq!(Zoom::Fit.zoom_in(), Zoom::Percent(110), "from 100%");
+    assert_eq!(Zoom::Fit.zoom_out(), Zoom::Percent(90));
+    assert_eq!(Zoom::Percent(100).zoom_in(), Zoom::Percent(110));
+    assert_eq!(Zoom::Percent(150).zoom_out(), Zoom::Percent(125));
+    assert_eq!(Zoom::Percent(400).zoom_in(), Zoom::Percent(400));
+    assert_eq!(Zoom::Percent(25).zoom_out(), Zoom::Percent(25));
+    // Between steps: the next one either way.
+    assert_eq!(Zoom::Percent(105).zoom_in(), Zoom::Percent(110));
+    assert_eq!(Zoom::Percent(105).zoom_out(), Zoom::Percent(100));
+    assert_eq!(Zoom::Percent(1000).zoom_in(), Zoom::Percent(400));
+    assert_eq!(Zoom::Percent(125).label(), "125%");
+    assert_eq!(Zoom::Percent(125).percent(), Some(125));
+    assert_eq!(Zoom::Fit.percent(), None);
+    assert!(ZOOM_STEPS.windows(2).all(|pair| pair[0] < pair[1]));
+}
+
+#[test]
+fn an_svg_has_its_size_from_its_attributes_or_its_view_box() {
+    let plantuml = br#"<?xml version="1.0"?><svg xmlns="http://www.w3.org/2000/svg" style="width:533px;height:367px;background:#FFFFFF;" width="533px" height="367px" viewBox="0 0 533 367"><g/></svg>"#;
+    assert_eq!(svg_size(plantuml), Some((533., 367.)));
+    assert_eq!(
+        svg_size(br#"<svg width="10.5" height="20"></svg>"#),
+        Some((10.5, 20.))
+    );
+    assert_eq!(
+        svg_size(br#"<svg width="100%" height="100%" viewBox="0,0 40 30"></svg>"#),
+        Some((40., 30.)),
+        "other units: the view box"
+    );
+    assert_eq!(svg_size(br#"<svg viewBox="0 0 0 30"></svg>"#), None);
+    assert_eq!(svg_size(br#"<svg width="0" height="0"></svg>"#), None);
+    assert_eq!(svg_size(b"<svg></svg>"), None);
+    assert_eq!(svg_size(b"no picture"), None);
+    assert_eq!(svg_size(&[0xff, 0xfe]), None);
+}
+
+#[test]
+fn a_sized_svg_keeps_its_view_box() {
+    let svg = br#"<svg xmlns="http://www.w3.org/2000/svg" style="width:533px;height:367px;background:#FFFFFF;" width="533px" height="367px" viewBox="0 0 533 367"><rect width="5" height="5"/></svg>"#;
+    let sized = String::from_utf8(sized_svg(svg, (1066., 734.))).unwrap();
+    assert!(
+        sized.contains(r#" width="1066px" height="734px""#),
+        "{sized}"
+    );
+    assert!(
+        sized.contains("style=\"width:1066px;height:734px;background:#FFFFFF;\""),
+        "{sized}"
+    );
+    assert!(sized.contains(r#"viewBox="0 0 533 367""#));
+    assert!(
+        sized.contains(r#"<rect width="5" height="5"/>"#),
+        "only the root changes"
+    );
+    assert_eq!(svg_size(sized.as_bytes()), Some((1066., 734.)));
+    // Without a size: given one.
+    let sized = sized_svg(br#"<svg viewBox="0 0 4 3"></svg>"#, (8., 6.));
+    assert_eq!(svg_size(&sized), Some((8., 6.)));
+    // Not an SVG: left as it is.
+    assert_eq!(sized_svg(b"text", (1., 1.)), b"text");
+    assert_eq!(sized_svg(&[0xff], (1., 1.)), [0xff]);
+}
+
+#[test]
+fn zoomed_diagrams_are_drawn_larger_within_a_limit() {
+    assert_eq!(raster_factor((500., 400.), 2.), 2.);
+    assert_eq!(
+        raster_factor((500., 400.), 0.5),
+        1.,
+        "never smaller than itself"
+    );
+    assert_eq!(raster_factor((500., 400.), 1.), 1.);
+    let large = raster_factor((4000., 3000.), 4.);
+    assert!(large < 4. && large >= 1.);
+    assert!((4000. * large) * (3000. * large) <= MAX_ZOOMED_PIXELS * 1.001);
+    assert_eq!(raster_factor((0., 0.), 3.), 1.);
+}
+
+fn simple_plantuml(dir: &Path) -> PathBuf {
+    fake_plantuml(
+        dir,
+        "echo ^<svg width=\"200px\" height=\"100px\" viewBox=\"0 0 200 100\"^>^</svg^>",
+        "echo '<svg width=\"200px\" height=\"100px\" viewBox=\"0 0 200 100\"></svg>'",
+    )
+}
+
+#[gpui_kit::test]
+fn the_zoom_commands_zoom_the_active_diagrams(cx: &mut TestAppContext) {
+    let (workspace, cx) = open_workspace(cx);
+    let dir = tempfile::tempdir().unwrap();
+    let plantuml = simple_plantuml(dir.path());
+    let shown = draw(
+        &workspace,
+        &plantuml,
+        dir.path(),
+        "flow.puml",
+        "@startuml\nA -> B\n@enduml\n",
+        cx,
+    );
+    let zoom = |cx: &mut VisualTestContext| shown.read_with(cx, |preview, _| preview.zoom());
+    assert_eq!(zoom(cx), Zoom::Fit);
+    run(&workspace, "preview.zoom-in", cx).unwrap();
+    assert_eq!(zoom(cx), Zoom::Percent(110));
+    run(&workspace, "preview.zoom-in", cx).unwrap();
+    run(&workspace, "preview.zoom-out", cx).unwrap();
+    assert_eq!(zoom(cx), Zoom::Percent(110));
+    run(&workspace, "preview.actual-size", cx).unwrap();
+    assert_eq!(zoom(cx), Zoom::Percent(100));
+    for _ in 0..20 {
+        run(&workspace, "preview.zoom-in", cx).unwrap();
+    }
+    assert_eq!(zoom(cx), Zoom::Percent(400));
+    run(&workspace, "preview.fit", cx).unwrap();
+    assert_eq!(zoom(cx), Zoom::Fit);
+}
+
+#[gpui_kit::test]
+fn the_zoom_commands_need_plantuml_diagrams(cx: &mut TestAppContext) {
+    let (workspace, cx) = open_workspace(cx);
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("notes.md");
+    std::fs::write(&path, "# Notes\n").unwrap();
+    workspace.update_in(cx, |workspace, window, cx| {
+        workspace.open_path(&path, window, cx);
+    });
+    cx.run_until_parked();
+    for (id, _) in ZOOM_COMMANDS {
+        let error = run(&workspace, id, cx).unwrap_err().to_string();
+        assert!(error.contains("PlantUML"), "{id}: {error}");
+    }
+}

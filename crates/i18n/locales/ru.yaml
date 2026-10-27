@@ -272,8 +272,12 @@ command:
     set-setting: "Задать настройку плагина"
     uninstall: "Удалить плагин"
   preview:
+    actual-size: "Диаграммы в натуральную величину"
+    fit: "Диаграммы по ширине"
     install-plantuml: "Установить PlantUML"
     white-background: "Белый фон диаграмм"
+    zoom-in: "Увеличить диаграммы"
+    zoom-out: "Уменьшить диаграммы"
   run:
     builtin: "Встроенная команда"
     run: "Запустить..."
@@ -1329,6 +1333,7 @@ preferences:
 preview:
   editor-and-preview: "Редактор и просмотр"
   editor-only: "Только редактор"
+  no-diagrams: "в документе нет диаграмм PlantUML"
   no-preview: "у документа нет предпросмотра: это не Markdown и не PlantUML"
   plantuml-drawing: "PlantUML рисует диаграмму..."
   plantuml-failed: "PlantUML не запустился: {error}"
@@ -1336,6 +1341,7 @@ preview:
   plantuml-no-diagram: "PlantUML не нарисовал диаграмму: в тексте нужны @startuml и @enduml"
   plantuml-not-found: "PlantUML не найден ({program}). Установите его или укажите в настройках preview.plantuml команду plantuml или путь к plantuml.jar (нужна Java)."
   preview-only: "Только просмотр"
+  zoom-fit: "По ширине"
 print:
   cannot-print: "не удалось напечатать: {error}"
   cannot-write: "не удалось записать {path}: {error}"
