@@ -57,6 +57,7 @@ fn every_entry_is_a_setting_with_valid_choices() {
             "Margins",
             "Highlighting",
             "Print",
+            "Preview",
             "Files",
             "Searching",
             "Backup",
