@@ -97,8 +97,11 @@ pub(super) fn register_commands(registry: &mut CommandRegistry) {
     }
 }
 
+/// How a zoom command changes the zoom.
+pub type ZoomChange = fn(Zoom) -> Zoom;
+
 /// View > Preview's zoom commands, and how each changes the zoom.
-pub const ZOOM_COMMANDS: [(&str, fn(Zoom) -> Zoom); 4] = [
+pub const ZOOM_COMMANDS: [(&str, ZoomChange); 4] = [
     ("preview.zoom-in", Zoom::zoom_in),
     ("preview.zoom-out", Zoom::zoom_out),
     ("preview.actual-size", |_| Zoom::Percent(100)),
@@ -295,7 +298,8 @@ pub fn svg_to_png(svg: &[u8], scale: f32, background: Option<[u8; 4]>) -> Result
 }
 
 fn render_svg(svg: &[u8], scale: f32, background: Option<[u8; 4]>) -> Result<tiny_skia::Pixmap> {
-    if !(scale > 0.) {
+    // Not a number is no scale either.
+    if scale.is_nan() || scale <= 0. {
         bail!("{}", t!("preview.not-a-picture"));
     }
     let options = usvg::Options {

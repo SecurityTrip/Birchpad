@@ -39,9 +39,9 @@ use crate::workspace::Workspace;
 
 pub use diagrams::{
     DIAGRAM_END, Drawn, MAX_PNG_SIDE, MAX_ZOOMED_PIXELS, Mistake, NotDrawn, PLANTUML_DELAY, Stop,
-    StopOnDrop, ZOOM_COMMANDS, ZOOM_STEPS, Zoom, active_diagrams, background, diagram_starts,
-    export_name, line_offset, mistakes, plantuml_command, raster_factor, run_plantuml,
-    setting_path, sized_svg, split_diagrams, svg_size, svg_to_pixels, svg_to_png,
+    StopOnDrop, ZOOM_COMMANDS, ZOOM_STEPS, Zoom, ZoomChange, active_diagrams, background,
+    diagram_starts, export_name, line_offset, mistakes, plantuml_command, raster_factor,
+    run_plantuml, setting_path, sized_svg, split_diagrams, svg_size, svg_to_pixels, svg_to_png,
 };
 
 /// What a document's preview shows.
