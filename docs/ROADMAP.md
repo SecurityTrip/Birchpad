@@ -802,6 +802,18 @@ written down why not.
       builds are its pre-releases), `CHANGELOG.md` and this roadmap updated; the
       [release checklist](release-checklist.md) gone through
 
+### Release 0.7.5: refactoring
+
+- [ ] 7.4h The code refactored throughout before the development tools of 0.8.0: large
+      modules split by what they do, duplicated code brought together, and the crates made
+      lighter, by more and smaller crates where that helps (the application crate first), so
+      that each builds and tests faster and depends on less; an ADR for the new crate layout,
+      over [ADR 0041](adr/0041-crate-layout.md). Behavior stays as it is: the tests, the
+      end-to-end tests and the highlighting snapshots pass unchanged
+- [ ] Release 0.7.5: the workspace version (0.7.5, set when its branch opens, so that nightly
+      builds are its pre-releases), `CHANGELOG.md` and this roadmap updated; the
+      [release checklist](release-checklist.md) gone through
+
 ### Release 0.8.0: development tools
 
 - [ ] 7.5 LSP client: diagnostics, completion, hover, go to definition and references,
