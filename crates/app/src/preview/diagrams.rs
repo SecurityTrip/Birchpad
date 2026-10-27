@@ -59,6 +59,23 @@ pub fn plantuml_command(setting: &str, installed: Option<&Path>) -> (String, Vec
     }
 }
 
+/// The `preview.plantuml` setting with a relative path in it taken from `base`, Birchpad's
+/// working folder, since PlantUML runs in the document's folder: a `.jar` (`plantuml.jar`,
+/// `tools/plantuml.jar`) or a program by a path (`bin/plantuml`). A program's name alone
+/// (`plantuml`) is looked for on `PATH`, and stays.
+pub fn setting_path(setting: &str, base: &Path) -> String {
+    let setting = setting.trim();
+    let path = Path::new(setting);
+    let is_jar = path
+        .extension()
+        .is_some_and(|extension| extension.eq_ignore_ascii_case("jar"));
+    let has_folder = setting.contains('/') || setting.contains(std::path::MAIN_SEPARATOR);
+    if setting.is_empty() || path.is_absolute() || !(is_jar || has_folder) {
+        return setting.to_owned();
+    }
+    base.join(path).display().to_string()
+}
+
 /// The SVG images in PlantUML's output, one per diagram.
 pub fn split_diagrams(output: &[u8]) -> Vec<Vec<u8>> {
     String::from_utf8_lossy(output)
@@ -228,11 +245,13 @@ impl Drop for StopOnDrop {
     }
 }
 
-/// Runs `program` with `args` on `text`, as PlantUML: the diagrams it wrote and its mistakes,
-/// or why there are none. `stop` ends the run early.
+/// Runs `program` with `args` on `text`, as PlantUML, in `folder` (the document's, so that
+/// `!include` and images by relative path are found next to it): the diagrams it wrote and its
+/// mistakes, or why there are none. `stop` ends the run early.
 pub fn run_plantuml(
     program: &str,
     args: &[String],
+    folder: Option<&Path>,
     text: &str,
     stop: &Stop,
 ) -> Result<Drawn, NotDrawn> {
@@ -240,6 +259,10 @@ pub fn run_plantuml(
         return Err(NotDrawn::Stopped);
     }
     let mut command = Command::new(program);
+    // A folder that is gone leaves PlantUML in Birchpad's, rather than not running it.
+    if let Some(folder) = folder.filter(|folder| folder.is_dir()) {
+        command.current_dir(folder);
+    }
     command
         .args(args)
         .stdin(Stdio::piped())

@@ -37,7 +37,7 @@ use crate::workspace::Workspace;
 
 pub use diagrams::{
     DIAGRAM_END, Drawn, Mistake, NotDrawn, PLANTUML_DELAY, Stop, StopOnDrop, diagram_starts,
-    line_offset, mistakes, plantuml_command, run_plantuml, split_diagrams,
+    line_offset, mistakes, plantuml_command, run_plantuml, setting_path, split_diagrams,
 };
 
 /// What a document's preview shows.
@@ -276,7 +276,17 @@ impl Preview {
                 markdown.update(cx, |markdown, cx| markdown.set_text(&text, cx));
             }
             Content::PlantUml(diagrams) => {
-                let setting = AppState::global(cx).settings.preview.plantuml.clone();
+                let setting = &AppState::global(cx).settings.preview.plantuml;
+                // PlantUML runs in the document's folder: a relative setting is Birchpad's.
+                let setting = match std::env::current_dir() {
+                    Ok(base) => setting_path(setting, &base),
+                    Err(_) => setting.clone(),
+                };
+                let folder = buffer
+                    .read(cx)
+                    .path()
+                    .and_then(Path::parent)
+                    .map(Path::to_path_buf);
                 let installed = crate::plantuml::installed(cx);
                 diagrams.installs = crate::plantuml::state(cx).map_or(0, |state| state.generation);
                 let executor = cx.background_executor().clone();
@@ -290,7 +300,7 @@ impl Preview {
                     let drawn = executor
                         .spawn(async move {
                             let (program, args) = plantuml_command(&setting, installed.as_deref());
-                            run_plantuml(&program, &args, &text, &running)
+                            run_plantuml(&program, &args, folder.as_deref(), &text, &running)
                         })
                         .await;
                     drop(stop);
@@ -332,6 +342,19 @@ impl Preview {
             }
         }
         diagrams.drawing = None;
+    }
+
+    /// The SVG of each diagram shown (for tests).
+    #[cfg(feature = "test-support")]
+    pub fn svgs(&self) -> Vec<Vec<u8>> {
+        match &self.content {
+            Content::PlantUml(diagrams) => diagrams
+                .images
+                .iter()
+                .map(|image| image.bytes().to_vec())
+                .collect(),
+            Content::Markdown(_) => Vec::new(),
+        }
     }
 
     /// The mistakes PlantUML found in the text shown (for tests).

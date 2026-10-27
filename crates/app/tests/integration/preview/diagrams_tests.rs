@@ -115,7 +115,8 @@ fn a_stopped_run_ends_its_process() {
     let stop = Stop::default();
     let running = stop.clone();
     let started = Instant::now();
-    let run = std::thread::spawn(move || run_plantuml(&program, &args, "@startuml", &running));
+    let run =
+        std::thread::spawn(move || run_plantuml(&program, &args, None, "@startuml", &running));
     std::thread::sleep(Duration::from_millis(300));
     drop(StopOnDrop(stop));
     assert_eq!(run.join().unwrap(), Err(NotDrawn::Stopped));
@@ -131,11 +132,17 @@ fn a_run_stopped_before_it_starts_runs_nothing() {
     stop.stop();
     // Started, it would say that this program is missing.
     assert_eq!(
-        run_plantuml("birchpad-test-no-such-plantuml", &[], "", &stop),
+        run_plantuml("birchpad-test-no-such-plantuml", &[], None, "", &stop),
         Err(NotDrawn::Stopped)
     );
     assert!(matches!(
-        run_plantuml("birchpad-test-no-such-plantuml", &[], "", &Stop::default()),
+        run_plantuml(
+            "birchpad-test-no-such-plantuml",
+            &[],
+            None,
+            "",
+            &Stop::default()
+        ),
         Err(NotDrawn::Missing(_))
     ));
 }
@@ -271,5 +278,62 @@ fn a_run_that_succeeds_has_no_mistakes(cx: &mut TestAppContext) {
     assert_eq!(
         shown.read_with(cx, |preview, cx| preview.rendered(cx)),
         "1 diagrams"
+    );
+}
+
+#[test]
+fn relative_settings_are_taken_from_birchpads_folder() {
+    let base = if cfg!(windows) {
+        PathBuf::from(r"C:irchpad")
+    } else {
+        PathBuf::from("/birchpad")
+    };
+    let joined = |path: &str| base.join(path).display().to_string();
+    assert_eq!(
+        setting_path("tools/plantuml.jar", &base),
+        joined("tools/plantuml.jar")
+    );
+    assert_eq!(
+        setting_path(" plantuml.jar ", &base),
+        joined("plantuml.jar")
+    );
+    assert_eq!(setting_path("bin/plantuml", &base), joined("bin/plantuml"));
+    // A name looked for on `PATH`, an absolute path, the default.
+    assert_eq!(setting_path("plantuml", &base), "plantuml");
+    assert_eq!(setting_path("my-plantuml.cmd", &base), "my-plantuml.cmd");
+    let absolute = base.join("opt").join("plantuml.jar").display().to_string();
+    assert_eq!(setting_path(&absolute, &base), absolute);
+    assert_eq!(setting_path("  ", &base), "");
+}
+
+#[gpui_kit::test]
+fn plantuml_runs_in_the_documents_folder(cx: &mut TestAppContext) {
+    let (workspace, cx) = open_workspace(cx);
+    let dir = tempfile::tempdir().unwrap();
+    // The diagram is the folder PlantUML runs in, where `!include` looks for files.
+    let plantuml = fake_plantuml(
+        dir.path(),
+        "echo ^<svg^>%CD%^</svg^>",
+        "echo \"<svg>$(pwd)</svg>\"",
+    );
+    let folder = dir.path().join("diagram folder");
+    std::fs::create_dir(&folder).unwrap();
+    let shown = draw(
+        &workspace,
+        &plantuml,
+        &folder,
+        "flow.puml",
+        "@startuml
+!include common.puml
+@enduml
+",
+        cx,
+    );
+    let svg = shown.read_with(cx, |preview, _| preview.svgs()).remove(0);
+    let svg = String::from_utf8(svg).unwrap();
+    let tmp = dir.path().file_name().unwrap().to_str().unwrap();
+    assert!(
+        svg.contains(tmp) && svg.ends_with("diagram folder</svg>"),
+        "{svg}"
     );
 }

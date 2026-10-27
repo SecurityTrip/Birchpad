@@ -13,6 +13,12 @@ version's release notes from its section here.
   PlantUML is drawing, that run is stopped, so fast typing no longer leaves Java processes
   behind.
 
+### Fixed
+
+- PlantUML diagrams that include other files by a relative path (`!include common.puml`)
+  are drawn in the preview: PlantUML runs in the document's folder
+  ([#50](https://github.com/SecurityTrip/Birchpad/issues/50)).
+
 ## [0.7.1] - 2026-10-28
 
 ### Added
