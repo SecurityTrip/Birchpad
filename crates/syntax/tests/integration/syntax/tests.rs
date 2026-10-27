@@ -423,12 +423,12 @@ fn parse_sql(source: &str, escapes: bool) -> Vec<(String, &'static str)> {
 
 #[test]
 fn sql_strings_take_backslash_escapes_when_asked_to() {
-    let source = r"SELECT 'it\'s', 2 FROM t WHERE a = 'b\';";
+    let source = r"SELECT 'it\'s', 2 FROM t WHERE a = 'b\\';";
     let on = parse_sql(source, true);
     assert!(on.contains(&(r"'it\'s'".to_owned(), "string")), "{on:?}");
     assert!(on.contains(&("2".to_owned(), "number")), "{on:?}");
     // An escaped backslash does not escape the quote after it.
-    assert!(on.contains(&(r"'b\'".to_owned(), "string")), "{on:?}");
+    assert!(on.contains(&(r"'b\\'".to_owned(), "string")), "{on:?}");
     // Off, as standard SQL reads it: the string ends at the quote after the backslash.
     let off = parse_sql(source, false);
     assert!(!off.contains(&(r"'it\'s'".to_owned(), "string")), "{off:?}");
@@ -470,11 +470,11 @@ fn backslash_escaped_quotes_read_as_backslashes() {
         let text = Rope::from_str(source);
         backslash_escaped(&text, from, &source.as_bytes()[from..]).into_owned()
     };
-    assert_eq!(read(r"'a\'b'", 0), br"'a\b'");
-    assert_eq!(read(r#""a\"b""#, 0), br#""a\b""#);
+    assert_eq!(read(r"'a\'b'", 0), br"'a\\b'");
+    assert_eq!(read(r#""a\"b""#, 0), br#""a\\b""#);
     // An even run of backslashes escapes itself, an odd one the quote.
-    assert_eq!(read(r"'a\'", 0), br"'a\'");
-    assert_eq!(read(r"'a\\'", 0), br"'a\\\\");
+    assert_eq!(read(r"'a\\'", 0), br"'a\\'");
+    assert_eq!(read(r"'a\\\'", 0), br"'a\\\\");
     // Other characters stay.
     assert_eq!(read(r"\n\t\x", 0), br"\n\t\x");
 }
@@ -482,9 +482,9 @@ fn backslash_escaped_quotes_read_as_backslashes() {
 #[test]
 fn backslash_escapes_read_across_chunks() {
     // The run of backslashes before the chunk counts.
-    let text = Rope::from_str(r"x\\'y");
+    let text = Rope::from_str(r"x\\\'y");
     assert_eq!(backslash_escaped(&text, 4, b"'y").as_ref(), br"\y");
-    assert_eq!(backslash_escaped(&text, 3, br"\'y").as_ref(), br"\y");
+    assert_eq!(backslash_escaped(&text, 3, br"\'y").as_ref(), br"\\y");
     // At the very start, past the end, and an empty chunk.
     assert_eq!(backslash_escaped(&text, 0, b"'").as_ref(), b"'");
     assert_eq!(backslash_escaped(&text, 99, b"").as_ref(), b"");
