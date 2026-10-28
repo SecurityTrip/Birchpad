@@ -834,7 +834,7 @@ builds and tests faster and depends on less. Behavior stays as it is: the tests,
 end-to-end tests and the highlighting snapshots pass unchanged, and the public paths the
 tests use stay where they are.
 
-- [ ] 7.4j Large modules split by what they do, each into a folder of smaller ones: the
+- [x] 7.4j Large modules split by what they do, each into a folder of smaller ones: the
       editor's `lib.rs` (the view, its commands, its mouse and keyboard), its layout and its
       buffer; the application's Preferences (a module per section), Find, the workspace and
       the pane; `birchpad-config`'s settings; `birchpad-tools`' XML Schema

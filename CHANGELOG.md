@@ -6,6 +6,14 @@ version's release notes from its section here.
 
 ## [Unreleased]
 
+### Changed
+
+- The largest modules are split by what they do, each into a folder of smaller ones: the
+  editor view (its commands, carets, editing, mouse and keyboard), the editor's layout and
+  buffer, Preferences (a module per section), Find, the workspace and the pane, the settings
+  of `birchpad-config` and the XML Schema validation of `birchpad-tools`. Nothing changes in
+  how Birchpad works.
+
 ## [0.7.3] - 2026-10-28
 
 ### Fixed
