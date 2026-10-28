@@ -823,7 +823,7 @@ written down why not.
       so that there is something to scroll across to; both scrollbars stay shown while a
       diagram does not fit; Shift with the wheel scrolls across where the system does not
       turn it so itself, no further than the diagram's edges
-- [ ] Release 0.7.3: the workspace version (0.7.3, set when its branch opens, so that nightly
+- [x] Release 0.7.3: the workspace version (0.7.3, set when its branch opens, so that nightly
       builds are its pre-releases), `CHANGELOG.md` and this roadmap updated; the
       [release checklist](release-checklist.md) gone through
 
