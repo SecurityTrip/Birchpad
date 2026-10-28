@@ -639,7 +639,7 @@ dependencies = [
 
 [[package]]
 name = "birchpad-config"
-version = "0.7.2"
+version = "0.7.5"
 dependencies = [
  "birchpad-core",
  "birchpad-i18n",
@@ -673,7 +673,7 @@ dependencies = [
 
 [[package]]
 name = "birchpad-editor"
-version = "0.7.3"
+version = "0.7.5"
 dependencies = [
  "anyhow",
  "birchpad-cli",
@@ -889,7 +889,7 @@ dependencies = [
 
 [[package]]
 name = "birchpad-tools"
-version = "0.7.0"
+version = "0.7.5"
 dependencies = [
  "birchpad-core",
  "birchpad-i18n",
@@ -919,7 +919,7 @@ dependencies = [
 
 [[package]]
 name = "birchpad-ui"
-version = "0.7.0"
+version = "0.7.5"
 dependencies = [
  "anyhow",
  "birchpad-commands",
