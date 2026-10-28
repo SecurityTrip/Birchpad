@@ -3,7 +3,7 @@ resolver = "3"
 members = ["crates/*"]
 
 [workspace.package]
-version = "0.7.2"
+version = "0.7.3"
 edition = "2024"
 rust-version = "1.98"
 license = "MIT OR Apache-2.0"
@@ -15,7 +15,7 @@ birchpad-cli = { path = "crates/cli", version = "0.7.1" }
 birchpad-commands = { path = "crates/commands", version = "0.7.2" }
 birchpad-config = { path = "crates/config", version = "0.7.2" }
 birchpad-core = { path = "crates/core", version = "0.7.0" }
-birchpad-editor = { path = "crates/editor", version = "0.7.1" }
+birchpad-editor = { path = "crates/editor", version = "0.7.3" }
 birchpad-i18n = { path = "crates/i18n", version = "0.7.2" }
 birchpad-io = { path = "crates/io", version = "0.7.0" }
 birchpad-menu-bar = { path = "crates/menu-bar", version = "0.5.0" }
