@@ -4,7 +4,10 @@
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
-use gpui_kit::{Entity, TestAppContext, VisualTestContext};
+use gpui_kit::{
+    Entity, Modifiers, Pixels, Point, ScrollDelta, ScrollWheelEvent, TestAppContext,
+    VisualTestContext, point, px,
+};
 
 use crate::workspace::open_workspace;
 use birchpad::app_state::AppState;
@@ -525,6 +528,113 @@ fn the_zoom_commands_zoom_the_active_diagrams(cx: &mut TestAppContext) {
     assert_eq!(zoom(cx), Zoom::Percent(400));
     run(&workspace, "preview.fit", cx).unwrap();
     assert_eq!(zoom(cx), Zoom::Fit);
+}
+
+/// A PlantUML that draws one diagram `width` by `height` pixels.
+fn sized_plantuml(dir: &Path, width: u32, height: u32) -> PathBuf {
+    let svg =
+        format!("svg width=\"{width}px\" height=\"{height}px\" viewBox=\"0 0 {width} {height}\"");
+    fake_plantuml(
+        dir,
+        &format!("echo ^<{svg}^>^</svg^>"),
+        &format!("echo '<{svg}></svg>'"),
+    )
+}
+
+/// The diagrams laid out again: how far they are scrolled and how far they can be.
+fn scrolled(shown: &Entity<Preview>, cx: &mut VisualTestContext) -> (Point<Pixels>, Point<Pixels>) {
+    cx.update(|window, _| window.refresh());
+    cx.run_until_parked();
+    shown.read_with(cx, |preview, _| preview.scroll().unwrap())
+}
+
+/// The mouse wheel over the diagrams, by `delta` pixels, with `modifiers` held.
+fn wheel(delta: Point<Pixels>, modifiers: Modifiers, cx: &mut VisualTestContext) {
+    let area = cx.debug_bounds("plantuml-diagrams").unwrap();
+    cx.simulate_event(ScrollWheelEvent {
+        position: area.center(),
+        delta: ScrollDelta::Pixels(delta),
+        modifiers,
+        ..Default::default()
+    });
+    cx.run_until_parked();
+}
+
+/// #58: a zoomed diagram wider than the preview scrolls across too, with Shift and the wheel
+/// as with a wheel or a touchpad that scrolls across, and no further than its edges.
+#[gpui_kit::test]
+fn a_zoomed_diagram_scrolls_both_ways(cx: &mut TestAppContext) {
+    let (workspace, cx) = open_workspace(cx);
+    let dir = tempfile::tempdir().unwrap();
+    let plantuml = sized_plantuml(dir.path(), 3000, 2000);
+    let shown = draw(
+        &workspace,
+        &plantuml,
+        dir.path(),
+        "wide.puml",
+        "@startuml
+A -> B
+@enduml
+",
+        cx,
+    );
+    // At Fit, the diagram is as wide as the preview.
+    let (_, most) = scrolled(&shown, cx);
+    assert_eq!(most.x, px(0.), "nothing to scroll across at Fit");
+    run(&workspace, "preview.actual-size", cx).unwrap();
+    let (offset, most) = scrolled(&shown, cx);
+    assert_eq!(offset, point(px(0.), px(0.)));
+    assert!(most.x > px(0.) && most.y > px(0.), "{most:?}");
+
+    // Shift with the wheel scrolls across, not down.
+    let shift = Modifiers::shift();
+    wheel(point(px(0.), px(-100.)), shift, cx);
+    assert_eq!(scrolled(&shown, cx).0, point(px(-100.), px(0.)));
+    // A wheel that scrolls across does it without Shift.
+    wheel(point(px(-50.), px(0.)), Modifiers::default(), cx);
+    assert_eq!(scrolled(&shown, cx).0, point(px(-150.), px(0.)));
+    // The wheel alone scrolls down.
+    wheel(point(px(0.), px(-40.)), Modifiers::default(), cx);
+    assert_eq!(scrolled(&shown, cx).0, point(px(-150.), px(-40.)));
+
+    // No further than the right edge, nor back past the left one.
+    wheel(point(px(0.), px(-1_000_000.)), shift, cx);
+    assert_eq!(scrolled(&shown, cx).0.x, -most.x);
+    wheel(point(px(0.), px(1_000_000.)), shift, cx);
+    assert_eq!(scrolled(&shown, cx).0.x, px(0.));
+
+    // Ctrl with the wheel zooms; it does not scroll.
+    wheel(point(px(0.), px(-100.)), shift, cx);
+    wheel(point(px(0.), px(120.)), Modifiers::secondary_key(), cx);
+    assert_eq!(
+        shown.read_with(cx, |preview, _| preview.zoom()),
+        Zoom::Percent(110)
+    );
+    assert_eq!(scrolled(&shown, cx).0.x, px(-100.));
+}
+
+/// A diagram that fits has nothing to scroll across: Shift with the wheel leaves it.
+#[gpui_kit::test]
+fn a_diagram_that_fits_does_not_scroll_across(cx: &mut TestAppContext) {
+    let (workspace, cx) = open_workspace(cx);
+    let dir = tempfile::tempdir().unwrap();
+    let plantuml = sized_plantuml(dir.path(), 200, 100);
+    let shown = draw(
+        &workspace,
+        &plantuml,
+        dir.path(),
+        "small.puml",
+        "@startuml
+A -> B
+@enduml
+",
+        cx,
+    );
+    run(&workspace, "preview.actual-size", cx).unwrap();
+    let (offset, most) = scrolled(&shown, cx);
+    assert_eq!(most.x, px(0.));
+    wheel(point(px(0.), px(-100.)), Modifiers::shift(), cx);
+    assert_eq!(scrolled(&shown, cx).0, offset);
 }
 
 #[gpui_kit::test]

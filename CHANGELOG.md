@@ -8,6 +8,9 @@ version's release notes from its section here.
 
 ### Fixed
 
+- The PlantUML preview scrolls across as well as down when a zoomed diagram is wider than it,
+  with scrollbars both ways, Shift with the mouse wheel, and a wheel or touchpad that scrolls
+  across ([#58](https://github.com/SecurityTrip/Birchpad/issues/58)).
 - The messages above the text (a read-only file, a file opened with `-ro`, monitoring, a file
   that does not decode) are drawn in the theme's colors: on the dark theme they were light,
   with the theme's light text on them ([#57](https://github.com/SecurityTrip/Birchpad/issues/57)).

@@ -817,9 +817,12 @@ written down why not.
       theme's colors, so that they read in the dark theme too: in the theme's text color, on
       its `surface` (read-only), `selected` (monitoring) or `match-background` (a file that
       does not decode), and with the Dark Mode tones over it
-- [ ] 7.4i [#58](https://github.com/SecurityTrip/Birchpad/issues/58) The PlantUML preview
+- [x] 7.4i [#58](https://github.com/SecurityTrip/Birchpad/issues/58) The PlantUML preview
       scrolled both ways when a zoomed diagram does not fit: scrollbars, and Shift with the
-      mouse wheel for across
+      mouse wheel for across. Zoomed, the diagrams are laid out as wide as the widest of them,
+      so that there is something to scroll across to; both scrollbars stay shown while a
+      diagram does not fit; Shift with the wheel scrolls across where the system does not
+      turn it so itself, no further than the diagram's edges
 - [ ] Release 0.7.3: the workspace version (0.7.3, set when its branch opens, so that nightly
       builds are its pre-releases), `CHANGELOG.md` and this roadmap updated; the
       [release checklist](release-checklist.md) gone through
