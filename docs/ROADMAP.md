@@ -847,7 +847,7 @@ tests use stay where they are.
       tray, the system's print dialog), each with its own tests and only the dependencies it
       uses; an ADR for the new crate layout, over [ADR 0041](adr/0041-crate-layout.md)
       ([ADR 0058](adr/0058-parts-of-the-window-in-crates-of-their-own.md))
-- [ ] Release 0.7.5: the workspace version (0.7.5, set when its branch opens, so that nightly
+- [x] Release 0.7.5: the workspace version (0.7.5, set when its branch opens, so that nightly
       builds are its pre-releases), `CHANGELOG.md` and this roadmap updated; the
       [release checklist](release-checklist.md) gone through
 
