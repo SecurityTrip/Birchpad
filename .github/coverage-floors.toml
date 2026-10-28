@@ -12,6 +12,8 @@
 # Since 6.35 the tests are in each crate's tests folder, which cargo-llvm-cov leaves out: their
 # own lines, all run, no longer count, so the shares are of the crates' code alone. Measured on
 # Linux on 2026-10-19: plugin 95.7, release-tool 92.0 (the other crates kept over their floors).
+# The crates of ADR 0058, measured on Windows on 2026-10-29 with their own tests: quick-pick 84.2,
+# search-results 66.0, tray 100 (print-dialog has no code on Linux, so no floor).
 
 [lines]
 app = 89
@@ -25,13 +27,13 @@ i18n = 96
 io = 95
 menu-bar = 95
 plugin = 95
-quick-pick = 90
+quick-pick = 82
 release-tool = 92
-search-results = 85
+search-results = 64
 syntax = 95
 theme = 97
 tools = 97
-tray = 85
+tray = 97
 ui = 94
 update = 93
 view = 98
