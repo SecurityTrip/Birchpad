@@ -810,14 +810,37 @@ written down why not.
       builds are its pre-releases), `CHANGELOG.md` and this roadmap updated; the
       [release checklist](release-checklist.md) gone through
 
+### Release 0.7.3: fixes
+
+- [ ] 7.4h [#57](https://github.com/SecurityTrip/Birchpad/issues/57) The messages above the
+      text (a read-only file, `-ro`, monitoring, a file that does not decode) drawn in the
+      theme's colors, so that they read in the dark theme too
+- [ ] 7.4i [#58](https://github.com/SecurityTrip/Birchpad/issues/58) The PlantUML preview
+      scrolled both ways when a zoomed diagram does not fit: scrollbars, and Shift with the
+      mouse wheel for across
+- [ ] Release 0.7.3: the workspace version (0.7.3, set when its branch opens, so that nightly
+      builds are its pre-releases), `CHANGELOG.md` and this roadmap updated; the
+      [release checklist](release-checklist.md) gone through
+
 ### Release 0.7.5: refactoring
 
-- [ ] 7.4h The code refactored throughout before the development tools of 0.8.0: large
-      modules split by what they do, duplicated code brought together, and the crates made
-      lighter, by more and smaller crates where that helps (the application crate first), so
-      that each builds and tests faster and depends on less; an ADR for the new crate layout,
-      over [ADR 0041](adr/0041-crate-layout.md). Behavior stays as it is: the tests, the
-      end-to-end tests and the highlighting snapshots pass unchanged
+The code refactored throughout before the development tools of 0.8.0, so that each crate
+builds and tests faster and depends on less. Behavior stays as it is: the tests, the
+end-to-end tests and the highlighting snapshots pass unchanged, and the public paths the
+tests use stay where they are.
+
+- [ ] 7.4j Large modules split by what they do, each into a folder of smaller ones: the
+      editor's `lib.rs` (the view, its commands, its mouse and keyboard), its layout and its
+      buffer; the application's Preferences (a module per section), Find, the workspace and
+      the pane; `birchpad-config`'s settings; `birchpad-tools`' XML Schema
+- [ ] 7.4k Duplicated code brought together: what several parts of the window repeat
+      (running a command from a button or a menu item and reporting its error, bars and
+      their colors, the theme's colors read for an element) in one place of the lowest layer
+      that can hold it
+- [ ] 7.4l The application crate lighter: the parts of the window that need no workspace
+      moved to crates of their own (the quick pick lists, the search results, the system
+      tray, the system's print dialog), each with its own tests and only the dependencies it
+      uses; an ADR for the new crate layout, over [ADR 0041](adr/0041-crate-layout.md)
 - [ ] Release 0.7.5: the workspace version (0.7.5, set when its branch opens, so that nightly
       builds are its pre-releases), `CHANGELOG.md` and this roadmap updated; the
       [release checklist](release-checklist.md) gone through
