@@ -512,6 +512,6 @@ impl Render for RunMultiple {
                             .child(Input::new(&self.times).id("macro-times-input")),
                     ),
             )
-            .children(self.error.clone().map(|error| error_text(error)))
+            .children(self.error.clone().map(error_text))
     }
 }

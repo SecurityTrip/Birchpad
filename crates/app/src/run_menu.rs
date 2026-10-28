@@ -359,7 +359,7 @@ impl Render for RunDialog {
             .children(
                 self.error
                     .clone()
-                    .map(|error| error_text(error)),
+                    .map(error_text),
             )
     }
 }

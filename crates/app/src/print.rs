@@ -586,7 +586,7 @@ impl Render for PrintPreview {
                     .justify_center()
                     .child(self.page_element()),
             )
-            .children(self.error.clone().map(|error| error_text(error)))
+            .children(self.error.clone().map(error_text))
     }
 }
 

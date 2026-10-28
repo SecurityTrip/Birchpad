@@ -275,7 +275,7 @@ impl Render for ProxyDialog {
             .gap_2()
             .child(t!("help.proxy-explained"))
             .child(Input::new(&self.input).id("proxy-input"))
-            .children(self.error.clone().map(|error| error_text(error)))
+            .children(self.error.clone().map(error_text))
     }
 }
 

@@ -136,6 +136,6 @@ impl Render for GoTo {
             .child(t!("find.you-are-here", here = here))
             .child(Input::new(&self.input).id("go-to-input"))
             .child(t!("find.you-can-t-go-further-than", limit = limit))
-            .children(self.error.clone().map(|error| error_text(error)))
+            .children(self.error.clone().map(error_text))
     }
 }

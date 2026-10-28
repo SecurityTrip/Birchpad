@@ -288,7 +288,7 @@ impl Render for RangeDialog {
                         .on_click(cx.listener(|this, _, window, cx| this.find(window, cx))),
                 ),
             )
-            .children(self.error.clone().map(|error| error_text(error)))
+            .children(self.error.clone().map(error_text))
     }
 }
 
@@ -424,6 +424,6 @@ impl Render for InResultsDialog {
                         .on_click(cx.listener(|this, _, window, cx| this.find(window, cx))),
                 ),
             )
-            .children(self.error.clone().map(|error| error_text(error)))
+            .children(self.error.clone().map(error_text))
     }
 }

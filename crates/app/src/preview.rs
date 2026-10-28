@@ -610,11 +610,7 @@ impl Preview {
                         .text_color(paint(ui().muted))
                         .child(t!("plantuml.what-is-installed")),
                 )
-                .children(
-                    state
-                        .and_then(|state| state.error.clone())
-                        .map(|error| error_text(error)),
-                )
+                .children(state.and_then(|state| state.error.clone()).map(error_text))
                 .into_any_element(),
             (Err(why), _) => div()
                 .text_color(paint(ui().muted))
