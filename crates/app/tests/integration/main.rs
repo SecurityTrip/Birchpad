@@ -155,9 +155,6 @@ mod run_menu;
 #[path = "search_extras/tests.rs"]
 mod search_extras;
 
-#[path = "search_results/tests.rs"]
-mod search_results;
-
 #[path = "session_tests.rs"]
 mod session_tests;
 

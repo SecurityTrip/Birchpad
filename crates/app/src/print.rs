@@ -31,9 +31,6 @@ use crate::editor::widgets::error_text;
 use crate::theme::{paint, ui};
 use crate::workspace::{Workspace, report_error};
 
-#[cfg(windows)]
-pub mod windows;
-
 /// What is printed: the active document, or its selection, with its styles.
 #[derive(Debug, Clone)]
 pub struct PrintSource {
@@ -303,7 +300,7 @@ pub fn print_task(
         let (title, pages, setup) = (title.to_owned(), pages.clone(), setup.clone());
         // The print dialog and the printing wait on their own thread, not on the window's.
         cx.background_spawn(async move {
-            windows::print(&title, &pages, &setup, owner, ask)
+            birchpad_print_dialog::print(&title, &pages, &setup, owner, ask)
                 .map(|_| ())
                 .map_err(|error| {
                     anyhow!("{}", t!("print.cannot-print", error = format!("{error:#}")))

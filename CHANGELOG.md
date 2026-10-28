@@ -17,6 +17,11 @@ version's release notes from its section here.
   menu item or a panel shows what went wrong the same way everywhere (`Workspace::run`), and
   the bars across the window, the rows of lists and the text of errors take the theme's
   colors from `birchpad-editor`'s `widgets`.
+- The parts of the window that need no workspace are crates of their own, each with its
+  tests and only the dependencies it uses: the list to pick from of the command palette and Go
+  to File (`birchpad-quick-pick`), the search results panel (`birchpad-search-results`),
+  minimizing to the system tray (`birchpad-tray`) and printing through Windows' print dialog
+  (`birchpad-print-dialog`) (ADR 0058).
 
 ## [0.7.3] - 2026-10-28
 

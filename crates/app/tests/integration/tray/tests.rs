@@ -1,22 +1,13 @@
-//! Minimize to the system tray (roadmap 7.4), on Windows and macOS: the setting, and how the
-//! window starts with `-systemtray`. The platforms' own calls are faked in tests.
+//! Minimize to the system tray (roadmap 7.4), on Windows and macOS, as the application uses it:
+//! the setting in Preferences, and the window watched. The platforms' own calls are faked in
+//! tests; `birchpad-tray` tests the rest.
 
 use birchpad::app_state::AppState;
-use birchpad::tray::{self, Start};
+use birchpad::tray;
 use gpui_kit::{TestAppContext, VisualTestContext};
 use toml::Value;
 
 use crate::workspace::open_workspace;
-
-#[test]
-fn systemtray_starts_in_the_tray_where_there_is_one() {
-    assert_eq!(tray::start(true, true), Start::InTray);
-    // Where there is none, minimized, as before.
-    assert_eq!(tray::start(true, false), Start::Minimized);
-    // Without the option, as usual, tray or not.
-    assert_eq!(tray::start(false, true), Start::Normal);
-    assert_eq!(tray::start(false, false), Start::Normal);
-}
 
 #[test]
 fn the_tray_is_windows_and_macos_s() {

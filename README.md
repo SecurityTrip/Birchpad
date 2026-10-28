@@ -158,7 +158,11 @@ not with `network.online-features = false`. See [ADR 0020](docs/adr/0020-signed-
 | `crates/ui` | What the window's parts share: the command registry, the settings and state of the application, dialog buttons, messages to the user. |
 | `crates/editor` | The editor: the buffer, the editor view drawn and edited in GPUI, the active theme. |
 | `crates/menu-bar` | The menu bar drawn in the window on Windows and Linux, with Windows' keyboard access. |
-| `crates/app` | The desktop application: the workspace, panes, panels, dialogs and menus. See ADR 0041 for the layout. |
+| `crates/quick-pick` | The list to pick from by typing that the command palette and Go to File show. |
+| `crates/search-results` | The search results panel of Find All and Find in Files. |
+| `crates/tray` | Minimizing to the system tray, with each platform's own calls (Windows, macOS). |
+| `crates/print-dialog` | Printing through Windows' print dialog and GDI. |
+| `crates/app` | The desktop application: the workspace, panes, panels, dialogs and menus. See ADRs 0041 and 0058 for the layout. |
 | `packaging/` | Release packaging: per-machine MSI, macOS app bundle, portable-mode marker, update signing setup, the online catalog. |
 | `docs/` | Roadmap, architecture decision records, and [writing plugins and scripts](docs/plugins.md). |
 

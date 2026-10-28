@@ -62,6 +62,11 @@ class Check(unittest.TestCase):
             ],
         )
 
+    def test_a_crate_without_code_here_needs_no_floor(self):
+        table, problems = check({"core": (9, 10), "print-dialog": (0, 0)}, {"core": 90})
+        self.assertEqual(problems, [])
+        self.assertNotIn("print-dialog", table)
+
     def test_a_floor_for_a_crate_that_is_gone_fails(self):
         _, problems = check({}, {"old": 50})
         self.assertEqual(problems, ["old has a floor but no code was measured"])

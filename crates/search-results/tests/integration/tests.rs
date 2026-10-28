@@ -4,13 +4,12 @@
     reason = "expected results written out"
 )]
 
-use gpui_kit::{Entity, Modifiers, TestAppContext, VisualTestContext};
-
-use crate::workspace::open_workspace;
-use birchpad::search_results::*;
 use birchpad_core::search::LineHit;
-use gpui_kit::AppContext as _;
-use gpui_kit::MouseButton;
+use birchpad_search_results::*;
+use gpui_kit::{
+    AppContext as _, Entity, Modifiers, MouseButton, TestAppContext, VisualTestContext,
+    WindowOptions,
+};
 
 fn hit(line: usize, text: &str, matches: usize) -> LineHit {
     LineHit {
@@ -35,9 +34,16 @@ fn file(name: &str, lines: Vec<LineHit>) -> FileResults {
 /// The panel of a new window, focused, with a search for "foo" in a.txt (three hits on two
 /// lines) and b.txt (one), of five documents searched.
 fn panel_with_results(cx: &mut TestAppContext) -> (Entity<SearchResults>, &mut VisualTestContext) {
-    let (workspace, cx) = open_workspace(cx);
-    let results = workspace.read_with(cx, |workspace, _| workspace.search_results.clone());
-    workspace.update_in(cx, |workspace, window, cx| {
+    cx.update(gpui_kit::init);
+    let (window, results) = cx
+        .update(|cx| {
+            gpui_kit::open_window(WindowOptions::default(), cx, |_, cx| {
+                cx.new(SearchResults::new)
+            })
+        })
+        .expect("open the test window");
+    let cx = VisualTestContext::from_window(window, cx).into_mut();
+    results.update_in(cx, |results, window, cx| {
         let run = SearchRun::new(
             "foo",
             vec![
@@ -46,11 +52,8 @@ fn panel_with_results(cx: &mut TestAppContext) -> (Entity<SearchResults>, &mut V
             ],
             5,
         );
-        workspace.search_results.update(cx, |results, cx| {
-            results.add(run, cx);
-            window.focus(&results.focus_handle, cx);
-        });
-        cx.notify();
+        results.add(run, cx);
+        window.focus(&results.focus_handle, cx);
     });
     cx.run_until_parked();
     (results, cx)

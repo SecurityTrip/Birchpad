@@ -47,10 +47,8 @@ pub mod plantuml;
 pub mod preferences;
 pub mod preview;
 pub mod print;
-pub mod quick_pick;
 pub mod run_menu;
 pub mod search_extras;
-pub mod search_results;
 pub mod session;
 pub mod shortcut_mapper;
 pub mod spell_check;
@@ -59,7 +57,6 @@ pub mod style_configurator;
 pub mod themes;
 pub mod toolbar;
 pub mod tools;
-pub mod tray;
 pub mod updates;
 pub mod user_languages;
 pub mod view_extras;
@@ -68,6 +65,9 @@ pub mod window_modes;
 pub mod workspace;
 
 pub use birchpad_editor::{self as editor, buffer, theme};
+pub use birchpad_quick_pick as quick_pick;
+pub use birchpad_search_results as search_results;
+pub use birchpad_tray as tray;
 
 use std::fmt::Write as _;
 
@@ -255,7 +255,7 @@ pub fn run() {
                             .update(cx, |workspace, cx| workspace.run(&invocation, window, cx));
                     }
                     // Preferences > MISC > Minimize to system tray, on Windows and macOS.
-                    crate::tray::apply(cx);
+                    crate::tray::apply(AppState::global(cx).settings.misc.minimize_to_tray);
                     if crate::tray::SUPPORTED
                         && let Err(error) = crate::tray::watch(window)
                     {

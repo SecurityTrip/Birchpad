@@ -1,0 +1,28 @@
+[package]
+name = "birchpad-search-results"
+description = "Birchpad's search results panel: Find All and Find in Files list their matches there, by search and by document."
+version = "0.7.5"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[dependencies]
+birchpad-config.workspace = true
+birchpad-core.workspace = true
+birchpad-editor.workspace = true
+birchpad-i18n.workspace = true
+birchpad-ui.workspace = true
+gpui-kit = "0.7"
+
+[features]
+# What the tests and the end-to-end script of the application read of the panel.
+test-support = []
+
+[dev-dependencies]
+birchpad-search-results = { path = ".", features = ["test-support"] }
+gpui-kit = { version = "0.7", features = ["test-support"] }
+
+[lints]
+workspace = true

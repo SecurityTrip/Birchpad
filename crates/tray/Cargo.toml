@@ -1,0 +1,56 @@
+[package]
+name = "birchpad-tray"
+description = "Minimize to the system tray for Birchpad, on Windows and macOS: each platform's own calls beside GPUI's event loop."
+version = "0.7.5"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+raw-window-handle = "0.6"
+
+[features]
+# The platforms' own calls faked, for the tests of the application.
+test-support = []
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61", features = [
+    "Win32_Foundation",
+    "Win32_System_LibraryLoader",
+    "Win32_UI_Shell",
+    "Win32_UI_WindowsAndMessaging",
+] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+# The version GPUI builds.
+block2 = "0.6"
+objc2 = "0.6"
+objc2-app-kit = { version = "0.3", features = [
+    "NSApplication",
+    "NSButton",
+    "NSControl",
+    "NSImage",
+    "NSResponder",
+    "NSStatusBar",
+    "NSStatusBarButton",
+    "NSStatusItem",
+    "NSView",
+    "NSWindow",
+] }
+objc2-foundation = { version = "0.3", features = [
+    "NSGeometry",
+    "NSNotification",
+    "NSOperation",
+    "NSString",
+    "block2",
+] }
+
+[dev-dependencies]
+birchpad-tray = { path = ".", features = ["test-support"] }
+raw-window-handle = "0.6"
+
+[lints]
+workspace = true

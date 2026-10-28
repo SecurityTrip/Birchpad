@@ -128,7 +128,7 @@ pub fn set(key: &str, value: Option<Value>, cx: &mut App) -> Result<()> {
     // Preferences > Appearance > Interface.
     crate::themes::reapply(cx);
     // Preferences > MISC > Minimize to system tray.
-    crate::tray::apply(cx);
+    crate::tray::apply(AppState::global(cx).settings.misc.minimize_to_tray);
     cx.refresh_windows();
     Ok(())
 }

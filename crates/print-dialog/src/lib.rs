@@ -1,6 +1,9 @@
 //! Printing through Windows' own printing (GDI): its print dialog chooses the printer, the
 //! pages and the copies, or Print Now takes the default printer; the pages are drawn as the
-//! print preview shows them, at the same places on the paper.
+//! print preview shows them, at the same places on the paper. Other systems have none: there the
+//! crate is empty.
+
+#![cfg(windows)]
 
 use std::ptr::null_mut;
 
@@ -90,24 +93,25 @@ fn choose(owner: HWND, ask: bool, pages: usize) -> anyhow::Result<Option<Chosen>
     Ok(Some((Printer(dialog.hDC), range)))
 }
 
-/// Windows' color of `color` (`0x00BBGGRR`).
-fn colorref(color: Color) -> COLORREF {
+/// Windows' color of `color` (`0x00BBGGRR`); its alpha is left out.
+pub fn colorref(color: Color) -> COLORREF {
     let [r, g, b, _] = color.0.to_be_bytes();
     u32::from(r) | (u32::from(g) << 8) | (u32::from(b) << 16)
 }
 
 /// UTF-16 with a terminating zero.
-fn wide(text: &str) -> Vec<u16> {
+pub fn wide(text: &str) -> Vec<u16> {
     text.encode_utf16().chain([0]).collect()
 }
 
 /// The device's scale and origin: dots per millimeter, and where the paper's corner is from the
 /// printable area's.
-struct Device {
-    dots_x: f32,
-    dots_y: f32,
-    offset_x: f32,
-    offset_y: f32,
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Device {
+    pub dots_x: f32,
+    pub dots_y: f32,
+    pub offset_x: f32,
+    pub offset_y: f32,
 }
 
 impl Device {
@@ -124,7 +128,7 @@ impl Device {
     }
 
     /// A point `x` and `y` millimeters from the paper's top left corner, in the device's dots.
-    fn at(&self, x: f32, y: f32) -> (i32, i32) {
+    pub fn at(&self, x: f32, y: f32) -> (i32, i32) {
         (
             (x * self.dots_x - self.offset_x).round() as i32,
             (y * self.dots_y - self.offset_y).round() as i32,

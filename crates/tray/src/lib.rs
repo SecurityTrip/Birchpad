@@ -5,9 +5,7 @@
 //! `-systemtray` starts the window minimized and the setting is disabled.
 
 use anyhow::Result;
-use gpui_kit::{App, Window};
-
-use crate::app_state::AppState;
+use raw_window_handle::HasWindowHandle;
 
 /// Whether this platform has a tray Birchpad can go to.
 pub const SUPPORTED: bool = cfg!(any(windows, target_os = "macos"));
@@ -31,10 +29,10 @@ pub fn start(system_tray: bool, supported: bool) -> Start {
     }
 }
 
-/// Follows the settings: whether minimizing the window sends it to the tray. The platform's
-/// callbacks read it, which have no `App`.
-pub fn apply(cx: &App) {
-    flag::set(SUPPORTED && AppState::global(cx).settings.misc.minimize_to_tray);
+/// Follows Preferences > MISC > Minimize to system tray: whether minimizing the window sends it
+/// to the tray. The platform's callbacks read it, which have no `App`.
+pub fn apply(minimize_to_tray: bool) {
+    flag::set(SUPPORTED && minimize_to_tray);
 }
 
 /// Whether minimizing the window sends it to the tray now.
@@ -43,7 +41,7 @@ pub fn minimizes_to_tray() -> bool {
 }
 
 /// Watches `window` for being minimized, to send it to the tray then if the settings say so.
-pub fn watch(window: &Window) -> Result<()> {
+pub fn watch(window: &impl HasWindowHandle) -> Result<()> {
     #[cfg(feature = "test-support")]
     {
         let _ = window;
@@ -57,7 +55,7 @@ pub fn watch(window: &Window) -> Result<()> {
 }
 
 /// Sends `window` to the tray at once (`-systemtray`), whatever the settings.
-pub fn send(window: &Window) -> Result<()> {
+pub fn send(window: &impl HasWindowHandle) -> Result<()> {
     #[cfg(feature = "test-support")]
     {
         let _ = window;
@@ -71,8 +69,7 @@ pub fn send(window: &Window) -> Result<()> {
 }
 
 #[cfg(not(feature = "test-support"))]
-fn raw(window: &Window) -> Result<raw_window_handle::RawWindowHandle> {
-    use raw_window_handle::HasWindowHandle;
+fn raw(window: &impl HasWindowHandle) -> Result<raw_window_handle::RawWindowHandle> {
     // The trait's handle, not GPUI's own `window_handle`.
     Ok(HasWindowHandle::window_handle(window)
         .map_err(|error| anyhow::anyhow!("{error}"))?

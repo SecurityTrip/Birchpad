@@ -16,6 +16,7 @@ use std::ops::Range;
 use std::path::PathBuf;
 
 use birchpad_core::search::LineHit;
+use birchpad_i18n::t;
 use gpui_kit::component::button::{Button, ButtonVariants as _};
 use gpui_kit::component::menu::{ContextMenuExt as _, PopupMenu, PopupMenuItem};
 use gpui_kit::component::{IconName, Sizable};
@@ -27,10 +28,9 @@ use gpui_kit::{
 };
 
 use birchpad_config::SearchResultsState;
-
-use crate::app_state::AppState;
-use crate::buffer::Buffer;
-use crate::editor::widgets::{BarColors, Line, bar};
+use birchpad_editor::buffer::Buffer;
+use birchpad_editor::widgets::{BarColors, Line, bar};
+use birchpad_ui::AppState;
 
 const ROW_HEIGHT: f32 = 20.;
 
@@ -88,7 +88,7 @@ impl SearchRun {
     /// from the list no longer count.
     pub fn title(&self) -> String {
         let hits: usize = self.files.iter().map(|file| file.hits).sum();
-        let count = crate::i18n::count;
+        let count = birchpad_i18n::count;
         t!(
             "search-results.title",
             pattern = self.pattern,
@@ -462,7 +462,7 @@ impl SearchResults {
                 PopupMenuItem::new(t!("search-results.find-in-these-search-results")).on_click(
                     |_: &ClickEvent, window: &mut Window, cx: &mut App| {
                         window.dispatch_action(
-                            Box::new(crate::commands::RunCommand::new("search.find-in-results")),
+                            Box::new(birchpad_ui::RunCommand::new("search.find-in-results")),
                             cx,
                         );
                     },
@@ -557,7 +557,7 @@ impl SearchResults {
     }
 
     /// The rows as text, indented by level: for tests.
-    #[cfg(any(feature = "test-support", feature = "e2e"))]
+    #[cfg(feature = "test-support")]
     pub fn rows_text(&self) -> Vec<String> {
         self.rows
             .iter()
@@ -628,7 +628,9 @@ impl SearchResults {
             .flex_row()
             .items_center()
             .when(selected, |row| {
-                row.bg(crate::theme::paint(crate::theme::ui().selected))
+                row.bg(birchpad_editor::theme::paint(
+                    birchpad_editor::theme::ui().selected,
+                ))
             })
             // A right click selects the row its menu works on.
             .on_mouse_down(
@@ -657,9 +659,9 @@ impl SearchResults {
                 let run = &self.runs[r];
                 base.pl_1()
                     .bg(if selected {
-                        crate::theme::paint(crate::theme::ui().selected)
+                        birchpad_editor::theme::paint(birchpad_editor::theme::ui().selected)
                     } else {
-                        crate::theme::paint(crate::theme::ui().heading)
+                        birchpad_editor::theme::paint(birchpad_editor::theme::ui().heading)
                     })
                     .font_weight(FontWeight::SEMIBOLD)
                     .child(format!("{}{}", fold(run.collapsed), run.title()))
@@ -669,12 +671,14 @@ impl SearchResults {
             Row::File(r, f) => {
                 let file = &self.runs[r].files[f];
                 base.pl(px(16.))
-                    .text_color(crate::theme::paint(crate::theme::ui().line_number))
+                    .text_color(birchpad_editor::theme::paint(
+                        birchpad_editor::theme::ui().line_number,
+                    ))
                     .child(format!(
                         "{}{} ({})",
                         fold(file.collapsed),
                         file.name,
-                        crate::i18n::count(file.hits, "hit", "hits")
+                        birchpad_i18n::count(file.hits, "hit", "hits")
                     ))
                     .context_menu(menu)
                     .into_any_element()
@@ -685,7 +689,10 @@ impl SearchResults {
                 let text = format!("{prefix}{}", hit.text);
                 let highlight = HighlightStyle {
                     background_color: Some(
-                        crate::theme::paint(crate::theme::ui().match_background).into(),
+                        birchpad_editor::theme::paint(
+                            birchpad_editor::theme::ui().match_background,
+                        )
+                        .into(),
                     ),
                     font_weight: Some(FontWeight::BOLD),
                     ..HighlightStyle::default()
@@ -701,7 +708,7 @@ impl SearchResults {
                     })
                     .collect();
                 base.pl(px(36.))
-                    .font_family(crate::MONOSPACE)
+                    .font_family(birchpad_editor::MONOSPACE)
                     .child(StyledText::new(text).with_highlights(highlights))
                     .context_menu(menu)
                     .into_any_element()
@@ -764,7 +771,9 @@ impl Render for SearchResults {
             .size_full()
             .flex()
             .flex_col()
-            .bg(crate::theme::paint(crate::theme::ui().background))
+            .bg(birchpad_editor::theme::paint(
+                birchpad_editor::theme::ui().background,
+            ))
             .child(header)
             .child(list)
     }

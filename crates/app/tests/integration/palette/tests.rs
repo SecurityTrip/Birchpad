@@ -1,6 +1,6 @@
 use birchpad::app_state::AppState;
 use birchpad::palette::*;
-use birchpad::quick_pick::{QuickPick, highlight_ranges};
+use birchpad::quick_pick::QuickPick;
 use birchpad::workspace::Workspace;
 use birchpad_commands::{Invocation, Keymap, Platform};
 use gpui_kit::{Entity, TestAppContext, VisualTestContext};
@@ -210,15 +210,4 @@ fn shortcuts_show_as_the_menus_do() {
     assert_eq!(save, expected);
     assert_eq!(shortcut(&keymap, &Invocation::new("file.rename")), "");
     assert_eq!(shortcut(&keymap, &Invocation::new("no.such.command")), "");
-}
-
-#[test]
-fn highlights_cover_whole_characters() {
-    assert_eq!(highlight_ranges("Ёж s", &[0, 2, 5]), [0..2, 2..4, 5..6]);
-    // Past the end or inside a character: left out.
-    assert_eq!(
-        highlight_ranges("Ёж", &[1, 4, 100]),
-        Vec::<std::ops::Range<usize>>::new()
-    );
-    assert!(highlight_ranges("", &[]).is_empty());
 }
