@@ -2,15 +2,54 @@
 
 use birchpad_commands::Invocation;
 use birchpad_io::{CHARACTER_SETS, DecodeProblem};
+use birchpad_theme::Color;
 use gpui_kit::component::Sizable;
 use gpui_kit::component::button::Button;
 use gpui_kit::component::menu::{DropdownMenu, PopupMenu};
-use gpui_kit::{AnyElement, Context, FocusHandle, Window, div, prelude::*, px, rgb};
+use gpui_kit::{AnyElement, Context, FocusHandle, Window, div, prelude::*, px};
 use serde_json::json;
 
 use birchpad_ui::RunCommand;
 
-fn bar(color: u32, border: u32) -> gpui_kit::Div {
+use crate::theme::{paint, ui};
+
+/// What a message above the text is about, which picks its colors.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Kind {
+    /// The file or the command line makes the document read-only.
+    ReadOnly,
+    /// View > Monitoring follows the file.
+    Monitoring,
+    /// The text does not represent the file.
+    Decoding,
+}
+
+/// The colors of a message above the text.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct BarColors {
+    pub background: Color,
+    pub border: Color,
+    pub text: Color,
+}
+
+/// The colors of a message of `kind`, from the interface colors of the theme in use, so that
+/// it reads on a dark theme as on a light one.
+pub fn colors(kind: Kind) -> BarColors {
+    let ui = ui();
+    let (background, border) = match kind {
+        Kind::ReadOnly => (ui.surface, ui.border),
+        Kind::Monitoring => (ui.selected, ui.accent),
+        Kind::Decoding => (ui.match_background, ui.directory),
+    };
+    BarColors {
+        background,
+        border,
+        text: ui.text,
+    }
+}
+
+fn bar(kind: Kind) -> gpui_kit::Div {
+    let colors = colors(kind);
     div()
         .flex()
         .flex_row()
@@ -19,9 +58,10 @@ fn bar(color: u32, border: u32) -> gpui_kit::Div {
         .gap_3()
         .px_3()
         .py_1()
-        .bg(rgb(color))
+        .bg(paint(colors.background))
+        .text_color(paint(colors.text))
         .border_b_1()
-        .border_color(rgb(border))
+        .border_color(paint(colors.border))
         .text_size(px(13.))
 }
 
@@ -49,7 +89,7 @@ pub fn decoding_problem(
              {places}, the first at offset {offset}. It is open read-only."
         ),
     };
-    bar(0xfff8c5, 0xd4a72c)
+    bar(Kind::Decoding)
         .debug_selector(|| "banner-decoding".into())
         .child(div().flex_1().child(message))
         .child(
@@ -75,19 +115,19 @@ pub fn decoding_problem(
 }
 
 pub fn read_only_requested() -> AnyElement {
-    bar(0xf6f8fa, 0xd0d7de)
+    bar(Kind::ReadOnly)
         .child(t!("banner.opened-read-only-from-the-command-line-ro"))
         .into_any_element()
 }
 
 pub fn monitoring() -> AnyElement {
-    bar(0xddf4ff, 0x54aeff)
+    bar(Kind::Monitoring)
         .child(t!("banner.monitoring-tail-f-the-document-follows-the-file-and-cannot-be-edited-view-monitoring-stops-it"))
         .into_any_element()
 }
 
 pub fn read_only_file() -> AnyElement {
-    bar(0xf6f8fa, 0xd0d7de)
+    bar(Kind::ReadOnly)
         .child(t!(
             "banner.this-file-is-read-only-use-save-as-to-keep-your-changes-in-another-file"
         ))
@@ -109,9 +149,10 @@ pub fn loading(progress: f32) -> AnyElement {
                 .px_4()
                 .py_2()
                 .rounded_md()
-                .bg(crate::theme::paint(crate::theme::ui().surface))
+                .bg(paint(ui().surface))
+                .text_color(paint(ui().text))
                 .border_1()
-                .border_color(crate::theme::paint(crate::theme::ui().border))
+                .border_color(paint(ui().border))
                 .child(format!("{} {:.0}%", t!("banner.loading"), progress * 100.)),
         )
         .into_any_element()

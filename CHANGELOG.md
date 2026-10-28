@@ -6,6 +6,12 @@ version's release notes from its section here.
 
 ## [Unreleased]
 
+### Fixed
+
+- The messages above the text (a read-only file, a file opened with `-ro`, monitoring, a file
+  that does not decode) are drawn in the theme's colors: on the dark theme they were light,
+  with the theme's light text on them ([#57](https://github.com/SecurityTrip/Birchpad/issues/57)).
+
 ## [0.7.2] - 2026-10-28
 
 ### Added

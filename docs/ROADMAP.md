@@ -812,9 +812,11 @@ written down why not.
 
 ### Release 0.7.3: fixes
 
-- [ ] 7.4h [#57](https://github.com/SecurityTrip/Birchpad/issues/57) The messages above the
+- [x] 7.4h [#57](https://github.com/SecurityTrip/Birchpad/issues/57) The messages above the
       text (a read-only file, `-ro`, monitoring, a file that does not decode) drawn in the
-      theme's colors, so that they read in the dark theme too
+      theme's colors, so that they read in the dark theme too: in the theme's text color, on
+      its `surface` (read-only), `selected` (monitoring) or `match-background` (a file that
+      does not decode), and with the Dark Mode tones over it
 - [ ] 7.4i [#58](https://github.com/SecurityTrip/Birchpad/issues/58) The PlantUML preview
       scrolled both ways when a zoomed diagram does not fit: scrollbars, and Shift with the
       mouse wheel for across
