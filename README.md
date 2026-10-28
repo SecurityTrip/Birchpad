@@ -64,7 +64,7 @@ with > Change All.
 To uninstall, use Installed apps in Windows Settings for the installer and the MSI, or delete the
 folder of a portable copy.
 
-Nightly builds of the next version's branch (`v0.7.5` or `v0.8.0` after 0.7.2) are published as
+Nightly builds of the next version's branch (`v0.7.5` or `v0.8.0` after 0.7.3) are published as
 pre-releases; set `updates.channel = "nightly"` to get them as updates.
 
 ## Code signing policy

@@ -6,6 +6,17 @@ version's release notes from its section here.
 
 ## [Unreleased]
 
+## [0.7.3] - 2026-10-28
+
+### Fixed
+
+- The PlantUML preview scrolls across as well as down when a zoomed diagram is wider than it,
+  with scrollbars both ways, Shift with the mouse wheel, and a wheel or touchpad that scrolls
+  across ([#58](https://github.com/SecurityTrip/Birchpad/issues/58)).
+- The messages above the text (a read-only file, a file opened with `-ro`, monitoring, a file
+  that does not decode) are drawn in the theme's colors: on the dark theme they were light,
+  with the theme's light text on them ([#57](https://github.com/SecurityTrip/Birchpad/issues/57)).
+
 ## [0.7.2] - 2026-10-28
 
 ### Added
@@ -754,7 +765,8 @@ The first release: a Notepad++-like editor for Windows, Linux and macOS.
   entirely (`updates.mode = "off"`).
 - Nightly builds of `main` on the nightly channel.
 
-[Unreleased]: https://github.com/SecurityTrip/Birchpad/compare/v0.7.2...HEAD
+[Unreleased]: https://github.com/SecurityTrip/Birchpad/compare/v0.7.3...HEAD
+[0.7.3]: https://github.com/SecurityTrip/Birchpad/compare/v0.7.2...v0.7.3
 [0.7.2]: https://github.com/SecurityTrip/Birchpad/compare/v0.7.1...v0.7.2
 [0.7.1]: https://github.com/SecurityTrip/Birchpad/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/SecurityTrip/Birchpad/compare/v0.6.0...v0.7.0

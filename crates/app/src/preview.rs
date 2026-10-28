@@ -23,11 +23,12 @@ use birchpad_core::RevisionId;
 use gpui_kit::base::text::{TextView, TextViewState};
 use gpui_kit::component::button::{Button, ButtonVariants as _};
 use gpui_kit::component::menu::{ContextMenuExt as _, PopupMenu, PopupMenuItem};
+use gpui_kit::component::scroll::{Scrollbar, ScrollbarAxis, ScrollbarMode};
 use gpui_kit::component::{IconName, Selectable as _, Sizable};
 use gpui_kit::{
     AnyElement, App, AppContext as _, ClickEvent, Context, Entity, Image, ImageFormat, ImageSource,
-    ObjectFit, Resource, ScrollWheelEvent, SharedString, SharedUri, Subscription, Task, WeakEntity,
-    Window, div, img, prelude::*, px,
+    ObjectFit, Pixels, Point, Resource, ScrollHandle, ScrollWheelEvent, SharedString, SharedUri,
+    Subscription, Task, WeakEntity, Window, div, img, point, prelude::*, px,
 };
 
 use crate::app_state::AppState;
@@ -215,6 +216,8 @@ struct Diagrams {
     zoom: Zoom,
     /// Ctrl with the mouse wheel: the scrolling not yet turned into a zoom step.
     wheel: f32,
+    /// Where the diagrams are scrolled to, both ways.
+    scroll: ScrollHandle,
     /// The mistakes PlantUML found in the text the diagrams show.
     mistakes: Vec<Mistake>,
     /// Why PlantUML drew nothing; the diagrams it drew last stay.
@@ -453,6 +456,40 @@ impl Preview {
         }
     }
 
+    /// How far the diagrams are scrolled, and how far they can be, across and down (offsets
+    /// are negative or zero); `None` but for PlantUML.
+    pub fn scroll(&self) -> Option<(Point<Pixels>, Point<Pixels>)> {
+        match &self.content {
+            Content::PlantUml(diagrams) => {
+                Some((diagrams.scroll.offset(), diagrams.scroll.max_offset()))
+            }
+            Content::Markdown(_) => None,
+        }
+    }
+
+    /// Shift with the mouse wheel over the diagrams: across instead of down, where the system
+    /// does not do it itself. Whether it scrolled.
+    fn wheel_across(
+        &mut self,
+        event: &ScrollWheelEvent,
+        window: &Window,
+        cx: &mut Context<Self>,
+    ) -> bool {
+        let Content::PlantUml(diagrams) = &self.content else {
+            return false;
+        };
+        let delta = event.delta.pixel_delta(window.line_height());
+        if delta.x != px(0.) || delta.y == px(0.) {
+            return false;
+        }
+        let scroll = &diagrams.scroll;
+        let offset = scroll.offset();
+        let x = (offset.x + delta.y).clamp(-scroll.max_offset().x, px(0.));
+        scroll.set_offset(point(x, offset.y));
+        cx.notify();
+        true
+    }
+
     /// Ctrl with the mouse wheel over the diagrams: a step of zoom for each notch.
     fn wheel_zoom(&mut self, event: &ScrollWheelEvent, cx: &mut Context<Self>) {
         let Content::PlantUml(diagrams) = &mut self.content else {
@@ -641,7 +678,13 @@ impl Preview {
             }
             _ => None,
         };
+        // Zoomed, as wide as the widest diagram, so that the preview scrolls across to it; at
+        // Fit, as wide as the preview.
         let content = div()
+            .map(|content| match zoom {
+                Some(_) => content.flex_none(),
+                None => content.w_full(),
+            })
             .min_w_full()
             .min_h_full()
             .p_4()
@@ -649,9 +692,11 @@ impl Preview {
             .flex_col()
             .items_start()
             .gap_4()
-            .on_scroll_wheel(cx.listener(|this, event: &ScrollWheelEvent, _, cx| {
+            .on_scroll_wheel(cx.listener(|this, event: &ScrollWheelEvent, window, cx| {
                 if event.modifiers.secondary() {
                     this.wheel_zoom(event, cx);
+                    cx.stop_propagation();
+                } else if event.modifiers.shift && this.wheel_across(event, window, cx) {
                     cx.stop_propagation();
                 }
             }))
@@ -685,10 +730,29 @@ impl Preview {
                     .context_menu(Self::diagram_menu(index, workspace.clone()))
             }));
         div()
-            .id("plantuml-diagrams")
             .size_full()
-            .overflow_scroll()
-            .child(content)
+            .relative()
+            .child(
+                div()
+                    .id("plantuml-diagrams")
+                    .debug_selector(|| "plantuml-diagrams".into())
+                    .size_full()
+                    // Not stretched to the preview's height: as tall as the diagrams.
+                    .flex()
+                    .items_start()
+                    .track_scroll(&diagrams.scroll)
+                    .overflow_scroll()
+                    .child(content),
+            )
+            .child(
+                div().absolute().inset_0().child(
+                    Scrollbar::new(&diagrams.scroll)
+                        .id("plantuml-scrollbars")
+                        .axis(ScrollbarAxis::Both)
+                        .mode(ScrollbarMode::Always)
+                        .viewport_from_layout(),
+                ),
+            )
             .into_any_element()
     }
 
