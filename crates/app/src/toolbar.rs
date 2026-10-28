@@ -11,6 +11,7 @@ use gpui_kit::component::{Disableable as _, Icon, Selectable as _, Sizable as _,
 use gpui_kit::{AnyElement, Context, div, prelude::*, px};
 
 use crate::commands::CommandRegistry;
+use crate::editor::widgets::{BarColors, Line, bar};
 use crate::theme::{paint, ui};
 use crate::workspace::Workspace;
 
@@ -207,29 +208,19 @@ impl Workspace {
                     };
                     button
                         .on_click(cx.listener(move |this, _, window, cx| {
-                            let invocation = Invocation::new(&id);
-                            if let Err(error) = this.dispatch(&invocation, window, cx) {
-                                crate::workspace::report_error(&error, window, cx);
-                            }
+                            this.run(&Invocation::new(&id), window, cx);
                         }))
                         .into_any_element()
                 }
             });
         Some(
-            div()
+            bar(BarColors::surface(), Line::Under)
                 .id("toolbar")
                 .debug_selector(|| "toolbar".into())
-                .flex()
-                .flex_none()
-                .flex_row()
                 .flex_wrap()
-                .items_center()
                 .gap_0p5()
                 .px_1()
                 .py_0p5()
-                .border_b_1()
-                .border_color(paint(ui().border))
-                .bg(paint(ui().surface))
                 .children(buttons)
                 .into_any_element(),
         )

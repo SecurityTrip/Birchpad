@@ -256,7 +256,13 @@ impl Workspace {
     }
 
     fn run_command(&mut self, action: &RunCommand, window: &mut Window, cx: &mut Context<Self>) {
-        if let Err(error) = self.dispatch(&action.0, window, cx) {
+        self.run(&action.0, window, cx);
+    }
+
+    /// Runs a command chosen in the window (a menu item, a button, a panel), showing what went
+    /// wrong if it fails.
+    pub fn run(&mut self, invocation: &Invocation, window: &mut Window, cx: &mut Context<Self>) {
+        if let Err(error) = self.dispatch(invocation, window, cx) {
             report_error(&error, window, cx);
         }
     }

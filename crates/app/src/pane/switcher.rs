@@ -5,6 +5,7 @@ use gpui_kit::{Context, Entity, Window, div, prelude::*, px, relative};
 
 use crate::app_state::AppState;
 use crate::editor::EditorView;
+use crate::editor::widgets::ListRow as _;
 use crate::theme::{paint, ui};
 
 use super::Pane;
@@ -115,8 +116,7 @@ impl Pane {
                 .px_3()
                 .py_1()
                 .truncate()
-                .when(selected, |row| row.bg(paint(ui().selected)))
-                .hover(|style| style.bg(paint(ui().hovered)))
+                .list_row(selected)
                 .child(name)
                 .on_click(cx.listener(move |this, _, window, cx| {
                     if let Some(index) = this.index_of(&target) {

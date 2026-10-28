@@ -345,11 +345,7 @@ impl Render for Dictionaries {
                                 );
                                 workspace
                                     .update(cx, |workspace, cx| {
-                                        if let Err(error) =
-                                            workspace.dispatch(&invocation, window, cx)
-                                        {
-                                            report_error(&error, window, cx);
-                                        }
+                                        workspace.run(&invocation, window, cx)
                                     })
                                     .ok();
                             }),

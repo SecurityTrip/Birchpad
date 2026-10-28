@@ -838,7 +838,7 @@ tests use stay where they are.
       editor's `lib.rs` (the view, its commands, its mouse and keyboard), its layout and its
       buffer; the application's Preferences (a module per section), Find, the workspace and
       the pane; `birchpad-config`'s settings; `birchpad-tools`' XML Schema
-- [ ] 7.4k Duplicated code brought together: what several parts of the window repeat
+- [x] 7.4k Duplicated code brought together: what several parts of the window repeat
       (running a command from a button or a menu item and reporting its error, bars and
       their colors, the theme's colors read for an element) in one place of the lowest layer
       that can hold it

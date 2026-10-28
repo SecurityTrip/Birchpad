@@ -256,9 +256,7 @@ impl Workspace {
                 "language.set",
                 serde_json::json!({ "language": format!("{ID_PREFIX}{name}") }),
             );
-            if let Err(error) = self.dispatch(&invocation, window, cx) {
-                report_error(&error, window, cx);
-            }
+            self.run(&invocation, window, cx);
         }
     }
 

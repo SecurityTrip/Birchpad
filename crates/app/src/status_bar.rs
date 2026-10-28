@@ -15,6 +15,7 @@ use serde_json::json;
 
 use crate::commands::RunCommand;
 use crate::editor::EditorView;
+use crate::editor::widgets::{self, BarColors, Line};
 
 /// What the status bar shows about the active view.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -126,15 +127,8 @@ pub fn render<V: 'static>(
     ansi: Encoding,
     cx: &mut Context<V>,
 ) -> impl IntoElement {
-    let mut bar = div()
-        .flex()
-        .flex_row()
+    let mut bar = widgets::bar(BarColors::surface(), Line::Over)
         .h(px(24.))
-        .flex_none()
-        .items_center()
-        .border_t_1()
-        .border_color(crate::theme::paint(crate::theme::ui().border))
-        .bg(crate::theme::paint(crate::theme::ui().surface))
         .text_size(px(12.));
     // A download of an update that no window shows.
     let update = crate::updates::Updates::download(cx)

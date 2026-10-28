@@ -30,6 +30,7 @@ use birchpad_config::SearchResultsState;
 
 use crate::app_state::AppState;
 use crate::buffer::Buffer;
+use crate::editor::widgets::{BarColors, Line, bar};
 
 const ROW_HEIGHT: f32 = 20.;
 
@@ -711,17 +712,10 @@ impl SearchResults {
 
 impl Render for SearchResults {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let header = div()
-            .flex()
-            .flex_row()
-            .items_center()
+        let header = bar(BarColors::surface(), Line::Under)
             .gap_2()
             .px_2()
             .h(px(28.))
-            .flex_none()
-            .border_b_1()
-            .border_color(crate::theme::paint(crate::theme::ui().border))
-            .bg(crate::theme::paint(crate::theme::ui().surface))
             .child(div().flex_1().child(t!("search-results.search-results")))
             .child(
                 Button::new("clear-results")

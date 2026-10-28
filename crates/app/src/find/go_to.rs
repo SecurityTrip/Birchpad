@@ -9,6 +9,7 @@ use gpui_kit::component::{Selectable as _, Sizable, WindowExt as _};
 use gpui_kit::{App, AppContext as _, Context, Entity, Window, div, prelude::*, px};
 
 use crate::editor::EditorView;
+use crate::editor::widgets::error_text;
 use crate::workspace::Workspace;
 
 impl Workspace {
@@ -135,10 +136,6 @@ impl Render for GoTo {
             .child(t!("find.you-are-here", here = here))
             .child(Input::new(&self.input).id("go-to-input"))
             .child(t!("find.you-can-t-go-further-than", limit = limit))
-            .children(self.error.clone().map(|error| {
-                div()
-                    .text_color(crate::theme::paint(crate::theme::ui().error))
-                    .child(error)
-            }))
+            .children(self.error.clone().map(|error| error_text(error)))
     }
 }

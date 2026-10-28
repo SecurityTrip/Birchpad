@@ -251,12 +251,8 @@ pub fn run() {
                 .update(cx, |_, window, cx| {
                     if command_line.always_on_top {
                         let invocation = birchpad_commands::Invocation::new("view.always-on-top");
-                        let result = workspace.update(cx, |workspace, cx| {
-                            workspace.dispatch(&invocation, window, cx)
-                        });
-                        if let Err(error) = result {
-                            workspace::report_error(&error, window, cx);
-                        }
+                        workspace
+                            .update(cx, |workspace, cx| workspace.run(&invocation, window, cx));
                     }
                     // Preferences > MISC > Minimize to system tray, on Windows and macOS.
                     crate::tray::apply(cx);

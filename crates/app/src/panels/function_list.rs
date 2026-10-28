@@ -20,6 +20,7 @@ use gpui_kit::{
 };
 
 use crate::editor::EditorView;
+use crate::editor::widgets::ListRow as _;
 use crate::workspace::Workspace;
 
 const ROW_HEIGHT: f32 = 22.;
@@ -344,10 +345,7 @@ impl FunctionList {
             .whitespace_nowrap()
             .overflow_hidden()
             .cursor_pointer()
-            .when(current, |row| {
-                row.bg(crate::theme::paint(crate::theme::ui().selected))
-            })
-            .hover(|row| row.bg(crate::theme::paint(crate::theme::ui().hovered)))
+            .list_row(current)
             .child(match fold {
                 Some(fold) => fold.into_any_element(),
                 None => div().w(px(INDENT)).flex_none().into_any_element(),

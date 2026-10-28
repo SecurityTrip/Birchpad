@@ -139,8 +139,6 @@ impl Workspace {
         if let Some(view) = view {
             self.activate_view(view, window, cx);
         }
-        if let Err(error) = self.dispatch(invocation, window, cx) {
-            crate::workspace::report_error(&error, window, cx);
-        }
+        self.run(invocation, window, cx);
     }
 }

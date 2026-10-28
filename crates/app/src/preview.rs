@@ -35,6 +35,7 @@ use crate::app_state::AppState;
 use crate::buffer::Buffer;
 use crate::commands::{CommandRegistry, Register as _};
 use crate::editor::EditorView;
+use crate::editor::widgets::{BarColors, Line, bar, error_text};
 use crate::theme::{paint, ui};
 use crate::workspace::Workspace;
 
@@ -612,7 +613,7 @@ impl Preview {
                 .children(
                     state
                         .and_then(|state| state.error.clone())
-                        .map(|error| div().text_color(paint(ui().error)).child(error)),
+                        .map(|error| error_text(error)),
                 )
                 .into_any_element(),
             (Err(why), _) => div()
@@ -769,11 +770,7 @@ impl Preview {
                         let invocation =
                             Invocation::with_args(command, serde_json::json!({ "diagram": index }));
                         workspace
-                            .update(cx, |workspace, cx| {
-                                if let Err(error) = workspace.dispatch(&invocation, window, cx) {
-                                    crate::workspace::report_error(&error, window, cx);
-                                }
-                            })
+                            .update(cx, |workspace, cx| workspace.run(&invocation, window, cx))
                             .ok();
                     },
                 )
@@ -795,25 +792,15 @@ impl Preview {
             move |_: &ClickEvent, window: &mut Window, cx: &mut App| {
                 workspace
                     .update(cx, |workspace, cx| {
-                        let invocation = Invocation::new(command);
-                        if let Err(error) = workspace.dispatch(&invocation, window, cx) {
-                            crate::workspace::report_error(&error, window, cx);
-                        }
+                        workspace.run(&Invocation::new(command), window, cx)
                     })
                     .ok();
             }
         };
-        div()
-            .flex_none()
-            .flex()
-            .flex_row()
-            .items_center()
+        bar(BarColors::surface(), Line::Under)
             .gap_1()
             .px_2()
             .py_1()
-            .border_b_1()
-            .border_color(paint(ui().border))
-            .bg(paint(ui().surface))
             .child(
                 Button::new("zoom-out")
                     .xsmall()

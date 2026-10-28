@@ -18,7 +18,7 @@ use gpui_kit::{App, AppContext as _, Context, Entity, WeakEntity, Window, div, p
 use serde::Deserialize;
 
 use crate::commands::{CommandRegistry, Register as _};
-use crate::theme::{paint, ui};
+use crate::editor::widgets::error_text;
 use crate::workspace::Workspace;
 
 /// The highest code a character can have.
@@ -288,11 +288,7 @@ impl Render for RangeDialog {
                         .on_click(cx.listener(|this, _, window, cx| this.find(window, cx))),
                 ),
             )
-            .children(
-                self.error
-                    .clone()
-                    .map(|error| div().text_color(paint(ui().error)).child(error)),
-            )
+            .children(self.error.clone().map(|error| error_text(error)))
     }
 }
 
@@ -428,10 +424,6 @@ impl Render for InResultsDialog {
                         .on_click(cx.listener(|this, _, window, cx| this.find(window, cx))),
                 ),
             )
-            .children(
-                self.error
-                    .clone()
-                    .map(|error| div().text_color(paint(ui().error)).child(error)),
-            )
+            .children(self.error.clone().map(|error| error_text(error)))
     }
 }

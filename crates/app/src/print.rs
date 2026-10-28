@@ -27,6 +27,7 @@ use gpui_kit::{
 
 use crate::commands::{CommandRegistry, Register as _};
 use crate::editor::theme;
+use crate::editor::widgets::error_text;
 use crate::theme::{paint, ui};
 use crate::workspace::{Workspace, report_error};
 
@@ -588,11 +589,7 @@ impl Render for PrintPreview {
                     .justify_center()
                     .child(self.page_element()),
             )
-            .children(
-                self.error
-                    .clone()
-                    .map(|error| div().text_color(paint(ui().error)).child(error)),
-            )
+            .children(self.error.clone().map(|error| error_text(error)))
     }
 }
 

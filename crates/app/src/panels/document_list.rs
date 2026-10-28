@@ -10,6 +10,7 @@ use gpui_kit::{
 };
 
 use crate::editor::EditorView;
+use crate::editor::widgets::ListRow as _;
 use crate::workspace::Workspace;
 
 /// The columns.
@@ -163,10 +164,7 @@ impl Render for DocumentList {
                 .whitespace_nowrap()
                 .overflow_hidden()
                 .cursor_pointer()
-                .when(entry.active, |row| {
-                    row.bg(crate::theme::paint(crate::theme::ui().selected))
-                })
-                .hover(|row| row.bg(crate::theme::paint(crate::theme::ui().hovered)))
+                .list_row(entry.active)
                 .child(
                     div()
                         .flex_1()

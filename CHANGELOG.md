@@ -13,6 +13,10 @@ version's release notes from its section here.
   buffer, Preferences (a module per section), Find, the workspace and the pane, the settings
   of `birchpad-config` and the XML Schema validation of `birchpad-tools`. Nothing changes in
   how Birchpad works.
+- What several parts of the window repeated is in one place: a command run from a button, a
+  menu item or a panel shows what went wrong the same way everywhere (`Workspace::run`), and
+  the bars across the window, the rows of lists and the text of errors take the theme's
+  colors from `birchpad-editor`'s `widgets`.
 
 ## [0.7.3] - 2026-10-28
 

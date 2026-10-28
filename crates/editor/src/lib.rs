@@ -33,6 +33,7 @@ pub mod smart_highlight;
 pub mod symbols;
 pub mod syntax_selection;
 pub mod theme;
+pub mod widgets;
 
 pub use hooks::{ActiveFindOptions, EditorHooks, Ranges};
 
