@@ -1,6 +1,6 @@
 # ADR 0041: The crates' layout
 
-- Status: accepted
+- Status: accepted, changed by [ADR 0058](0058-parts-of-the-window-in-crates-of-their-own.md)
 - Date: 2026-10-13
 
 ## Context

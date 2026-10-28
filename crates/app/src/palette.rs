@@ -162,14 +162,9 @@ pub fn open(workspace: gpui_kit::WeakEntity<Workspace>, window: &mut Window, cx:
         Rc::new(move |index, window, cx| {
             let invocation = entries[index].invocation.clone();
             remember(&invocation, cx);
-            let result = workspace
-                .update(cx, |workspace, cx| {
-                    workspace.dispatch(&invocation, window, cx)
-                })
-                .unwrap_or(Ok(()));
-            if let Err(error) = result {
-                crate::workspace::report_error(&error, window, cx);
-            }
+            workspace
+                .update(cx, |workspace, cx| workspace.run(&invocation, window, cx))
+                .ok();
         }),
         window,
         cx,

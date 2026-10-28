@@ -834,19 +834,20 @@ builds and tests faster and depends on less. Behavior stays as it is: the tests,
 end-to-end tests and the highlighting snapshots pass unchanged, and the public paths the
 tests use stay where they are.
 
-- [ ] 7.4j Large modules split by what they do, each into a folder of smaller ones: the
+- [x] 7.4j Large modules split by what they do, each into a folder of smaller ones: the
       editor's `lib.rs` (the view, its commands, its mouse and keyboard), its layout and its
       buffer; the application's Preferences (a module per section), Find, the workspace and
       the pane; `birchpad-config`'s settings; `birchpad-tools`' XML Schema
-- [ ] 7.4k Duplicated code brought together: what several parts of the window repeat
+- [x] 7.4k Duplicated code brought together: what several parts of the window repeat
       (running a command from a button or a menu item and reporting its error, bars and
       their colors, the theme's colors read for an element) in one place of the lowest layer
       that can hold it
-- [ ] 7.4l The application crate lighter: the parts of the window that need no workspace
+- [x] 7.4l The application crate lighter: the parts of the window that need no workspace
       moved to crates of their own (the quick pick lists, the search results, the system
       tray, the system's print dialog), each with its own tests and only the dependencies it
       uses; an ADR for the new crate layout, over [ADR 0041](adr/0041-crate-layout.md)
-- [ ] Release 0.7.5: the workspace version (0.7.5, set when its branch opens, so that nightly
+      ([ADR 0058](adr/0058-parts-of-the-window-in-crates-of-their-own.md))
+- [x] Release 0.7.5: the workspace version (0.7.5, set when its branch opens, so that nightly
       builds are its pre-releases), `CHANGELOG.md` and this roadmap updated; the
       [release checklist](release-checklist.md) gone through
 

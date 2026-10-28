@@ -380,16 +380,11 @@ fn open(window: &mut Window, cx: &mut Context<Workspace>) {
                             .on_click({
                                 let workspace = install_from.clone();
                                 move |_, window, cx| {
+                                    let refresh =
+                                        birchpad_commands::Invocation::new("catalog.refresh");
                                     workspace
                                         .update(cx, |workspace, cx| {
-                                            let refresh = birchpad_commands::Invocation::new(
-                                                "catalog.refresh",
-                                            );
-                                            if let Err(error) =
-                                                workspace.dispatch(&refresh, window, cx)
-                                            {
-                                                report_error(&error, window, cx);
-                                            }
+                                            workspace.run(&refresh, window, cx)
                                         })
                                         .ok();
                                 }
@@ -414,11 +409,7 @@ fn open(window: &mut Window, cx: &mut Context<Workspace>) {
 impl PluginsAdmin {
     fn run(&self, invocation: birchpad_commands::Invocation, window: &mut Window, cx: &mut App) {
         self.workspace
-            .update(cx, |workspace, cx| {
-                if let Err(error) = workspace.dispatch(&invocation, window, cx) {
-                    report_error(&error, window, cx);
-                }
-            })
+            .update(cx, |workspace, cx| workspace.run(&invocation, window, cx))
             .ok();
     }
 }

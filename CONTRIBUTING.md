@@ -54,7 +54,7 @@ information (`CARGO_PROFILE_DEV_DEBUG=line-tables-only`), so test binaries link 
   application's settings, dialog buttons, messages to the user) is in `birchpad-ui`; a command
   handler is registered for the view that runs it (`CommandTarget`), not in the registry. The
   editor (`birchpad-editor`) asks the application for anything else through `EditorHooks`; see
-  ADR 0041 for the layers.
+  ADR 0041 for the layers, and ADR 0058 for the parts of the window in crates of their own.
 - Positions in the text model are **byte offsets** into the rope. Convert to chars, UTF-16 or
   visual columns only at the edges (rendering, LSP, status bar).
 - No tests in `src`: a crate's tests are in its `tests` folder and test it through its public

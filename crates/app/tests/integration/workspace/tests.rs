@@ -328,3 +328,32 @@ fn unknown_and_pending_commands_fail_cleanly(cx: &mut TestAppContext) {
         assert!(bad_args.is_err());
     });
 }
+
+/// What a button, a menu item or a panel runs: a failure is shown to the user, not returned.
+#[gpui_kit::test]
+fn a_command_run_from_the_window_shows_its_failure(cx: &mut TestAppContext) {
+    let (workspace, cx) = open_workspace(cx);
+    birchpad_ui::take_errors();
+    let run = |command: &str, cx: &mut VisualTestContext| {
+        workspace.update_in(cx, |workspace, window, cx| {
+            workspace.run(&Invocation::new(command), window, cx);
+        });
+        cx.run_until_parked();
+    };
+
+    run("file.new", cx);
+    assert_eq!(tab_names(&workspace, cx), ["new 1", "new 2"]);
+    assert_eq!(birchpad_ui::take_errors(), Vec::<String>::new());
+
+    // A command nobody registered changes nothing and says so.
+    run("no.such", cx);
+    assert_eq!(tab_names(&workspace, cx), ["new 1", "new 2"]);
+    assert_eq!(birchpad_ui::take_errors().len(), 1);
+
+    // A command that is there but turned off (-fullReadOnly) says so too.
+    cx.update(|_, cx| cx.global_mut::<AppState>().full_read_only = true);
+    run("edit.toggle-read-only", cx);
+    let errors = birchpad_ui::take_errors();
+    assert_eq!(errors.len(), 1);
+    assert!(errors[0].contains("edit.toggle-read-only"), "{errors:?}");
+}

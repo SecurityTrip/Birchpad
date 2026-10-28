@@ -16,7 +16,7 @@ dictionaries when you ask:
   `https://github.com/SecurityTrip/Birchpad/releases/download/updates/birchpad-updates.json`, or
   from the address in the `updates.url` setting. The request says which version of Birchpad
   asks and on which operating system (the `User-Agent` header, such as
-  `Birchpad/0.7.3 (windows)`), and nothing about you or your files.
+  `Birchpad/0.7.5 (windows)`), and nothing about you or your files.
 - **Downloading updates**: with `updates.mode = "auto"` (the default), a copy installed with the
   per-user Windows installer downloads the package of a newer version, from the address the
   manifest lists (GitHub's release downloads).

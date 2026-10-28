@@ -17,6 +17,7 @@ use serde::Deserialize;
 
 use crate::app_state::AppState;
 use crate::commands::{CommandRegistry, Register as _};
+use crate::editor::widgets::error_text;
 use crate::theme::{paint, ui};
 use crate::workspace::Workspace;
 
@@ -358,7 +359,7 @@ impl Render for RunDialog {
             .children(
                 self.error
                     .clone()
-                    .map(|error| div().text_color(paint(ui().error)).child(error)),
+                    .map(error_text),
             )
     }
 }

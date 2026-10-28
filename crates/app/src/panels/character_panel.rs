@@ -15,6 +15,7 @@ use gpui_kit::{
 };
 
 use crate::app_state::AppState;
+use crate::editor::widgets::ListRow as _;
 use crate::workspace::Workspace;
 
 const ROW_HEIGHT: f32 = 22.;
@@ -274,10 +275,7 @@ impl Render for CharacterPanel {
                             .flex_row()
                             .items_center()
                             .whitespace_nowrap()
-                            .when(this.selected == Some(value), |row| {
-                                row.bg(crate::theme::paint(crate::theme::ui().selected))
-                            })
-                            .hover(|row| row.bg(crate::theme::paint(crate::theme::ui().hovered)))
+                            .list_row(this.selected == Some(value))
                             .children(rows[index].iter().enumerate().map(|(column, text)| {
                                 div()
                                     .id(("character-cell", index * 8 + column))

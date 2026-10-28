@@ -69,3 +69,6 @@ mod lib_tests;
 
 #[path = "theme/tests.rs"]
 mod theme;
+
+#[path = "widgets/tests.rs"]
+mod widgets;

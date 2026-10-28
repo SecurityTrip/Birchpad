@@ -1,0 +1,26 @@
+[package]
+name = "birchpad-print-dialog"
+description = "Printing for Birchpad through Windows' own print dialog and drawing (GDI); empty on other systems."
+version = "0.7.5"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[target.'cfg(windows)'.dependencies]
+anyhow.workspace = true
+birchpad-theme.workspace = true
+birchpad-tools.workspace = true
+windows-sys = { version = "0.61", features = [
+    "Win32_Foundation",
+    "Win32_Graphics_Gdi",
+    "Win32_Storage_Xps",
+    "Win32_UI_Controls_Dialogs",
+] }
+
+[target.'cfg(windows)'.dev-dependencies]
+birchpad-theme.workspace = true
+
+[lints]
+workspace = true

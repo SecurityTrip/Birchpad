@@ -19,6 +19,7 @@ use gpui_kit::{
 };
 
 use crate::editor::EditorView;
+use crate::editor::widgets::ListRow as _;
 use crate::workspace::{Workspace, report_error};
 
 const ROW_HEIGHT: f32 = 22.;
@@ -347,10 +348,7 @@ impl JsonViewer {
             .whitespace_nowrap()
             .overflow_hidden()
             .cursor_pointer()
-            .when(chosen, |row| {
-                row.bg(crate::theme::paint(crate::theme::ui().selected))
-            })
-            .hover(|row| row.bg(crate::theme::paint(crate::theme::ui().hovered)))
+            .list_row(chosen)
             .child(match fold {
                 Some(fold) => fold.into_any_element(),
                 None => div().w(px(INDENT)).flex_none().into_any_element(),

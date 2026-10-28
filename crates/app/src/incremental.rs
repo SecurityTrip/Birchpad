@@ -9,11 +9,10 @@
 //! returns to the text.
 
 use birchpad_core::search::{Direction, Query, SearchMode, Searcher};
-use gpui_kit::component::IconName;
-use gpui_kit::component::Sizable;
 use gpui_kit::component::button::{Button, ButtonVariants as _};
 use gpui_kit::component::checkbox::Checkbox;
 use gpui_kit::component::input::{Input, InputEvent, InputState};
+use gpui_kit::component::{IconName, Sizable};
 use gpui_kit::{
     App, AppContext as _, Context, Entity, EventEmitter, FocusHandle, Focusable, Subscription,
     WeakEntity, Window, div, prelude::*, px, rgb,
@@ -186,16 +185,9 @@ impl Render for IncrementalBar {
             .id("incremental-bar")
             .key_context("IncrementalBar")
             .track_focus(&self.focus_handle)
-            .flex()
-            .flex_row()
-            .flex_none()
-            .items_center()
             .gap_2()
             .px_3()
             .py_1()
-            .border_t_1()
-            .border_color(crate::theme::paint(crate::theme::ui().border))
-            .bg(crate::theme::paint(crate::theme::ui().surface))
             .text_size(px(13.))
             .child(
                 Button::new("close-incremental")

@@ -2,7 +2,6 @@
 
 use birchpad_commands::Invocation;
 use birchpad_io::{CHARACTER_SETS, DecodeProblem};
-use birchpad_theme::Color;
 use gpui_kit::component::Sizable;
 use gpui_kit::component::button::Button;
 use gpui_kit::component::menu::{DropdownMenu, PopupMenu};
@@ -12,6 +11,8 @@ use serde_json::json;
 use birchpad_ui::RunCommand;
 
 use crate::theme::{paint, ui};
+pub use crate::widgets::BarColors;
+use crate::widgets::{self, Line};
 
 /// What a message above the text is about, which picks its colors.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -22,14 +23,6 @@ pub enum Kind {
     Monitoring,
     /// The text does not represent the file.
     Decoding,
-}
-
-/// The colors of a message above the text.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct BarColors {
-    pub background: Color,
-    pub border: Color,
-    pub text: Color,
 }
 
 /// The colors of a message of `kind`, from the interface colors of the theme in use, so that
@@ -50,18 +43,11 @@ pub fn colors(kind: Kind) -> BarColors {
 
 fn bar(kind: Kind) -> gpui_kit::Div {
     let colors = colors(kind);
-    div()
-        .flex()
-        .flex_row()
-        .flex_none()
-        .items_center()
+    widgets::bar(colors, Line::Under)
         .gap_3()
         .px_3()
         .py_1()
-        .bg(paint(colors.background))
         .text_color(paint(colors.text))
-        .border_b_1()
-        .border_color(paint(colors.border))
         .text_size(px(13.))
 }
 

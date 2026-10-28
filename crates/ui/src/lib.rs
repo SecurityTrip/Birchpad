@@ -16,4 +16,4 @@ pub use report::{
     dialog_action, dialog_close, report_error, report_info, report_success, report_warning,
 };
 #[cfg(feature = "test-support")]
-pub use report::{take_info, take_warnings};
+pub use report::{take_errors, take_info, take_warnings};

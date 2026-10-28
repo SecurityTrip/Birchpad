@@ -15,6 +15,7 @@ use gpui_kit::{
 
 use crate::app_state::AppState;
 use crate::commands::{CommandRegistry, Register as _};
+use crate::editor::widgets::error_text;
 
 /// The version of this build: the workspace version, or a nightly version (see `build.rs`).
 pub const VERSION: &str = env!("BIRCHPAD_VERSION");
@@ -274,11 +275,7 @@ impl Render for ProxyDialog {
             .gap_2()
             .child(t!("help.proxy-explained"))
             .child(Input::new(&self.input).id("proxy-input"))
-            .children(self.error.clone().map(|error| {
-                div()
-                    .text_color(crate::theme::paint(crate::theme::ui().error))
-                    .child(error)
-            }))
+            .children(self.error.clone().map(error_text))
     }
 }
 

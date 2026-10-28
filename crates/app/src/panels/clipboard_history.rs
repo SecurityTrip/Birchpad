@@ -16,6 +16,7 @@ use gpui_kit::{
     UniformListScrollHandle, WeakEntity, Window, div, prelude::*, px, uniform_list,
 };
 
+use crate::editor::widgets::ListRow as _;
 use crate::workspace::Workspace;
 
 /// Texts kept.
@@ -182,12 +183,7 @@ impl Render for ClipboardHistory {
                                 .whitespace_nowrap()
                                 .overflow_hidden()
                                 .cursor_pointer()
-                                .when(this.selected == Some(index), |row| {
-                                    row.bg(crate::theme::paint(crate::theme::ui().selected))
-                                })
-                                .hover(|row| {
-                                    row.bg(crate::theme::paint(crate::theme::ui().hovered))
-                                })
+                                .list_row(this.selected == Some(index))
                                 .child(
                                     div()
                                         .flex_1()

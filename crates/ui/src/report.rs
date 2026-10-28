@@ -10,7 +10,10 @@ use gpui_kit::{App, InteractiveElement as _, IntoElement, ParentElement as _, Wi
 
 /// Shows an error to the user without interrupting them.
 pub fn report_error(error: &anyhow::Error, window: &mut Window, cx: &mut App) {
-    window.push_notification(Notification::error(birchpad_i18n::tr_error(error)), cx);
+    let message = birchpad_i18n::tr_error(error);
+    #[cfg(feature = "test-support")]
+    ERRORS.with(|errors| errors.borrow_mut().push(message.clone()));
+    window.push_notification(Notification::error(message), cx);
 }
 
 /// Tells the user that something went well, without interrupting them.
@@ -36,10 +39,18 @@ pub fn report_warning(message: impl Into<String>, window: &mut Window, cx: &mut 
 
 #[cfg(feature = "test-support")]
 thread_local! {
-    /// The messages shown with `report_info`, for tests to read.
+    /// The errors shown with `report_error`, for tests to read.
+    static ERRORS: std::cell::RefCell<Vec<String>> = std::cell::RefCell::default();
+    /// The messages shown with `report_info`.
     static INFO: std::cell::RefCell<Vec<String>> = std::cell::RefCell::default();
     /// The messages shown with `report_warning`.
     static WARNINGS: std::cell::RefCell<Vec<String>> = std::cell::RefCell::default();
+}
+
+/// The errors shown with [`report_error`] on this thread since the last call.
+#[cfg(feature = "test-support")]
+pub fn take_errors() -> Vec<String> {
+    ERRORS.with(|errors| std::mem::take(&mut *errors.borrow_mut()))
 }
 
 /// The warnings shown with [`report_warning`] on this thread since the last call.

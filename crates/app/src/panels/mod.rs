@@ -26,13 +26,13 @@ use anyhow::{Result, bail};
 use birchpad_commands::Invocation;
 use gpui_kit::component::button::{Button, ButtonVariants as _};
 use gpui_kit::component::tab::{Tab, TabBar};
-use gpui_kit::component::{IconName, Sizable};
-use gpui_kit::component::{h_resizable, resizable_panel};
+use gpui_kit::component::{IconName, Sizable, h_resizable, resizable_panel};
 use gpui_kit::{AnyElement, AnyView, AppContext as _, Context, Window, div, prelude::*, px};
 use serde::Deserialize;
 
 use crate::app_state::AppState;
 use crate::commands::{CommandRegistry, Register as _};
+use crate::editor::widgets::{BarColors, Line, bar};
 use crate::workspace::Workspace;
 
 pub use character_panel::CharacterPanel;
@@ -418,15 +418,8 @@ impl Workspace {
                     Side::Right => dock.border_l_1().border_color(border),
                 })
                 .child(
-                    div()
-                        .flex()
-                        .flex_row()
-                        .items_center()
-                        .flex_none()
+                    bar(BarColors::surface(), Line::Under)
                         .h(px(30.))
-                        .bg(crate::theme::paint(crate::theme::ui().surface))
-                        .border_b_1()
-                        .border_color(border)
                         .child(
                             div()
                                 .flex_1()
@@ -466,9 +459,7 @@ impl Workspace {
     pub fn insert_text(&mut self, text: &str, window: &mut Window, cx: &mut Context<Self>) {
         let invocation =
             Invocation::with_args("edit.insert-text", serde_json::json!({ "text": text }));
-        if let Err(error) = self.dispatch(&invocation, window, cx) {
-            crate::workspace::report_error(&error, window, cx);
-        }
+        self.run(&invocation, window, cx);
         if let Some(view) = self.active_view(cx) {
             let focus = view.read(cx).focus_handle.clone();
             window.focus(&focus, cx);

@@ -6,6 +6,25 @@ version's release notes from its section here.
 
 ## [Unreleased]
 
+## [0.7.5] - 2026-10-29
+
+### Changed
+
+- The largest modules are split by what they do, each into a folder of smaller ones: the
+  editor view (its commands, carets, editing, mouse and keyboard), the editor's layout and
+  buffer, Preferences (a module per section), Find, the workspace and the pane, the settings
+  of `birchpad-config` and the XML Schema validation of `birchpad-tools`. Nothing changes in
+  how Birchpad works.
+- What several parts of the window repeated is in one place: a command run from a button, a
+  menu item or a panel shows what went wrong the same way everywhere (`Workspace::run`), and
+  the bars across the window, the rows of lists and the text of errors take the theme's
+  colors from `birchpad-editor`'s `widgets`.
+- The parts of the window that need no workspace are crates of their own, each with its
+  tests and only the dependencies it uses: the list to pick from of the command palette and Go
+  to File (`birchpad-quick-pick`), the search results panel (`birchpad-search-results`),
+  minimizing to the system tray (`birchpad-tray`) and printing through Windows' print dialog
+  (`birchpad-print-dialog`) (ADR 0058).
+
 ## [0.7.3] - 2026-10-28
 
 ### Fixed
@@ -765,7 +784,8 @@ The first release: a Notepad++-like editor for Windows, Linux and macOS.
   entirely (`updates.mode = "off"`).
 - Nightly builds of `main` on the nightly channel.
 
-[Unreleased]: https://github.com/SecurityTrip/Birchpad/compare/v0.7.3...HEAD
+[Unreleased]: https://github.com/SecurityTrip/Birchpad/compare/v0.7.5...HEAD
+[0.7.5]: https://github.com/SecurityTrip/Birchpad/compare/v0.7.3...v0.7.5
 [0.7.3]: https://github.com/SecurityTrip/Birchpad/compare/v0.7.2...v0.7.3
 [0.7.2]: https://github.com/SecurityTrip/Birchpad/compare/v0.7.1...v0.7.2
 [0.7.1]: https://github.com/SecurityTrip/Birchpad/compare/v0.7.0...v0.7.1

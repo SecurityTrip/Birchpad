@@ -24,6 +24,7 @@ use gpui_kit::{
 };
 
 use crate::app_state::AppState;
+use crate::editor::widgets::ListRow as _;
 use crate::workspace::Workspace;
 
 const ROW_HEIGHT: f32 = 22.;
@@ -589,10 +590,7 @@ impl FolderWorkspace {
             .whitespace_nowrap()
             .overflow_hidden()
             .cursor_pointer()
-            .when(selected, |div| {
-                div.bg(crate::theme::paint(crate::theme::ui().selected))
-            })
-            .hover(|div| div.bg(crate::theme::paint(crate::theme::ui().hovered)))
+            .list_row(selected)
             .child(div().w(px(INDENT)).flex_none().child(arrow))
             .child(
                 div()

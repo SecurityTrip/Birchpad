@@ -14,7 +14,7 @@ use gpui_kit::{
     uniform_list,
 };
 
-use crate::theme::{paint, ui};
+use birchpad_editor::theme::{paint, ui};
 
 /// The rows a page holds, for Page Up and Page Down.
 pub const PAGE: usize = 12;

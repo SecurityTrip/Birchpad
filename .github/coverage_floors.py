@@ -50,6 +50,9 @@ def check(totals, floors):
         percent = 100.0 * covered / count if count else 100.0
         floor = floors.get(crate)
         note = ""
+        if count == 0 and floor is None:
+            # No code on this system (Windows' printing on Linux): nothing to hold to a floor.
+            continue
         if floor is None:
             problems.append(f"{crate} has no floor in {FLOORS.name}")
         elif percent < floor:
