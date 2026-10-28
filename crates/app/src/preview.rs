@@ -737,7 +737,9 @@ impl Preview {
                     .id("plantuml-diagrams")
                     .debug_selector(|| "plantuml-diagrams".into())
                     .size_full()
+                    // Not stretched to the preview's height: as tall as the diagrams.
                     .flex()
+                    .items_start()
                     .track_scroll(&diagrams.scroll)
                     .overflow_scroll()
                     .child(content),
