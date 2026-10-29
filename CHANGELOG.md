@@ -9,10 +9,14 @@ version's release notes from its section here.
 ### Security
 
 - GHSA-m665-v7pm-7grj (zip up to 9.0.4: an archive whose local headers disagree with its
-  central directory can write files outside the folder it is extracted to): Velopack, the
-  updater of per-user installs on Windows, is version 1.3.39, which uses zip 9.0.5 instead of
-  8.6. It is a pre-release of Velopack, the only one with a fixed zip so far. No zip before 9.0.5 is left in Birchpad, so RUSTSEC-2026-0367 to 0369 no longer need
-  exceptions either.
+  central directory can write files outside the folder it is extracted to). Birchpad itself,
+  which unpacks plugins from the online catalog and the PlantUML components, requires zip
+  9.0.5 or later. Velopack, the updater of per-user installs on Windows, is version 1.3.39, a
+  pre-release and the only one with zip 9: its library in Birchpad uses zip 9.0.5 instead of
+  8.6, so RUSTSEC-2026-0367 to 0369 no longer need exceptions either. Its `Update.exe`, which
+  unpacks the update packages, is still built with zip 9.0.4; it only unpacks Birchpad's own
+  packages, checked against the size and SHA-256 in the signed manifest first, and moves to a
+  fixed zip with the next Velopack release that has one.
 
 ## [0.7.5] - 2026-10-29
 

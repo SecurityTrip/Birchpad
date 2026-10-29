@@ -21,14 +21,16 @@ sha2 = "0.11"
 thiserror.workspace = true
 ureq = { version = "3", default-features = false, features = ["rustls-no-provider", "platform-verifier", "win-system-proxy"] }
 # Components (PlantUML) come as ZIPs; the version and features Velopack builds.
-zip = { version = "9.0", default-features = false, features = ["deflate"] }
+zip = { version = "9.0.5", default-features = false, features = ["deflate"] }
 
 [features]
 # Per-user installs update themselves with Velopack, on Windows (`install`). The application
 # enables it; the release tool does not need it.
 installer = ["dep:velopack"]
 
-# The version matches the `vpk` tool the release workflows package with (ADR 0020).
+# The version matches the `vpk` tool the release workflows package with (ADR 0020). A
+# pre-release for now, the only one with zip 9 (GHSA-m665-v7pm-7grj); move to the first stable
+# release that has zip 9.0.5 or later in its Cargo.lock, which its Update.exe is built with.
 [target.'cfg(windows)'.dependencies]
 velopack = { version = "=1.3.39-g8d2844f", features = ["public-utils"], optional = true }
 
