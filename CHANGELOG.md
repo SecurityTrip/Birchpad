@@ -6,6 +6,14 @@ version's release notes from its section here.
 
 ## [Unreleased]
 
+### Security
+
+- GHSA-m665-v7pm-7grj (zip up to 9.0.4: an archive whose local headers disagree with its
+  central directory can write files outside the folder it is extracted to): Velopack, the
+  updater of per-user installs on Windows, is version 1.3.39, which uses zip 9.0.5 instead of
+  8.6. It is a pre-release of Velopack, the only one with a fixed zip so far. No zip before 9.0.5 is left in Birchpad, so RUSTSEC-2026-0367 to 0369 no longer need
+  exceptions either.
+
 ## [0.7.5] - 2026-10-29
 
 ### Changed
