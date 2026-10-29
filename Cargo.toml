@@ -19,7 +19,7 @@ birchpad-editor = { path = "crates/editor", version = "0.7.5" }
 birchpad-i18n = { path = "crates/i18n", version = "0.7.2" }
 birchpad-io = { path = "crates/io", version = "0.7.0" }
 birchpad-menu-bar = { path = "crates/menu-bar", version = "0.5.0" }
-birchpad-plugin = { path = "crates/plugin", version = "0.6.0" }
+birchpad-plugin = { path = "crates/plugin", version = "0.7.6" }
 birchpad-print-dialog = { path = "crates/print-dialog", version = "0.7.5" }
 birchpad-quick-pick = { path = "crates/quick-pick", version = "0.7.5" }
 birchpad-search-results = { path = "crates/search-results", version = "0.7.5" }
