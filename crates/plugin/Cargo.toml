@@ -19,7 +19,7 @@ serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
 toml.workspace = true
-wasmtime = { version = "49", default-features = false, features = ["runtime", "cranelift", "component-model", "std"] }
+wasmtime = { version = "50", default-features = false, features = ["runtime", "cranelift", "component-model", "std"] }
 
 # Cranelift does not generate code for Windows on ARM: plugins run in Wasmtime's interpreter.
 [target.'cfg(all(windows, target_arch = "aarch64"))'.dependencies]
