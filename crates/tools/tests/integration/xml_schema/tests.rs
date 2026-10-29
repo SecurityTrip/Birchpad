@@ -295,6 +295,34 @@ fn finds_what_breaks_the_schema() {
 }
 
 #[test]
+fn a_pattern_calling_a_group_it_lacks_is_left_out() {
+    // fancy-regex would ask for gigabytes for the call and abort.
+    let schema = |pattern: &str| {
+        format!(
+            r#"<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:element name="code">
+    <xs:simpleType>
+      <xs:restriction base="xs:string">
+        <xs:pattern value="{pattern}"/>
+      </xs:restriction>
+    </xs:simpleType>
+  </xs:element>
+</xs:schema>"#
+        )
+    };
+    assert_eq!(
+        validate_xsd("<code>b</code>", &schema(r"(a)\g555555555555")).unwrap(),
+        []
+    );
+    // A pattern that compiles still applies.
+    assert_eq!(validate_xsd("<code>a</code>", &schema("a")).unwrap(), []);
+    assert_eq!(
+        validate_xsd("<code>b</code>", &schema("a")).unwrap().len(),
+        1
+    );
+}
+
+#[test]
 fn schema_content_models_and_roots() {
     // A required element missing, and the order.
     let missing = "<order status=\"open\"><id>1</id><line qty=\"1\">AB-123</line></order>";

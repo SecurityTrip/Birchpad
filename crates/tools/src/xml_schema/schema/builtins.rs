@@ -157,5 +157,8 @@ pub(super) fn pattern_regex(pattern: &str) -> Option<fancy_regex::Regex> {
         .replace("\\I", "[^A-Za-z_:]")
         .replace("\\c", "[-.0-9A-Za-z_:]")
         .replace("\\C", "[^-.0-9A-Za-z_:]");
+    if birchpad_core::search::call_past_groups(&translated).is_some() {
+        return None;
+    }
     fancy_regex::Regex::new(&format!("^(?:{translated})$")).ok()
 }

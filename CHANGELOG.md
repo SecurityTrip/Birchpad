@@ -6,7 +6,7 @@ version's release notes from its section here.
 
 ## [Unreleased]
 
-## [0.7.6] - 2026-10-29
+## [0.7.6] - 2026-10-30
 
 ### Security
 
@@ -19,6 +19,13 @@ version's release notes from its section here.
   unpacks the update packages, is still built with zip 9.0.4; it only unpacks Birchpad's own
   packages, checked against the size and SHA-256 in the signed manifest first, and moves to a
   fixed zip with the next Velopack release that has one.
+
+### Fixed
+
+- A regular expression that calls a group by a number past its groups (`(a)\g555555555555`)
+  no longer closes Birchpad, in Find and in the patterns of an XML Schema: the regular
+  expression library asked for gigabytes before finding the group missing. Find says the group
+  is not there; the schema's pattern is left out.
 
 ## [0.7.5] - 2026-10-29
 
