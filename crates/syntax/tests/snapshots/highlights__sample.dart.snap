@@ -6,7 +6,7 @@ language: dart
 keyword                  import
 string                   'dart:math'
 punctuation.delimiter    ;
-comment                  /// A greeting, twice.
+comment.documentation    /// A greeting, twice.
 keyword                  class
 type                     Greeting
 punctuation.bracket      {
@@ -46,7 +46,10 @@ punctuation.delimiter    ,
 number                   1
 punctuation.bracket      )
 punctuation.delimiter    ,
-string                   'Hello, $name!'
+string                   'Hello, 
+punctuation.special      $
+variable                 name
+string                   !'
 punctuation.bracket      )
 punctuation.delimiter    .
 function.method          join
@@ -87,8 +90,7 @@ keyword                  super
 punctuation.bracket      (
 punctuation.bracket      )
 punctuation.delimiter    ;
-punctuation.special      @
-attribute                override
+attribute                @override
 type.builtin             String
 function.method          render
 punctuation.bracket      ()

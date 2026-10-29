@@ -177,6 +177,45 @@ fn invalid_regular_expressions_are_errors() {
 }
 
 #[test]
+fn calls_to_groups_past_the_pattern_are_errors_before_compiling() {
+    // fancy-regex would ask for gigabytes for these and abort.
+    for pattern in [
+        r"(a)\g555555555555",
+        r"(a)\g<555555555555>",
+        r"(a)\g<+555555555555>",
+        r"(a)\g'555555555555'",
+        r"(a)\g99999999999999999999999",
+    ] {
+        assert!(call_past_groups(pattern).is_some(), "{pattern}");
+        let error = Searcher::new(&Query {
+            pattern: pattern.into(),
+            mode: SearchMode::Regex,
+            ..Query::default()
+        })
+        .unwrap_err();
+        assert!(
+            matches!(error, SearchError::InvalidRegex(_)),
+            "{pattern}: {error}"
+        );
+    }
+    // Calls to groups the pattern has, an escaped backslash before `g`, and names.
+    for pattern in [
+        r"(a)\g1",
+        r"(a)(b)\g<2>",
+        r"\\g999",
+        r"(?<n>a)\g<n>",
+        r"a\gb",
+        r"\g",
+    ] {
+        assert_eq!(call_past_groups(pattern), None, "{pattern}");
+    }
+    assert!(regex(r"(a)-\g1").is_match(&Rope::from_str("a-a"), 0..3));
+    // At the edge: as many groups as the number, and one fewer.
+    assert_eq!(call_past_groups(r"(a)(b)\g2"), None);
+    assert_eq!(call_past_groups(r"(a)\g2"), Some("2"));
+}
+
+#[test]
 fn finds_forward_and_backward_with_wrap() {
     let text = Rope::from_str("one two one three one");
     let s = searcher("one", true, false);

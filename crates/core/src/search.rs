@@ -116,6 +116,11 @@ impl Searcher {
             SearchMode::Normal => literal(&query.pattern)?,
             SearchMode::Extended => literal(&unescape_extended(&query.pattern))?,
             SearchMode::Regex => {
+                if let Some(number) = call_past_groups(&query.pattern) {
+                    return Err(SearchError::InvalidRegex(format!(
+                        "\\g{number}: there is no group {number}"
+                    )));
+                }
                 let regex = RegexBuilder::new(&query.pattern)
                     .case_insensitive(!query.match_case)
                     .multi_line(true)
@@ -682,6 +687,45 @@ fn find_folded(text: &Rope, needle: &[char], range: Range<usize>) -> Option<Rang
             }
         }
         pos += ch.len_utf8();
+    }
+    None
+}
+
+/// The number of a call to a group (`\g12`, `\g<12>`, `\g<+12>`, `\g'12'`) past every group
+/// `pattern` could have, if it has one. fancy-regex (0.19 and 0.20) sizes a set by that number
+/// before it finds the group missing: a long one asks for gigabytes and aborts the process.
+pub fn call_past_groups(pattern: &str) -> Option<&str> {
+    // Every group opens with `(`: their count is at least the number of groups.
+    let groups = pattern.matches('(').count();
+    let bytes = pattern.as_bytes();
+    let mut at = 0;
+    while at < bytes.len() {
+        if bytes[at] != b'\\' {
+            at += 1;
+            continue;
+        }
+        if bytes.get(at + 1) != Some(&b'g') {
+            // The escaped character, a backslash too, is skipped.
+            at += 2;
+            continue;
+        }
+        let mut start = at + 2;
+        if matches!(bytes.get(start), Some(b'<' | b'\'')) {
+            start += 1;
+        }
+        if matches!(bytes.get(start), Some(b'+' | b'-')) {
+            start += 1;
+        }
+        let end = start
+            + bytes[start..]
+                .iter()
+                .take_while(|b| b.is_ascii_digit())
+                .count();
+        let number = &pattern[start..end];
+        if !number.is_empty() && number.parse::<usize>().map_or(true, |n| n > groups) {
+            return Some(number);
+        }
+        at = end;
     }
     None
 }

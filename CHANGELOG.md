@@ -6,6 +6,32 @@ version's release notes from its section here.
 
 ## [Unreleased]
 
+## [0.7.6] - 2026-10-30
+
+### Security
+
+- GHSA-m665-v7pm-7grj (zip up to 9.0.4: an archive whose local headers disagree with its
+  central directory can write files outside the folder it is extracted to). Birchpad itself,
+  which unpacks plugins from the online catalog and the PlantUML components, requires zip
+  9.0.5 or later. Velopack, the updater of per-user installs on Windows, is version 1.3.39, a
+  pre-release and the only one with zip 9: its library in Birchpad uses zip 9.0.5 instead of
+  8.6, so RUSTSEC-2026-0367 to 0369 no longer need exceptions either. Its `Update.exe`, which
+  unpacks the update packages, is still built with zip 9.0.4; it only unpacks Birchpad's own
+  packages, checked against the size and SHA-256 in the signed manifest first, and moves to a
+  fixed zip with the next Velopack release that has one.
+
+### Fixed
+
+- A regular expression that calls a group by a number past its groups (`(a)\g555555555555`)
+  no longer closes Birchpad, in Find and in the patterns of an XML Schema: the regular
+  expression library asked for gigabytes before finding the group missing. Find says the group
+  is not there; the schema's pattern is left out.
+
+### Changed
+
+- Dart highlighting (tree-sitter-dart 0.3) tells documentation comments from other comments,
+  highlights the variables in a string's `$name` and takes an annotation's `@` with its name.
+
 ## [0.7.5] - 2026-10-29
 
 ### Changed
@@ -784,7 +810,8 @@ The first release: a Notepad++-like editor for Windows, Linux and macOS.
   entirely (`updates.mode = "off"`).
 - Nightly builds of `main` on the nightly channel.
 
-[Unreleased]: https://github.com/SecurityTrip/Birchpad/compare/v0.7.5...HEAD
+[Unreleased]: https://github.com/SecurityTrip/Birchpad/compare/v0.7.6...HEAD
+[0.7.6]: https://github.com/SecurityTrip/Birchpad/compare/v0.7.5...v0.7.6
 [0.7.5]: https://github.com/SecurityTrip/Birchpad/compare/v0.7.3...v0.7.5
 [0.7.3]: https://github.com/SecurityTrip/Birchpad/compare/v0.7.2...v0.7.3
 [0.7.2]: https://github.com/SecurityTrip/Birchpad/compare/v0.7.1...v0.7.2

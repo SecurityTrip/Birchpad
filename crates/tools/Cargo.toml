@@ -1,7 +1,7 @@
 [package]
 name = "birchpad-tools"
 description = "Birchpad's built-in tools without a window: JSON and XML formatting, hex dumps, comparing texts, spell checking."
-version = "0.7.5"
+version = "0.7.6"
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
@@ -13,7 +13,7 @@ birchpad-core.workspace = true
 birchpad-i18n.workspace = true
 birchpad-theme.workspace = true
 chrono = { version = "0.4", default-features = false, features = ["std"] }
-fancy-regex = "0.19"
+fancy-regex = "0.20"
 roxmltree = "0.21"
 similar.workspace = true
 spellbook = "0.4"
