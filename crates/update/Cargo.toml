@@ -1,7 +1,7 @@
 [package]
 name = "birchpad-update"
 description = "Birchpad updates: the signed update manifest, channels, version comparison, and installing updates (Velopack on Windows). No UI."
-version = "0.7.0"
+version = "0.7.6"
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
@@ -20,7 +20,9 @@ serde_json.workspace = true
 sha2 = "0.11"
 thiserror.workspace = true
 ureq = { version = "3", default-features = false, features = ["rustls-no-provider", "platform-verifier", "win-system-proxy"] }
-# Components (PlantUML) come as ZIPs; the version and features Velopack builds.
+# Plugins from the online catalog and the components (PlantUML) come as ZIPs; the features
+# Velopack builds. At least 9.0.5, which fixes GHSA-m665-v7pm-7grj: catalog plugins are
+# archives of other authors.
 zip = { version = "9.0.5", default-features = false, features = ["deflate"] }
 
 [features]

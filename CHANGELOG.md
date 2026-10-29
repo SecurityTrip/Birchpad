@@ -6,6 +6,8 @@ version's release notes from its section here.
 
 ## [Unreleased]
 
+## [0.7.6] - 2026-10-29
+
 ### Security
 
 - GHSA-m665-v7pm-7grj (zip up to 9.0.4: an archive whose local headers disagree with its
@@ -796,7 +798,8 @@ The first release: a Notepad++-like editor for Windows, Linux and macOS.
   entirely (`updates.mode = "off"`).
 - Nightly builds of `main` on the nightly channel.
 
-[Unreleased]: https://github.com/SecurityTrip/Birchpad/compare/v0.7.5...HEAD
+[Unreleased]: https://github.com/SecurityTrip/Birchpad/compare/v0.7.6...HEAD
+[0.7.6]: https://github.com/SecurityTrip/Birchpad/compare/v0.7.5...v0.7.6
 [0.7.5]: https://github.com/SecurityTrip/Birchpad/compare/v0.7.3...v0.7.5
 [0.7.3]: https://github.com/SecurityTrip/Birchpad/compare/v0.7.2...v0.7.3
 [0.7.2]: https://github.com/SecurityTrip/Birchpad/compare/v0.7.1...v0.7.2
