@@ -27,6 +27,11 @@ version's release notes from its section here.
   expression library asked for gigabytes before finding the group missing. Find says the group
   is not there; the schema's pattern is left out.
 
+### Changed
+
+- Dart highlighting (tree-sitter-dart 0.3) tells documentation comments from other comments,
+  highlights the variables in a string's `$name` and takes an annotation's `@` with its name.
+
 ## [0.7.5] - 2026-10-29
 
 ### Changed
