@@ -892,7 +892,7 @@ are drawn; what is missing is the editing of their text (7.4r).
       Birchpad installs Graphviz on request as it installs PlantUML
       ([ADR 0045](adr/0045-plantuml-installed-on-request.md)): it does not
       ([ADR 0059](adr/0059-plantuml-layouts-and-graphviz.md))
-- [ ] 7.4p The preview follows the files a diagram includes: it is drawn again when a PlantUML
+- [x] 7.4p The preview follows the files a diagram includes: it is drawn again when a PlantUML
       file in the document's folder or one it includes from changes, saved in Birchpad or on
       disk, rather than only when the document's own text changes; Redraw in the preview's
       toolbar and View > Preview for the rest

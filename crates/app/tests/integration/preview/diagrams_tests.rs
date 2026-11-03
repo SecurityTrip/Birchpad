@@ -824,6 +824,262 @@ fn plantuml_gets_the_documents_folder_as_its_include_path(cx: &mut TestAppContex
     );
 }
 
+#[test]
+fn includes_are_read_by_their_directives() {
+    let text = "@startuml\n!include common.puml\n  !include_many  \"with space.iuml\"  \n\
+                !include_once once.iuml\n!includesub parts.iuml!PART\n!include numbered.puml!2\n\
+                !import lib.zip\n!INCLUDE upper.puml\n!include\ttab.puml\n@enduml";
+    assert_eq!(
+        include_targets(text),
+        [
+            "common.puml",
+            "with space.iuml",
+            "once.iuml",
+            "parts.iuml",
+            "numbered.puml",
+            "lib.zip",
+            "upper.puml",
+            "tab.puml"
+        ]
+    );
+}
+
+#[test]
+fn includes_that_are_no_files_are_left_out() {
+    let text = "!include <C4/C4_Context>\n!include https://example.org/a.puml\n\
+                !include $LIB/a.puml\n!includeurl http://x/y.puml\n' !include commented.puml\n\
+                !include\n!include   \n!include \"\"\n!includedef x.puml\nnote: !include no.puml";
+    assert!(
+        include_targets(text).is_empty(),
+        "{:?}",
+        include_targets(text)
+    );
+    assert!(include_targets("").is_empty());
+    assert_eq!(
+        include_targets("!include last.puml"),
+        ["last.puml"],
+        "on the last line, without a line end"
+    );
+    assert_eq!(
+        include_targets("!include \"open.puml"),
+        ["open.puml"],
+        "a quote not closed"
+    );
+}
+
+#[test]
+fn included_files_are_found_where_plantuml_finds_them() {
+    let dir = tempfile::tempdir().unwrap();
+    let root = dir.path();
+    let document = root.join("views").join("context");
+    let domains = root.join("domains");
+    let library = root.join("library");
+    for folder in [&document, &domains.join("billing"), &library] {
+        std::fs::create_dir_all(folder).unwrap();
+    }
+    // As on that repository: included from another folder, including by the document's path.
+    std::fs::write(
+        domains.join("context.iuml"),
+        "!include ../../shared/billing/billing.puml\n!include next.iuml\n!include lib.iuml\n!include gone.iuml",
+    )
+    .unwrap();
+    std::fs::write(domains.join("next.iuml"), "' next to the file including it").unwrap();
+    std::fs::write(domains.join("billing").join("billing.puml"), "class Billing").unwrap();
+    std::fs::write(library.join("lib.iuml"), "' from the include path").unwrap();
+    let folders = [document.clone(), library.clone()];
+    let found = included_files(
+        "@startuml\n!include ../../shared/context.iuml\n@enduml",
+        Some(&document),
+        &folders,
+    );
+    assert_eq!(
+        found,
+        [
+            domains.join("context.iuml"),
+            domains.join("billing").join("billing.puml"),
+            domains.join("next.iuml"),
+            library.join("lib.iuml"),
+        ]
+    );
+    // Without a document's folder, only the include path is looked in.
+    assert_eq!(
+        included_files("!include lib.iuml\n!include next.iuml", None, &folders),
+        [library.join("lib.iuml")]
+    );
+    assert!(included_files("@startuml\n@enduml", Some(&document), &folders).is_empty());
+}
+
+#[test]
+fn included_files_end_in_loops_and_at_a_limit() {
+    let dir = tempfile::tempdir().unwrap();
+    let root = dir.path();
+    std::fs::write(root.join("a.iuml"), "!include b.iuml").unwrap();
+    std::fs::write(
+        root.join("b.iuml"),
+        "!include ./a.iuml\n!include sub/../a.iuml",
+    )
+    .unwrap();
+    std::fs::create_dir(root.join("sub")).unwrap();
+    assert_eq!(
+        included_files("!include a.iuml", Some(root), &[]),
+        [root.join("a.iuml"), root.join("b.iuml")],
+        "each file once"
+    );
+    // One past the limit.
+    let mut text = String::new();
+    for index in 0..=MOST_INCLUDED_FILES {
+        let name = format!("{index}.iuml");
+        std::fs::write(root.join(&name), "").unwrap();
+        text.push_str(&format!("!include {name}\n"));
+    }
+    let found = included_files(&text, Some(root), &[]);
+    assert_eq!(found.len(), MOST_INCLUDED_FILES);
+    assert_eq!(found[0], root.join("0.iuml"));
+}
+
+#[test]
+fn paths_are_normalized_without_the_disk() {
+    assert_eq!(normalized(Path::new("a/./b/../c")), PathBuf::from("a/c"));
+    assert_eq!(normalized(Path::new("../x/..")), PathBuf::from(".."));
+    assert_eq!(normalized(Path::new("")), PathBuf::new());
+    let root = std::env::temp_dir();
+    assert_eq!(normalized(&root.join("a").join("..")), normalized(&root));
+}
+
+#[test]
+fn changes_to_included_and_plantuml_files_redraw() {
+    let dir = tempfile::tempdir().unwrap();
+    let document = dir.path().join("flow.puml");
+    let notes = dir.path().join("notes.txt");
+    let included = [notes.clone()];
+    assert!(redraws_for(
+        &dir.path().join("common.iuml"),
+        Some(&document),
+        &[]
+    ));
+    assert!(redraws_for(
+        &dir.path().join("COMMON.PUML"),
+        Some(&document),
+        &[]
+    ));
+    assert!(
+        redraws_for(&notes, Some(&document), &included),
+        "an included file of any name"
+    );
+    assert!(!redraws_for(&notes, Some(&document), &[]));
+    assert!(
+        !redraws_for(&document, Some(&document), &[]),
+        "the document follows its text"
+    );
+    assert!(!redraws_for(
+        &dir.path().join("flow.puml.tmp"),
+        Some(&document),
+        &[]
+    ));
+    assert!(
+        redraws_for(&document, None, &[]),
+        "untitled: any PlantUML file"
+    );
+}
+
+#[test]
+fn the_folders_of_the_document_and_its_includes_are_watched() {
+    let root = std::env::temp_dir();
+    let lib = root.join("lib");
+    assert_eq!(
+        watched_folders(
+            Some(&root),
+            &[root.join("a.iuml"), lib.join("b.iuml"), lib.join("c.iuml")]
+        ),
+        [root.clone(), lib.clone()]
+    );
+    assert_eq!(watched_folders(None, &[lib.join("b.iuml")]), [lib]);
+    assert!(watched_folders(None, &[]).is_empty());
+}
+
+/// A stand-in for PlantUML whose diagram is `common.iuml`, next to the document.
+fn plantuml_showing_common(dir: &Path) -> PathBuf {
+    fake_plantuml(
+        dir,
+        "echo ^<svg^>\ntype common.iuml\necho ^</svg^>",
+        "echo \"<svg>$(cat common.iuml)</svg>\"",
+    )
+}
+
+fn diagram_text(shown: &Entity<Preview>, cx: &mut VisualTestContext) -> String {
+    String::from_utf8(shown.read_with(cx, |preview, _| preview.svgs()).remove(0)).unwrap()
+}
+
+/// Waits until the diagram shows `text`.
+fn wait_for_diagram(shown: &Entity<Preview>, text: &str, cx: &mut VisualTestContext) {
+    for _ in 0..1000 {
+        cx.run_until_parked();
+        if diagram_text(shown, cx).contains(text) {
+            return;
+        }
+        cx.executor().advance_clock(Duration::from_millis(200));
+        std::thread::sleep(Duration::from_millis(10));
+    }
+    panic!(
+        "the diagram never showed {text}: {}",
+        diagram_text(shown, cx)
+    );
+}
+
+#[gpui_kit::test]
+fn redraw_draws_what_is_on_disk_now(cx: &mut TestAppContext) {
+    let (workspace, cx) = open_workspace(cx);
+    let dir = tempfile::tempdir().unwrap();
+    let plantuml = plantuml_showing_common(dir.path());
+    std::fs::write(dir.path().join("common.iuml"), "class First").unwrap();
+    let shown = draw(
+        &workspace,
+        &plantuml,
+        dir.path(),
+        "flow.puml",
+        "@startuml\n!include common.iuml\n@enduml\n",
+        cx,
+    );
+    assert!(diagram_text(&shown, cx).contains("class First"));
+    assert_eq!(
+        shown.read_with(cx, |preview, _| preview.included()),
+        [dir.path().join("common.iuml")]
+    );
+    assert!(
+        shown
+            .read_with(cx, |preview, _| preview.watched_folders())
+            .contains(&dir.path().to_path_buf())
+    );
+    std::fs::write(dir.path().join("common.iuml"), "class Second").unwrap();
+    run(&workspace, "preview.redraw", cx).unwrap();
+    wait_for_diagram(&shown, "class Second", cx);
+}
+
+#[gpui_kit::test]
+fn a_change_to_an_included_file_redraws(cx: &mut TestAppContext) {
+    let (workspace, cx) = open_workspace(cx);
+    let dir = tempfile::tempdir().unwrap();
+    let plantuml = plantuml_showing_common(dir.path());
+    std::fs::write(dir.path().join("common.iuml"), "class First").unwrap();
+    let shown = draw(
+        &workspace,
+        &plantuml,
+        dir.path(),
+        "flow.puml",
+        "@startuml\n!include common.iuml\n@enduml\n",
+        cx,
+    );
+    // Changed by another program: no command, the watcher sees it.
+    std::fs::write(dir.path().join("common.iuml"), "class Changed").unwrap();
+    wait_for_diagram(&shown, "class Changed", cx);
+}
+
+#[gpui_kit::test]
+fn redraw_needs_plantuml_diagrams(cx: &mut TestAppContext) {
+    let (workspace, cx) = open_workspace(cx);
+    assert!(run(&workspace, "preview.redraw", cx).is_err());
+}
+
 fn run(workspace: &Entity<Workspace>, id: &str, cx: &mut VisualTestContext) -> anyhow::Result<()> {
     let result = workspace.update_in(cx, |workspace, window, cx| {
         workspace.dispatch(&birchpad_commands::Invocation::new(id), window, cx)

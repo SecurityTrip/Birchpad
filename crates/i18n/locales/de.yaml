@@ -277,6 +277,7 @@ command:
     export-svg: "Diagramm als SVG exportieren..."
     fit: "Diagramme an Breite anpassen"
     install-plantuml: "PlantUML installieren"
+    redraw: "Diagramme neu zeichnen"
     white-background: "Weißer Diagrammhintergrund"
     zoom-in: "Diagramme vergrößern"
     zoom-out: "Diagramme verkleinern"

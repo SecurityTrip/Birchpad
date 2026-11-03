@@ -278,6 +278,7 @@ command:
     export-svg: "Экспорт диаграммы в SVG..."
     fit: "Диаграммы по ширине"
     install-plantuml: "Установить PlantUML"
+    redraw: "Перерисовать диаграммы"
     white-background: "Белый фон диаграмм"
     zoom-in: "Увеличить диаграммы"
     zoom-out: "Уменьшить диаграммы"

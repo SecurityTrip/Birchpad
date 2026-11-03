@@ -708,6 +708,7 @@ pub fn main_menu() -> Vec<Menu> {
                     cmd("preview.actual-size"),
                     cmd("preview.fit"),
                     Separator,
+                    cmd("preview.redraw"),
                     cmd("preview.white-background"),
                     Separator,
                     cmd("preview.copy-diagram"),

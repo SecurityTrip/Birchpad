@@ -27,6 +27,12 @@ version's release notes from its section here.
 
 ### Added
 
+- The PlantUML preview follows the files a diagram includes: the folders of the document and
+  of the files it includes (found through `!include`, `!include_many`, `!include_once`,
+  `!includesub` and `!import`, and the files those include) are watched, and a change to an
+  included file or to a PlantUML file there, saved in Birchpad or by another program, draws the
+  diagrams again. View > Preview > Redraw Diagrams and a button in the preview's toolbar draw
+  them again by hand.
 - `preview.plantuml-layout` (Preferences > Preview,
   [ADR 0059](docs/adr/0059-plantuml-layouts-and-graphviz.md)): what lays PlantUML's diagrams
   out. Automatic, the default, uses Graphviz when its `dot` is

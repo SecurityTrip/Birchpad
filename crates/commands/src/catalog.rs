@@ -301,6 +301,7 @@ pub const COMMANDS: &[CommandSpec] = &[
     workspace("preview.zoom-out", "Zoom Out of Diagrams"),
     workspace("preview.actual-size", "Diagrams at Actual Size"),
     workspace("preview.fit", "Fit Diagrams to Width"),
+    workspace("preview.redraw", "Redraw Diagrams"),
     workspace("preview.white-background", "White Diagram Background"),
     workspace("preview.copy-diagram", "Copy Diagram"),
     workspace("preview.export-png", "Export Diagram as PNG..."),

@@ -15,6 +15,7 @@ mod diagrams;
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use std::time::Duration;
 
 use anyhow::bail;
 use birchpad_commands::Invocation;
@@ -41,11 +42,12 @@ use crate::workspace::Workspace;
 
 pub use diagrams::{
     DIAGRAM_END, Drawn, GRAPHVIZ_DOT_VARIABLE, INCLUDE_PATH_VARIABLE, Included, Layout,
-    MAX_PNG_SIDE, MAX_ZOOMED_PIXELS, Mistake, NotDrawn, PLANTUML_DELAY, Stop, StopOnDrop,
-    ZOOM_COMMANDS, ZOOM_STEPS, Zoom, ZoomChange, active_diagrams, background, diagram_starts,
-    export_name, find_dot, include_path, line_offset, mistake_trace, mistakes, plantuml_command,
-    raster_factor, run_plantuml, setting_path, sized_svg, split_diagrams, svg_size, svg_to_pixels,
-    svg_to_png, system_dot,
+    MAX_PNG_SIDE, MAX_ZOOMED_PIXELS, MOST_INCLUDED_FILES, Mistake, NotDrawn, PLANTUML_DELAY, Stop,
+    StopOnDrop, ZOOM_COMMANDS, ZOOM_STEPS, Zoom, ZoomChange, active_diagrams, background,
+    diagram_starts, export_name, find_dot, include_path, include_targets, included_files,
+    line_offset, mistake_trace, mistakes, normalized, plantuml_command, raster_factor, redraws_for,
+    run_plantuml, setting_path, sized_svg, split_diagrams, svg_size, svg_to_pixels, svg_to_png,
+    system_dot, watched_folders,
 };
 
 /// What a document's preview shows.
@@ -57,7 +59,7 @@ pub enum PreviewKind {
 }
 
 /// PlantUML's files: `.puml` and the other extensions its tools know.
-const PLANTUML_EXTENSIONS: [&str; 5] = ["puml", "plantuml", "pu", "iuml", "wsd"];
+pub(crate) const PLANTUML_EXTENSIONS: [&str; 5] = ["puml", "plantuml", "pu", "iuml", "wsd"];
 
 /// The preview `buffer` has: from its language, or for PlantUML (which has no language of its
 /// own yet) from its file's extension.
@@ -235,6 +237,17 @@ struct Diagrams {
     layout: &'static str,
     /// The details of a crash of PlantUML are shown.
     details: bool,
+    /// The files the document includes, found when it was last drawn.
+    included: Vec<PathBuf>,
+    /// Watches the folders of the document and of the files it includes.
+    watch: Option<IncludeWatch>,
+}
+
+/// Watching the files a diagram includes, so that it is drawn again when one changes.
+struct IncludeWatch {
+    watcher: notify::RecommendedWatcher,
+    folders: Vec<PathBuf>,
+    _listening: Task<()>,
 }
 
 /// One diagram PlantUML drew.
@@ -374,8 +387,13 @@ impl Preview {
                     }
                     let stop = StopOnDrop(Stop::default());
                     let running = stop.0.clone();
-                    let (drawn, layout) = executor
+                    let (drawn, layout, included) = executor
                         .spawn(async move {
+                            let folders: Vec<PathBuf> = include
+                                .as_deref()
+                                .map(|path| std::env::split_paths(path).collect())
+                                .unwrap_or_default();
+                            let included = included_files(&text, folder.as_deref(), &folders);
                             // Graphviz is looked for at each drawing: it may have been installed.
                             let dot = match layout_setting {
                                 birchpad_config::DiagramLayout::Smetana => None,
@@ -393,13 +411,16 @@ impl Preview {
                                 &text,
                                 &running,
                             );
-                            (drawn, layout.name())
+                            (drawn, layout.name(), included)
                         })
                         .await;
                     drop(stop);
                     this.update(cx, |this, cx| {
                         if let Content::PlantUml(diagrams) = &mut this.content {
                             diagrams.layout = layout;
+                        }
+                        if !matches!(drawn, Err(NotDrawn::Stopped)) {
+                            this.watch_included(included, cx);
                         }
                         this.show_diagrams(drawn);
                         cx.notify();
@@ -409,6 +430,114 @@ impl Preview {
             }
         }
         cx.notify();
+    }
+
+    /// Draws the diagrams again, as they are on disk now: View > Preview > Redraw, and a change
+    /// to a file they include.
+    pub fn redraw(&mut self, cx: &mut Context<Self>) {
+        if let Some(view) = self.view.upgrade() {
+            self.shown = None;
+            let buffer = view.read(cx).buffer.clone();
+            self.update_text(&buffer, cx);
+        }
+    }
+
+    /// Watches the folders of the document and of `included`, the files it includes.
+    fn watch_included(&mut self, included: Vec<PathBuf>, cx: &mut Context<Self>) {
+        let folder = self.folder(cx);
+        let Content::PlantUml(diagrams) = &mut self.content else {
+            return;
+        };
+        let folders = watched_folders(folder.as_deref(), &included);
+        diagrams.included = included;
+        if diagrams.watch.is_none() {
+            let (sender, mut events) = futures::channel::mpsc::unbounded::<Vec<PathBuf>>();
+            let watcher =
+                notify::recommended_watcher(move |event: notify::Result<notify::Event>| {
+                    if let Ok(event) = event
+                        && !event.kind.is_access()
+                    {
+                        sender.unbounded_send(event.paths).ok();
+                    }
+                });
+            let Ok(watcher) = watcher else {
+                return;
+            };
+            let listening = cx.spawn(async move |this, cx| {
+                use futures::StreamExt as _;
+                while let Some(mut paths) = events.next().await {
+                    // A program writing a file sets off several events: draw once they stop.
+                    cx.background_executor()
+                        .timer(Duration::from_millis(150))
+                        .await;
+                    while let Ok(more) = events.try_recv() {
+                        paths.extend(more);
+                    }
+                    let redrawn = this.update(cx, |this, cx| {
+                        let document = this.path(cx);
+                        let included = match &this.content {
+                            Content::PlantUml(diagrams) => diagrams.included.clone(),
+                            Content::Markdown(_) => Vec::new(),
+                        };
+                        if paths
+                            .iter()
+                            .any(|path| redraws_for(path, document.as_deref(), &included))
+                        {
+                            this.redraw(cx);
+                        }
+                    });
+                    if redrawn.is_err() {
+                        break;
+                    }
+                }
+            });
+            diagrams.watch = Some(IncludeWatch {
+                watcher,
+                folders: Vec::new(),
+                _listening: listening,
+            });
+        }
+        let Some(watch) = &mut diagrams.watch else {
+            return;
+        };
+        use notify::Watcher as _;
+        for gone in watch.folders.iter().filter(|old| !folders.contains(old)) {
+            watch.watcher.unwatch(gone).ok();
+        }
+        let mut watched = Vec::new();
+        for folder in folders {
+            let ok = watch.folders.contains(&folder)
+                || watch
+                    .watcher
+                    .watch(&folder, notify::RecursiveMode::NonRecursive)
+                    .is_ok();
+            if ok {
+                watched.push(folder);
+            }
+        }
+        watch.folders = watched;
+    }
+
+    /// The folders watched for changes to the files the diagrams include (for tests).
+    #[cfg(feature = "test-support")]
+    pub fn watched_folders(&self) -> Vec<PathBuf> {
+        match &self.content {
+            Content::PlantUml(diagrams) => diagrams
+                .watch
+                .as_ref()
+                .map(|watch| watch.folders.clone())
+                .unwrap_or_default(),
+            Content::Markdown(_) => Vec::new(),
+        }
+    }
+
+    /// The files the diagrams include, as found when they were last drawn (for tests).
+    #[cfg(feature = "test-support")]
+    pub fn included(&self) -> Vec<PathBuf> {
+        match &self.content {
+            Content::PlantUml(diagrams) => diagrams.included.clone(),
+            Content::Markdown(_) => Vec::new(),
+        }
     }
 
     fn show_diagrams(&mut self, drawn: Result<Drawn, NotDrawn>) {
@@ -963,6 +1092,14 @@ impl Preview {
                     .on_click(run("preview.fit")),
             )
             .child(div().w(px(1.)).h(px(16.)).bg(paint(ui().border)))
+            .child(
+                Button::new("redraw")
+                    .xsmall()
+                    .ghost()
+                    .icon(IconName::RefreshCw)
+                    .tooltip(crate::menus::command_title("preview.redraw"))
+                    .on_click(run("preview.redraw")),
+            )
             .child(
                 Button::new("diagram-background")
                     .xsmall()

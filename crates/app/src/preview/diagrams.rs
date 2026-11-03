@@ -86,6 +86,11 @@ pub(super) fn register_commands(registry: &mut CommandRegistry) {
             Ok(())
         },
     );
+    registry.workspace("preview.redraw", |this, (), _, cx| {
+        let preview = active_diagrams(this, cx)?;
+        preview.update(cx, |preview, cx| preview.redraw(cx));
+        Ok(())
+    });
     for (id, change) in ZOOM_COMMANDS {
         registry.workspace(id, move |this, (), _, cx| {
             let preview = active_diagrams(this, cx)?;
@@ -525,6 +530,150 @@ pub fn include_path(
         return None;
     }
     std::env::join_paths(folders).ok()
+}
+
+/// The files `text` includes by a path, as written: `!include`, `!include_many`,
+/// `!include_once`, `!includesub` and `!import`, without a `!part` after the path. Files of
+/// the standard library (`<C4/C4_Context>`), URLs and paths made of variables are left out.
+pub fn include_targets(text: &str) -> Vec<String> {
+    const DIRECTIVES: [&str; 5] = [
+        "!include_many",
+        "!include_once",
+        "!includesub",
+        "!include",
+        "!import",
+    ];
+    let mut targets = Vec::new();
+    for line in text.lines() {
+        let line = line.trim_start();
+        let Some(rest) = DIRECTIVES.iter().find_map(|directive| {
+            let head = line.get(..directive.len())?;
+            let rest = &line[directive.len()..];
+            (head.eq_ignore_ascii_case(directive) && rest.starts_with([' ', '\t'])).then_some(rest)
+        }) else {
+            continue;
+        };
+        let rest = rest.trim();
+        let target = match rest.strip_prefix('"') {
+            Some(quoted) => quoted.split('"').next().unwrap_or_default(),
+            // `common.puml!2` and `parts.puml!PART`: the file without the part.
+            None => rest.split('!').next().unwrap_or_default().trim_end(),
+        };
+        let skipped = target.is_empty()
+            || target.starts_with('<')
+            || target.contains("://")
+            || target.contains('$');
+        if !skipped {
+            targets.push(target.to_owned());
+        }
+    }
+    targets
+}
+
+/// The most files [`included_files`] reads, so that a loop of includes or a huge library ends.
+pub const MOST_INCLUDED_FILES: usize = 500;
+
+/// The files a document's `text` includes, and those they include in turn: each target is
+/// looked for next to the file that includes it, then in each folder of `folders` (the include
+/// path, the document's folder first), as PlantUML looks for it. Files that are not found are
+/// left out; at most [`MOST_INCLUDED_FILES`].
+pub fn included_files(text: &str, folder: Option<&Path>, folders: &[PathBuf]) -> Vec<PathBuf> {
+    let mut found: Vec<PathBuf> = Vec::new();
+    let mut queue: Vec<(String, Option<PathBuf>)> =
+        vec![(text.to_owned(), folder.map(Path::to_path_buf))];
+    while let Some((text, base)) = queue.pop() {
+        for target in include_targets(&text) {
+            let target = Path::new(&target);
+            let file = if target.is_absolute() {
+                Some(target.to_path_buf()).filter(|file| file.is_file())
+            } else {
+                base.iter()
+                    .chain(folders)
+                    .map(|folder| folder.join(target))
+                    .find(|file| file.is_file())
+            };
+            let Some(file) = file else {
+                continue;
+            };
+            let file = normalized(&file);
+            if found.contains(&file) {
+                continue;
+            }
+            if found.len() == MOST_INCLUDED_FILES {
+                return found;
+            }
+            if let Ok(bytes) = std::fs::read(&file) {
+                let base = file.parent().map(Path::to_path_buf);
+                queue.push((String::from_utf8_lossy(&bytes).into_owned(), base));
+            }
+            found.push(file);
+        }
+    }
+    found
+}
+
+/// `path` without its `.` parts, and with each `..` taking off the part before it, so that
+/// a file reached by two paths (`a/../b.puml`, `b.puml`) is found once.
+pub fn normalized(path: &Path) -> PathBuf {
+    use std::path::Component;
+    let mut out = PathBuf::new();
+    for part in path.components() {
+        match part {
+            Component::CurDir => {}
+            Component::ParentDir => {
+                let parent = out
+                    .components()
+                    .next_back()
+                    .is_some_and(|last| matches!(last, Component::Normal(_)));
+                if parent {
+                    out.pop();
+                } else {
+                    out.push(part);
+                }
+            }
+            part => out.push(part),
+        }
+    }
+    out
+}
+
+/// Whether a change to the file at `path` draws the diagrams of the document at `document`
+/// again: a file it includes (in `files`), or a PlantUML file (one may be included once it is
+/// there); not the document itself, whose text the preview follows already.
+pub fn redraws_for(path: &Path, document: Option<&Path>, files: &[PathBuf]) -> bool {
+    let same = |a: &Path, b: &Path| {
+        a == b
+            || std::fs::canonicalize(a)
+                .is_ok_and(|a| std::fs::canonicalize(b).is_ok_and(|b| a == b))
+    };
+    if document.is_some_and(|document| same(path, document)) {
+        return false;
+    }
+    let plantuml = path
+        .extension()
+        .and_then(|extension| extension.to_str())
+        .is_some_and(|extension| {
+            super::PLANTUML_EXTENSIONS
+                .iter()
+                .any(|known| known.eq_ignore_ascii_case(extension))
+        });
+    plantuml || files.iter().any(|file| same(path, file))
+}
+
+/// The folders to watch for a document in `folder` that includes `files`: its own and those
+/// of the files, each once.
+pub fn watched_folders(folder: Option<&Path>, files: &[PathBuf]) -> Vec<PathBuf> {
+    let mut folders: Vec<PathBuf> = Vec::new();
+    for candidate in folder.map(Path::to_path_buf).into_iter().chain(
+        files
+            .iter()
+            .filter_map(|file| file.parent().map(Path::to_path_buf)),
+    ) {
+        if !folders.contains(&candidate) {
+            folders.push(candidate);
+        }
+    }
+    folders
 }
 
 /// The SVG images in PlantUML's output, one per diagram.
