@@ -991,6 +991,19 @@ name the file and open it at the line; 10 still say only that it is in an includ
       "Critical", `gpui-fast-windows`), with no way to give it one; the only way around is
       Birchpad drawing every question in its window instead of the system's dialog
       (`set_prompt_builder`), a change of its own
+
+A third time, with 7.4y and 7.4z built: all 16 mistakes in included files name their file,
+relative to the document, and open it at the line, those included through a function of the
+diagram's own too; Ctrl+click on such an `!include` opens the file, and saving it in Birchpad
+draws the diagram again. What is left:
+
+- [ ] 7.4aa The picture of a mistake folded: once the preview has listed a mistake above the
+      diagrams, with its file, line and message, PlantUML's picture of it says the same again,
+      as tall as the preview, and PlantUML adds to it at random its own banners ("Add your own
+      dedication into PlantUML. For just $5 per month", Patreon) and joke lines, on white or on
+      black. The picture of a mistake the preview has placed folded under Details, as the
+      details of a crash are (7.4o); shown as now when the mistake has no place, so that what
+      PlantUML says is not lost
 - [ ] Release 0.7.7: the workspace version (0.7.7, set when its branch opens, so that nightly
       builds are its pre-releases), `CHANGELOG.md` and this roadmap updated; the
       [release checklist](release-checklist.md) gone through
