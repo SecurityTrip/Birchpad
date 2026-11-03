@@ -673,7 +673,7 @@ dependencies = [
 
 [[package]]
 name = "birchpad-editor"
-version = "0.7.5"
+version = "0.7.7"
 dependencies = [
  "anyhow",
  "birchpad-cli",
@@ -814,10 +814,11 @@ dependencies = [
 
 [[package]]
 name = "birchpad-syntax"
-version = "0.7.6"
+version = "0.7.7"
 dependencies = [
  "birchpad-core",
  "birchpad-i18n",
+ "birchpad-tree-sitter-plantuml",
  "proptest",
  "ropey",
  "roxmltree 0.21.2",
@@ -915,6 +916,15 @@ dependencies = [
  "objc2-foundation 0.3.2",
  "raw-window-handle",
  "windows-sys 0.61.2",
+]
+
+[[package]]
+name = "birchpad-tree-sitter-plantuml"
+version = "0.7.7"
+dependencies = [
+ "cc",
+ "tree-sitter",
+ "tree-sitter-language",
 ]
 
 [[package]]

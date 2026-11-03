@@ -1,0 +1,53 @@
+---
+source: crates/syntax/tests/highlights.rs
+expression: render(&path)
+---
+language: plantuml
+comment                  ' An order, as a sequence diagram\n
+keyword.directive        @startuml
+keyword.directive        !include
+string.special           common.iuml
+keyword.directive        !$accent
+punctuation              =
+string                   "#1E88E5"
+keyword                  title
+markup.heading           Ordering
+keyword                  participant
+type                     "Web shop"
+keyword                  as
+constant                 #lightblue
+keyword                  actor
+type                     User
+keyword                  database
+type                     Store
+type                     <<stock>>
+markup.heading           Order
+operator                 ->
+string                   : order(2 items)
+keyword                  alt
+operator                 -->
+string                   : confirmed
+keyword                  note
+keyword                  right
+keyword                  of
+string                       sent by mail
+keyword                    end note
+keyword                  else
+operator                 -[#red]>x
+keyword                  end\nbox
+keyword                  participant
+type                     Billing
+keyword                  end box\n
+comment                  /' Billing is\n   called later '/
+keyword.directive        !procedure
+function                 $ask
+variable                 $from
+operator                 ->
+variable                 $to
+string                   : ask
+keyword.directive        !endprocedure
+keyword.directive        !if
+operator                 ->
+string                   : log
+keyword.directive        !endif
+keyword.directive        @enduml

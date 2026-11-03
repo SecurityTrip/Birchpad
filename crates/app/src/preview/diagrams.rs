@@ -86,6 +86,26 @@ pub(super) fn register_commands(registry: &mut CommandRegistry) {
             Ok(())
         },
     );
+    registry.workspace(
+        "preview.open-include",
+        |this, args: IncludeArgs, window, cx| {
+            let settings = &AppState::global(cx).settings.preview;
+            let folder = args.document.as_deref().and_then(Path::parent);
+            let include = include_path(
+                folder,
+                &settings.plantuml_include_path,
+                std::env::var_os(INCLUDE_PATH_VARIABLE).as_deref(),
+            );
+            let folders: Vec<PathBuf> = include
+                .as_deref()
+                .map(|path| std::env::split_paths(path).collect())
+                .unwrap_or_default();
+            let path = find_include(&args.target, &folders)
+                .ok_or_else(|| anyhow!("{}", t!("preview.no-include", file = args.target)))?;
+            this.open_path(&path, window, cx);
+            Ok(())
+        },
+    );
     registry.workspace("preview.redraw", |this, (), _, cx| {
         let preview = active_diagrams(this, cx)?;
         preview.update(cx, |preview, cx| preview.redraw(cx));
@@ -532,42 +552,25 @@ pub fn include_path(
     std::env::join_paths(folders).ok()
 }
 
-/// The files `text` includes by a path, as written: `!include`, `!include_many`,
-/// `!include_once`, `!includesub` and `!import`, without a `!part` after the path. Files of
-/// the standard library (`<C4/C4_Context>`), URLs and paths made of variables are left out.
-pub fn include_targets(text: &str) -> Vec<String> {
-    const DIRECTIVES: [&str; 5] = [
-        "!include_many",
-        "!include_once",
-        "!includesub",
-        "!include",
-        "!import",
-    ];
-    let mut targets = Vec::new();
-    for line in text.lines() {
-        let line = line.trim_start();
-        let Some(rest) = DIRECTIVES.iter().find_map(|directive| {
-            let head = line.get(..directive.len())?;
-            let rest = &line[directive.len()..];
-            (head.eq_ignore_ascii_case(directive) && rest.starts_with([' ', '\t'])).then_some(rest)
-        }) else {
-            continue;
-        };
-        let rest = rest.trim();
-        let target = match rest.strip_prefix('"') {
-            Some(quoted) => quoted.split('"').next().unwrap_or_default(),
-            // `common.puml!2` and `parts.puml!PART`: the file without the part.
-            None => rest.split('!').next().unwrap_or_default().trim_end(),
-        };
-        let skipped = target.is_empty()
-            || target.starts_with('<')
-            || target.contains("://")
-            || target.contains('$');
-        if !skipped {
-            targets.push(target.to_owned());
-        }
+/// Ctrl+click on an `!include` line: the file it names, and the document it is in.
+#[derive(Debug, Default, serde::Deserialize)]
+struct IncludeArgs {
+    target: String,
+    #[serde(default)]
+    document: Option<PathBuf>,
+}
+
+/// The file `target` (as an `!include` names it) is: itself when absolute, else the first of
+/// `folders` (the include path, the document's folder first) that has it.
+pub fn find_include(target: &str, folders: &[PathBuf]) -> Option<PathBuf> {
+    let target = Path::new(target);
+    if target.is_absolute() {
+        return Some(target.to_path_buf()).filter(|file| file.is_file());
     }
-    targets
+    folders
+        .iter()
+        .map(|folder| normalized(&folder.join(target)))
+        .find(|file| file.is_file())
 }
 
 /// The most files [`included_files`] reads, so that a loop of includes or a huge library ends.
@@ -582,7 +585,7 @@ pub fn included_files(text: &str, folder: Option<&Path>, folders: &[PathBuf]) ->
     let mut queue: Vec<(String, Option<PathBuf>)> =
         vec![(text.to_owned(), folder.map(Path::to_path_buf))];
     while let Some((text, base)) = queue.pop() {
-        for target in include_targets(&text) {
+        for target in birchpad_syntax::plantuml::include_targets(&text) {
             let target = Path::new(&target);
             let file = if target.is_absolute() {
                 Some(target.to_path_buf()).filter(|file| file.is_file())

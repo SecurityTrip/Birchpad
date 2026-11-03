@@ -33,6 +33,14 @@ version's release notes from its section here.
 
 ### Added
 
+- PlantUML is a language of its own (Language menu, status bar;
+  [ADR 0061](docs/adr/0061-plantuml-grammar-of-its-own.md)), with a grammar written for
+  Birchpad: `@start`/`@end` lines, keywords, participants' kinds, arrows, preprocessor lines,
+  strings, colors, stereotypes and comments are highlighted; diagrams and their blocks (`alt`,
+  `group`, `box`, `!if`, `!procedure`, notes of several lines, blocks in braces) fold; the
+  Function List lists participants, `==` sections, titles, procedures and functions; Toggle
+  Comment uses `'` and `/' '/`; Ctrl+click on an `!include` line opens the file it includes.
+  Markdown's `plantuml` code blocks are highlighted too.
 - The PlantUML preview follows the files a diagram includes: the folders of the document and
   of the files it includes (found through `!include`, `!include_many`, `!include_once`,
   `!includesub` and `!import`, and the files those include) are watched, and a change to an

@@ -825,46 +825,81 @@ fn plantuml_gets_the_documents_folder_as_its_include_path(cx: &mut TestAppContex
 }
 
 #[test]
-fn includes_are_read_by_their_directives() {
-    let text = "@startuml\n!include common.puml\n  !include_many  \"with space.iuml\"  \n\
-                !include_once once.iuml\n!includesub parts.iuml!PART\n!include numbered.puml!2\n\
-                !import lib.zip\n!INCLUDE upper.puml\n!include\ttab.puml\n@enduml";
+fn an_included_file_is_found_in_the_include_path() {
+    let dir = tempfile::tempdir().unwrap();
+    let (views, library) = (dir.path().join("views"), dir.path().join("library"));
+    std::fs::create_dir_all(&views).unwrap();
+    std::fs::create_dir_all(&library).unwrap();
+    std::fs::write(views.join("common.iuml"), "").unwrap();
+    std::fs::write(library.join("lib.iuml"), "").unwrap();
+    std::fs::write(library.join("common.iuml"), "").unwrap();
+    let folders = [views.clone(), library.clone()];
     assert_eq!(
-        include_targets(text),
-        [
-            "common.puml",
-            "with space.iuml",
-            "once.iuml",
-            "parts.iuml",
-            "numbered.puml",
-            "lib.zip",
-            "upper.puml",
-            "tab.puml"
-        ]
+        find_include("common.iuml", &folders),
+        Some(views.join("common.iuml")),
+        "the document's folder first"
     );
+    assert_eq!(
+        find_include("lib.iuml", &folders),
+        Some(library.join("lib.iuml"))
+    );
+    assert_eq!(
+        find_include("../library/lib.iuml", &folders),
+        Some(library.join("lib.iuml")),
+        "a relative path, without its `..`"
+    );
+    let absolute = library.join("lib.iuml").display().to_string();
+    assert_eq!(find_include(&absolute, &[]), Some(library.join("lib.iuml")));
+    assert_eq!(find_include("gone.iuml", &folders), None);
+    assert_eq!(
+        find_include("library", &[dir.path().to_path_buf()]),
+        None,
+        "a folder"
+    );
+    assert_eq!(find_include("lib.iuml", &[]), None);
+}
+
+#[gpui_kit::test]
+fn ctrl_click_on_an_include_opens_its_file(cx: &mut TestAppContext) {
+    let (workspace, cx) = open_workspace(cx);
+    let dir = tempfile::tempdir().unwrap();
+    let document = dir.path().join("flow.puml");
+    std::fs::write(&document, "@startuml\n!include common.iuml\n@enduml\n").unwrap();
+    std::fs::write(dir.path().join("common.iuml"), "class Common\n").unwrap();
+    let invocation = |target: &str| {
+        birchpad_commands::Invocation::with_args(
+            "preview.open-include",
+            serde_json::json!({ "target": target, "document": document }),
+        )
+    };
+    let opened = workspace.update_in(cx, |workspace, window, cx| {
+        workspace.dispatch(&invocation("common.iuml"), window, cx)
+    });
+    cx.run_until_parked();
+    opened.unwrap();
+    let active = workspace.read_with(cx, |workspace, cx| {
+        let view = workspace.active_view(cx).unwrap();
+        view.read(cx).buffer.read(cx).path().map(Path::to_path_buf)
+    });
+    assert_eq!(active, Some(dir.path().join("common.iuml")));
+    // A file that is not there is said, not opened.
+    let missing = workspace.update_in(cx, |workspace, window, cx| {
+        workspace.dispatch(&invocation("gone.iuml"), window, cx)
+    });
+    assert!(missing.unwrap_err().to_string().contains("gone.iuml"));
 }
 
 #[test]
-fn includes_that_are_no_files_are_left_out() {
-    let text = "!include <C4/C4_Context>\n!include https://example.org/a.puml\n\
-                !include $LIB/a.puml\n!includeurl http://x/y.puml\n' !include commented.puml\n\
-                !include\n!include   \n!include \"\"\n!includedef x.puml\nnote: !include no.puml";
-    assert!(
-        include_targets(text).is_empty(),
-        "{:?}",
-        include_targets(text)
-    );
-    assert!(include_targets("").is_empty());
+fn the_plantuml_language_has_the_diagrams_preview() {
     assert_eq!(
-        include_targets("!include last.puml"),
-        ["last.puml"],
-        "on the last line, without a line end"
+        kind_for(Some("plantuml"), None),
+        Some(PreviewKind::PlantUml)
     );
     assert_eq!(
-        include_targets("!include \"open.puml"),
-        ["open.puml"],
-        "a quote not closed"
+        kind_for(Some("plantuml"), Some(Path::new("notes.txt"))),
+        Some(PreviewKind::PlantUml)
     );
+    assert_eq!(kind_for(Some("rust"), Some(Path::new("a.rs"))), None);
 }
 
 #[test]

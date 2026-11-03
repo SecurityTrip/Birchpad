@@ -491,6 +491,19 @@ pub static LANGUAGES: &[Language] = &[
         )
     },
     Language {
+        aliases: &["puml", "uml"],
+        first_line: &["@startuml"],
+        ..lang(
+            "plantuml",
+            "PlantUML",
+            "PlantUML diagram",
+            &["puml", "plantuml", "pu", "iuml", "wsd"],
+            (Some("'"), Some(("/'", "'/"))),
+            grammar!(birchpad_tree_sitter_plantuml::LANGUAGE),
+            &[include_str!("../queries/plantuml.scm")],
+        )
+    },
+    Language {
         aliases: &["pwsh", "ps"],
         interpreters: &["pwsh", "powershell"],
         ..lang(

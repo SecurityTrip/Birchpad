@@ -864,10 +864,10 @@ are drawn; what is missing is the editing of their text (7.4r).
 
 - [x] 7.4m Files included by included files found: PlantUML gets the document's folder as its
       include path (`PLANTUML_INCLUDE_PATH`, which PlantUML reads as it reads
-      `-Dplantuml.include.path`, and which reaches it whatever runs it) besides running in it, so that a file included
-      from another folder (`shared/context.iuml`) that includes by a path relative to the
-      document (`../../shared/billing/billing_context.puml`) finds it, as IDE plugins and
-      Confluence's macro do. Without it, every context diagram of that repository failed with
+      `-Dplantuml.include.path`, and which reaches it whatever runs it) besides running in it,
+      so that a file included from another folder (`shared/context.iuml`) that includes by
+      a path relative to the document (`../../shared/billing/billing_context.puml`) finds it, as
+      IDE plugins and Confluence's macro do. Without it, every context diagram of that repository failed with
       "cannot include"; with it, all 19 are drawn. Folders of the user's own after the
       document's (`preview.plantuml-include-path`, separated as in `PATH`, a relative one taken
       from the document's folder), for libraries kept elsewhere, then those of the variable
@@ -903,13 +903,16 @@ are drawn; what is missing is the editing of their text (7.4r).
       ([ADR 0060](adr/0060-plantuml-kept-running.md)): 0.5 to 0.7 s a drawing before, 0.01 to
       0.02 s with a warm PlantUML, for Java (the installed PlantUML, a `plantuml.jar`); a
       diagram still being typed, and a `plantuml` script, start PlantUML for each drawing
-- [ ] 7.4r PlantUML as a language of its own: Birchpad shows a `.puml` as a normal text file. A
+- [x] 7.4r PlantUML as a language of its own: Birchpad shows a `.puml` as a normal text file. A
       PlantUML language (Language menu, status bar): highlighting of `@start`/`@end` lines,
       keywords and participants' kinds, arrows, `!` preprocessor lines, strings, colors and
       comments (`'`, `/' '/`, which Toggle Comment uses); folding by blocks (`box`, `alt`,
       `group`, `!if`, `!procedure` and their ends) rather than by indentation; the Function
       List with participants, `==` sections, titles and `!procedure` and `!function`; Ctrl+click
-      on an `!include` with a path opens the file
+      on an `!include` with a path opens the file. A grammar of
+      Birchpad's own, `birchpad-tree-sitter-plantuml`
+      ([ADR 0061](adr/0061-plantuml-grammar-of-its-own.md)); notes, legends, headers and footers
+      of several lines and blocks in braces fold too
 - [ ] 7.4s Moving about a diagram: dragging it with the mouse scrolls it, as a hand does; Fit
       Page beside Fit, the whole diagram in the preview, since a wide sequence diagram fitted to
       the width is too small to read

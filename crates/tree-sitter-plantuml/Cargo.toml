@@ -1,0 +1,22 @@
+[package]
+name = "birchpad-tree-sitter-plantuml"
+description = "A tree-sitter grammar of PlantUML for Birchpad: diagrams, blocks and lines, for highlighting, folding and the Function List."
+version = "0.7.7"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+include = ["build.rs", "grammar.js", "tree-sitter.json", "src/**", "tests/**"]
+
+[dependencies]
+tree-sitter-language = "0.1"
+
+[build-dependencies]
+cc = "1.2"
+
+[dev-dependencies]
+tree-sitter = "0.27"
+
+[lints]
+workspace = true

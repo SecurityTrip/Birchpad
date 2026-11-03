@@ -8,6 +8,7 @@ mod folds;
 mod highlight;
 mod language;
 mod outline;
+pub mod plantuml;
 mod selection;
 mod syntax;
 mod udl;

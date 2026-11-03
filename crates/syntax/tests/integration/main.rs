@@ -16,6 +16,9 @@ mod language;
 #[path = "outline/tests.rs"]
 mod outline;
 
+#[path = "plantuml/tests.rs"]
+mod plantuml;
+
 #[path = "selection/tests.rs"]
 mod selection;
 

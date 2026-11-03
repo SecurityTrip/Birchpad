@@ -45,8 +45,8 @@ pub use diagrams::{
     DIAGRAM_END, Drawn, GRAPHVIZ_DOT_VARIABLE, INCLUDE_PATH_VARIABLE, Included, Layout,
     MAX_PNG_SIDE, MAX_ZOOMED_PIXELS, MOST_INCLUDED_FILES, Mistake, NotDrawn, PLANTUML_DELAY, Stop,
     StopOnDrop, ZOOM_COMMANDS, ZOOM_STEPS, Zoom, ZoomChange, active_diagrams, background,
-    diagram_starts, export_name, find_dot, include_path, include_targets, included_files,
-    line_offset, mistake_trace, mistakes, normalized, plantuml_command, raster_factor, redraws_for,
+    diagram_starts, export_name, find_dot, find_include, include_path, included_files, line_offset,
+    mistake_trace, mistakes, normalized, plantuml_command, raster_factor, redraws_for,
     run_plantuml, setting_path, sized_svg, split_diagrams, svg_size, svg_to_pixels, svg_to_png,
     system_dot, watched_folders,
 };
@@ -62,16 +62,18 @@ pub enum PreviewKind {
 /// PlantUML's files: `.puml` and the other extensions its tools know.
 pub(crate) const PLANTUML_EXTENSIONS: [&str; 5] = ["puml", "plantuml", "pu", "iuml", "wsd"];
 
-/// The preview `buffer` has: from its language, or for PlantUML (which has no language of its
-/// own yet) from its file's extension.
+/// The preview `buffer` has: from its language, or for PlantUML from its file's extension too
+/// (a `.puml` shown as another language still has its diagrams).
 pub fn kind_of(buffer: &Buffer) -> Option<PreviewKind> {
     kind_for(buffer.language().map(|language| language.id), buffer.path())
 }
 
 /// The preview of a document in `language` (by id) kept at `path`.
 pub fn kind_for(language: Option<&str>, path: Option<&Path>) -> Option<PreviewKind> {
-    if language == Some("markdown") {
-        return Some(PreviewKind::Markdown);
+    match language {
+        Some("markdown") => return Some(PreviewKind::Markdown),
+        Some("plantuml") => return Some(PreviewKind::PlantUml),
+        _ => {}
     }
     let extension = path?.extension()?.to_str()?;
     PLANTUML_EXTENSIONS
