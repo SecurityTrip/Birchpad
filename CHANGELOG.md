@@ -49,6 +49,9 @@ version's release notes from its section here.
   name their files as PlantUML works them out (`!$name = ...`, `!$name ?= ...`, functions with
   `!return`, `%dirpath()`, `%getenv()`), so that the preview follows those files, places
   mistakes in them, and Ctrl+click on such a line opens the file.
+  A function's body is run as PlantUML runs it: `!unquoted function`, `!local` variables,
+  `!if`, `!elseif` and `!else` around its `!return`s, and the built-in functions such paths
+  use (`%get_variable_value`, `%strpos`, `%string` and their kin).
 - Closing to the tray, asked once (Windows and macOS): the first time the main window is
   closed (its close button, Alt+F4), Birchpad asks whether to minimize to the system tray or to
   close, and keeps the answer in `misc.close-to-tray`, which Preferences > MISC > Close button

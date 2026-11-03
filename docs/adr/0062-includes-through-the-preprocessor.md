@@ -27,10 +27,17 @@ does, as far as those includes need.
   - Variables: `!$name = value`, `!$name ?= value` (kept if set already), `!global $name =`.
     Values are expressions of strings in double or single quotes, numbers, variables, calls
     and `+`.
-  - Functions that return a value: `!function Name($a, $b = "default")` with its `!return`, on
-    its own lines or on the definition's line; procedures and their lines set nothing.
-  - Calls: the diagram's own functions, `%dirpath()` (the folder of the file being read) and
-    `%getenv(NAME)`; an argument that is no expression is taken as written
+  - Functions that return a value: `!function Name($a, $b = "default")` and
+    `!unquoted function`, on their own lines or on the definition's line. A call runs the body
+    as PlantUML does (roadmap 7.4y): its `!local` and `$` assignments, its `!if`, `!elseif`,
+    `!else` and `!endif`, up to the `!return` it reaches; expressions have `||`, `&&`,
+    comparisons, `+` (numbers add, texts join), `-`, `!` and parentheses. A condition that
+    cannot be worked out, or a body that returns nothing, gives no value. Procedures and their
+    lines set nothing.
+  - Calls: the diagram's own functions and the built-in ones paths are made with:
+    `%dirpath()` (the folder of the file being read), `%getenv`, `%get_variable_value`,
+    `%variable_exists`, `%string`, `%intval`, `%strlen`, `%strpos`, `%substr`, `%lower`,
+    `%upper`, `%true`, `%false`, `%not` and `%boolval`; an argument that is no expression is taken as written
     (`FromRoot(/billing/containers.puml)`), as PlantUML takes unquoted text. Calls nest at most 16
     deep.
   - An `!include`'s text has its variables and calls replaced by their values; the file is

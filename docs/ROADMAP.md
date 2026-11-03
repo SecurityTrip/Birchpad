@@ -968,7 +968,7 @@ Fit, the links to Graphviz, Ctrl+click on `!include $DIAGRAMS_ROOT/...` and the 
 an included file changes on disk work. Of the 16 diagrams with a mistake in an included file, 6
 name the file and open it at the line; 10 still say only that it is in an included file:
 
-- [ ] 7.4y Includes through functions of the diagram's own: the 10 include the file with the
+- [x] 7.4y Includes through functions of the diagram's own: the 10 include the file with the
       mistake by `!include FromRoot(/parts/billing/containers.puml)`, and `FromRoot` is
       not worked out. It is an `!unquoted function` with a `!local` variable,
       `%get_variable_value("$BRANCH")` and an `!if`/`!else` around its two `!return`s

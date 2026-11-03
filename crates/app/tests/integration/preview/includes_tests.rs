@@ -219,3 +219,134 @@ fn ctrl_click_on_an_include_through_a_function_opens_its_file(cx: &mut TestAppCo
         )
     );
 }
+
+/// A function shaped as the one 7.4y is about: unquoted, with a `!local` variable from
+/// `%get_variable_value` and its `!return`s in `!if`, `!elseif` and `!else`.
+const FROM_ROOT: &str = "!unquoted function FromRoot($path)\n\
+                         !local $branch = %get_variable_value(\"$BRANCH\")\n\
+                         !if %strpos($branch, \"release\") >= 0\n\
+                         !return $DIAGRAMS_ROOT + \"/released\" + $path\n\
+                         !elseif $branch == \"\"\n\
+                         !return $DIAGRAMS_ROOT + %string($path)\n\
+                         !else\n\
+                         !return $DIAGRAMS_ROOT + \"/\" + $branch + $path\n\
+                         !endif\n\
+                         !endfunction\n";
+
+#[test]
+fn functions_run_their_locals_and_branches() {
+    let call = |branch: Option<&str>| {
+        let mut text = String::from("!$DIAGRAMS_ROOT = \"../..\"\n");
+        if let Some(branch) = branch {
+            text.push_str(&format!("!$BRANCH = \"{branch}\"\n"));
+        }
+        text.push_str(FROM_ROOT);
+        after(&text).substitute("FromRoot(/parts/billing/containers.puml)", None)
+    };
+    assert_eq!(
+        call(None).as_deref(),
+        Some("../../parts/billing/containers.puml"),
+        "no branch: the !elseif"
+    );
+    assert_eq!(
+        call(Some("release-2")).as_deref(),
+        Some("../../released/parts/billing/containers.puml"),
+        "the !if"
+    );
+    assert_eq!(
+        call(Some("main")).as_deref(),
+        Some("../../main/parts/billing/containers.puml"),
+        "the !else"
+    );
+}
+
+#[test]
+fn nested_branches_and_branches_not_taken() {
+    let preprocessor = after(
+        "!function $pick($a, $b)\n\
+         !if $a == 1\n  !if $b == 1\n    !return \"both\"\n  !else\n    !return \"a\"\n  !endif\n\
+         !elseif $b == 1\n  !return \"b\"\n!endif\n!return \"none\"\n!endfunction\n\
+         !function $never()\n!if 0\n!return \"x\"\n!endif\n!endfunction\n\
+         !function $unknown()\n!if $NOPE == 1\n!return \"x\"\n!endif\n!return \"y\"\n!endfunction\n",
+    );
+    let value = |expr: &str| preprocessor.evaluate(expr, &HashMap::new(), None);
+    assert_eq!(value("$pick(1, 1)").as_deref(), Some("both"));
+    assert_eq!(value("$pick(1, 0)").as_deref(), Some("a"));
+    assert_eq!(value("$pick(0, 1)").as_deref(), Some("b"));
+    assert_eq!(
+        value("$pick(0, 0)").as_deref(),
+        Some("none"),
+        "after the !endif"
+    );
+    assert_eq!(value("$never()"), None, "no !return reached");
+    assert_eq!(
+        value("$unknown()"),
+        None,
+        "a condition that cannot be worked out"
+    );
+}
+
+#[test]
+fn built_in_functions_and_operators() {
+    let preprocessor = after("!$S = \"a/b/c\"\n!$N = 3\n");
+    let value = |expr: &str| preprocessor.evaluate(expr, &HashMap::new(), None);
+    for (expr, expected) in [
+        ("%strpos($S, \"/\")", "1"),
+        ("%strpos($S, \"x\")", "-1"),
+        ("%strpos(\"ж/\", \"/\")", "1"),
+        ("%string($N)", "3"),
+        ("%strlen($S)", "5"),
+        ("%substr($S, 2)", "b/c"),
+        ("%substr($S, 2, 1)", "b"),
+        ("%get_variable_value(\"$S\")", "a/b/c"),
+        ("%get_variable_value(\"$NONE\")", ""),
+        ("%variable_exists(\"$N\")", "1"),
+        ("%variable_exists(\"$NONE\")", "0"),
+        ("%intval(\"12\")", "12"),
+        ("%upper(\"ab\")", "AB"),
+        ("%lower(\"AB\")", "ab"),
+        ("%not(0)", "1"),
+        ("%true() && %false()", "0"),
+        ("%true() || %false()", "1"),
+        ("!0", "1"),
+        ("$N + 2", "5"),
+        ("$N - 5", "-2"),
+        ("$N + \"x\"", "3x"),
+        ("($N + 1) * 2", ""),
+        ("$N >= 3 && $N < 4", "1"),
+        ("10 > 9", "1"),
+        ("\"10\" == \"10\"", "1"),
+        ("\"b\" > \"a\"", "1"),
+        ("1 != 1", "0"),
+    ] {
+        let expected = (!expected.is_empty()).then(|| expected.to_owned());
+        assert_eq!(value(expr), expected, "{expr}");
+    }
+    // What cannot be worked out has no value.
+    for unknown in [
+        "%substr($S, -1)",
+        "\"x\" - 1",
+        "%intval(\"x\")",
+        "(1",
+        "\"open",
+    ] {
+        assert_eq!(value(unknown), None, "{unknown}");
+    }
+}
+
+#[test]
+fn includes_through_such_a_function_are_followed() {
+    let (dir, views) = repository();
+    let root = dir.path();
+    std::fs::write(root.join("fullpath.iuml"), FROM_ROOT).unwrap();
+    let text = "!$DIAGRAMS_ROOT ?= \"../..\"\n!include $DIAGRAMS_ROOT/fullpath.iuml\n\
+                !include FromRoot(/parts/billing/containers.puml)\n";
+    let found = walk_includes(text, Some(&views), &[views.clone()]);
+    assert_eq!(
+        found.files,
+        [
+            root.join("fullpath.iuml"),
+            root.join("parts").join("billing").join("containers.puml"),
+        ]
+    );
+}
