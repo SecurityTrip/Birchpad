@@ -12,6 +12,7 @@
 extern crate birchpad_i18n;
 
 pub mod app_state;
+pub mod close_to_tray;
 pub mod commands;
 pub mod compare;
 pub mod context_menu;

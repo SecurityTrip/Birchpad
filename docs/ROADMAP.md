@@ -916,7 +916,7 @@ are drawn; what is missing is the editing of their text (7.4r).
 - [x] 7.4s Moving about a diagram: dragging it with the mouse scrolls it, as a hand does; Fit
       Page beside Fit, the whole diagram in the preview, since a wide sequence diagram fitted to
       the width is too small to read
-- [ ] 7.4t Closing to the tray, asked once: the tray (7.4) is reached only by minimizing, and
+- [x] 7.4t Closing to the tray, asked once: the tray (7.4) is reached only by minimizing, and
       people do not find Preferences > MISC > Minimize to system tray. A new setting,
       `misc.close-to-tray`, with no value until the user is asked: closing the main window (its
       ×, Alt+F4) while it has none asks whether to minimize Birchpad to the system tray or to

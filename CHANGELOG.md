@@ -33,6 +33,10 @@ version's release notes from its section here.
 
 ### Added
 
+- Closing to the tray, asked once (Windows and macOS): the first time the main window is
+  closed (its close button, Alt+F4), Birchpad asks whether to minimize to the system tray or to
+  close, and keeps the answer in `misc.close-to-tray`, which Preferences > MISC > Close button
+  changes (ask, minimize to the tray, close). File > Exit always closes.
 - A PlantUML diagram is moved about by dragging it with the mouse, as by a hand, no further
   than its edges; View > Preview > Fit Diagrams to Page and a button in the preview's toolbar
   shrink a diagram larger than the preview, either way, to be seen whole (a wide sequence

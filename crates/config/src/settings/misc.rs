@@ -20,6 +20,22 @@ pub struct MiscSettings {
     /// menu bar on macOS), which brings it back ("Minimize to system tray"). Windows and macOS
     /// only.
     pub minimize_to_tray: bool,
+    /// What the main window's close button (and Alt+F4) does, where there is a tray: asks once,
+    /// minimize to the tray or close Birchpad. File > Exit always closes.
+    pub close_to_tray: CloseToTray,
+}
+
+/// What closing the main window does, where there is a tray.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum CloseToTray {
+    /// Not chosen yet: asked, and the answer saved.
+    #[default]
+    Ask,
+    /// Birchpad goes to the tray and keeps running.
+    Tray,
+    /// Birchpad closes.
+    Close,
 }
 
 impl Default for MiscSettings {
@@ -30,6 +46,7 @@ impl Default for MiscSettings {
             confirm_save_all: false,
             follow_symlinks: false,
             minimize_to_tray: false,
+            close_to_tray: CloseToTray::default(),
         }
     }
 }
