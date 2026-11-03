@@ -40,10 +40,11 @@ use crate::theme::{paint, ui};
 use crate::workspace::Workspace;
 
 pub use diagrams::{
-    DIAGRAM_END, Drawn, MAX_PNG_SIDE, MAX_ZOOMED_PIXELS, Mistake, NotDrawn, PLANTUML_DELAY, Stop,
-    StopOnDrop, ZOOM_COMMANDS, ZOOM_STEPS, Zoom, ZoomChange, active_diagrams, background,
-    diagram_starts, export_name, line_offset, mistakes, plantuml_command, raster_factor,
-    run_plantuml, setting_path, sized_svg, split_diagrams, svg_size, svg_to_pixels, svg_to_png,
+    DIAGRAM_END, Drawn, INCLUDE_PATH_VARIABLE, MAX_PNG_SIDE, MAX_ZOOMED_PIXELS, Mistake, NotDrawn,
+    PLANTUML_DELAY, Stop, StopOnDrop, ZOOM_COMMANDS, ZOOM_STEPS, Zoom, ZoomChange, active_diagrams,
+    background, diagram_starts, export_name, include_path, line_offset, mistakes, plantuml_command,
+    raster_factor, run_plantuml, setting_path, sized_svg, split_diagrams, svg_size, svg_to_pixels,
+    svg_to_png,
 };
 
 /// What a document's preview shows.
@@ -339,7 +340,9 @@ impl Preview {
                 markdown.update(cx, |markdown, cx| markdown.set_text(&text, cx));
             }
             Content::PlantUml(diagrams) => {
-                let setting = &AppState::global(cx).settings.preview.plantuml;
+                let settings = &AppState::global(cx).settings.preview;
+                let setting = &settings.plantuml;
+                let includes = settings.plantuml_include_path.clone();
                 // PlantUML runs in the document's folder: a relative setting is Birchpad's.
                 let setting = match std::env::current_dir() {
                     Ok(base) => setting_path(setting, &base),
@@ -350,6 +353,11 @@ impl Preview {
                     .path()
                     .and_then(Path::parent)
                     .map(Path::to_path_buf);
+                let include = include_path(
+                    folder.as_deref(),
+                    &includes,
+                    std::env::var_os(INCLUDE_PATH_VARIABLE).as_deref(),
+                );
                 let installed = crate::plantuml::installed(cx);
                 diagrams.installs = crate::plantuml::state(cx).map_or(0, |state| state.generation);
                 let executor = cx.background_executor().clone();
@@ -363,7 +371,14 @@ impl Preview {
                     let drawn = executor
                         .spawn(async move {
                             let (program, args) = plantuml_command(&setting, installed.as_deref());
-                            run_plantuml(&program, &args, folder.as_deref(), &text, &running)
+                            run_plantuml(
+                                &program,
+                                &args,
+                                folder.as_deref(),
+                                include.as_deref(),
+                                &text,
+                                &running,
+                            )
                         })
                         .await;
                     drop(stop);

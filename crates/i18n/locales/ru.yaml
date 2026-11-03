@@ -1246,6 +1246,7 @@ preferences:
   performance: "Производительность"
   plain-text: "Простой текст"
   plantuml-command-or-plantuml-jar: "PlantUML (команда или plantuml.jar)"
+  plantuml-more-folders-to-include-from: "PlantUML: другие папки для !include"
   plugins: "Плагины"
   preferences: "Настройки"
   prevent-typing-control-characters: "Не вводить управляющие символы"

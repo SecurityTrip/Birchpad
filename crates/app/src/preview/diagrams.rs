@@ -393,6 +393,52 @@ pub fn setting_path(setting: &str, base: &Path) -> String {
     base.join(path).display().to_string()
 }
 
+/// The environment variable PlantUML takes its include path from, as it takes the
+/// `plantuml.include.path` property: the folders `!include` looks in besides the one it runs in.
+pub const INCLUDE_PATH_VARIABLE: &str = "PLANTUML_INCLUDE_PATH";
+
+/// The include path PlantUML gets for a document in `folder`: that folder first, so that a file
+/// included from another folder finds what it includes by a path relative to the document (as
+/// IDE plugins and Confluence's macro find it); then the folders of `setting`
+/// (`preview.plantuml-include-path`, separated as in `PATH`, a relative one taken from the
+/// document's folder); then those of `inherited`, the variable Birchpad was started with.
+/// A folder that cannot be in such a list (its name has the separator in it) is left out, and
+/// so is a relative one with no document's folder to take it from; `None` when none is left.
+pub fn include_path(
+    folder: Option<&Path>,
+    setting: &str,
+    inherited: Option<&std::ffi::OsStr>,
+) -> Option<std::ffi::OsString> {
+    let mut folders: Vec<PathBuf> = Vec::new();
+    // Windows would put such a folder in quotes, which PlantUML does not take off.
+    let separator = if cfg!(windows) { ';' } else { ':' };
+    let mut add = |path: PathBuf| {
+        let joinable =
+            std::env::join_paths([&path]).is_ok() && !path.to_string_lossy().contains(separator);
+        if joinable && !path.as_os_str().is_empty() && !folders.contains(&path) {
+            folders.push(path);
+        }
+    };
+    if let Some(folder) = folder {
+        add(folder.to_path_buf());
+    }
+    for path in std::env::split_paths(setting) {
+        let trimmed = PathBuf::from(path.to_string_lossy().trim());
+        if trimmed.is_absolute() {
+            add(trimmed);
+        } else if let Some(folder) = folder.filter(|_| !trimmed.as_os_str().is_empty()) {
+            add(folder.join(trimmed));
+        }
+    }
+    for path in inherited.map(std::env::split_paths).into_iter().flatten() {
+        add(path);
+    }
+    if folders.is_empty() {
+        return None;
+    }
+    std::env::join_paths(folders).ok()
+}
+
 /// The SVG images in PlantUML's output, one per diagram.
 pub fn split_diagrams(output: &[u8]) -> Vec<Vec<u8>> {
     String::from_utf8_lossy(output)
@@ -718,12 +764,14 @@ impl Drop for StopOnDrop {
 }
 
 /// Runs `program` with `args` on `text`, as PlantUML, in `folder` (the document's, so that
-/// `!include` and images by relative path are found next to it): the diagrams it wrote and its
+/// `!include` and images by relative path are found next to it), with `include_path` (see
+/// [`include_path`]) for the files included files include: the diagrams it wrote and its
 /// mistakes, or why there are none. `stop` ends the run early.
 pub fn run_plantuml(
     program: &str,
     args: &[String],
     folder: Option<&Path>,
+    include_path: Option<&std::ffi::OsStr>,
     text: &str,
     stop: &Stop,
 ) -> Result<Drawn, NotDrawn> {
@@ -734,6 +782,9 @@ pub fn run_plantuml(
     // A folder that is gone leaves PlantUML in Birchpad's, rather than not running it.
     if let Some(folder) = folder.filter(|folder| folder.is_dir()) {
         command.current_dir(folder);
+    }
+    if let Some(include_path) = include_path {
+        command.env(INCLUDE_PATH_VARIABLE, include_path);
     }
     command
         .args(args)

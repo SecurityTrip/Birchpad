@@ -11,6 +11,12 @@ pub(super) const ENTRIES: &[Entry] = &[
     ),
     entry(
         "Preview",
+        "preview.plantuml-include-path",
+        "PlantUML: more folders to include from",
+        Kind::Text,
+    ),
+    entry(
+        "Preview",
         "preview.plantuml-background",
         "Diagram background",
         Kind::Choice(&[("white", "White"), ("theme", "As the theme")]),

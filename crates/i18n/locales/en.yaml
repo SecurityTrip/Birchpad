@@ -1234,6 +1234,7 @@ preferences:
   performance: "Performance"
   plain-text: "Plain text"
   plantuml-command-or-plantuml-jar: "PlantUML (command or plantuml.jar)"
+  plantuml-more-folders-to-include-from: "PlantUML: more folders to include from"
   plugins: "Plugins"
   preferences: "Preferences"
   prevent-typing-control-characters: "Prevent typing control characters"

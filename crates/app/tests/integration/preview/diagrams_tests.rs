@@ -119,8 +119,9 @@ fn a_stopped_run_ends_its_process() {
     let stop = Stop::default();
     let running = stop.clone();
     let started = Instant::now();
-    let run =
-        std::thread::spawn(move || run_plantuml(&program, &args, None, "@startuml", &running));
+    let run = std::thread::spawn(move || {
+        run_plantuml(&program, &args, None, None, "@startuml", &running)
+    });
     std::thread::sleep(Duration::from_millis(300));
     drop(StopOnDrop(stop));
     assert_eq!(run.join().unwrap(), Err(NotDrawn::Stopped));
@@ -136,13 +137,14 @@ fn a_run_stopped_before_it_starts_runs_nothing() {
     stop.stop();
     // Started, it would say that this program is missing.
     assert_eq!(
-        run_plantuml("birchpad-test-no-such-plantuml", &[], None, "", &stop),
+        run_plantuml("birchpad-test-no-such-plantuml", &[], None, None, "", &stop),
         Err(NotDrawn::Stopped)
     );
     assert!(matches!(
         run_plantuml(
             "birchpad-test-no-such-plantuml",
             &[],
+            None,
             None,
             "",
             &Stop::default()
@@ -342,6 +344,118 @@ fn plantuml_runs_in_the_documents_folder(cx: &mut TestAppContext) {
     );
 }
 
+/// `folders` as an include path, as PlantUML reads it.
+fn joined(folders: &[&Path]) -> std::ffi::OsString {
+    std::env::join_paths(folders).unwrap()
+}
+
+#[test]
+fn the_documents_folder_comes_first_in_the_include_path() {
+    let root = std::env::temp_dir().join("birchpad-include");
+    let document = root.join("views").join("context");
+    let library = root.join("library");
+    let setting = std::env::join_paths([library.as_path(), Path::new("../shared")]).unwrap();
+    assert_eq!(
+        include_path(Some(&document), setting.to_str().unwrap(), None),
+        Some(joined(&[&document, &library, &document.join("../shared")])),
+        "the document's folder, then the setting's, a relative one from the document's"
+    );
+    // Then the variable Birchpad was started with.
+    let inherited = joined(&[&root.join("inherited")]);
+    assert_eq!(
+        include_path(Some(&document), "", Some(&inherited)),
+        Some(joined(&[&document, &root.join("inherited")]))
+    );
+}
+
+#[test]
+fn an_include_path_leaves_out_what_cannot_be_in_it() {
+    let root = std::env::temp_dir().join("birchpad-include");
+    let library = root.join("library");
+    // No document's folder: a relative folder has nothing to be taken from.
+    let setting = std::env::join_paths([Path::new("relative"), library.as_path()]).unwrap();
+    assert_eq!(
+        include_path(None, setting.to_str().unwrap(), None),
+        Some(joined(&[&library]))
+    );
+    // A folder whose name has the separator in it cannot be listed.
+    let separator = if cfg!(windows) { ";" } else { ":" };
+    let odd = root.join(format!("a{separator}b"));
+    assert_eq!(
+        include_path(Some(&odd), "", None),
+        None,
+        "PlantUML still runs in it"
+    );
+    // The same folder twice is listed once.
+    let twice = std::env::join_paths([library.as_path(), library.as_path()]).unwrap();
+    assert_eq!(
+        include_path(
+            Some(&library),
+            twice.to_str().unwrap(),
+            Some(twice.as_os_str())
+        ),
+        Some(joined(&[&library]))
+    );
+}
+
+#[test]
+fn an_empty_include_path_is_none() {
+    assert_eq!(include_path(None, "", None), None);
+    let separator = if cfg!(windows) { ";" } else { ":" };
+    assert_eq!(
+        include_path(None, &format!(" {separator}  {separator}"), None),
+        None
+    );
+    assert_eq!(include_path(None, "", Some(std::ffi::OsStr::new(""))), None);
+    let folder = std::env::temp_dir();
+    assert_eq!(
+        include_path(Some(&folder), "  ", None),
+        Some(joined(&[&folder])),
+        "spaces are no folder"
+    );
+}
+
+#[gpui_kit::test]
+fn plantuml_gets_the_documents_folder_as_its_include_path(cx: &mut TestAppContext) {
+    let (workspace, cx) = open_workspace(cx);
+    let dir = tempfile::tempdir().unwrap();
+    // The diagram is the include path PlantUML was given.
+    let plantuml = fake_plantuml(
+        dir.path(),
+        "echo ^<svg^>%PLANTUML_INCLUDE_PATH%^</svg^>",
+        "echo \"<svg>$PLANTUML_INCLUDE_PATH</svg>\"",
+    );
+    let folder = dir.path().join("views");
+    std::fs::create_dir(&folder).unwrap();
+    let library = dir.path().join("library");
+    let setting = library.display().to_string();
+    cx.update(|_, cx| {
+        cx.global_mut::<AppState>()
+            .settings
+            .preview
+            .plantuml_include_path = setting;
+    });
+    let shown = draw(
+        &workspace,
+        &plantuml,
+        &folder,
+        "context.puml",
+        "@startuml
+!include ../shared/context.iuml
+@enduml
+",
+        cx,
+    );
+    let svg = shown.read_with(cx, |preview, _| preview.svgs()).remove(0);
+    let svg = String::from_utf8(svg).unwrap();
+    let expected = joined(&[&folder, &library]);
+    let expected = expected.to_str().unwrap();
+    assert!(
+        svg.starts_with(&format!("<svg>{expected}")),
+        "{svg} starts with {expected}"
+    );
+}
+
 fn run(workspace: &Entity<Workspace>, id: &str, cx: &mut VisualTestContext) -> anyhow::Result<()> {
     let result = workspace.update_in(cx, |workspace, window, cx| {
         workspace.dispatch(&birchpad_commands::Invocation::new(id), window, cx)
@@ -390,6 +504,7 @@ fn preferences_show_the_preview_settings() {
     use birchpad::preferences::{ENTRIES, Kind};
     let find = |key: &str| ENTRIES.iter().find(|entry| entry.key == key).unwrap();
     assert_eq!(find("preview.plantuml").kind, Kind::Text);
+    assert_eq!(find("preview.plantuml-include-path").kind, Kind::Text);
     let Kind::Choice(values) = find("preview.plantuml-background").kind else {
         panic!("a choice");
     };

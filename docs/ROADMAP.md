@@ -862,13 +862,16 @@ diagrams themselves, which the preview should show at the right place (7.4n). An
 from a user, whether sequence diagrams can be written as code in Birchpad: they can, and
 are drawn; what is missing is the editing of their text (7.4r).
 
-- [ ] 7.4m Files included by included files found: PlantUML gets the document's folder as its
-      include path (`-Dplantuml.include.path`) besides running in it, so that a file included
+- [x] 7.4m Files included by included files found: PlantUML gets the document's folder as its
+      include path (`PLANTUML_INCLUDE_PATH`, which PlantUML reads as it reads
+      `-Dplantuml.include.path`, and which reaches it whatever runs it) besides running in it, so that a file included
       from another folder (`shared/context.iuml`) that includes by a path relative to the
       document (`../../shared/billing/billing_context.puml`) finds it, as IDE plugins and
       Confluence's macro do. Without it, every context diagram of that repository failed with
       "cannot include"; with it, all 19 are drawn. Folders of the user's own after the
-      document's (`preview.plantuml-include-path`), for libraries kept elsewhere
+      document's (`preview.plantuml-include-path`, separated as in `PATH`, a relative one taken
+      from the document's folder), for libraries kept elsewhere, then those of the variable
+      Birchpad was started with
 - [ ] 7.4n Mistakes in included files placed where they are: PlantUML's error output gives the
       line in the file the mistake is in, and the preview takes it for a line of the document
       ("Line 40: Syntax Error?" on 12 container diagrams, a link to an `!include` line that has

@@ -60,3 +60,28 @@ fn diagrams_are_exported_at_twice_their_size_by_default() {
     );
     assert!(check_setting("preview.plantuml-png-scale", &toml::Value::Integer(-1)).is_err());
 }
+
+#[test]
+fn the_include_path_is_empty_by_default_and_text() {
+    assert_eq!(Settings::default().preview.plantuml_include_path, "");
+    let settings: Settings = toml::from_str(
+        "[preview]
+plantuml-include-path = \"lib;../shared\"
+",
+    )
+    .unwrap();
+    assert_eq!(settings.preview.plantuml_include_path, "lib;../shared");
+    check_setting(
+        "preview.plantuml-include-path",
+        &toml::Value::String(String::new()),
+    )
+    .unwrap();
+    assert!(check_setting("preview.plantuml-include-path", &toml::Value::Integer(1)).is_err());
+    assert!(
+        check_setting(
+            "preview.plantuml-include-path",
+            &toml::Value::Array(Vec::new())
+        )
+        .is_err()
+    );
+}

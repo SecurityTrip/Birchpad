@@ -11,6 +11,10 @@ pub struct PreviewSettings {
     /// default, the PlantUML Birchpad installed (View > Preview > Install PlantUML) runs when
     /// there is one.
     pub plantuml: String,
+    /// Folders `!include` looks in after the document's own, for libraries kept elsewhere:
+    /// separated as in `PATH` (`;` on Windows, `:` elsewhere), a relative one taken from the
+    /// document's folder. Empty: the document's folder alone.
+    pub plantuml_include_path: String,
     /// What PlantUML diagrams are drawn on in the preview: white, as PlantUML draws them for
     /// paper (the default), or the theme's background.
     pub plantuml_background: DiagramBackground,
@@ -22,6 +26,7 @@ impl Default for PreviewSettings {
     fn default() -> Self {
         Self {
             plantuml: "plantuml".to_owned(),
+            plantuml_include_path: String::new(),
             plantuml_background: DiagramBackground::default(),
             plantuml_png_scale: 2,
         }

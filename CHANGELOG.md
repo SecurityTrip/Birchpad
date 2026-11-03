@@ -6,6 +6,18 @@ version's release notes from its section here.
 
 ## [Unreleased]
 
+### Fixed
+
+- A PlantUML file included from another folder finds what it includes by a path relative to
+  the document, as IDE plugins and Confluence's macro find it: the preview gives PlantUML the
+  document's folder as its include path (`PLANTUML_INCLUDE_PATH`) besides running it there.
+  Before, such diagrams were not drawn ("cannot include").
+
+### Added
+
+- `preview.plantuml-include-path` (Preferences > Preview): folders `!include` looks in after
+  the document's, separated as in `PATH`, a relative one taken from the document's folder.
+
 ## [0.7.6] - 2026-10-30
 
 ### Security

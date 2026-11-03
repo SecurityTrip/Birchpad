@@ -1232,6 +1232,7 @@ preferences:
   performance: "Leistung"
   plain-text: "Nur Text"
   plantuml-command-or-plantuml-jar: "PlantUML (Befehl oder plantuml.jar)"
+  plantuml-more-folders-to-include-from: "PlantUML: weitere Ordner für !include"
   plugins: "Plugins"
   preferences: "Einstellungen"
   prevent-typing-control-characters: "Eingabe von Steuerzeichen verhindern"
