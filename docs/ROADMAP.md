@@ -997,7 +997,7 @@ relative to the document, and open it at the line, those included through a func
 diagram's own too; Ctrl+click on such an `!include` opens the file, and saving it in Birchpad
 draws the diagram again. What is left:
 
-- [ ] 7.4aa The picture of a mistake folded: once the preview has listed a mistake above the
+- [x] 7.4aa The picture of a mistake folded: once the preview has listed a mistake above the
       diagrams, with its file, line and message, PlantUML's picture of it says the same again,
       as tall as the preview, and PlantUML adds to it at random its own banners ("Add your own
       dedication into PlantUML. For just $5 per month", Patreon) and joke lines, on white or on

@@ -1233,6 +1233,37 @@ fn crash(lines: &[&str]) -> Option<Mistake> {
     })
 }
 
+/// The diagrams (by index) that are PlantUML's pictures of mistakes the preview has placed: a
+/// mistake on a line of the document, or found in an included file, whose list above the
+/// diagrams says what the picture says again. Each mistake's picture is found as [`mistakes`]
+/// finds it, by its message, in the order of the diagrams; a mistake with no place keeps its
+/// picture shown, so that what PlantUML says is not lost.
+pub fn folded_pictures(mistakes: &[Mistake], diagrams: &[Vec<u8>]) -> Vec<usize> {
+    let mut folded = Vec::new();
+    let mut next = 0;
+    for mistake in mistakes {
+        if mistake.details.is_some() {
+            continue;
+        }
+        let shown = escape_xml(&mistake.message);
+        let Some(index) = (next..diagrams.len())
+            .find(|&index| String::from_utf8_lossy(&diagrams[index]).contains(&shown))
+        else {
+            continue;
+        };
+        next = index + 1;
+        let placed = mistake.line.is_some()
+            || mistake
+                .included
+                .as_ref()
+                .is_some_and(|included| included.path.is_some());
+        if placed {
+            folded.push(index);
+        }
+    }
+    folded
+}
+
 /// Where line `line` (from 0) of `text` starts, in bytes; the end of the text past its last
 /// line. `\n`, `\r\n` and `\r` end lines.
 pub fn line_offset(text: &str, line: usize) -> usize {

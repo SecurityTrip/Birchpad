@@ -8,6 +8,10 @@ version's release notes from its section here.
 
 ### Changed
 
+- PlantUML's picture of a mistake the preview has placed (on a line of the document, or in
+  an included file) is folded under a line that shows it on a click: the list above the
+  diagrams says the same, and the picture, as tall as the preview, carried PlantUML's own
+  banners. A mistake with no place keeps its picture shown.
 - PlantUML diagrams are drawn much faster as they are edited
   ([ADR 0060](docs/adr/0060-plantuml-kept-running.md)): the PlantUML Birchpad installs, and a
   `plantuml.jar`, are kept running and given each drawing in turn, rather than Java being

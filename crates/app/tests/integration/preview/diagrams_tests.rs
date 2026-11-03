@@ -2102,3 +2102,102 @@ fn a_mistake_above_the_document_is_named_relative_to_it() {
     );
     assert_eq!(place.path, Some(file));
 }
+
+fn mistake_at(line: Option<usize>, message: &str, path: Option<PathBuf>) -> Mistake {
+    Mistake {
+        line,
+        message: message.into(),
+        included: path.map(|path| Included {
+            file: "lib.iuml".into(),
+            line: 1,
+            shown: None,
+            path: Some(path),
+        }),
+        details: None,
+    }
+}
+
+#[test]
+fn pictures_of_placed_mistakes_are_folded() {
+    let diagrams = [
+        b"<svg>A B</svg>".to_vec(),
+        picture("Syntax Error?"),
+        picture("Oops"),
+        picture("cannot &lt;draw>"),
+    ];
+    let found = [
+        mistake_at(Some(3), "Syntax Error?", None),
+        mistake_at(None, "Oops", Some(PathBuf::from("lib.iuml"))),
+        mistake_at(Some(9), "cannot <draw>", None),
+    ];
+    assert_eq!(
+        folded_pictures(&found, &diagrams),
+        [1, 2, 3],
+        "by a line, or by a file"
+    );
+    // A mistake with no place keeps its picture; a crash's is its own.
+    let unplaced = [mistake_at(None, "Oops", None)];
+    assert!(folded_pictures(&unplaced, &diagrams).is_empty());
+    let crash = mistakes(CRASH, "@startuml\n@enduml", &[picture("crash")]);
+    assert!(folded_pictures(&crash, &[picture("crash")]).is_empty());
+    // A message no picture shows folds nothing; nothing folds nothing.
+    assert!(folded_pictures(&[mistake_at(Some(1), "elsewhere", None)], &diagrams).is_empty());
+    assert!(folded_pictures(&[], &diagrams).is_empty());
+    assert!(folded_pictures(&found, &[]).is_empty());
+    // Two mistakes of the same message: one picture each, in order.
+    let twice = [
+        mistake_at(Some(1), "Syntax Error?", None),
+        mistake_at(None, "Syntax Error?", None),
+    ];
+    let both = [picture("Syntax Error?"), picture("Syntax Error?")];
+    assert_eq!(
+        folded_pictures(&twice, &both),
+        [0],
+        "the second has no place"
+    );
+}
+
+#[gpui_kit::test]
+fn the_picture_of_a_placed_mistake_shows_on_a_click(cx: &mut TestAppContext) {
+    let (workspace, cx) = open_workspace(cx);
+    let dir = tempfile::tempdir().unwrap();
+    let plantuml = fake_plantuml(
+        dir.path(),
+        "echo ^<svg width=\"200px\" height=\"80px\"^>^<text^>Syntax Error?^</text^>^</svg^>\n\
+         >&2 echo ERROR\n>&2 echo 1\n>&2 echo Syntax Error?\nexit /b 200",
+        "echo '<svg width=\"200px\" height=\"80px\"><text>Syntax Error?</text></svg>'\n\
+         echo ERROR >&2\necho 1 >&2\necho 'Syntax Error?' >&2\nexit 200",
+    );
+    let shown = draw(
+        &workspace,
+        &plantuml,
+        dir.path(),
+        "flow.puml",
+        "@startuml\nqux\n@enduml\n",
+        cx,
+    );
+    assert_eq!(
+        shown.read_with(cx, |preview, _| preview.folded()),
+        (vec![0], vec![])
+    );
+    cx.update(|window, _| window.refresh());
+    cx.run_until_parked();
+    assert!(cx.debug_bounds("plantuml-diagram-0").is_none(), "folded");
+    shown.update(cx, |preview, cx| preview.toggle_picture(0, cx));
+    assert_eq!(
+        shown.read_with(cx, |preview, _| preview.folded()),
+        (vec![0], vec![0])
+    );
+    cx.update(|window, _| window.refresh());
+    cx.run_until_parked();
+    assert!(cx.debug_bounds("plantuml-diagram-0").is_some(), "shown");
+    // Folded again; a diagram that is no such picture is not toggled.
+    shown.update(cx, |preview, cx| {
+        preview.toggle_picture(0, cx);
+        preview.toggle_picture(5, cx);
+    });
+    assert_eq!(
+        shown.read_with(cx, |preview, _| preview.folded()),
+        (vec![0], vec![])
+    );
+}

@@ -50,10 +50,10 @@ pub use diagrams::{
     Included, Layout, MAX_PNG_SIDE, MAX_ZOOMED_PIXELS, Mistake, NotDrawn, PLANTUML_DELAY, Stop,
     StopOnDrop, ZOOM_COMMANDS, ZOOM_STEPS, Zoom, ZoomChange, active_diagrams, background,
     diagram_starts, dragged_offset, export_name, find_dot, find_include, fit_page_scale,
-    fit_width_scale, include_path, line_offset, mistake_trace, mistakes, normalized, pictured_line,
-    place_in_includes, plantuml_command, raster_factor, redraws_for, relative_to, run_plantuml,
-    setting_path, sized_svg, split_diagrams, svg_size, svg_to_pixels, svg_to_png, system_dot,
-    waits_for_graphviz, watched_folders,
+    fit_width_scale, folded_pictures, include_path, line_offset, mistake_trace, mistakes,
+    normalized, pictured_line, place_in_includes, plantuml_command, raster_factor, redraws_for,
+    relative_to, run_plantuml, setting_path, sized_svg, split_diagrams, svg_size, svg_to_pixels,
+    svg_to_png, system_dot, waits_for_graphviz, watched_folders,
 };
 pub use includes::{IncludeLink, Includes, MOST_INCLUDED_FILES, Preprocessor, walk_includes};
 
@@ -252,6 +252,10 @@ struct Diagrams {
     /// After a crash of smetana with the automatic layout: looking for Graphviz now and then,
     /// to draw again with it once it is installed.
     graphviz: Option<Task<()>>,
+    /// The diagrams that are pictures of mistakes placed above them, folded ([`folded_pictures`]).
+    folded: Vec<usize>,
+    /// Those of them shown all the same, by a click.
+    unfolded: Vec<usize>,
     /// The files the document includes, found when it was last drawn.
     included: Vec<PathBuf>,
     /// Watches the folders of the document and of the files it includes.
@@ -583,9 +587,12 @@ impl Preview {
                 let zoom = diagrams.zoom;
                 diagrams.images = drawn
                     .diagrams
-                    .into_iter()
+                    .iter()
+                    .cloned()
                     .map(|svg| Diagram::new(svg, zoom))
                     .collect();
+                diagrams.folded = folded_pictures(&drawn.mistakes, &drawn.diagrams);
+                diagrams.unfolded.clear();
                 diagrams.mistakes = drawn.mistakes;
                 diagrams.error = None;
                 diagrams.missing = false;
@@ -998,6 +1005,31 @@ impl Preview {
         matches!(&self.content, Content::PlantUml(diagrams) if diagrams.graphviz.is_some())
     }
 
+    /// Shows the folded picture of a placed mistake, diagram `index`, or folds it again.
+    pub fn toggle_picture(&mut self, index: usize, cx: &mut Context<Self>) {
+        if let Content::PlantUml(diagrams) = &mut self.content
+            && diagrams.folded.contains(&index)
+        {
+            match diagrams.unfolded.iter().position(|&shown| shown == index) {
+                Some(at) => {
+                    diagrams.unfolded.remove(at);
+                }
+                None => diagrams.unfolded.push(index),
+            }
+            cx.notify();
+        }
+    }
+
+    /// The diagrams folded as pictures of placed mistakes, and those shown all the same (for
+    /// tests).
+    #[cfg(feature = "test-support")]
+    pub fn folded(&self) -> (Vec<usize>, Vec<usize>) {
+        match &self.content {
+            Content::PlantUml(diagrams) => (diagrams.folded.clone(), diagrams.unfolded.clone()),
+            Content::Markdown(_) => (Vec::new(), Vec::new()),
+        }
+    }
+
     /// Shows or folds the details of a crash of PlantUML.
     pub fn toggle_details(&mut self, cx: &mut Context<Self>) {
         if let Content::PlantUml(diagrams) = &mut self.content {
@@ -1164,6 +1196,27 @@ impl Preview {
                 list.child(Self::render_install(cx))
             })
             .children(diagrams.images.iter().enumerate().map(|(index, diagram)| {
+                let folded = diagrams.folded.contains(&index);
+                let shown = !folded || diagrams.unfolded.contains(&index);
+                // The picture of a placed mistake: a line that shows it, or hides it again.
+                let toggle = folded.then(|| {
+                    let this = this.clone();
+                    div()
+                        .id(("plantuml-picture-toggle", index))
+                        .w_full()
+                        .text_color(paint(ui().muted))
+                        .cursor_pointer()
+                        .hover(|row| row.underline())
+                        .on_click(move |_, _, cx| {
+                            this.update(cx, |this, cx| this.toggle_picture(index, cx))
+                                .ok();
+                        })
+                        .child(if shown {
+                            t!("preview.plantuml-hide-picture")
+                        } else {
+                            t!("preview.plantuml-show-picture")
+                        })
+                });
                 let image = img(ImageSource::Image(diagram.shown()));
                 // At a zoom, the diagram's size times it; at Fit, no wider than the preview.
                 let image = match (zoom, diagram.size) {
@@ -1182,7 +1235,7 @@ impl Preview {
                 };
                 // Diagrams are made for paper: on white, unless the theme's background is asked.
                 // Centered while it fits; a wider one starts at the left, to scroll to.
-                div()
+                let card = div()
                     .id(("plantuml-diagram", index))
                     .debug_selector(move || format!("plantuml-diagram-{index}"))
                     .flex_none()
@@ -1190,7 +1243,14 @@ impl Preview {
                     .when(zoom.is_none(), |card| card.max_w_full())
                     .when(white, |card| card.bg(gpui_kit::white()))
                     .child(image)
-                    .context_menu(Self::diagram_menu(index, workspace.clone()))
+                    .context_menu(Self::diagram_menu(index, workspace.clone()));
+                div()
+                    .w_full()
+                    .flex()
+                    .flex_col()
+                    .gap_2()
+                    .children(toggle)
+                    .when(shown, |column| column.child(card))
             }));
         div()
             .size_full()
