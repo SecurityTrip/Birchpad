@@ -1346,6 +1346,8 @@ preview:
   plantuml-drawing: "PlantUML рисует диаграмму..."
   plantuml-failed: "PlantUML не запустился: {error}"
   plantuml-mistake: "Строка {line}: {message}"
+  plantuml-mistake-in-file: "{file}, строка {at}: {message}"
+  plantuml-mistake-included: "Строка {line}: {file}, строка {at}: {message}"
   plantuml-no-diagram: "PlantUML не нарисовал диаграмму: в тексте нужны @startuml и @enduml"
   plantuml-not-found: "PlantUML не найден ({program}). Установите его или укажите в настройках preview.plantuml команду plantuml или путь к plantuml.jar (нужна Java)."
   preview-only: "Только просмотр"

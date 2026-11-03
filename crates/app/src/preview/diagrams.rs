@@ -605,11 +605,65 @@ pub fn sized_svg(svg: &[u8], size: (f32, f32)) -> Vec<u8> {
 }
 
 /// A mistake PlantUML found: what it says, and the line of the document it is on (from 0),
-/// when that is known.
+/// when that is known. A mistake in an included file is on the document's `!include` line that
+/// leads to it, and says which file it is in.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Mistake {
     pub line: Option<usize>,
     pub message: String,
+    pub included: Option<Included>,
+}
+
+/// Where in an included file a mistake is: the file as PlantUML names it, and the line (from 1).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Included {
+    pub file: String,
+    pub line: usize,
+}
+
+/// What PlantUML calls the document it reads from its input in a mistake's trace.
+const DOCUMENT_SOURCE: &str = "string";
+
+/// The trace in PlantUML's picture of a mistake: the `[From name (line N) ]` lines, where the
+/// mistake is first, then each `!include` that led to it, the document (`string`) last. Lines
+/// count from 1, from the diagram's `@start` line in the document.
+pub fn mistake_trace(svg: &str) -> Vec<(String, usize)> {
+    const FROM: &str = "[From ";
+    const LINE: &str = " (line ";
+    let mut trace = Vec::new();
+    let mut rest = svg;
+    while let Some(at) = rest.find(FROM) {
+        rest = &rest[at + FROM.len()..];
+        // The name ends at the last ` (line ` of the text it is in.
+        let text = &rest[..rest.find('<').unwrap_or(rest.len())];
+        let Some(name_end) = text.rfind(LINE) else {
+            continue;
+        };
+        let number = &text[name_end + LINE.len()..];
+        let digits = number
+            .find(|c: char| !c.is_ascii_digit())
+            .unwrap_or(number.len());
+        let (Ok(line), Some(')')) = (
+            number[..digits].parse::<usize>(),
+            number[digits..].chars().next(),
+        ) else {
+            continue;
+        };
+        let name = unescape_xml(&text[..name_end]);
+        if !name.is_empty() {
+            trace.push((name, line));
+        }
+    }
+    trace
+}
+
+fn unescape_xml(text: &str) -> String {
+    text.replace("&lt;", "<")
+        .replace("&gt;", ">")
+        .replace("&quot;", "\"")
+        .replace("&apos;", "'")
+        .replace("&#39;", "'")
+        .replace("&amp;", "&")
 }
 
 /// The lines (from 0) where the diagrams of `text` start: `@startuml`, `@startmindmap` and the
@@ -633,7 +687,8 @@ fn escape_xml(text: &str) -> String {
 /// The mistakes in PlantUML's error output: for each diagram with mistakes, `ERROR`, the line
 /// in the diagram (from its `@start` line, 0) and what is wrong, in the order of the diagrams.
 /// Each is placed in the document `text` by the diagram whose picture (in `diagrams`) shows its
-/// message. Output in another form is one mistake, without a line.
+/// message, and by the trace in that picture ([`mistake_trace`]) when it is in an included file.
+/// Output in another form is one mistake, without a line.
 pub fn mistakes(stderr: &str, text: &str, diagrams: &[Vec<u8>]) -> Vec<Mistake> {
     let lines: Vec<&str> = stderr
         .lines()
@@ -654,13 +709,35 @@ pub fn mistakes(stderr: &str, text: &str, diagrams: &[Vec<u8>]) -> Vec<Mistake> 
             break;
         };
         let shown = escape_xml(message);
-        let diagram = (next..diagrams.len())
-            .find(|&index| String::from_utf8_lossy(&diagrams[index]).contains(&shown))
-            .unwrap_or(next);
+        let pictured = (next..diagrams.len())
+            .find(|&index| String::from_utf8_lossy(&diagrams[index]).contains(&shown));
+        let diagram = pictured.unwrap_or(next);
         next = diagram + 1;
+        let start = starts.get(diagram).copied();
+        let trace = pictured
+            .map(|index| mistake_trace(&String::from_utf8_lossy(&diagrams[index])))
+            .unwrap_or_default();
+        // The line in the error output is in the file the mistake is in: in an included file,
+        // the mistake is placed on the last of the document's lines that led to it.
+        let (line, included) = match trace.first() {
+            Some((file, at)) if file != DOCUMENT_SOURCE => {
+                let document = trace
+                    .iter()
+                    .rev()
+                    .find(|(name, _)| name == DOCUMENT_SOURCE)
+                    .and_then(|(_, at)| start?.checked_add(at.checked_sub(1)?));
+                let included = Included {
+                    file: file.clone(),
+                    line: *at,
+                };
+                (document, Some(included))
+            }
+            _ => (start.and_then(|start| start.checked_add(line)), None),
+        };
         found.push(Mistake {
-            line: starts.get(diagram).map(|start| start + line),
+            line,
             message: (*message).to_owned(),
+            included,
         });
         at += 3;
     }
@@ -668,6 +745,7 @@ pub fn mistakes(stderr: &str, text: &str, diagrams: &[Vec<u8>]) -> Vec<Mistake> 
         found.push(Mistake {
             line: None,
             message: lines.join("\n"),
+            included: None,
         });
     }
     found

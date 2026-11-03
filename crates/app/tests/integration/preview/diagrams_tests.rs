@@ -43,7 +43,8 @@ fn mistakes_are_placed_on_the_lines_of_their_diagrams() {
         mistakes(&stderr, text, &diagrams),
         [Mistake {
             line: Some(8),
-            message: error.to_owned()
+            message: error.to_owned(),
+            included: None,
         }],
         "the second diagram's third line"
     );
@@ -59,6 +60,144 @@ fn mistakes_are_placed_on_the_lines_of_their_diagrams() {
     assert_eq!(found[1].message, "cannot include <baz>");
 }
 
+/// PlantUML's picture of a mistake with its trace: where the mistake is, then each `!include`
+/// that led to it, as `[From name (line N) ]` lines.
+fn traced(message: &str, trace: &[(&str, usize)]) -> Vec<u8> {
+    let trace: String = trace
+        .iter()
+        .map(|(name, line)| format!("<text>[From {name} (line {line}) ]</text>"))
+        .collect();
+    format!("<svg><text>PlantUML 1.2026.9</text>{trace}<text>{message}</text></svg>").into_bytes()
+}
+
+#[test]
+fn a_mistake_in_an_included_file_is_placed_on_the_include_line() {
+    // `!include` on the document's fourth line, the diagram's third from `@startuml`.
+    let text = "' c\n@startuml\nA -> B\n!include ../../domains/bad.iuml\nB -> C\n@enduml\n";
+    let error = "Syntax Error? (Assumed diagram type: class)";
+    let diagrams = [traced(
+        error,
+        &[("../../domains/bad.iuml", 40), ("string", 3)],
+    )];
+    // The error output gives the line in the included file.
+    let stderr = format!("ERROR\n39\n{error}\n");
+    assert_eq!(
+        mistakes(&stderr, text, &diagrams),
+        [Mistake {
+            line: Some(3),
+            message: error.to_owned(),
+            included: Some(Included {
+                file: "../../domains/bad.iuml".into(),
+                line: 40,
+            }),
+        }]
+    );
+    // Through another included file: the last of the document's lines.
+    let diagrams = [traced(
+        error,
+        &[
+            ("bad.iuml", 3),
+            ("../../domains/mid.iuml", 1),
+            ("string", 3),
+        ],
+    )];
+    let found = mistakes(
+        "ERROR\n2\nSyntax Error? (Assumed diagram type: class)",
+        text,
+        &diagrams,
+    );
+    assert_eq!(found[0].line, Some(3));
+    assert_eq!(found[0].included.as_ref().unwrap().file, "bad.iuml");
+}
+
+#[test]
+fn a_mistake_in_an_included_file_without_the_documents_line_has_no_line() {
+    let text = "@startuml\n!include lib.iuml\n@enduml\n";
+    // No document in the trace: the file is named, no line of the document is.
+    let diagrams = [traced("Oops", &[("lib.iuml", 7)])];
+    let found = mistakes("ERROR\n6\nOops\n", text, &diagrams);
+    assert_eq!(found[0].line, None);
+    assert_eq!(
+        found[0].included,
+        Some(Included {
+            file: "lib.iuml".into(),
+            line: 7
+        })
+    );
+    // A trace with a line 0 for the document leads to no line either.
+    let diagrams = [traced("Oops", &[("lib.iuml", 7), ("string", 0)])];
+    assert_eq!(mistakes("ERROR\n6\nOops\n", text, &diagrams)[0].line, None);
+    // The trace of a picture that does not show the message is not taken.
+    let diagrams = [traced("Other", &[("lib.iuml", 7), ("string", 2)])];
+    let found = mistakes("ERROR\n1\nOops\n", text, &diagrams);
+    assert_eq!((found[0].line, found[0].included.clone()), (Some(1), None));
+}
+
+#[test]
+fn a_mistake_in_the_document_stays_on_its_line() {
+    let text = "@startuml\nqux\n@enduml\n";
+    // Traced to the document, or without a trace (an older PlantUML): the error output's line.
+    for diagrams in [
+        [traced("Syntax Error?", &[("string", 2)])],
+        [picture("Syntax Error?")],
+    ] {
+        assert_eq!(
+            mistakes("ERROR\n1\nSyntax Error?\n", text, &diagrams),
+            [Mistake {
+                line: Some(1),
+                message: "Syntax Error?".into(),
+                included: None,
+            }]
+        );
+    }
+    // A line past any document's, after the document's first line: no line, and no panic.
+    let found = mistakes(
+        "ERROR
+18446744073709551615
+Syntax Error?
+",
+        "
+@startuml
+@enduml",
+        &[picture("Syntax Error?")],
+    );
+    assert_eq!(found[0].line, None);
+}
+
+#[test]
+fn a_mistakes_trace_is_read_from_its_picture() {
+    let svg = String::from_utf8(traced(
+        "x",
+        &[("a &amp; b (line 2).iuml", 12), ("string", 1)],
+    ))
+    .unwrap();
+    assert_eq!(
+        mistake_trace(&svg),
+        [
+            ("a & b (line 2).iuml".to_owned(), 12),
+            ("string".to_owned(), 1)
+        ],
+        "the last `(line` ends the name"
+    );
+    assert!(mistake_trace("").is_empty());
+    assert!(mistake_trace("<svg><text>[From</text></svg>").is_empty());
+    // Cut short, without a number or its parenthesis, or without a name: left out.
+    for broken in [
+        "[From a.iuml (line ",
+        "[From a.iuml (line 3",
+        "[From a.iuml (line x) ]",
+        "[From  (line 3) ]",
+        "[From a.iuml line 3 ]",
+    ] {
+        assert!(mistake_trace(broken).is_empty(), "{broken}");
+    }
+    assert_eq!(
+        mistake_trace("[From a (line 18446744073709551615) ]"),
+        [("a".to_owned(), usize::MAX)],
+        "the largest line"
+    );
+}
+
 #[test]
 fn other_error_output_is_one_mistake_without_a_line() {
     let diagrams = [picture("?")];
@@ -70,7 +209,8 @@ fn other_error_output_is_one_mistake_without_a_line() {
         ),
         [Mistake {
             line: None,
-            message: "Exception in thread main\nat Foo".to_owned()
+            message: "Exception in thread main\nat Foo".to_owned(),
+            included: None,
         }]
     );
     assert!(mistakes("", "@startuml\n@enduml", &diagrams).is_empty());
@@ -242,7 +382,8 @@ fn the_preview_lists_mistakes_and_goes_to_their_lines(cx: &mut TestAppContext) {
         found,
         [Mistake {
             line: Some(2),
-            message: "Syntax Error?".into()
+            message: "Syntax Error?".into(),
+            included: None,
         }]
     );
     cx.update(|window, cx| Preview::go_to_line(&shown, 2, window, cx));

@@ -12,6 +12,10 @@ version's release notes from its section here.
   the document, as IDE plugins and Confluence's macro find it: the preview gives PlantUML the
   document's folder as its include path (`PLANTUML_INCLUDE_PATH`) besides running it there.
   Before, such diagrams were not drawn ("cannot include").
+- A mistake in a file a PlantUML diagram includes is no longer listed on a line of the
+  document it has nothing to do with: the preview reads where it is from PlantUML's picture of
+  it, names the file and its line, and links to the document's `!include` line that leads to it
+  (none when there is none).
 
 ### Added
 

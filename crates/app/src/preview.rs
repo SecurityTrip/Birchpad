@@ -40,11 +40,11 @@ use crate::theme::{paint, ui};
 use crate::workspace::Workspace;
 
 pub use diagrams::{
-    DIAGRAM_END, Drawn, INCLUDE_PATH_VARIABLE, MAX_PNG_SIDE, MAX_ZOOMED_PIXELS, Mistake, NotDrawn,
-    PLANTUML_DELAY, Stop, StopOnDrop, ZOOM_COMMANDS, ZOOM_STEPS, Zoom, ZoomChange, active_diagrams,
-    background, diagram_starts, export_name, include_path, line_offset, mistakes, plantuml_command,
-    raster_factor, run_plantuml, setting_path, sized_svg, split_diagrams, svg_size, svg_to_pixels,
-    svg_to_png,
+    DIAGRAM_END, Drawn, INCLUDE_PATH_VARIABLE, Included, MAX_PNG_SIDE, MAX_ZOOMED_PIXELS, Mistake,
+    NotDrawn, PLANTUML_DELAY, Stop, StopOnDrop, ZOOM_COMMANDS, ZOOM_STEPS, Zoom, ZoomChange,
+    active_diagrams, background, diagram_starts, export_name, include_path, line_offset,
+    mistake_trace, mistakes, plantuml_command, raster_factor, run_plantuml, setting_path,
+    sized_svg, split_diagrams, svg_size, svg_to_pixels, svg_to_png,
 };
 
 /// What a document's preview shows.
@@ -648,13 +648,29 @@ impl Preview {
             .flex_col()
             .gap_1()
             .children(mistakes.iter().enumerate().map(|(index, mistake)| {
-                let text = match mistake.line {
-                    Some(line) => t!(
-                        "preview.plantuml-mistake",
+                let message = mistake.message.as_str();
+                let text = match (mistake.line, &mistake.included) {
+                    (Some(line), Some(included)) => t!(
+                        "preview.plantuml-mistake-included",
                         line = line + 1,
-                        message = mistake.message.as_str()
+                        file = included.file.as_str(),
+                        at = included.line,
+                        message = message
                     ),
-                    None => mistake.message.clone(),
+                    (None, Some(included)) => t!(
+                        "preview.plantuml-mistake-in-file",
+                        file = included.file.as_str(),
+                        at = included.line,
+                        message = message
+                    ),
+                    (Some(line), None) => {
+                        t!(
+                            "preview.plantuml-mistake",
+                            line = line + 1,
+                            message = message
+                        )
+                    }
+                    (None, None) => mistake.message.clone(),
                 };
                 let this = this.clone();
                 let line = mistake.line;

@@ -1332,6 +1332,8 @@ preview:
   plantuml-drawing: "PlantUML zeichnet das Diagramm..."
   plantuml-failed: "PlantUML lief nicht: {error}"
   plantuml-mistake: "Zeile {line}: {message}"
+  plantuml-mistake-in-file: "{file}, Zeile {at}: {message}"
+  plantuml-mistake-included: "Zeile {line}: {file}, Zeile {at}: {message}"
   plantuml-no-diagram: "PlantUML hat kein Diagramm gezeichnet: Der Text braucht @startuml und @enduml"
   plantuml-not-found: "PlantUML wurde nicht gefunden ({program}). Installieren Sie es oder setzen Sie preview.plantuml in den Einstellungen auf den Befehl plantuml oder auf plantuml.jar (Java wird benötigt)."
   preview-only: "Nur Vorschau"
