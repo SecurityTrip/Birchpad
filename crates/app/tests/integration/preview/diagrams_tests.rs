@@ -1437,6 +1437,66 @@ fn preferences_show_the_preview_settings() {
 }
 
 #[test]
+fn fit_shrinks_a_wide_diagram_to_the_width_alone() {
+    assert_eq!(fit_width_scale((2000., 100.), 500.), 0.25);
+    assert_eq!(
+        fit_width_scale((100., 4000.), 500.),
+        1.,
+        "a tall one is not shrunk"
+    );
+    assert_eq!(fit_width_scale((500., 10.), 500.), 1., "exactly the room");
+    assert_eq!(fit_width_scale((0., 10.), 500.), 1.);
+    assert_eq!(fit_width_scale((100., 10.), 0.), 1., "no room yet");
+    assert_eq!(fit_width_scale((100., 10.), -1.), 1.);
+}
+
+/// The card of the first diagram, as laid out: its width and height.
+fn card(cx: &mut VisualTestContext) -> (f32, f32) {
+    cx.update(|window, _| window.refresh());
+    cx.run_until_parked();
+    let bounds = cx.debug_bounds("plantuml-diagram-0").expect("a card");
+    (f32::from(bounds.size.width), f32::from(bounds.size.height))
+}
+
+/// Roadmap 7.4x: the first drawing at Fit had a card as tall as the preview, the diagram at its
+/// top, until the zoom changed; its size came from its image's, unknown before it is decoded.
+#[gpui_kit::test]
+fn the_first_drawing_at_fit_is_as_tall_as_its_diagram(cx: &mut TestAppContext) {
+    let (workspace, cx) = open_workspace(cx);
+    let dir = tempfile::tempdir().unwrap();
+    let plantuml = sized_plantuml(dir.path(), 300, 120);
+    let shown = draw(
+        &workspace,
+        &plantuml,
+        dir.path(),
+        "small.puml",
+        "@startuml
+A -> B
+@enduml
+",
+        cx,
+    );
+    assert_eq!(shown.read_with(cx, |preview, _| preview.zoom()), Zoom::Fit);
+    assert_eq!(card(cx), (300., 120.), "at its size, no taller");
+    // A wide one: as wide as the room, its height in proportion.
+    let plantuml = sized_plantuml(dir.path(), 6000, 2000);
+    draw(
+        &workspace,
+        &plantuml,
+        dir.path(),
+        "wide.puml",
+        "@startuml
+A -> B
+@enduml
+",
+        cx,
+    );
+    let (width, height) = card(cx);
+    assert!(width < 6000., "{width}");
+    assert!((height - width / 3.).abs() < 1., "{width} x {height}");
+}
+
+#[test]
 fn fit_page_shrinks_a_diagram_to_be_seen_whole() {
     assert_eq!(
         fit_page_scale((1000., 4000.), (500., 1000.)),

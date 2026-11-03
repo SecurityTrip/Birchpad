@@ -774,6 +774,16 @@ impl Zoom {
     }
 }
 
+/// How many times its size a diagram of `size` is shown at Fit in a preview whose diagrams
+/// have `room` across (its width less its margins): as wide as the room when it is wider, at
+/// its size otherwise; 1 when either is no size.
+pub fn fit_width_scale(size: (f32, f32), room: f32) -> f32 {
+    if size.0 <= 0. || room <= 0. {
+        return 1.;
+    }
+    (room / size.0).min(1.)
+}
+
 /// How many times its size a diagram of `size` is shown at Fit Page in a preview whose diagrams
 /// have `room` (their area less its margins): small enough to be seen whole, never enlarged;
 /// 1 when either is no size.

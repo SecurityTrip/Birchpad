@@ -50,7 +50,7 @@ pub use diagrams::{
     Included, Layout, MAX_PNG_SIDE, MAX_ZOOMED_PIXELS, Mistake, NotDrawn, PLANTUML_DELAY, Stop,
     StopOnDrop, ZOOM_COMMANDS, ZOOM_STEPS, Zoom, ZoomChange, active_diagrams, background,
     diagram_starts, dragged_offset, export_name, find_dot, find_include, fit_page_scale,
-    include_path, line_offset, mistake_trace, mistakes, normalized, pictured_line,
+    fit_width_scale, include_path, line_offset, mistake_trace, mistakes, normalized, pictured_line,
     place_in_includes, plantuml_command, raster_factor, redraws_for, run_plantuml, setting_path,
     sized_svg, split_diagrams, svg_size, svg_to_pixels, svg_to_png, system_dot, waits_for_graphviz,
     watched_folders,
@@ -1096,18 +1096,28 @@ impl Preview {
     fn render_diagrams(
         diagrams: &Diagrams,
         workspace: &WeakEntity<Workspace>,
+        window: &mut Window,
         cx: &mut Context<Self>,
     ) -> AnyElement {
         let this = &cx.entity().downgrade();
         let white = background(cx) == DiagramBackground::White;
         let zoom = diagrams.zoom.percent().map(|percent| percent as f32 / 100.);
-        // At Fit Page, the room the diagrams have: the preview's area, less its margins.
+        // At Fit and Fit Page, the room the diagrams have: the preview's area, less its margins.
+        // Each diagram is given its size from its own and the room's, rather than from its
+        // image's, which is not known before the image is decoded: the first drawing at Fit
+        // was otherwise as tall as the preview, its diagram at the top (roadmap 7.4x).
         let viewport = diagrams.scroll.bounds().size;
         let room = (
             f32::from(viewport.width) - 32.,
             f32::from(viewport.height) - 32.,
         );
-        let fit_page = diagrams.zoom == Zoom::FitPage && room.0 > 0. && room.1 > 0.;
+        let laid_out = room.0 > 0. && room.1 > 0.;
+        let fit_page = diagrams.zoom == Zoom::FitPage && laid_out;
+        let fit = diagrams.zoom == Zoom::Fit && laid_out;
+        // Not laid out yet: drawn again once the preview has its size.
+        if !laid_out && zoom.is_none() && !diagrams.images.is_empty() {
+            window.request_animation_frame();
+        }
         let dragging = diagrams.drag.is_some();
         let message = match (&diagrams.error, &diagrams.drawing) {
             (Some(error), _) => Some((error.clone(), ui().error)),
@@ -1164,12 +1174,17 @@ impl Preview {
                         let scale = fit_page_scale((width, height), room);
                         image.w(px(width * scale)).h(px(height * scale))
                     }
+                    (None, Some((width, height))) if fit => {
+                        let scale = fit_width_scale((width, height), room.0);
+                        image.w(px(width * scale)).h(px(height * scale))
+                    }
                     _ => image.max_w_full().object_fit(ObjectFit::Contain),
                 };
                 // Diagrams are made for paper: on white, unless the theme's background is asked.
                 // Centered while it fits; a wider one starts at the left, to scroll to.
                 div()
                     .id(("plantuml-diagram", index))
+                    .debug_selector(move || format!("plantuml-diagram-{index}"))
                     .flex_none()
                     .mx_auto()
                     .when(zoom.is_none(), |card| card.max_w_full())
@@ -1333,7 +1348,7 @@ impl Preview {
 }
 
 impl Render for Preview {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         // PlantUML was missing and has been installed since: draw again.
         let installs = crate::plantuml::state(cx).map_or(0, |state| state.generation);
         if let Content::PlantUml(diagrams) = &self.content
@@ -1356,6 +1371,7 @@ impl Render for Preview {
                 .child(div().flex_1().min_h_0().child(Self::render_diagrams(
                     diagrams,
                     &self.workspace,
+                    window,
                     cx,
                 )))
                 .into_any_element(),

@@ -954,10 +954,13 @@ the ones smetana cannot lay out, with no Graphviz on that machine. What it still
       that Graphviz lays it out, and stops there. Two links under it: Graphviz's download page
       and Preferences > Preview at the layout (`preview.plantuml-layout`), and the diagram drawn
       again by itself once a `dot` is found
-- [ ] 7.4x The first drawing at Fit: the first time a sequence diagram was shown, at Fit, its
+- [x] 7.4x The first drawing at Fit: the first time a sequence diagram was shown, at Fit, its
       white card was as tall as the preview, the diagram at its top and white below it; after
       switching to Fit Page and back it was as tall as the diagram. Reproduced and fixed, or
-      written down why it cannot be reproduced
+      written down why it cannot be reproduced. The cause:
+      at Fit a card took its size from its image's, which is not known before the image is
+      decoded; a card now gets its size from the diagram's own (from its SVG) and the preview's
+      width, and the preview draws again once it is laid out
 - [ ] Release 0.7.7: the workspace version (0.7.7, set when its branch opens, so that nightly
       builds are its pre-releases), `CHANGELOG.md` and this roadmap updated; the
       [release checklist](release-checklist.md) gone through

@@ -22,6 +22,8 @@ version's release notes from its section here.
 
 ### Fixed
 
+- The first drawing of a PlantUML diagram at Fit is as tall as the diagram: its white card
+  was at times as tall as the preview, the diagram at its top, until the zoom was changed.
 - A PlantUML file included from another folder finds what it includes by a path relative to
   the document, as IDE plugins and Confluence's macro find it: the preview gives PlantUML the
   document's folder as its include path (`PLANTUML_INCLUDE_PATH`) besides running it there.
