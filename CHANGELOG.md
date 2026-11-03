@@ -8,6 +8,12 @@ version's release notes from its section here.
 
 ### Changed
 
+- PlantUML diagrams are drawn much faster as they are edited
+  ([ADR 0060](docs/adr/0060-plantuml-kept-running.md)): the PlantUML Birchpad installs, and a
+  `plantuml.jar`, are kept running and given each drawing in turn, rather than Java being
+  started for each one (0.5 to 0.7 s a drawing before, 0.01 to 0.03 s once warm). A diagram
+  still being typed (`@startuml` without its `@enduml`) and a `plantuml` script are run for
+  each drawing, as before.
 - When PlantUML crashes (smetana on the largest diagrams, with a `NullPointerException`), the
   preview shows one line, the layout it used and the exception, with Java's stack trace folded
   under it, rather than the whole trace as a mistake.

@@ -896,10 +896,13 @@ are drawn; what is missing is the editing of their text (7.4r).
       file in the document's folder or one it includes from changes, saved in Birchpad or on
       disk, rather than only when the document's own text changes; Redraw in the preview's
       toolbar and View > Preview for the rest
-- [ ] 7.4q Faster drawing: each drawing starts Java anew (0.6 s on its own, 1.5 to 3.5 s for a
+- [x] 7.4q Faster drawing: each drawing starts Java anew (0.6 s on its own, 1.5 to 3.5 s for a
       diagram of that repository with its includes). PlantUML kept running for the window and
       given each drawing in turn, started again when a run the text moved past is stopped;
-      measured before and after on the same diagrams, and kept only if it is faster
+      measured before and after on the same diagrams, and kept only if it is faster. Kept
+      ([ADR 0060](adr/0060-plantuml-kept-running.md)): 0.5 to 0.7 s a drawing before, 0.01 to
+      0.02 s with a warm PlantUML, for Java (the installed PlantUML, a `plantuml.jar`); a
+      diagram still being typed, and a `plantuml` script, start PlantUML for each drawing
 - [ ] 7.4r PlantUML as a language of its own: Birchpad shows a `.puml` as a normal text file. A
       PlantUML language (Language menu, status bar): highlighting of `@start`/`@end` lines,
       keywords and participants' kinds, arrows, `!` preprocessor lines, strings, colors and

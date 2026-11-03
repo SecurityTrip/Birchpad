@@ -12,6 +12,7 @@
 //! when the user asks (`plantuml.rs`).
 
 mod diagrams;
+pub mod server;
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -402,7 +403,7 @@ impl Preview {
                             let layout = Layout::resolve(layout_setting, dot);
                             let (program, args) =
                                 plantuml_command(&setting, installed.as_deref(), &layout);
-                            let drawn = run_plantuml(
+                            let drawn = server::draw(
                                 &program,
                                 &args,
                                 folder.as_deref(),

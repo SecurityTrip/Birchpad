@@ -1080,7 +1080,7 @@ impl Stop {
     }
 
     /// Keeps `child` to be stopped; false, and the child ended, if the run was stopped already.
-    fn keep(&self, mut child: Child) -> bool {
+    pub(super) fn keep(&self, mut child: Child) -> bool {
         let mut state = self.0.lock().unwrap_or_else(|error| error.into_inner());
         if state.0 {
             let _ = child.kill();
@@ -1092,7 +1092,7 @@ impl Stop {
     }
 
     /// The child back once its output is read, unless it was stopped meanwhile.
-    fn take(&self) -> Option<Child> {
+    pub(super) fn take(&self) -> Option<Child> {
         self.0
             .lock()
             .unwrap_or_else(|error| error.into_inner())
