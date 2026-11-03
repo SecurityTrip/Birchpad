@@ -100,7 +100,18 @@ pub(super) fn register_commands(registry: &mut CommandRegistry) {
                 .as_deref()
                 .map(|path| std::env::split_paths(path).collect())
                 .unwrap_or_default();
+            // Written with variables or calls: as the preprocessor reads the document.
+            let worked_out = || {
+                let document = args.document.as_deref()?;
+                let text = open_text(this, document, cx)?;
+                super::walk_includes(&text, folder, &folders)
+                    .links
+                    .into_iter()
+                    .find(|link| link.from.is_none() && link.written == args.target)
+                    .map(|link| link.path)
+            };
             let path = find_include(&args.target, &folders)
+                .or_else(worked_out)
                 .ok_or_else(|| anyhow!("{}", t!("preview.no-include", file = args.target)))?;
             this.open_path(&path, window, cx);
             Ok(())
@@ -561,9 +572,29 @@ struct IncludeArgs {
     document: Option<PathBuf>,
 }
 
+/// The text of the document at `path`: its open buffer's, else the file's.
+fn open_text(workspace: &Workspace, path: &Path, cx: &App) -> Option<String> {
+    let open = workspace.all_views(cx).into_iter().find_map(|view| {
+        let buffer = view.read(cx).buffer.read(cx);
+        (buffer.path() == Some(path)).then(|| buffer.doc().text().to_string())
+    });
+    open.or_else(|| {
+        std::fs::read(path)
+            .ok()
+            .map(|bytes| String::from_utf8_lossy(&bytes).into_owned())
+    })
+}
+
 /// The file `target` (as an `!include` names it) is: itself when absolute, else the first of
 /// `folders` (the include path, the document's folder first) that has it.
 pub fn find_include(target: &str, folders: &[PathBuf]) -> Option<PathBuf> {
+    let target = match target.strip_prefix('"') {
+        Some(quoted) => quoted.split('"').next().unwrap_or_default(),
+        None => target.split('!').next().unwrap_or_default().trim(),
+    };
+    if target.is_empty() {
+        return None;
+    }
     let target = Path::new(target);
     if target.is_absolute() {
         return Some(target.to_path_buf()).filter(|file| file.is_file());
@@ -572,48 +603,6 @@ pub fn find_include(target: &str, folders: &[PathBuf]) -> Option<PathBuf> {
         .iter()
         .map(|folder| normalized(&folder.join(target)))
         .find(|file| file.is_file())
-}
-
-/// The most files [`included_files`] reads, so that a loop of includes or a huge library ends.
-pub const MOST_INCLUDED_FILES: usize = 500;
-
-/// The files a document's `text` includes, and those they include in turn: each target is
-/// looked for next to the file that includes it, then in each folder of `folders` (the include
-/// path, the document's folder first), as PlantUML looks for it. Files that are not found are
-/// left out; at most [`MOST_INCLUDED_FILES`].
-pub fn included_files(text: &str, folder: Option<&Path>, folders: &[PathBuf]) -> Vec<PathBuf> {
-    let mut found: Vec<PathBuf> = Vec::new();
-    let mut queue: Vec<(String, Option<PathBuf>)> =
-        vec![(text.to_owned(), folder.map(Path::to_path_buf))];
-    while let Some((text, base)) = queue.pop() {
-        for target in birchpad_syntax::plantuml::include_targets(&text) {
-            let target = Path::new(&target);
-            let file = if target.is_absolute() {
-                Some(target.to_path_buf()).filter(|file| file.is_file())
-            } else {
-                base.iter()
-                    .chain(folders)
-                    .map(|folder| folder.join(target))
-                    .find(|file| file.is_file())
-            };
-            let Some(file) = file else {
-                continue;
-            };
-            let file = normalized(&file);
-            if found.contains(&file) {
-                continue;
-            }
-            if found.len() == MOST_INCLUDED_FILES {
-                return found;
-            }
-            if let Ok(bytes) = std::fs::read(&file) {
-                let base = file.parent().map(Path::to_path_buf);
-                queue.push((String::from_utf8_lossy(&bytes).into_owned(), base));
-            }
-            found.push(file);
-        }
-    }
-    found
 }
 
 /// `path` without its `.` parts, and with each `..` taking off the part before it, so that

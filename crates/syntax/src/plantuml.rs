@@ -17,6 +17,27 @@ const INCLUDES: [&str; 5] = [
 /// it. Files of the standard library (`<C4/C4_Context>`), URLs and paths made of variables are
 /// no file to open: `None`, as for a line that includes nothing.
 pub fn include_target(line: &str) -> Option<Range<usize>> {
+    let range = include_argument(line)?;
+    let written = &line[range.clone()];
+    let (start, target) = match written.strip_prefix('"') {
+        Some(quoted) => (
+            range.start + 1,
+            quoted.split('"').next().unwrap_or_default(),
+        ),
+        // `common.puml!2` and `parts.puml!PART`: the file without the part.
+        None => (
+            range.start,
+            written.split('!').next().unwrap_or_default().trim_end(),
+        ),
+    };
+    let skipped = target.is_empty() || target.contains('$');
+    (!skipped).then(|| start..start + target.len())
+}
+
+/// Where in `line` what follows an include directive is, as written: a path, or one made of
+/// variables and calls (`$HOME/main.iuml`, `FromRoot(/billing/containers.puml)`) for the preprocessor
+/// to work out. Files of the standard library and URLs are left out, as is an empty one.
+pub fn include_argument(line: &str) -> Option<Range<usize>> {
     let indent = line.len() - line.trim_start().len();
     let trimmed = &line[indent..];
     let directive = INCLUDES.iter().find(|directive| {
@@ -28,17 +49,13 @@ pub fn include_target(line: &str) -> Option<Range<usize>> {
     let after = indent + directive.len();
     let rest = &line[after..];
     let start = after + (rest.len() - rest.trim_start().len());
-    let rest = line[start..].trim_end();
-    let (start, target) = match rest.strip_prefix('"') {
-        Some(quoted) => (start + 1, quoted.split('"').next().unwrap_or_default()),
-        // `common.puml!2` and `parts.puml!PART`: the file without the part.
-        None => (start, rest.split('!').next().unwrap_or_default().trim_end()),
-    };
-    let skipped = target.is_empty()
-        || target.starts_with('<')
-        || target.contains("://")
-        || target.contains('$');
-    (!skipped).then(|| start..start + target.len())
+    let written = line[start..].trim_end();
+    let unquoted = written.trim_start_matches('"');
+    let skipped = written.is_empty()
+        || unquoted.is_empty()
+        || unquoted.starts_with('<')
+        || written.contains("://");
+    (!skipped).then(|| start..start + written.len())
 }
 
 /// The files the lines of `text` include, as written ([`include_target`]).

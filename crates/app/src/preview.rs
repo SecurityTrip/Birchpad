@@ -12,6 +12,7 @@
 //! when the user asks (`plantuml.rs`).
 
 mod diagrams;
+mod includes;
 pub mod server;
 
 use std::path::{Path, PathBuf};
@@ -44,13 +45,14 @@ use crate::workspace::Workspace;
 
 pub use diagrams::{
     DIAGRAM_END, Drawn, GRAPHVIZ_DOT_VARIABLE, INCLUDE_PATH_VARIABLE, Included, Layout,
-    MAX_PNG_SIDE, MAX_ZOOMED_PIXELS, MOST_INCLUDED_FILES, Mistake, NotDrawn, PLANTUML_DELAY, Stop,
-    StopOnDrop, ZOOM_COMMANDS, ZOOM_STEPS, Zoom, ZoomChange, active_diagrams, background,
-    diagram_starts, dragged_offset, export_name, find_dot, find_include, fit_page_scale,
-    include_path, included_files, line_offset, mistake_trace, mistakes, normalized, pictured_line,
-    place_in_includes, plantuml_command, raster_factor, redraws_for, run_plantuml, setting_path,
-    sized_svg, split_diagrams, svg_size, svg_to_pixels, svg_to_png, system_dot, watched_folders,
+    MAX_PNG_SIDE, MAX_ZOOMED_PIXELS, Mistake, NotDrawn, PLANTUML_DELAY, Stop, StopOnDrop,
+    ZOOM_COMMANDS, ZOOM_STEPS, Zoom, ZoomChange, active_diagrams, background, diagram_starts,
+    dragged_offset, export_name, find_dot, find_include, fit_page_scale, include_path, line_offset,
+    mistake_trace, mistakes, normalized, pictured_line, place_in_includes, plantuml_command,
+    raster_factor, redraws_for, run_plantuml, setting_path, sized_svg, split_diagrams, svg_size,
+    svg_to_pixels, svg_to_png, system_dot, watched_folders,
 };
+pub use includes::{IncludeLink, Includes, MOST_INCLUDED_FILES, Preprocessor, walk_includes};
 
 /// What a document's preview shows.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -400,7 +402,7 @@ impl Preview {
                                 .as_deref()
                                 .map(|path| std::env::split_paths(path).collect())
                                 .unwrap_or_default();
-                            let included = included_files(&text, folder.as_deref(), &folders);
+                            let included = walk_includes(&text, folder.as_deref(), &folders).files;
                             // Graphviz is looked for at each drawing: it may have been installed.
                             let dot = match layout_setting {
                                 birchpad_config::DiagramLayout::Smetana => None,

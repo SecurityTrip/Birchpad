@@ -69,7 +69,8 @@ impl EditorView {
     }
 
     /// Ctrl+click on a PlantUML `!include` line with a file: asks the application to open the
-    /// file it includes (`preview.open-include`). Whether the line includes one.
+    /// file it includes (`preview.open-include`), with what the line says after the directive,
+    /// variables and calls too. Whether the line includes one.
     fn include_at(&mut self, text: &Rope, pos: usize, cx: &mut Context<Self>) -> bool {
         let buffer = self.buffer.read(cx);
         if buffer
@@ -80,7 +81,7 @@ impl EditorView {
         }
         let document = buffer.path().map(std::path::Path::to_path_buf);
         let line = text.slice(line_range(text, line_of(text, pos))).to_string();
-        let Some(target) = birchpad_syntax::plantuml::include_target(&line) else {
+        let Some(target) = birchpad_syntax::plantuml::include_argument(&line) else {
             return false;
         };
         let invocation = birchpad_commands::Invocation::with_args(

@@ -1054,11 +1054,12 @@ fn included_files_are_found_where_plantuml_finds_them() {
     std::fs::write(domains.join("billing").join("billing.puml"), "class Billing").unwrap();
     std::fs::write(library.join("lib.iuml"), "' from the include path").unwrap();
     let folders = [document.clone(), library.clone()];
-    let found = included_files(
+    let found = walk_includes(
         "@startuml\n!include ../../shared/context.iuml\n@enduml",
         Some(&document),
         &folders,
-    );
+    )
+    .files;
     assert_eq!(
         found,
         [
@@ -1070,10 +1071,14 @@ fn included_files_are_found_where_plantuml_finds_them() {
     );
     // Without a document's folder, only the include path is looked in.
     assert_eq!(
-        included_files("!include lib.iuml\n!include next.iuml", None, &folders),
+        walk_includes("!include lib.iuml\n!include next.iuml", None, &folders).files,
         [library.join("lib.iuml")]
     );
-    assert!(included_files("@startuml\n@enduml", Some(&document), &folders).is_empty());
+    assert!(
+        walk_includes("@startuml\n@enduml", Some(&document), &folders)
+            .files
+            .is_empty()
+    );
 }
 
 #[test]
@@ -1088,7 +1093,7 @@ fn included_files_end_in_loops_and_at_a_limit() {
     .unwrap();
     std::fs::create_dir(root.join("sub")).unwrap();
     assert_eq!(
-        included_files("!include a.iuml", Some(root), &[]),
+        walk_includes("!include a.iuml", Some(root), &[]).files,
         [root.join("a.iuml"), root.join("b.iuml")],
         "each file once"
     );
@@ -1099,7 +1104,7 @@ fn included_files_end_in_loops_and_at_a_limit() {
         std::fs::write(root.join(&name), "").unwrap();
         text.push_str(&format!("!include {name}\n"));
     }
-    let found = included_files(&text, Some(root), &[]);
+    let found = walk_includes(&text, Some(root), &[]).files;
     assert_eq!(found.len(), MOST_INCLUDED_FILES);
     assert_eq!(found[0], root.join("0.iuml"));
 }

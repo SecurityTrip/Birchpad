@@ -937,7 +937,7 @@ the ones smetana cannot lay out, with no Graphviz on that machine. What it still
       of the files the diagram includes (7.4v); the mistake then names that file, relative to
       the document, and opens it at the line. When none is found, it says the mistake is in an
       included file, without PlantUML's internal name
-- [ ] 7.4v Includes by variables and functions followed: Birchpad reads an `!include`'s path
+- [x] 7.4v Includes by variables and functions followed: Birchpad reads an `!include`'s path
       only when it is written out, and every include of that repository goes through a
       variable or a function (`!include $DIAGRAMS_ROOT/library/main.iuml`,
       `!include FromRoot(/parts/billing/containers.puml)`). So the preview does not
@@ -947,7 +947,9 @@ the ones smetana cannot lay out, with no Graphviz on that machine. What it still
       what it includes (`!$DIAGRAMS_ROOT ?= "../.."`, `!$X = "..."`) put into the path; for a
       path only PlantUML can work out (a function of the diagram's own), the files PlantUML
       reads taken from it, if it can tell them; an ADR, over
-      [ADR 0057](adr/0057-plantuml-preview-redone.md), decides how
+      [ADR 0057](adr/0057-plantuml-preview-redone.md), decides how: Birchpad reads the
+      preprocessor's variables and functions itself
+      ([ADR 0062](adr/0062-includes-through-the-preprocessor.md))
 - [ ] 7.4w A way to Graphviz from the crash: the message of a diagram smetana cannot lay out says
       that Graphviz lays it out, and stops there. Two links under it: Graphviz's download page
       and Preferences > Preview at the layout (`preview.plantuml-layout`), and the diagram drawn

@@ -58,3 +58,33 @@ fn includes_at_the_edges_of_a_line() {
     assert_eq!(target("!include ü.puml"), Some("ü.puml"), "wide characters");
     assert_eq!(target("!import"), None);
 }
+
+fn argument(line: &str) -> Option<&str> {
+    include_argument(line).map(|range| &line[range])
+}
+
+#[test]
+fn include_arguments_keep_variables_and_calls() {
+    assert_eq!(
+        argument("!include $DIAGRAMS_ROOT/library/main.iuml"),
+        Some("$DIAGRAMS_ROOT/library/main.iuml")
+    );
+    assert_eq!(
+        argument("  !include FromRoot(/parts/billing/containers.puml)  "),
+        Some("FromRoot(/parts/billing/containers.puml)")
+    );
+    assert_eq!(argument("!include \"a b.puml\""), Some("\"a b.puml\""));
+    // A path written out is a target too; its variables make it none.
+    assert_eq!(target("!include $HOME/a.puml"), None);
+    assert_eq!(target("!include FromRoot(x)"), Some("FromRoot(x)"));
+    for none in [
+        "!include <C4/C4_Context>",
+        "!include https://x/a.puml",
+        "!include",
+        "!include \"\"",
+        "A -> B",
+        "",
+    ] {
+        assert_eq!(argument(none), None, "{none}");
+    }
+}

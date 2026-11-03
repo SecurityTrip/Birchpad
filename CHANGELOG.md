@@ -37,6 +37,12 @@ version's release notes from its section here.
 
 ### Added
 
+- Includes written with PlantUML's variables and functions are followed
+  ([ADR 0062](docs/adr/0062-includes-through-the-preprocessor.md)):
+  `!include $DIAGRAMS_ROOT/library/main.iuml` and `!include FromRoot(/billing/containers.puml)`
+  name their files as PlantUML works them out (`!$name = ...`, `!$name ?= ...`, functions with
+  `!return`, `%dirpath()`, `%getenv()`), so that the preview follows those files, places
+  mistakes in them, and Ctrl+click on such a line opens the file.
 - Closing to the tray, asked once (Windows and macOS): the first time the main window is
   closed (its close button, Alt+F4), Birchpad asks whether to minimize to the system tray or to
   close, and keeps the answer in `misc.close-to-tray`, which Preferences > MISC > Close button
