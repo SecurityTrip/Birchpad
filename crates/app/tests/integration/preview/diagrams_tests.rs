@@ -45,6 +45,7 @@ fn mistakes_are_placed_on_the_lines_of_their_diagrams() {
             line: Some(8),
             message: error.to_owned(),
             included: None,
+            details: None,
         }],
         "the second diagram's third line"
     );
@@ -90,6 +91,7 @@ fn a_mistake_in_an_included_file_is_placed_on_the_include_line() {
                 file: "../../domains/bad.iuml".into(),
                 line: 40,
             }),
+            details: None,
         }]
     );
     // Through another included file: the last of the document's lines.
@@ -147,6 +149,7 @@ fn a_mistake_in_the_document_stays_on_its_line() {
                 line: Some(1),
                 message: "Syntax Error?".into(),
                 included: None,
+                details: None,
             }]
         );
     }
@@ -211,6 +214,7 @@ fn other_error_output_is_one_mistake_without_a_line() {
             line: None,
             message: "Exception in thread main\nat Foo".to_owned(),
             included: None,
+            details: None,
         }]
     );
     assert!(mistakes("", "@startuml\n@enduml", &diagrams).is_empty());
@@ -222,6 +226,219 @@ fn other_error_output_is_one_mistake_without_a_line() {
         mistakes("ERROR\n0\nNo diagram", "A -> B", &[])[0].line,
         None
     );
+}
+
+/// Java's error output when smetana crashes, as PlantUML writes it.
+const CRASH: &str = "java.lang.NullPointerException: Cannot read field \"x\" because \"p\" is null
+\tat net.sourceforge.plantuml.svek.SmetanaEdge.draw(SmetanaEdge.java:120)
+\tat net.sourceforge.plantuml.svek.Smetana.run(Smetana.java:88)
+";
+
+#[test]
+fn a_crash_is_one_line_with_its_trace_folded() {
+    let found = mistakes(CRASH, "@startuml\nA -> B\n@enduml", &[picture("crash")]);
+    assert_eq!(found.len(), 1);
+    let crash = &found[0];
+    assert_eq!(
+        crash.message,
+        "java.lang.NullPointerException: Cannot read field \"x\" because \"p\" is null"
+    );
+    assert_eq!(crash.line, None);
+    let details = crash.details.as_deref().unwrap();
+    assert!(details.contains("at net.sourceforge.plantuml.svek.SmetanaEdge.draw"));
+    assert_eq!(details.lines().count(), 3);
+}
+
+#[test]
+fn a_crash_is_found_after_other_lines_and_without_its_thread() {
+    let stderr = "WARNING: something\nException in thread \"main\" java.lang.IllegalStateException\n\
+                  \tat a.B.c(B.java:1)\nCaused by: java.lang.Error: inner\n\tat d.E.f(E.java:2)\n";
+    let found = mistakes(stderr, "@startuml\n@enduml", &[]);
+    assert_eq!(found[0].message, "java.lang.IllegalStateException");
+    assert_eq!(
+        found[0]
+            .details
+            .as_deref()
+            .map(|details| details.lines().count()),
+        Some(5)
+    );
+    // A thread's name without its quotes' end is left as it is.
+    let found = mistakes(
+        "Exception in thread \"main java.lang.Oops\n\tat a.B.c(B.java:1)\n",
+        "",
+        &[],
+    );
+    assert_eq!(found[0].message, "\"main java.lang.Oops");
+    // Frames alone: the message is what comes before them, nothing here.
+    assert!(
+        mistakes("\tat a.B.c(B.java:1)\n", "", &[])[0]
+            .details
+            .is_none()
+    );
+}
+
+#[test]
+fn mistakes_and_other_output_are_no_crash() {
+    // PlantUML's own mistakes, even with a word like Exception in them.
+    let found = mistakes(
+        "ERROR\n1\nException at line\n",
+        "@startuml\nqux\n@enduml",
+        &[picture("Exception at line")],
+    );
+    assert_eq!(found[0].details, None);
+    assert_eq!(found[0].line, Some(1));
+    // Lines starting with `at` that are no frames.
+    let found = mistakes("Cannot draw\nat the end of the line\n", "", &[]);
+    assert_eq!(found[0].details, None);
+    assert_eq!(found[0].message, "Cannot draw\nat the end of the line");
+}
+
+#[test]
+fn layouts_follow_the_setting_and_what_is_installed() {
+    use birchpad_config::DiagramLayout;
+    let dot = PathBuf::from("dot");
+    assert_eq!(
+        Layout::resolve(DiagramLayout::Automatic, Some(dot.clone())),
+        Layout::Graphviz(Some(dot.clone()))
+    );
+    assert_eq!(
+        Layout::resolve(DiagramLayout::Automatic, None),
+        Layout::Smetana
+    );
+    assert_eq!(
+        Layout::resolve(DiagramLayout::Smetana, Some(dot.clone())),
+        Layout::Smetana
+    );
+    assert_eq!(
+        Layout::resolve(DiagramLayout::Graphviz, None),
+        Layout::Graphviz(None),
+        "PlantUML looks for it itself"
+    );
+    assert_eq!(
+        Layout::Graphviz(Some(dot.clone())).env(),
+        [(GRAPHVIZ_DOT_VARIABLE.to_owned(), dot.into_os_string())]
+    );
+    assert!(Layout::Graphviz(None).env().is_empty());
+    assert!(Layout::Smetana.env().is_empty());
+    assert_eq!(Layout::Smetana.name(), "smetana");
+    assert_eq!(Layout::Graphviz(None).name(), "Graphviz");
+}
+
+#[test]
+fn graphviz_is_found_by_its_variable_its_path_or_its_folder() {
+    let dir = tempfile::tempdir().unwrap();
+    let name = if cfg!(windows) { "dot.exe" } else { "dot" };
+    let folder = |name: &str| {
+        let folder = dir.path().join(name);
+        std::fs::create_dir_all(&folder).unwrap();
+        folder
+    };
+    let (named, on_path, installed, empty) = (
+        folder("named"),
+        folder("bin"),
+        folder("Graphviz"),
+        folder("empty"),
+    );
+    let named_dot = named.join("my-dot");
+    std::fs::write(&named_dot, "").unwrap();
+    std::fs::write(on_path.join(name), "").unwrap();
+    std::fs::write(installed.join(name), "").unwrap();
+    let path = std::env::join_paths([&empty, &on_path]).unwrap();
+    assert_eq!(
+        find_dot(Some(named_dot.as_os_str()), Some(&path), &[]),
+        Some(named_dot.clone()),
+        "the variable first"
+    );
+    assert_eq!(
+        find_dot(Some(empty.join("gone").as_os_str()), Some(&path), &[]),
+        Some(on_path.join(name)),
+        "a variable naming no file is passed over"
+    );
+    assert_eq!(
+        find_dot(Some(empty.as_os_str()), None, &[installed.clone()]),
+        Some(installed.join(name)),
+        "a folder is no file; then where Graphviz installs itself"
+    );
+    assert_eq!(
+        find_dot(None, Some(empty.as_os_str()), &[empty.clone()]),
+        None
+    );
+    assert_eq!(find_dot(None, None, &[]), None);
+    assert_eq!(
+        find_dot(
+            Some(std::ffi::OsStr::new("")),
+            Some(std::ffi::OsStr::new("")),
+            &[]
+        ),
+        None,
+        "empty ones are nothing"
+    );
+}
+
+#[gpui_kit::test]
+fn the_preview_draws_with_the_layout_of_the_setting(cx: &mut TestAppContext) {
+    let (workspace, cx) = open_workspace(cx);
+    let dir = tempfile::tempdir().unwrap();
+    // The diagram is the arguments PlantUML was given after the diagram's end (cmd splits
+    // `-Playout=smetana` in two).
+    let plantuml = fake_plantuml(
+        dir.path(),
+        "echo ^<svg^>%7 %8^</svg^>",
+        "echo \"<svg>$7 $8</svg>\"",
+    );
+    cx.update(|_, cx| {
+        cx.global_mut::<AppState>().settings.preview.plantuml_layout =
+            birchpad_config::DiagramLayout::Smetana;
+    });
+    let shown = draw(
+        &workspace,
+        &plantuml,
+        dir.path(),
+        "flow.puml",
+        "@startuml\nA -> B\n@enduml\n",
+        cx,
+    );
+    let svg =
+        String::from_utf8(shown.read_with(cx, |preview, _| preview.svgs()).remove(0)).unwrap();
+    assert!(svg.contains("-Playout") && svg.contains("smetana"), "{svg}");
+    assert_eq!(
+        shown.read_with(cx, |preview, _| preview.layout()),
+        "smetana"
+    );
+}
+
+#[gpui_kit::test]
+fn the_preview_folds_a_crash(cx: &mut TestAppContext) {
+    let (workspace, cx) = open_workspace(cx);
+    let dir = tempfile::tempdir().unwrap();
+    let plantuml = fake_plantuml(
+        dir.path(),
+        "echo ^<svg^>crash^</svg^>\n>&2 echo java.lang.NullPointerException\n\
+         >&2 echo 	at a.SmetanaEdge.draw(SmetanaEdge.java:1)\nexit /b 1",
+        "echo '<svg>crash</svg>'\necho java.lang.NullPointerException >&2\n\
+         printf '\\tat a.SmetanaEdge.draw(SmetanaEdge.java:1)\\n' >&2\nexit 1",
+    );
+    let shown = draw(
+        &workspace,
+        &plantuml,
+        dir.path(),
+        "flow.puml",
+        "@startuml\nA -> B\n@enduml\n",
+        cx,
+    );
+    let found = shown.read_with(cx, |preview, _| preview.mistakes());
+    assert_eq!(found.len(), 1);
+    assert_eq!(found[0].message, "java.lang.NullPointerException");
+    assert!(found[0].details.is_some());
+    assert!(
+        !shown.read_with(cx, |preview, _| preview.details_shown()),
+        "folded"
+    );
+    shown.update(cx, |preview, cx| preview.toggle_details(cx));
+    assert!(shown.read_with(cx, |preview, _| preview.details_shown()));
+    cx.run_until_parked();
+    shown.update(cx, |preview, cx| preview.toggle_details(cx));
+    assert!(!shown.read_with(cx, |preview, _| preview.details_shown()));
 }
 
 #[test]
@@ -260,7 +477,7 @@ fn a_stopped_run_ends_its_process() {
     let running = stop.clone();
     let started = Instant::now();
     let run = std::thread::spawn(move || {
-        run_plantuml(&program, &args, None, None, "@startuml", &running)
+        run_plantuml(&program, &args, None, None, &[], "@startuml", &running)
     });
     std::thread::sleep(Duration::from_millis(300));
     drop(StopOnDrop(stop));
@@ -277,7 +494,15 @@ fn a_run_stopped_before_it_starts_runs_nothing() {
     stop.stop();
     // Started, it would say that this program is missing.
     assert_eq!(
-        run_plantuml("birchpad-test-no-such-plantuml", &[], None, None, "", &stop),
+        run_plantuml(
+            "birchpad-test-no-such-plantuml",
+            &[],
+            None,
+            None,
+            &[],
+            "",
+            &stop
+        ),
         Err(NotDrawn::Stopped)
     );
     assert!(matches!(
@@ -286,6 +511,7 @@ fn a_run_stopped_before_it_starts_runs_nothing() {
             &[],
             None,
             None,
+            &[],
             "",
             &Stop::default()
         ),
@@ -384,6 +610,7 @@ fn the_preview_lists_mistakes_and_goes_to_their_lines(cx: &mut TestAppContext) {
             line: Some(2),
             message: "Syntax Error?".into(),
             included: None,
+            details: None,
         }]
     );
     cx.update(|window, cx| Preview::go_to_line(&shown, 2, window, cx));
@@ -646,6 +873,17 @@ fn preferences_show_the_preview_settings() {
     let find = |key: &str| ENTRIES.iter().find(|entry| entry.key == key).unwrap();
     assert_eq!(find("preview.plantuml").kind, Kind::Text);
     assert_eq!(find("preview.plantuml-include-path").kind, Kind::Text);
+    let Kind::Choice(layouts) = find("preview.plantuml-layout").kind else {
+        panic!("a choice");
+    };
+    for (value, _) in layouts {
+        birchpad_config::check_setting(
+            "preview.plantuml-layout",
+            &toml::Value::String((*value).into()),
+        )
+        .unwrap();
+    }
+    assert_eq!(layouts.len(), 3);
     let Kind::Choice(values) = find("preview.plantuml-background").kind else {
         panic!("a choice");
     };

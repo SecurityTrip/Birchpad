@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 use birchpad::app_state::AppState;
 use birchpad::plantuml::*;
-use birchpad::preview::plantuml_command;
+use birchpad::preview::{Layout, plantuml_command};
 use birchpad::updates::Updates;
 use birchpad_update::Transport;
 use birchpad_update::component::{ComponentPackage, PLANTUML};
@@ -68,7 +68,7 @@ fn installed_plantuml_runs_with_its_own_java() {
     let folder = Path::new("data")
         .join("components")
         .join("plantuml-1.2026.9-1");
-    let (program, args) = plantuml_command("plantuml", Some(&folder));
+    let (program, args) = plantuml_command("plantuml", Some(&folder), &Layout::Smetana);
     let java = folder
         .join("jre")
         .join("bin")
@@ -83,17 +83,26 @@ fn installed_plantuml_runs_with_its_own_java() {
         Some("-Playout=smetana"),
         "no Graphviz needed"
     );
-    assert_eq!(plantuml_command("", Some(&folder)).0, program);
+    // With Graphviz, no layout is asked for: PlantUML's own is Graphviz.
+    let (_, args) = plantuml_command("plantuml", Some(&folder), &Layout::Graphviz(None));
+    assert!(!args.iter().any(|arg| arg.starts_with("-Playout")));
+    assert_eq!(
+        plantuml_command("", Some(&folder), &Layout::Smetana).0,
+        program
+    );
     // A PlantUML of the user's own comes first.
     assert_eq!(
-        plantuml_command("/opt/plantuml.jar", Some(&folder)).0,
+        plantuml_command("/opt/plantuml.jar", Some(&folder), &Layout::Smetana).0,
         "java"
     );
     assert_eq!(
-        plantuml_command("my-plantuml", Some(&folder)).0,
+        plantuml_command("my-plantuml", Some(&folder), &Layout::Smetana).0,
         "my-plantuml"
     );
-    assert_eq!(plantuml_command("plantuml", None).0, "plantuml");
+    assert_eq!(
+        plantuml_command("plantuml", None, &Layout::Smetana).0,
+        "plantuml"
+    );
 }
 
 #[gpui_kit::test]

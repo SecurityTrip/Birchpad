@@ -15,6 +15,9 @@ pub struct PreviewSettings {
     /// separated as in `PATH` (`;` on Windows, `:` elsewhere), a relative one taken from the
     /// document's folder. Empty: the document's folder alone.
     pub plantuml_include_path: String,
+    /// What lays PlantUML's diagrams out (ADR 0059): Graphviz when its `dot` is found and
+    /// smetana, PlantUML's own, otherwise (the default), or one of them.
+    pub plantuml_layout: DiagramLayout,
     /// What PlantUML diagrams are drawn on in the preview: white, as PlantUML draws them for
     /// paper (the default), or the theme's background.
     pub plantuml_background: DiagramBackground,
@@ -27,10 +30,24 @@ impl Default for PreviewSettings {
         Self {
             plantuml: "plantuml".to_owned(),
             plantuml_include_path: String::new(),
+            plantuml_layout: DiagramLayout::default(),
             plantuml_background: DiagramBackground::default(),
             plantuml_png_scale: 2,
         }
     }
+}
+
+/// What lays PlantUML's diagrams out.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum DiagramLayout {
+    /// Graphviz when its `dot` is found, smetana otherwise.
+    #[default]
+    Automatic,
+    /// Smetana, the layout in `plantuml.jar`, which needs nothing else.
+    Smetana,
+    /// Graphviz's `dot`, as Confluence and IDEs lay diagrams out.
+    Graphviz,
 }
 
 /// What the preview draws PlantUML diagrams on.

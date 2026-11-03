@@ -6,6 +6,14 @@ version's release notes from its section here.
 
 ## [Unreleased]
 
+### Changed
+
+- When PlantUML crashes (smetana on the largest diagrams, with a `NullPointerException`), the
+  preview shows one line, the layout it used and the exception, with Java's stack trace folded
+  under it, rather than the whole trace as a mistake.
+- A PlantUML of the user's own without Graphviz lays diagrams out with smetana (the automatic
+  layout) rather than failing on them.
+
 ### Fixed
 
 - A PlantUML file included from another folder finds what it includes by a path relative to
@@ -19,6 +27,12 @@ version's release notes from its section here.
 
 ### Added
 
+- `preview.plantuml-layout` (Preferences > Preview,
+  [ADR 0059](docs/adr/0059-plantuml-layouts-and-graphviz.md)): what lays PlantUML's diagrams
+  out. Automatic, the default, uses Graphviz when its `dot` is
+  found (`GRAPHVIZ_DOT`, `PATH`, Graphviz's folder on Windows), so that diagrams are laid out
+  as on Confluence and in IDEs, and smetana, PlantUML's own, otherwise; smetana or Graphviz can
+  be chosen. Birchpad does not install Graphviz.
 - `preview.plantuml-include-path` (Preferences > Preview): folders `!include` looks in after
   the document's, separated as in `PATH`, a relative one taken from the document's folder.
 

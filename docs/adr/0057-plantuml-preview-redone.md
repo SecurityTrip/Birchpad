@@ -1,6 +1,6 @@
 # ADR 0057: The PlantUML preview redone
 
-- Status: accepted
+- Status: accepted, changed by [ADR 0059](0059-plantuml-layouts-and-graphviz.md)
 - Date: 2026-10-28
 - Changes [ADR 0042](0042-previews.md) and [ADR 0045](0045-plantuml-installed-on-request.md):
   how a PlantUML document's preview runs PlantUML and shows what it drew.

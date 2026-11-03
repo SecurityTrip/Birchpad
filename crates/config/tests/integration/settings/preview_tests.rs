@@ -1,6 +1,6 @@
 //! The settings of the previews: the background of PlantUML diagrams.
 
-use birchpad_config::{DiagramBackground, Settings, check_setting};
+use birchpad_config::{DiagramBackground, DiagramLayout, Settings, check_setting};
 
 #[test]
 fn diagrams_are_drawn_on_white_by_default() {
@@ -84,4 +84,37 @@ plantuml-include-path = \"lib;../shared\"
         )
         .is_err()
     );
+}
+
+#[test]
+fn the_layout_is_automatic_by_default_and_one_of_three() {
+    assert_eq!(
+        Settings::default().preview.plantuml_layout,
+        DiagramLayout::Automatic
+    );
+    for (value, layout) in [
+        ("automatic", DiagramLayout::Automatic),
+        ("smetana", DiagramLayout::Smetana),
+        ("graphviz", DiagramLayout::Graphviz),
+    ] {
+        let settings: Settings =
+            toml::from_str(&format!("[preview]\nplantuml-layout = \"{value}\"\n")).unwrap();
+        assert_eq!(settings.preview.plantuml_layout, layout);
+        check_setting(
+            "preview.plantuml-layout",
+            &toml::Value::String(value.into()),
+        )
+        .unwrap();
+    }
+    for value in ["dot", "", "Graphviz", "elk"] {
+        assert!(
+            check_setting(
+                "preview.plantuml-layout",
+                &toml::Value::String(value.into())
+            )
+            .is_err(),
+            "{value}"
+        );
+    }
+    assert!(check_setting("preview.plantuml-layout", &toml::Value::Boolean(true)).is_err());
 }

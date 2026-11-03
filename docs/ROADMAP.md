@@ -880,16 +880,18 @@ are drawn; what is missing is the editing of their text (7.4r).
       document, another name for an included file): a mistake in an included file says so and
       links to the document's `!include` line that leads to it, the last of the document's
       lines in the picture's trace, or to no line when none is found
-- [ ] 7.4o Diagrams smetana cannot lay out: on the two largest diagrams (about 3,400 lines once
+- [x] 7.4o Diagrams smetana cannot lay out: on the two largest diagrams (about 3,400 lines once
       included) PlantUML's smetana layout crashes (`NullPointerException` in `SmetanaEdge`) and
       the preview lists Java's stack trace as the mistake. A crash shown as one line (PlantUML
       could not lay out the diagram, with the layout it used), its details folded; Graphviz
       used where it is installed: `preview.plantuml-layout` (automatic, smetana, Graphviz), the
-      automatic one Graphviz's `dot` when it is found (`GRAPHVIZ_DOT`, `PATH`) and smetana
+      automatic one Graphviz's `dot` when it is found (`GRAPHVIZ_DOT`, `PATH`, Graphviz's folder
+      on Windows) and smetana
       otherwise, so that diagrams are laid out as on Confluence and in IDEs, which use
       Graphviz. An ADR, over [ADR 0057](adr/0057-plantuml-preview-redone.md), decides whether
       Birchpad installs Graphviz on request as it installs PlantUML
-      ([ADR 0045](adr/0045-plantuml-installed-on-request.md))
+      ([ADR 0045](adr/0045-plantuml-installed-on-request.md)): it does not
+      ([ADR 0059](adr/0059-plantuml-layouts-and-graphviz.md))
 - [ ] 7.4p The preview follows the files a diagram includes: it is drawn again when a PlantUML
       file in the document's folder or one it includes from changes, saved in Birchpad or on
       disk, rather than only when the document's own text changes; Redraw in the preview's

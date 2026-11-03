@@ -17,6 +17,16 @@ pub(super) const ENTRIES: &[Entry] = &[
     ),
     entry(
         "Preview",
+        "preview.plantuml-layout",
+        "PlantUML layout",
+        Kind::Choice(&[
+            ("automatic", "Graphviz when installed, else smetana"),
+            ("smetana", "Smetana (built into PlantUML)"),
+            ("graphviz", "Graphviz"),
+        ]),
+    ),
+    entry(
+        "Preview",
         "preview.plantuml-background",
         "Diagram background",
         Kind::Choice(&[("white", "White"), ("theme", "As the theme")]),

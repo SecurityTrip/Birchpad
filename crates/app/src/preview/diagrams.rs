@@ -12,7 +12,7 @@ use std::path::PathBuf;
 use std::sync::LazyLock;
 
 use anyhow::{Context as _, Result, anyhow, bail};
-use birchpad_config::DiagramBackground;
+use birchpad_config::{DiagramBackground, DiagramLayout};
 use gpui_kit::{App, AppContext as _, ClipboardItem, Context, Entity, Image, ImageFormat, Window};
 use resvg::{tiny_skia, usvg};
 use toml::Value;
@@ -331,11 +331,97 @@ pub fn background(cx: &App) -> DiagramBackground {
     AppState::global(cx).settings.preview.plantuml_background
 }
 
+/// The variable PlantUML finds Graphviz's `dot` by.
+pub const GRAPHVIZ_DOT_VARIABLE: &str = "GRAPHVIZ_DOT";
+
+/// What lays a diagram out, once the setting is resolved (ADR 0059).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Layout {
+    /// Smetana, in `plantuml.jar`.
+    Smetana,
+    /// Graphviz: the `dot` found, or none for PlantUML to look for itself.
+    Graphviz(Option<PathBuf>),
+}
+
+impl Layout {
+    /// The layout `setting` asks for, with `dot` the Graphviz found, if any: automatic is
+    /// Graphviz when there is one, smetana otherwise.
+    pub fn resolve(setting: DiagramLayout, dot: Option<PathBuf>) -> Self {
+        match (setting, dot) {
+            (DiagramLayout::Smetana, _) | (DiagramLayout::Automatic, None) => Layout::Smetana,
+            (DiagramLayout::Automatic | DiagramLayout::Graphviz, dot) => Layout::Graphviz(dot),
+        }
+    }
+
+    /// Its name, as the preview shows it.
+    pub fn name(&self) -> &'static str {
+        match self {
+            Layout::Smetana => "smetana",
+            Layout::Graphviz(_) => "Graphviz",
+        }
+    }
+
+    /// The variables PlantUML gets for it: where `dot` is.
+    pub fn env(&self) -> Vec<(String, std::ffi::OsString)> {
+        match self {
+            Layout::Graphviz(Some(dot)) => vec![(
+                GRAPHVIZ_DOT_VARIABLE.to_owned(),
+                dot.clone().into_os_string(),
+            )],
+            _ => Vec::new(),
+        }
+    }
+}
+
+/// Graphviz's `dot`: the file `graphviz_dot` (the `GRAPHVIZ_DOT` variable) names, else `dot` in
+/// one of the folders of `path` (as in `PATH`), else in one of `more` (where Graphviz installs
+/// itself); `None` when there is none.
+pub fn find_dot(
+    graphviz_dot: Option<&std::ffi::OsStr>,
+    path: Option<&std::ffi::OsStr>,
+    more: &[PathBuf],
+) -> Option<PathBuf> {
+    if let Some(dot) = graphviz_dot.map(PathBuf::from).filter(|dot| dot.is_file()) {
+        return Some(dot);
+    }
+    let name = if cfg!(windows) { "dot.exe" } else { "dot" };
+    path.map(std::env::split_paths)
+        .into_iter()
+        .flatten()
+        .chain(more.iter().cloned())
+        .filter(|folder| !folder.as_os_str().is_empty())
+        .map(|folder| folder.join(name))
+        .find(|dot| dot.is_file())
+}
+
+/// Graphviz's `dot` on this system, looked for as [`find_dot`] does: on Windows also in
+/// `Program Files\Graphviz\bin`, where its installer puts it.
+pub fn system_dot() -> Option<PathBuf> {
+    let more: Vec<PathBuf> = if cfg!(windows) {
+        ["ProgramFiles", "ProgramW6432"]
+            .iter()
+            .filter_map(std::env::var_os)
+            .map(|folder| PathBuf::from(folder).join("Graphviz").join("bin"))
+            .collect()
+    } else {
+        Vec::new()
+    };
+    find_dot(
+        std::env::var_os(GRAPHVIZ_DOT_VARIABLE).as_deref(),
+        std::env::var_os("PATH").as_deref(),
+        &more,
+    )
+}
+
 /// The program and arguments that draw PlantUML's diagrams as SVG from the standard input, for
 /// the `preview.plantuml` setting: a `.jar` runs with `java -jar`. With the setting as it comes
 /// (`plantuml`) and PlantUML installed by Birchpad in `installed`, that one runs, with its own
-/// Java and the layout that needs no Graphviz.
-pub fn plantuml_command(setting: &str, installed: Option<&Path>) -> (String, Vec<String>) {
+/// Java. Smetana is asked for when it is the `layout`.
+pub fn plantuml_command(
+    setting: &str,
+    installed: Option<&Path>,
+    layout: &Layout,
+) -> (String, Vec<String>) {
     let setting = match setting.trim() {
         "" => "plantuml",
         setting => setting,
@@ -348,7 +434,10 @@ pub fn plantuml_command(setting: &str, installed: Option<&Path>) -> (String, Vec
         "-pipedelimitor",
         DIAGRAM_END,
     ]
-    .map(str::to_owned);
+    .map(str::to_owned)
+    .into_iter()
+    .chain((*layout == Layout::Smetana).then(|| "-Playout=smetana".to_owned()))
+    .collect::<Vec<_>>();
     if let Some(folder) = installed.filter(|_| setting == "plantuml") {
         let java =
             folder
@@ -361,7 +450,6 @@ pub fn plantuml_command(setting: &str, installed: Option<&Path>) -> (String, Vec
             folder.join("plantuml.jar").display().to_string(),
         ];
         args.extend(options);
-        args.push("-Playout=smetana".to_owned());
         return (java.display().to_string(), args);
     }
     let is_jar = Path::new(setting)
@@ -372,7 +460,7 @@ pub fn plantuml_command(setting: &str, installed: Option<&Path>) -> (String, Vec
         args.extend(options);
         ("java".to_owned(), args)
     } else {
-        (setting.to_owned(), options.to_vec())
+        (setting.to_owned(), options)
     }
 }
 
@@ -612,6 +700,9 @@ pub struct Mistake {
     pub line: Option<usize>,
     pub message: String,
     pub included: Option<Included>,
+    /// For a crash of PlantUML (a Java exception rather than a mistake of the text): its stack
+    /// trace, folded under the message, which is the exception's first line.
+    pub details: Option<String>,
 }
 
 /// Where in an included file a mistake is: the file as PlantUML names it, and the line (from 1).
@@ -738,17 +829,46 @@ pub fn mistakes(stderr: &str, text: &str, diagrams: &[Vec<u8>]) -> Vec<Mistake> 
             line,
             message: (*message).to_owned(),
             included,
+            details: None,
         });
         at += 3;
     }
     if found.is_empty() && !lines.is_empty() {
-        found.push(Mistake {
+        found.push(crash(&lines).unwrap_or_else(|| Mistake {
             line: None,
             message: lines.join("\n"),
             included: None,
-        });
+            details: None,
+        }));
     }
     found
+}
+
+/// A crash of PlantUML in its error output `lines` (trimmed, none empty): a Java exception and
+/// its stack trace (`at` lines). The exception's line is the message, without Java's
+/// `Exception in thread "main"`; the whole output is its details.
+fn crash(lines: &[&str]) -> Option<Mistake> {
+    let is_frame = |line: &&str| line.starts_with("at ") && line.ends_with(')');
+    let first_frame = lines.iter().position(is_frame)?;
+    let exception = lines[..first_frame]
+        .iter()
+        .rev()
+        .find(|line| line.contains("Exception") || line.contains("Error"))
+        .or_else(|| lines[..first_frame].last())?;
+    let exception = match exception.strip_prefix("Exception in thread ") {
+        // `"main" java.lang.NullPointerException`: the thread's name in quotes, then it.
+        Some(rest) => rest
+            .strip_prefix('"')
+            .and_then(|rest| rest.split_once("\" "))
+            .map_or(rest, |(_, exception)| exception),
+        None => exception,
+    };
+    Some(Mistake {
+        line: None,
+        message: exception.to_owned(),
+        included: None,
+        details: Some(lines.join("\n")),
+    })
 }
 
 /// Where line `line` (from 0) of `text` starts, in bytes; the end of the text past its last
@@ -843,13 +963,15 @@ impl Drop for StopOnDrop {
 
 /// Runs `program` with `args` on `text`, as PlantUML, in `folder` (the document's, so that
 /// `!include` and images by relative path are found next to it), with `include_path` (see
-/// [`include_path`]) for the files included files include: the diagrams it wrote and its
-/// mistakes, or why there are none. `stop` ends the run early.
+/// [`include_path`]) for the files included files include and the variables of `env` (the
+/// layout's): the diagrams it wrote and its mistakes, or why there are none. `stop` ends the
+/// run early.
 pub fn run_plantuml(
     program: &str,
     args: &[String],
     folder: Option<&Path>,
     include_path: Option<&std::ffi::OsStr>,
+    env: &[(String, std::ffi::OsString)],
     text: &str,
     stop: &Stop,
 ) -> Result<Drawn, NotDrawn> {
@@ -864,6 +986,7 @@ pub fn run_plantuml(
     if let Some(include_path) = include_path {
         command.env(INCLUDE_PATH_VARIABLE, include_path);
     }
+    command.envs(env.iter().map(|(name, value)| (name, value)));
     command
         .args(args)
         .stdin(Stdio::piped())

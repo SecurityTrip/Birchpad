@@ -279,14 +279,18 @@ fn plantuml_files_are_known_by_their_extension() {
 
 #[test]
 fn plantuml_runs_as_a_command_or_a_jar() {
-    let (program, args) = plantuml_command("plantuml", None);
+    let graphviz = Layout::Graphviz(None);
+    let (program, args) = plantuml_command("plantuml", None, &graphviz);
     assert_eq!(program, "plantuml");
     assert_eq!(args[..4], ["-tsvg", "-pipe", "-charset", "UTF-8"]);
-    let (program, args) = plantuml_command(" /opt/PlantUML.JAR ", None);
+    let (program, args) = plantuml_command(" /opt/PlantUML.JAR ", None, &graphviz);
     assert_eq!(program, "java");
     assert_eq!(args[..2], ["-jar", "/opt/PlantUML.JAR"]);
+    // Smetana is asked for of a PlantUML of the user's own too.
+    let (_, args) = plantuml_command("/opt/plantuml.jar", None, &Layout::Smetana);
+    assert_eq!(args.last().map(String::as_str), Some("-Playout=smetana"));
     assert_eq!(
-        plantuml_command("   ", None).0,
+        plantuml_command("   ", None, &graphviz).0,
         "plantuml",
         "an empty setting is the default"
     );

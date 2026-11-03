@@ -40,11 +40,12 @@ use crate::theme::{paint, ui};
 use crate::workspace::Workspace;
 
 pub use diagrams::{
-    DIAGRAM_END, Drawn, INCLUDE_PATH_VARIABLE, Included, MAX_PNG_SIDE, MAX_ZOOMED_PIXELS, Mistake,
-    NotDrawn, PLANTUML_DELAY, Stop, StopOnDrop, ZOOM_COMMANDS, ZOOM_STEPS, Zoom, ZoomChange,
-    active_diagrams, background, diagram_starts, export_name, include_path, line_offset,
-    mistake_trace, mistakes, plantuml_command, raster_factor, run_plantuml, setting_path,
-    sized_svg, split_diagrams, svg_size, svg_to_pixels, svg_to_png,
+    DIAGRAM_END, Drawn, GRAPHVIZ_DOT_VARIABLE, INCLUDE_PATH_VARIABLE, Included, Layout,
+    MAX_PNG_SIDE, MAX_ZOOMED_PIXELS, Mistake, NotDrawn, PLANTUML_DELAY, Stop, StopOnDrop,
+    ZOOM_COMMANDS, ZOOM_STEPS, Zoom, ZoomChange, active_diagrams, background, diagram_starts,
+    export_name, find_dot, include_path, line_offset, mistake_trace, mistakes, plantuml_command,
+    raster_factor, run_plantuml, setting_path, sized_svg, split_diagrams, svg_size, svg_to_pixels,
+    svg_to_png, system_dot,
 };
 
 /// What a document's preview shows.
@@ -230,6 +231,10 @@ struct Diagrams {
     drawing: Option<Task<()>>,
     /// The installations of PlantUML when it last drew ([`crate::plantuml::PlantUmlInstall`]).
     installs: u64,
+    /// The name of the layout the diagrams were last drawn with.
+    layout: &'static str,
+    /// The details of a crash of PlantUML are shown.
+    details: bool,
 }
 
 /// One diagram PlantUML drew.
@@ -343,6 +348,7 @@ impl Preview {
                 let settings = &AppState::global(cx).settings.preview;
                 let setting = &settings.plantuml;
                 let includes = settings.plantuml_include_path.clone();
+                let layout_setting = settings.plantuml_layout;
                 // PlantUML runs in the document's folder: a relative setting is Birchpad's.
                 let setting = match std::env::current_dir() {
                     Ok(base) => setting_path(setting, &base),
@@ -368,21 +374,33 @@ impl Preview {
                     }
                     let stop = StopOnDrop(Stop::default());
                     let running = stop.0.clone();
-                    let drawn = executor
+                    let (drawn, layout) = executor
                         .spawn(async move {
-                            let (program, args) = plantuml_command(&setting, installed.as_deref());
-                            run_plantuml(
+                            // Graphviz is looked for at each drawing: it may have been installed.
+                            let dot = match layout_setting {
+                                birchpad_config::DiagramLayout::Smetana => None,
+                                _ => system_dot(),
+                            };
+                            let layout = Layout::resolve(layout_setting, dot);
+                            let (program, args) =
+                                plantuml_command(&setting, installed.as_deref(), &layout);
+                            let drawn = run_plantuml(
                                 &program,
                                 &args,
                                 folder.as_deref(),
                                 include.as_deref(),
+                                &layout.env(),
                                 &text,
                                 &running,
-                            )
+                            );
+                            (drawn, layout.name())
                         })
                         .await;
                     drop(stop);
                     this.update(cx, |this, cx| {
+                        if let Content::PlantUml(diagrams) = &mut this.content {
+                            diagrams.layout = layout;
+                        }
                         this.show_diagrams(drawn);
                         cx.notify();
                     })
@@ -640,14 +658,96 @@ impl Preview {
             .into_any_element()
     }
 
+    /// What a crash of PlantUML shows: one line, with the layout it used, and its stack trace
+    /// folded under it.
+    fn render_crash(
+        mistake: &Mistake,
+        details: &str,
+        diagrams: &Diagrams,
+        this: &WeakEntity<Self>,
+    ) -> AnyElement {
+        let this = this.clone();
+        let toggle = if diagrams.details {
+            t!("preview.plantuml-hide-details")
+        } else {
+            t!("preview.plantuml-show-details")
+        };
+        div()
+            .w_full()
+            .flex()
+            .flex_col()
+            .gap_1()
+            .child(div().text_color(paint(ui().error)).child(t!(
+                "preview.plantuml-crashed",
+                layout = diagrams.layout,
+                error = mistake.message.as_str()
+            )))
+            .when(diagrams.layout == Layout::Smetana.name(), |crash| {
+                crash.child(
+                    div()
+                        .text_color(paint(ui().muted))
+                        .child(t!("preview.plantuml-try-graphviz")),
+                )
+            })
+            .child(
+                div()
+                    .id("plantuml-crash-details")
+                    .text_color(paint(ui().muted))
+                    .cursor_pointer()
+                    .hover(|row| row.underline())
+                    .on_click(move |_, _, cx| {
+                        this.update(cx, |this, cx| this.toggle_details(cx)).ok();
+                    })
+                    .child(toggle),
+            )
+            .when(diagrams.details, |crash| {
+                crash.child(
+                    div()
+                        .font_family(crate::MONOSPACE)
+                        .text_xs()
+                        .text_color(paint(ui().muted))
+                        .whitespace_normal()
+                        .children(details.lines().map(|line| div().child(line.to_owned()))),
+                )
+            })
+            .into_any_element()
+    }
+
+    /// Shows or folds the details of a crash of PlantUML.
+    pub fn toggle_details(&mut self, cx: &mut Context<Self>) {
+        if let Content::PlantUml(diagrams) = &mut self.content {
+            diagrams.details = !diagrams.details;
+            cx.notify();
+        }
+    }
+
+    /// Whether the details of a crash are shown (for tests).
+    #[cfg(feature = "test-support")]
+    pub fn details_shown(&self) -> bool {
+        matches!(&self.content, Content::PlantUml(diagrams) if diagrams.details)
+    }
+
+    /// The name of the layout the diagrams were last drawn with (for tests).
+    #[cfg(feature = "test-support")]
+    pub fn layout(&self) -> &'static str {
+        match &self.content {
+            Content::PlantUml(diagrams) => diagrams.layout,
+            Content::Markdown(_) => "",
+        }
+    }
+
     /// PlantUML's mistakes, each a link to its line.
-    fn render_mistakes(mistakes: &[Mistake], this: &WeakEntity<Self>) -> impl IntoElement {
+    fn render_mistakes(diagrams: &Diagrams, this: &WeakEntity<Self>) -> impl IntoElement {
+        let mistakes = &diagrams.mistakes;
         div()
             .w_full()
             .flex()
             .flex_col()
             .gap_1()
             .children(mistakes.iter().enumerate().map(|(index, mistake)| {
+                if let Some(details) = &mistake.details {
+                    return Self::render_crash(mistake, details, diagrams, this);
+                }
                 let message = mistake.message.as_str();
                 let text = match (mistake.line, &mistake.included) {
                     (Some(line), Some(included)) => t!(
@@ -688,6 +788,7 @@ impl Preview {
                         }
                     })
                     .child(text)
+                    .into_any_element()
             }))
     }
 
@@ -732,7 +833,7 @@ impl Preview {
                 list.child(div().w_full().text_color(paint(color)).child(message))
             })
             .when(!diagrams.mistakes.is_empty(), |list| {
-                list.child(Self::render_mistakes(&diagrams.mistakes, this))
+                list.child(Self::render_mistakes(diagrams, this))
             })
             .when(diagrams.missing, |list| {
                 list.child(Self::render_install(cx))
