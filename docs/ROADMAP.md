@@ -924,6 +924,38 @@ are drawn; what is missing is the editing of their text (7.4r).
       what it says without asking. The answer can be changed in Preferences > MISC (Close
       button: ask, minimize to the tray, close). File > Exit always closes. Only where there is
       a tray (Windows and macOS); on Linux nothing is asked and closing closes
+
+The same repository again, with the development build of 7.4m to 7.4s: 105 of the 124
+diagrams are drawn (85 before). Of the 19 that are not, 17 have mistakes of their own and 2 are
+the ones smetana cannot lay out, with no Graphviz on that machine. What it still showed:
+
+- [ ] 7.4u Mistakes in included files when PlantUML does not name the file: on 16 of the 17
+      diagrams with mistakes the picture's trace is a single `[From desc2 (line 40)]`, with no
+      `string` line of the document, so 7.4n finds no line: the preview shows "desc2, line 40",
+      a name that is no file, and the mistake links nowhere. The file found by what the picture
+      shows: the line under the mistake (`$audit_logger()`) at that line number in one
+      of the files the diagram includes (7.4v); the mistake then names that file, relative to
+      the document, and opens it at the line. When none is found, it says the mistake is in an
+      included file, without PlantUML's internal name
+- [ ] 7.4v Includes by variables and functions followed: Birchpad reads an `!include`'s path
+      only when it is written out, and every include of that repository goes through a
+      variable or a function (`!include $DIAGRAMS_ROOT/library/main.iuml`,
+      `!include FromRoot(/parts/billing/containers.puml)`). So the preview does not
+      follow the files those diagrams include (checked: an include added on disk to
+      `library/services/all.iuml` of a copy, the preview kept the old mistake until Redraw),
+      and Ctrl+click on such an `!include` opens nothing. Variables set in the document and in
+      what it includes (`!$DIAGRAMS_ROOT ?= "../.."`, `!$X = "..."`) put into the path; for a
+      path only PlantUML can work out (a function of the diagram's own), the files PlantUML
+      reads taken from it, if it can tell them; an ADR, over
+      [ADR 0057](adr/0057-plantuml-preview-redone.md), decides how
+- [ ] 7.4w A way to Graphviz from the crash: the message of a diagram smetana cannot lay out says
+      that Graphviz lays it out, and stops there. Two links under it: Graphviz's download page
+      and Preferences > Preview at the layout (`preview.plantuml-layout`), and the diagram drawn
+      again by itself once a `dot` is found
+- [ ] 7.4x The first drawing at Fit: the first time a sequence diagram was shown, at Fit, its
+      white card was as tall as the preview, the diagram at its top and white below it; after
+      switching to Fit Page and back it was as tall as the diagram. Reproduced and fixed, or
+      written down why it cannot be reproduced
 - [ ] Release 0.7.7: the workspace version (0.7.7, set when its branch opens, so that nightly
       builds are its pre-releases), `CHANGELOG.md` and this roadmap updated; the
       [release checklist](release-checklist.md) gone through
