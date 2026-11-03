@@ -21,7 +21,7 @@ type                     User
 keyword                  database
 type                     Store
 type                     <<stock>>
-markup.heading           Order
+markup.heading           == Order ==\n
 operator                 ->
 string                   : order(2 items)
 keyword                  alt
