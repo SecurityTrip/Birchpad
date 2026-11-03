@@ -1364,6 +1364,7 @@ preview:
   plantuml-failed: "PlantUML не запустился: {error}"
   plantuml-hide-details: "Скрыть подробности"
   plantuml-mistake: "Строка {line}: {message}"
+  plantuml-mistake-in-an-include: "В подключённом файле: {message}"
   plantuml-mistake-in-file: "{file}, строка {at}: {message}"
   plantuml-mistake-included: "Строка {line}: {file}, строка {at}: {message}"
   plantuml-no-diagram: "PlantUML не нарисовал диаграмму: в тексте нужны @startuml и @enduml"

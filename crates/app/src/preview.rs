@@ -47,9 +47,9 @@ pub use diagrams::{
     MAX_PNG_SIDE, MAX_ZOOMED_PIXELS, MOST_INCLUDED_FILES, Mistake, NotDrawn, PLANTUML_DELAY, Stop,
     StopOnDrop, ZOOM_COMMANDS, ZOOM_STEPS, Zoom, ZoomChange, active_diagrams, background,
     diagram_starts, dragged_offset, export_name, find_dot, find_include, fit_page_scale,
-    include_path, included_files, line_offset, mistake_trace, mistakes, normalized,
-    plantuml_command, raster_factor, redraws_for, run_plantuml, setting_path, sized_svg,
-    split_diagrams, svg_size, svg_to_pixels, svg_to_png, system_dot, watched_folders,
+    include_path, included_files, line_offset, mistake_trace, mistakes, normalized, pictured_line,
+    place_in_includes, plantuml_command, raster_factor, redraws_for, run_plantuml, setting_path,
+    sized_svg, split_diagrams, svg_size, svg_to_pixels, svg_to_png, system_dot, watched_folders,
 };
 
 /// What a document's preview shows.
@@ -418,6 +418,15 @@ impl Preview {
                                 &text,
                                 &running,
                             );
+                            // Mistakes PlantUML traced to no file of the diagram's, placed.
+                            let drawn = drawn.map(|mut drawn| {
+                                place_in_includes(
+                                    &mut drawn.mistakes,
+                                    folder.as_deref(),
+                                    &included,
+                                );
+                                drawn
+                            });
                             (drawn, layout.name(), included)
                         })
                         .await;
@@ -755,6 +764,21 @@ impl Preview {
         window.focus(&focus, cx);
     }
 
+    /// Opens `path` at `line` (from 1) in the window of `this`: a mistake in an included file.
+    pub fn open_at(
+        this: &Entity<Self>,
+        path: &Path,
+        line: usize,
+        window: &mut Window,
+        cx: &mut App,
+    ) {
+        if let Some(workspace) = this.read(cx).workspace.upgrade() {
+            workspace.update(cx, |workspace, cx| {
+                workspace.open_path_at_line(path, line, window, cx);
+            });
+        }
+    }
+
     /// The text the preview shows, without its formatting, or what PlantUML did (for tests).
     #[cfg(feature = "test-support")]
     pub fn rendered(&self, cx: &App) -> String {
@@ -937,6 +961,9 @@ impl Preview {
                         at = included.line,
                         message = message
                     ),
+                    (None, Some(included)) if included.file.is_empty() => {
+                        t!("preview.plantuml-mistake-in-an-include", message = message)
+                    }
                     (None, Some(included)) => t!(
                         "preview.plantuml-mistake-in-file",
                         file = included.file.as_str(),
@@ -954,17 +981,26 @@ impl Preview {
                 };
                 let this = this.clone();
                 let line = mistake.line;
+                // Placed in no line of the document: its file, at its line.
+                let file = mistake
+                    .included
+                    .as_ref()
+                    .and_then(|included| Some((included.path.clone()?, included.line)));
+                let linked = line.is_some() || file.is_some();
                 div()
                     .id(("plantuml-mistake", index))
                     .text_color(paint(ui().error))
-                    .when(line.is_some(), |row| {
+                    .when(linked, |row| {
                         row.cursor_pointer().hover(|row| row.underline())
                     })
                     .on_click(move |_, window, cx| {
-                        if let Some(line) = line
-                            && let Some(this) = this.upgrade()
-                        {
+                        let Some(this) = this.upgrade() else {
+                            return;
+                        };
+                        if let Some(line) = line {
                             Self::go_to_line(&this, line, window, cx);
+                        } else if let Some((path, at)) = &file {
+                            Self::open_at(&this, path, *at, window, cx);
                         }
                     })
                     .child(text)

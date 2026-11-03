@@ -68,7 +68,12 @@ fn traced(message: &str, trace: &[(&str, usize)]) -> Vec<u8> {
         .iter()
         .map(|(name, line)| format!("<text>[From {name} (line {line}) ]</text>"))
         .collect();
-    format!("<svg><text>PlantUML 1.2026.9</text>{trace}<text>{message}</text></svg>").into_bytes()
+    // Then the diagram's lines up to the mistake, the last one where it is.
+    format!(
+        "<svg><text>PlantUML 1.2026.9</text>{trace}<text>@startuml</text>\
+         <text>$bad()</text><text>{message}</text></svg>"
+    )
+    .into_bytes()
 }
 
 #[test]
@@ -90,6 +95,8 @@ fn a_mistake_in_an_included_file_is_placed_on_the_include_line() {
             included: Some(Included {
                 file: "../../domains/bad.iuml".into(),
                 line: 40,
+                shown: Some("$bad()".into()),
+                path: None,
             }),
             details: None,
         }]
@@ -123,7 +130,9 @@ fn a_mistake_in_an_included_file_without_the_documents_line_has_no_line() {
         found[0].included,
         Some(Included {
             file: "lib.iuml".into(),
-            line: 7
+            line: 7,
+            shown: Some("$bad()".into()),
+            path: None,
         })
     );
     // A trace with a line 0 for the document leads to no line either.
@@ -133,6 +142,129 @@ fn a_mistake_in_an_included_file_without_the_documents_line_has_no_line() {
     let diagrams = [traced("Other", &[("lib.iuml", 7), ("string", 2)])];
     let found = mistakes("ERROR\n1\nOops\n", text, &diagrams);
     assert_eq!((found[0].line, found[0].included.clone()), (Some(1), None));
+}
+
+#[test]
+fn the_line_under_a_mistake_is_read_from_its_picture() {
+    let svg = "<svg><text>[From desc2 (line 40) ]</text><text>&#160;</text>\
+               <text>@startuml</text><text>$log(&quot;a &amp; b&quot;)</text>\
+               <text>Syntax Error?</text></svg>";
+    assert_eq!(
+        pictured_line(svg, "Syntax Error?").as_deref(),
+        Some("$log(\"a & b\")")
+    );
+    assert_eq!(pictured_line(svg, "Other"), None, "another message");
+    assert_eq!(
+        pictured_line("<svg><text>Syntax Error?</text></svg>", "Syntax Error?"),
+        None,
+        "nothing above it"
+    );
+    assert_eq!(pictured_line("", "x"), None);
+    assert_eq!(
+        pictured_line("<svg><text>cut", "cut"),
+        None,
+        "a text not closed"
+    );
+}
+
+/// The mistake 7.4u is about: traced only to `desc2`, PlantUML's own name of an included file.
+fn untraced(line: usize, shown: &str) -> Mistake {
+    Mistake {
+        line: None,
+        message: "Syntax Error?".into(),
+        included: Some(Included {
+            file: "desc2".into(),
+            line,
+            shown: Some(shown.into()),
+            path: None,
+        }),
+        details: None,
+    }
+}
+
+#[test]
+fn a_mistake_traced_to_no_file_is_found_by_its_line() {
+    let dir = tempfile::tempdir().unwrap();
+    let services = dir.path().join("library").join("services");
+    std::fs::create_dir_all(&services).unwrap();
+    let (first, second) = (services.join("all.iuml"), services.join("billing.iuml"));
+    std::fs::write(&first, "' all\n$audit_logger()\n").unwrap();
+    std::fs::write(&second, "' billing\nclass A\n  $audit_logger()  \n").unwrap();
+    let included = [first.clone(), second.clone()];
+    // Line 3 of the second file shows it, not line 2 of the first.
+    let mut found = [untraced(3, "$audit_logger()")];
+    place_in_includes(&mut found, Some(dir.path()), &included);
+    let place = found[0].included.clone().unwrap();
+    assert_eq!(place.path, Some(second.clone()));
+    assert_eq!(
+        Path::new(&place.file),
+        Path::new("library").join("services").join("billing.iuml"),
+        "named from the document's folder"
+    );
+    assert_eq!(place.line, 3);
+    // Without the document's folder, named by its whole path.
+    let mut found = [untraced(2, "$audit_logger()")];
+    place_in_includes(&mut found, None, &included);
+    assert_eq!(
+        found[0].included.as_ref().unwrap().file,
+        first.display().to_string()
+    );
+}
+
+#[test]
+fn a_mistake_in_a_file_of_its_name_keeps_it() {
+    let dir = tempfile::tempdir().unwrap();
+    let lib = dir.path().join("lib.iuml");
+    std::fs::write(&lib, "a\nb\n").unwrap();
+    let mut found = [Mistake {
+        line: Some(4),
+        message: "Oops".into(),
+        included: Some(Included {
+            file: "../lib.iuml".into(),
+            line: 2,
+            shown: Some("other".into()),
+            path: None,
+        }),
+        details: None,
+    }];
+    place_in_includes(&mut found, Some(dir.path()), &[lib.clone()]);
+    let place = found[0].included.clone().unwrap();
+    assert_eq!(
+        place.path,
+        Some(lib),
+        "by its name, whatever the line shows"
+    );
+    assert_eq!(place.file, "../lib.iuml", "named as PlantUML names it");
+    assert_eq!(found[0].line, Some(4));
+}
+
+#[test]
+fn a_mistake_found_in_no_included_file_names_none() {
+    let dir = tempfile::tempdir().unwrap();
+    let lib = dir.path().join("lib.iuml");
+    std::fs::write(&lib, "a\n").unwrap();
+    for (line, shown) in [(1, "b"), (0, "a"), (2, "a"), (1, "")] {
+        let mut found = [untraced(line, shown)];
+        place_in_includes(&mut found, Some(dir.path()), &[lib.clone()]);
+        let place = found[0].included.clone().unwrap();
+        assert_eq!(
+            (place.file.as_str(), place.path),
+            ("", None),
+            "{line} {shown}"
+        );
+    }
+    // No included files, a file that cannot be read, and a mistake of the document: unchanged.
+    let mut found = [untraced(1, "a")];
+    place_in_includes(&mut found, None, &[dir.path().join("gone.iuml")]);
+    assert_eq!(found[0].included.as_ref().unwrap().file, "");
+    let mut found = [Mistake {
+        line: Some(1),
+        message: "x".into(),
+        included: None,
+        details: None,
+    }];
+    place_in_includes(&mut found, None, &[]);
+    assert_eq!(found[0].included, None);
 }
 
 #[test]

@@ -30,6 +30,10 @@ version's release notes from its section here.
   document it has nothing to do with: the preview reads where it is from PlantUML's picture of
   it, names the file and its line, and links to the document's `!include` line that leads to it
   (none when there is none).
+- A mistake PlantUML traces only to a name of its own (`[From desc2 (line 40)]`) is found
+  among the files the diagram includes, by the line its picture shows: it names that file,
+  relative to the document, and a click opens it at the line. When none holds it, it says the
+  mistake is in an included file, rather than giving PlantUML's internal name.
 
 ### Added
 

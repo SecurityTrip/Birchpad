@@ -1350,6 +1350,7 @@ preview:
   plantuml-failed: "PlantUML lief nicht: {error}"
   plantuml-hide-details: "Details ausblenden"
   plantuml-mistake: "Zeile {line}: {message}"
+  plantuml-mistake-in-an-include: "In einer eingebundenen Datei: {message}"
   plantuml-mistake-in-file: "{file}, Zeile {at}: {message}"
   plantuml-mistake-included: "Zeile {line}: {file}, Zeile {at}: {message}"
   plantuml-no-diagram: "PlantUML hat kein Diagramm gezeichnet: Der Text braucht @startuml und @enduml"

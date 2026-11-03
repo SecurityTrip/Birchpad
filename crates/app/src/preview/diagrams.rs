@@ -888,11 +888,119 @@ pub struct Mistake {
     pub details: Option<String>,
 }
 
-/// Where in an included file a mistake is: the file as PlantUML names it, and the line (from 1).
-#[derive(Debug, Clone, PartialEq, Eq)]
+/// Where in an included file a mistake is: the file as PlantUML names it (empty when its name
+/// is none of the files the diagram includes, and none of them was found to hold it), and the
+/// line (from 1).
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Included {
     pub file: String,
     pub line: usize,
+    /// The line of text PlantUML's picture shows under the mistake: what it read there.
+    pub shown: Option<String>,
+    /// The file, found among those the diagram includes ([`place_in_includes`]): a click on the
+    /// mistake opens it at the line.
+    pub path: Option<PathBuf>,
+}
+
+/// The texts of an SVG picture, in order, as they read.
+fn picture_texts(svg: &str) -> Vec<String> {
+    let mut texts = Vec::new();
+    let mut rest = svg;
+    while let Some(at) = rest.find("<text") {
+        rest = &rest[at..];
+        let Some(open) = rest.find('>') else {
+            break;
+        };
+        let body = &rest[open + 1..];
+        let Some(close) = body.find("</text>") else {
+            break;
+        };
+        texts.push(unescape_xml(&body[..close]).replace('\u{a0}', " "));
+        rest = &body[close..];
+    }
+    texts
+}
+
+/// The line PlantUML's picture of a mistake shows just above its `message`: the line it read
+/// where the mistake is.
+pub fn pictured_line(svg: &str, message: &str) -> Option<String> {
+    let texts = picture_texts(svg);
+    let at = texts
+        .iter()
+        .rposition(|text| text.trim() == message.trim())?;
+    texts[..at]
+        .iter()
+        .rev()
+        .map(|text| text.trim())
+        .find(|text| !text.is_empty())
+        .map(str::to_owned)
+}
+
+/// Places the mistakes in included files that PlantUML did not trace to the document's lines
+/// (it names the file with a name of its own, `desc2`) among `included`, the files the
+/// diagram includes: the file of that name, else the one whose line at the mistake's line is
+/// the line the picture shows. It is named relative to the document's `folder`, and kept for a
+/// click to open; when none is found, the mistake says only that it is in an included file.
+pub fn place_in_includes(mistakes: &mut [Mistake], folder: Option<&Path>, included: &[PathBuf]) {
+    let mut lines: Vec<Option<Vec<String>>> = vec![None; included.len()];
+    for mistake in mistakes.iter_mut() {
+        let Some(place) = mistake.included.as_mut() else {
+            continue;
+        };
+        if place.path.is_some() {
+            continue;
+        }
+        // By its name: the end of an included file's path.
+        let name: PathBuf = Path::new(&place.file)
+            .components()
+            .skip_while(|part| {
+                matches!(
+                    part,
+                    std::path::Component::ParentDir | std::path::Component::CurDir
+                )
+            })
+            .collect();
+        let named = (!name.as_os_str().is_empty())
+            .then(|| included.iter().position(|file| file.ends_with(&name)))
+            .flatten();
+        // By what the picture shows at the line, when the name is no file of the diagram's.
+        let shown = place.shown.as_deref().map(str::trim);
+        let found = named.or_else(|| {
+            let shown = shown.filter(|shown| !shown.is_empty())?;
+            (0..included.len()).find(|&index| {
+                let text = lines[index].get_or_insert_with(|| {
+                    std::fs::read(&included[index])
+                        .map(|bytes| {
+                            String::from_utf8_lossy(&bytes)
+                                .lines()
+                                .map(str::to_owned)
+                                .collect()
+                        })
+                        .unwrap_or_default()
+                });
+                place
+                    .line
+                    .checked_sub(1)
+                    .and_then(|at| text.get(at))
+                    .is_some_and(|line| line.trim() == shown)
+            })
+        });
+        match found {
+            Some(index) => {
+                let file = &included[index];
+                if named.is_none() || mistake.line.is_none() {
+                    place.file = folder
+                        .and_then(|folder| file.strip_prefix(folder).ok())
+                        .unwrap_or(file)
+                        .display()
+                        .to_string();
+                }
+                place.path = Some(file.clone());
+            }
+            None if mistake.line.is_none() => place.file.clear(),
+            None => {}
+        }
+    }
 }
 
 /// What PlantUML calls the document it reads from its input in a mistake's trace.
@@ -1003,6 +1111,10 @@ pub fn mistakes(stderr: &str, text: &str, diagrams: &[Vec<u8>]) -> Vec<Mistake> 
                 let included = Included {
                     file: file.clone(),
                     line: *at,
+                    shown: pictured.and_then(|index| {
+                        pictured_line(&String::from_utf8_lossy(&diagrams[index]), message)
+                    }),
+                    path: None,
                 };
                 (document, Some(included))
             }

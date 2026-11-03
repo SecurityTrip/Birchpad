@@ -929,7 +929,7 @@ The same repository again, with the development build of 7.4m to 7.4s: 105 of th
 diagrams are drawn (85 before). Of the 19 that are not, 17 have mistakes of their own and 2 are
 the ones smetana cannot lay out, with no Graphviz on that machine. What it still showed:
 
-- [ ] 7.4u Mistakes in included files when PlantUML does not name the file: on 16 of the 17
+- [x] 7.4u Mistakes in included files when PlantUML does not name the file: on 16 of the 17
       diagrams with mistakes the picture's trace is a single `[From desc2 (line 40)]`, with no
       `string` line of the document, so 7.4n finds no line: the preview shows "desc2, line 40",
       a name that is no file, and the mistake links nowhere. The file found by what the picture
