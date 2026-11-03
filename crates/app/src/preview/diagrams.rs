@@ -970,6 +970,39 @@ pub fn pictured_line(svg: &str, message: &str) -> Option<String> {
         .map(str::to_owned)
 }
 
+/// `path` relative to `folder`, with `..` for each folder above it
+/// (`../../parts/billing/containers.puml`), both taken without their `.` and `..` parts;
+/// `None` when they have no root in common (another drive), or `path` is `folder` itself.
+pub fn relative_to(path: &Path, folder: &Path) -> Option<PathBuf> {
+    use std::path::Component;
+    let path = normalized(path);
+    let folder = normalized(folder);
+    let mut parts = path.components().peekable();
+    let mut above = folder.components().peekable();
+    let mut shared = 0;
+    while let (Some(a), Some(b)) = (parts.peek(), above.peek()) {
+        if a != b {
+            break;
+        }
+        parts.next();
+        above.next();
+        shared += 1;
+    }
+    let rooted = |part: &Component| matches!(part, Component::Prefix(_) | Component::RootDir);
+    if shared == 0 && (path.components().next().is_some_and(|part| rooted(&part))) {
+        return None;
+    }
+    let mut relative = PathBuf::new();
+    for part in above {
+        if matches!(part, Component::ParentDir) {
+            return None;
+        }
+        relative.push("..");
+    }
+    relative.extend(parts);
+    (!relative.as_os_str().is_empty()).then_some(relative)
+}
+
 /// Places the mistakes in included files that PlantUML did not trace to the document's lines
 /// (it names the file with a name of its own, `desc2`) among `included`, the files the
 /// diagram includes: the file of that name, else the one whose line at the mistake's line is
@@ -1024,8 +1057,8 @@ pub fn place_in_includes(mistakes: &mut [Mistake], folder: Option<&Path>, includ
                 let file = &included[index];
                 if named.is_none() || mistake.line.is_none() {
                     place.file = folder
-                        .and_then(|folder| file.strip_prefix(folder).ok())
-                        .unwrap_or(file)
+                        .and_then(|folder| relative_to(file, folder))
+                        .unwrap_or_else(|| file.clone())
                         .display()
                         .to_string();
                 }

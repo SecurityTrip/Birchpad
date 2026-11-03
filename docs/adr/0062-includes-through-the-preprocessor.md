@@ -37,9 +37,9 @@ does, as far as those includes need.
   - Calls: the diagram's own functions and the built-in ones paths are made with:
     `%dirpath()` (the folder of the file being read), `%getenv`, `%get_variable_value`,
     `%variable_exists`, `%string`, `%intval`, `%strlen`, `%strpos`, `%substr`, `%lower`,
-    `%upper`, `%true`, `%false`, `%not` and `%boolval`; an argument that is no expression is taken as written
-    (`FromRoot(/billing/containers.puml)`), as PlantUML takes unquoted text. Calls nest at most 16
-    deep.
+    `%upper`, `%true`, `%false`, `%not` and `%boolval`; an argument that is no expression is
+    taken as written (`FromRoot(/billing/containers.puml)`), as PlantUML takes unquoted text.
+    Calls nest at most 16 deep.
   - An `!include`'s text has its variables and calls replaced by their values; the file is
     looked for next to the file that includes it, then in the include path (ADR 0057, roadmap
     7.4m), the document's folder first.

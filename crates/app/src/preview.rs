@@ -51,9 +51,9 @@ pub use diagrams::{
     StopOnDrop, ZOOM_COMMANDS, ZOOM_STEPS, Zoom, ZoomChange, active_diagrams, background,
     diagram_starts, dragged_offset, export_name, find_dot, find_include, fit_page_scale,
     fit_width_scale, include_path, line_offset, mistake_trace, mistakes, normalized, pictured_line,
-    place_in_includes, plantuml_command, raster_factor, redraws_for, run_plantuml, setting_path,
-    sized_svg, split_diagrams, svg_size, svg_to_pixels, svg_to_png, system_dot, waits_for_graphviz,
-    watched_folders,
+    place_in_includes, plantuml_command, raster_factor, redraws_for, relative_to, run_plantuml,
+    setting_path, sized_svg, split_diagrams, svg_size, svg_to_pixels, svg_to_png, system_dot,
+    waits_for_graphviz, watched_folders,
 };
 pub use includes::{IncludeLink, Includes, MOST_INCLUDED_FILES, Preprocessor, walk_includes};
 

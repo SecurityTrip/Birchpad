@@ -434,7 +434,7 @@ command:
     xpath: "Вычислить выражение XPath..."
 close-to-tray:
   close: "Закрыть"
-  detail: "Ответ запоминается; изменить его можно в Настройки > Разное > Кнопка закрытия. Файл > Выход всегда закрывает."
+  detail: "Ответ запоминается; изменить его можно в Настройках > Разное > Кнопка закрытия. Файл > Выход всегда закрывает."
   minimize: "Свернуть в трей"
   question: "Свернуть Birchpad в системный трей или закрыть?"
 common:
@@ -1361,7 +1361,7 @@ preview:
   no-include: "В пути поиска PlantUML нет файла {file}"
   no-preview: "у документа нет предпросмотра: это не Markdown и не PlantUML"
   not-a-picture: "диаграмму не удаётся нарисовать как картинку"
-  plantuml-choose-layout: "Выбрать раскладку в Настройки > Предпросмотр"
+  plantuml-choose-layout: "Выбрать раскладку в Настройках > Предпросмотр"
   plantuml-crashed: "PlantUML не смог нарисовать диаграмму с раскладкой {layout}: {error}"
   plantuml-drawing: "PlantUML рисует диаграмму..."
   plantuml-failed: "PlantUML не запустился: {error}"

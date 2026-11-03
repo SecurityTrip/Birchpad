@@ -979,14 +979,18 @@ name the file and open it at the line; 10 still say only that it is in an includ
       `!else` around `!return`, and the built-in functions such paths use (`%get_variable_value`,
       `%strpos`, `%string`), worked out far enough to give the path; what is still out of reach
       stays as it is now
-- [ ] 7.4z The included file named relative to the document: a mistake in one names it by its
+- [x] 7.4z The included file named relative to the document: a mistake in one names it by its
       whole path (`C:\Users\...\repo\parts\billing\containers.puml, line 41`), longer
       than the message, because only the document's own folder is taken off the path and the
       file is above it. Named relative to the document
       (`../../parts/billing/containers.puml`). With it, the texts seen while checking:
       the link under a crash reads "в Настройки > Предпросмотр" in Russian, which should be "в
       Настройках > Предпросмотр"; the question when a file open in Birchpad changes on disk has
-      the title "Warning" in the Russian interface
+      the title "Warning" in the Russian interface. Done but
+      for the title: GPUI's Windows dialog sets it itself, in English ("Info", "Warning",
+      "Critical", `gpui-fast-windows`), with no way to give it one; the only way around is
+      Birchpad drawing every question in its window instead of the system's dialog
+      (`set_prompt_builder`), a change of its own
 - [ ] Release 0.7.7: the workspace version (0.7.7, set when its branch opens, so that nightly
       builds are its pre-releases), `CHANGELOG.md` and this roadmap updated; the
       [release checklist](release-checklist.md) gone through

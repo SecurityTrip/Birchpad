@@ -2040,3 +2040,65 @@ fn only_diagrams_that_were_drawn_are_exported(cx: &mut TestAppContext) {
     cx.run_until_parked();
     assert!(run(&workspace, "preview.copy-diagram", cx).is_err());
 }
+
+#[test]
+fn included_files_are_named_relative_to_the_document() {
+    let root = std::env::temp_dir().join("birchpad-relative");
+    let document = root.join("views").join("context");
+    let file = root.join("parts").join("billing").join("containers.puml");
+    assert_eq!(
+        relative_to(&file, &document),
+        Some(
+            Path::new("..")
+                .join("..")
+                .join("parts")
+                .join("billing")
+                .join("containers.puml")
+        ),
+        "above the document"
+    );
+    assert_eq!(
+        relative_to(&document.join("a.iuml"), &document),
+        Some(PathBuf::from("a.iuml")),
+        "beside it"
+    );
+    assert_eq!(
+        relative_to(
+            &document.join("lib").join("..").join("b.iuml"),
+            &document.join(".")
+        ),
+        Some(PathBuf::from("b.iuml")),
+        "without . and .."
+    );
+    assert_eq!(relative_to(&document, &document), None, "the folder itself");
+    if cfg!(windows) {
+        assert_eq!(
+            relative_to(Path::new(r"D:\lib\a.iuml"), Path::new(r"C:\views")),
+            None,
+            "another drive"
+        );
+    }
+}
+
+#[test]
+fn a_mistake_above_the_document_is_named_relative_to_it() {
+    let dir = tempfile::tempdir().unwrap();
+    let document = dir.path().join("views").join("context");
+    let billing = dir.path().join("parts").join("billing");
+    std::fs::create_dir_all(&document).unwrap();
+    std::fs::create_dir_all(&billing).unwrap();
+    let file = billing.join("containers.puml");
+    std::fs::write(&file, "a\n$audit_logger()\n").unwrap();
+    let mut found = [untraced(2, "$audit_logger()")];
+    place_in_includes(&mut found, Some(&document), &[file.clone()]);
+    let place = found[0].included.clone().unwrap();
+    assert_eq!(
+        Path::new(&place.file),
+        Path::new("..")
+            .join("..")
+            .join("parts")
+            .join("billing")
+            .join("containers.puml")
+    );
+    assert_eq!(place.path, Some(file));
+}

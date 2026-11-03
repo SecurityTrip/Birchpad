@@ -22,6 +22,10 @@ version's release notes from its section here.
 
 ### Fixed
 
+- A mistake in an included file above the document's folder names the file relative to the
+  document (`../../parts/billing/containers.puml`) rather than by its whole path.
+- Russian: "в Настройках > ..." in the link under a crash of smetana and in the question of
+  closing to the tray.
 - The first drawing of a PlantUML diagram at Fit is as tall as the diagram: its white card
   was at times as tall as the preview, the diagram at its top, until the zoom was changed.
 - A PlantUML file included from another folder finds what it includes by a path relative to
