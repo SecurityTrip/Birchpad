@@ -851,6 +851,64 @@ tests use stay where they are.
       builds are its pre-releases), `CHANGELOG.md` and this roadmap updated; the
       [release checklist](release-checklist.md) gone through
 
+### Release 0.7.7: PlantUML on a real repository
+
+What opening a real architecture repository in Birchpad showed: 124 PlantUML diagrams (C4
+context and container diagrams over thousands of lines of shared `!include` files, and
+sequence diagrams), each drawn the way the preview draws it (the PlantUML Birchpad installs,
+`-pipe`, smetana, the document's folder). 85 were drawn; of the 39 that were not, 19 are
+Birchpad's fault (7.4m), 2 are the smetana layout's (7.4o) and 18 are mistakes of the
+diagrams themselves, which the preview should show at the right place (7.4n). And a question
+from a user, whether sequence diagrams can be written as code in Birchpad: they can, and
+are drawn; what is missing is the editing of their text (7.4r).
+
+- [ ] 7.4m Files included by included files found: PlantUML gets the document's folder as its
+      include path (`-Dplantuml.include.path`) besides running in it, so that a file included
+      from another folder (`shared/context.iuml`) that includes by a path relative to the
+      document (`../../shared/billing/billing_context.puml`) finds it, as IDE plugins and
+      Confluence's macro do. Without it, every context diagram of that repository failed with
+      "cannot include"; with it, all 19 are drawn. Folders of the user's own after the
+      document's (`preview.plantuml-include-path`), for libraries kept elsewhere
+- [ ] 7.4n Mistakes in included files placed where they are: PlantUML's error output gives the
+      line in the file the mistake is in, and the preview takes it for a line of the document
+      ("Line 40: Syntax Error?" on 12 container diagrams, a link to an `!include` line that has
+      nothing to do with it; the mistake is an undefined procedure on line 40 of an included
+      file). The picture of the mistake says where it is (`[From string (line 75)]` for the
+      document, another name for an included file): a mistake in an included file says so and
+      links to the document's `!include` line that leads to it, the last of the document's
+      lines in the picture's trace, or to no line when none is found
+- [ ] 7.4o Diagrams smetana cannot lay out: on the two largest diagrams (about 3,400 lines once
+      included) PlantUML's smetana layout crashes (`NullPointerException` in `SmetanaEdge`) and
+      the preview lists Java's stack trace as the mistake. A crash shown as one line (PlantUML
+      could not lay out the diagram, with the layout it used), its details folded; Graphviz
+      used where it is installed: `preview.plantuml-layout` (automatic, smetana, Graphviz), the
+      automatic one Graphviz's `dot` when it is found (`GRAPHVIZ_DOT`, `PATH`) and smetana
+      otherwise, so that diagrams are laid out as on Confluence and in IDEs, which use
+      Graphviz. An ADR, over [ADR 0057](adr/0057-plantuml-preview-redone.md), decides whether
+      Birchpad installs Graphviz on request as it installs PlantUML
+      ([ADR 0045](adr/0045-plantuml-installed-on-request.md))
+- [ ] 7.4p The preview follows the files a diagram includes: it is drawn again when a PlantUML
+      file in the document's folder or one it includes from changes, saved in Birchpad or on
+      disk, rather than only when the document's own text changes; Redraw in the preview's
+      toolbar and View > Preview for the rest
+- [ ] 7.4q Faster drawing: each drawing starts Java anew (0.6 s on its own, 1.5 to 3.5 s for a
+      diagram of that repository with its includes). PlantUML kept running for the window and
+      given each drawing in turn, started again when a run the text moved past is stopped;
+      measured before and after on the same diagrams, and kept only if it is faster
+- [ ] 7.4r PlantUML as a language of its own: Birchpad shows a `.puml` as a normal text file. A
+      PlantUML language (Language menu, status bar): highlighting of `@start`/`@end` lines,
+      keywords and participants' kinds, arrows, `!` preprocessor lines, strings, colors and
+      comments (`'`, `/' '/`, which Toggle Comment uses); folding by blocks (`box`, `alt`,
+      `group`, `!if`, `!procedure` and their ends) rather than by indentation; the Function
+      List with participants, `==` sections, titles and `!procedure` and `!function`; Ctrl+click
+      on an `!include` with a path opens the file
+- [ ] 7.4s Moving about a diagram: dragging it with the mouse scrolls it, as a hand does; Fit
+      Page beside Fit, the whole diagram in the preview, since a wide sequence diagram fitted to
+      the width is too small to read
+- [ ] Release 0.7.7: the workspace version (0.7.7, set when its branch opens, so that nightly
+      builds are its pre-releases), `CHANGELOG.md` and this roadmap updated; the
+      [release checklist](release-checklist.md) gone through
+
 ### Release 0.8.0: development tools
 
 - [ ] 7.5 LSP client: diagnostics, completion, hover, go to definition and references,
