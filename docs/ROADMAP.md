@@ -961,6 +961,32 @@ the ones smetana cannot lay out, with no Graphviz on that machine. What it still
       at Fit a card took its size from its image's, which is not known before the image is
       decoded; a card now gets its size from the diagram's own (from its SVG) and the preview's
       width, and the preview draws again once it is laid out
+
+Once more, with 7.4t to 7.4x built: the mistakes of all 124 diagrams placed as the preview
+places them, and the steps tried in the window on a copy of the repository. A first drawing at
+Fit, the links to Graphviz, Ctrl+click on `!include $DIAGRAMS_ROOT/...` and the redraw when such
+an included file changes on disk work. Of the 16 diagrams with a mistake in an included file, 6
+name the file and open it at the line; 10 still say only that it is in an included file:
+
+- [ ] 7.4y Includes through functions of the diagram's own: the 10 include the file with the
+      mistake by `!include FromRoot(/parts/billing/containers.puml)`, and `FromRoot` is
+      not worked out. It is an `!unquoted function` with a `!local` variable,
+      `%get_variable_value("$BRANCH")` and an `!if`/`!else` around its two `!return`s
+      (`fullpath.iuml`), which the preprocessor of 7.4v does not follow. So for
+      `orders_containers.puml` and the other diagrams whose parts are included that way,
+      the mistake links nowhere, Ctrl+click on such an `!include` opens nothing, and those files
+      are not followed. Functions with `!unquoted`, `!local` variables, `!if`, `!elseif` and
+      `!else` around `!return`, and the built-in functions such paths use (`%get_variable_value`,
+      `%strpos`, `%string`), worked out far enough to give the path; what is still out of reach
+      stays as it is now
+- [ ] 7.4z The included file named relative to the document: a mistake in one names it by its
+      whole path (`C:\Users\...\repo\parts\billing\containers.puml, line 41`), longer
+      than the message, because only the document's own folder is taken off the path and the
+      file is above it. Named relative to the document
+      (`../../parts/billing/containers.puml`). With it, the texts seen while checking:
+      the link under a crash reads "в Настройки > Предпросмотр" in Russian, which should be "в
+      Настройках > Предпросмотр"; the question when a file open in Birchpad changes on disk has
+      the title "Warning" in the Russian interface
 - [ ] Release 0.7.7: the workspace version (0.7.7, set when its branch opens, so that nightly
       builds are its pre-releases), `CHANGELOG.md` and this roadmap updated; the
       [release checklist](release-checklist.md) gone through
