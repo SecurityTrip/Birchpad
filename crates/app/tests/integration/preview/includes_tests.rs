@@ -136,9 +136,7 @@ fn includes_through_variables_and_functions_are_followed() {
         [
             root.join("library").join("main.iuml"),
             root.join("library").join("services").join("all.iuml"),
-            root.join("parts")
-                .join("billing")
-                .join("containers.puml"),
+            root.join("parts").join("billing").join("containers.puml"),
         ]
     );
     // The function comes from the included file, read before the line that calls it.
@@ -147,10 +145,7 @@ fn includes_through_variables_and_functions_are_followed() {
         IncludeLink {
             from: None,
             written: "FromRoot(/parts/billing/containers.puml)".into(),
-            path: root
-                .join("parts")
-                .join("billing")
-                .join("containers.puml"),
+            path: root.join("parts").join("billing").join("containers.puml"),
         }
     );
     assert_eq!(

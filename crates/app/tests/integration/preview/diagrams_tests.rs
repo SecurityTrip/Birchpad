@@ -1156,7 +1156,11 @@ fn included_files_are_found_where_plantuml_finds_them() {
     )
     .unwrap();
     std::fs::write(domains.join("next.iuml"), "' next to the file including it").unwrap();
-    std::fs::write(domains.join("billing").join("billing.puml"), "class Billing").unwrap();
+    std::fs::write(
+        domains.join("billing").join("billing.puml"),
+        "class Billing",
+    )
+    .unwrap();
     std::fs::write(library.join("lib.iuml"), "' from the include path").unwrap();
     let folders = [document.clone(), library.clone()];
     let found = walk_includes(
