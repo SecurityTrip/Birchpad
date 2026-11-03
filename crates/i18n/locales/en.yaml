@@ -278,6 +278,7 @@ command:
     export-png: "Export Diagram as PNG..."
     export-svg: "Export Diagram as SVG..."
     fit: "Fit Diagrams to Width"
+    fit-page: "Fit Diagrams to Page"
     install-plantuml: "Install PlantUML"
     open-include: "Open Included File"
     redraw: "Redraw Diagrams"
@@ -1351,6 +1352,7 @@ preview:
   plantuml-try-graphviz: "Graphviz lays out what smetana cannot: with Graphviz installed, the automatic layout (preview.plantuml-layout) uses it."
   preview-only: "Preview Only"
   zoom-fit: "Fit"
+  zoom-fit-page: "Page"
 print:
   cannot-print: "cannot print: {error}"
   cannot-write: "cannot write {path}: {error}"

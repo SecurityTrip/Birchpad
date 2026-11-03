@@ -707,6 +707,7 @@ pub fn main_menu() -> Vec<Menu> {
                     cmd("preview.zoom-out"),
                     cmd("preview.actual-size"),
                     cmd("preview.fit"),
+                    cmd("preview.fit-page"),
                     Separator,
                     cmd("preview.redraw"),
                     cmd("preview.white-background"),

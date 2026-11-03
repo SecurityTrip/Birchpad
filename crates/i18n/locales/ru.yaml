@@ -277,6 +277,7 @@ command:
     export-png: "Экспорт диаграммы в PNG..."
     export-svg: "Экспорт диаграммы в SVG..."
     fit: "Диаграммы по ширине"
+    fit-page: "Диаграммы целиком"
     install-plantuml: "Установить PlantUML"
     open-include: "Открыть подключённый файл"
     redraw: "Перерисовать диаграммы"
@@ -1363,6 +1364,7 @@ preview:
   plantuml-try-graphviz: "То, что не раскладывает smetana, раскладывает Graphviz: если он установлен, автоматическая раскладка (preview.plantuml-layout) берёт его."
   preview-only: "Только просмотр"
   zoom-fit: "По ширине"
+  zoom-fit-page: "Целиком"
 print:
   cannot-print: "не удалось напечатать: {error}"
   cannot-write: "не удалось записать {path}: {error}"

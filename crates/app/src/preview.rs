@@ -28,9 +28,10 @@ use gpui_kit::component::menu::{ContextMenuExt as _, PopupMenu, PopupMenuItem};
 use gpui_kit::component::scroll::{Scrollbar, ScrollbarAxis, ScrollbarMode};
 use gpui_kit::component::{IconName, Selectable as _, Sizable};
 use gpui_kit::{
-    AnyElement, App, AppContext as _, ClickEvent, Context, Entity, Image, ImageFormat, ImageSource,
-    ObjectFit, Pixels, Point, Resource, ScrollHandle, ScrollWheelEvent, SharedString, SharedUri,
-    Subscription, Task, WeakEntity, Window, div, img, point, prelude::*, px,
+    AnyElement, App, AppContext as _, ClickEvent, Context, CursorStyle, Entity, Image, ImageFormat,
+    ImageSource, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, ObjectFit, Pixels,
+    Point, Resource, ScrollHandle, ScrollWheelEvent, SharedString, SharedUri, Subscription, Task,
+    WeakEntity, Window, div, img, point, prelude::*, px,
 };
 
 use crate::app_state::AppState;
@@ -45,10 +46,10 @@ pub use diagrams::{
     DIAGRAM_END, Drawn, GRAPHVIZ_DOT_VARIABLE, INCLUDE_PATH_VARIABLE, Included, Layout,
     MAX_PNG_SIDE, MAX_ZOOMED_PIXELS, MOST_INCLUDED_FILES, Mistake, NotDrawn, PLANTUML_DELAY, Stop,
     StopOnDrop, ZOOM_COMMANDS, ZOOM_STEPS, Zoom, ZoomChange, active_diagrams, background,
-    diagram_starts, export_name, find_dot, find_include, include_path, included_files, line_offset,
-    mistake_trace, mistakes, normalized, plantuml_command, raster_factor, redraws_for,
-    run_plantuml, setting_path, sized_svg, split_diagrams, svg_size, svg_to_pixels, svg_to_png,
-    system_dot, watched_folders,
+    diagram_starts, dragged_offset, export_name, find_dot, find_include, fit_page_scale,
+    include_path, included_files, line_offset, mistake_trace, mistakes, normalized,
+    plantuml_command, raster_factor, redraws_for, run_plantuml, setting_path, sized_svg,
+    split_diagrams, svg_size, svg_to_pixels, svg_to_png, system_dot, watched_folders,
 };
 
 /// What a document's preview shows.
@@ -224,6 +225,9 @@ struct Diagrams {
     zoom: Zoom,
     /// Ctrl with the mouse wheel: the scrolling not yet turned into a zoom step.
     wheel: f32,
+    /// A drag of the diagrams with the mouse, as by a hand: where the mouse was and where the
+    /// diagrams were scrolled to when it started.
+    drag: Option<(Point<Pixels>, Point<Pixels>)>,
     /// Where the diagrams are scrolled to, both ways.
     scroll: ScrollHandle,
     /// The mistakes PlantUML found in the text the diagrams show.
@@ -433,6 +437,12 @@ impl Preview {
             }
         }
         cx.notify();
+    }
+
+    /// Whether the diagrams are being dragged with the mouse (for tests).
+    #[cfg(feature = "test-support")]
+    pub fn dragging(&self) -> bool {
+        matches!(&self.content, Content::PlantUml(diagrams) if diagrams.drag.is_some())
     }
 
     /// Draws the diagrams again, as they are on disk now: View > Preview > Redraw, and a change
@@ -654,6 +664,44 @@ impl Preview {
         scroll.set_offset(point(x, offset.y));
         cx.notify();
         true
+    }
+
+    /// The left button pressed on the diagrams: they follow the mouse until it is let go.
+    fn start_drag(&mut self, position: Point<Pixels>, cx: &mut Context<Self>) {
+        if let Content::PlantUml(diagrams) = &mut self.content {
+            diagrams.drag = Some((position, diagrams.scroll.offset()));
+            cx.notify();
+        }
+    }
+
+    /// The mouse moved while the diagrams are dragged: they are scrolled with it. Whether they
+    /// are dragged.
+    fn drag_to(&mut self, position: Point<Pixels>, cx: &mut Context<Self>) -> bool {
+        let Content::PlantUml(diagrams) = &self.content else {
+            return false;
+        };
+        let Some((from, start)) = diagrams.drag else {
+            return false;
+        };
+        let most = diagrams.scroll.max_offset();
+        let (x, y) = dragged_offset(
+            (f32::from(start.x), f32::from(start.y)),
+            (f32::from(from.x), f32::from(from.y)),
+            (f32::from(position.x), f32::from(position.y)),
+            (f32::from(most.x), f32::from(most.y)),
+        );
+        diagrams.scroll.set_offset(point(px(x), px(y)));
+        cx.notify();
+        true
+    }
+
+    /// The mouse let go: the drag ends.
+    fn end_drag(&mut self, cx: &mut Context<Self>) {
+        if let Content::PlantUml(diagrams) = &mut self.content
+            && diagrams.drag.take().is_some()
+        {
+            cx.notify();
+        }
     }
 
     /// Ctrl with the mouse wheel over the diagrams: a step of zoom for each notch.
@@ -932,6 +980,14 @@ impl Preview {
         let this = &cx.entity().downgrade();
         let white = background(cx) == DiagramBackground::White;
         let zoom = diagrams.zoom.percent().map(|percent| percent as f32 / 100.);
+        // At Fit Page, the room the diagrams have: the preview's area, less its margins.
+        let viewport = diagrams.scroll.bounds().size;
+        let room = (
+            f32::from(viewport.width) - 32.,
+            f32::from(viewport.height) - 32.,
+        );
+        let fit_page = diagrams.zoom == Zoom::FitPage && room.0 > 0. && room.1 > 0.;
+        let dragging = diagrams.drag.is_some();
         let message = match (&diagrams.error, &diagrams.drawing) {
             (Some(error), _) => Some((error.clone(), ui().error)),
             (None, Some(_)) if diagrams.images.is_empty() => {
@@ -953,6 +1009,12 @@ impl Preview {
             .flex_col()
             .items_start()
             .gap_4()
+            .on_mouse_down(
+                MouseButton::Left,
+                cx.listener(|this, event: &MouseDownEvent, _, cx| {
+                    this.start_drag(event.position, cx);
+                }),
+            )
             .on_scroll_wheel(cx.listener(|this, event: &ScrollWheelEvent, window, cx| {
                 if event.modifiers.secondary() {
                     this.wheel_zoom(event, cx);
@@ -977,6 +1039,10 @@ impl Preview {
                     (Some(zoom), Some((width, height))) => {
                         image.w(px(width * zoom)).h(px(height * zoom))
                     }
+                    (None, Some((width, height))) if fit_page => {
+                        let scale = fit_page_scale((width, height), room);
+                        image.w(px(width * scale)).h(px(height * scale))
+                    }
                     _ => image.max_w_full().object_fit(ObjectFit::Contain),
                 };
                 // Diagrams are made for paper: on white, unless the theme's background is asked.
@@ -998,6 +1064,27 @@ impl Preview {
                     .id("plantuml-diagrams")
                     .debug_selector(|| "plantuml-diagrams".into())
                     .size_full()
+                    // A hand that drags the diagrams, held while it does.
+                    .cursor(if dragging {
+                        CursorStyle::ClosedHand
+                    } else {
+                        CursorStyle::OpenHand
+                    })
+                    .on_mouse_move(cx.listener(|this, event: &MouseMoveEvent, _, cx| {
+                        if event.pressed_button == Some(MouseButton::Left) {
+                            this.drag_to(event.position, cx);
+                        } else {
+                            this.end_drag(cx);
+                        }
+                    }))
+                    .on_mouse_up(
+                        MouseButton::Left,
+                        cx.listener(|this, _: &MouseUpEvent, _, cx| this.end_drag(cx)),
+                    )
+                    .on_mouse_up_out(
+                        MouseButton::Left,
+                        cx.listener(|this, _: &MouseUpEvent, _, cx| this.end_drag(cx)),
+                    )
                     // Not stretched to the preview's height: as tall as the diagrams.
                     .flex()
                     .items_start()
@@ -1093,6 +1180,15 @@ impl Preview {
                     .tooltip(crate::menus::command_title("preview.fit"))
                     .selected(zoom == Zoom::Fit)
                     .on_click(run("preview.fit")),
+            )
+            .child(
+                Button::new("zoom-fit-page")
+                    .xsmall()
+                    .ghost()
+                    .icon(IconName::Frame)
+                    .tooltip(crate::menus::command_title("preview.fit-page"))
+                    .selected(zoom == Zoom::FitPage)
+                    .on_click(run("preview.fit-page")),
             )
             .child(div().w(px(1.)).h(px(16.)).bg(paint(ui().border)))
             .child(

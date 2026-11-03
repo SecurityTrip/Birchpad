@@ -126,11 +126,12 @@ pub(super) fn register_commands(registry: &mut CommandRegistry) {
 pub type ZoomChange = fn(Zoom) -> Zoom;
 
 /// View > Preview's zoom commands, and how each changes the zoom.
-pub const ZOOM_COMMANDS: [(&str, ZoomChange); 4] = [
+pub const ZOOM_COMMANDS: [(&str, ZoomChange); 5] = [
     ("preview.zoom-in", Zoom::zoom_in),
     ("preview.zoom-out", Zoom::zoom_out),
     ("preview.actual-size", |_| Zoom::Percent(100)),
     ("preview.fit", |_| Zoom::Fit),
+    ("preview.fit-page", |_| Zoom::FitPage),
 ];
 
 /// The preview of the active document, if it shows PlantUML diagrams.
@@ -695,6 +696,9 @@ pub enum Zoom {
     /// A diagram wider than the preview shrunk to its width; others at their size.
     #[default]
     Fit,
+    /// A diagram larger than the preview, either way, shrunk to be seen whole; others at their
+    /// size.
+    FitPage,
     /// This percentage of their size, the preview scrolling both ways.
     Percent(u32),
 }
@@ -731,7 +735,7 @@ impl Zoom {
 
     pub fn percent(self) -> Option<u32> {
         match self {
-            Zoom::Fit => None,
+            Zoom::Fit | Zoom::FitPage => None,
             Zoom::Percent(percent) => Some(percent),
         }
     }
@@ -740,9 +744,36 @@ impl Zoom {
     pub fn label(self) -> String {
         match self {
             Zoom::Fit => t!("preview.zoom-fit"),
+            Zoom::FitPage => t!("preview.zoom-fit-page"),
             Zoom::Percent(percent) => format!("{percent}%"),
         }
     }
+}
+
+/// How many times its size a diagram of `size` is shown at Fit Page in a preview whose diagrams
+/// have `room` (their area less its margins): small enough to be seen whole, never enlarged;
+/// 1 when either is no size.
+pub fn fit_page_scale(size: (f32, f32), room: (f32, f32)) -> f32 {
+    let (width, height) = size;
+    let (room_width, room_height) = room;
+    if width <= 0. || height <= 0. || room_width <= 0. || room_height <= 0. {
+        return 1.;
+    }
+    (room_width / width).min(room_height / height).min(1.)
+}
+
+/// Where the diagrams are scrolled to while they are dragged as by a hand: the offset they had
+/// when the drag started, moved with the mouse (from `from` to `to`), no further than their
+/// edges (offsets are from `-most` to 0).
+pub fn dragged_offset(
+    start: (f32, f32),
+    from: (f32, f32),
+    to: (f32, f32),
+    most: (f32, f32),
+) -> (f32, f32) {
+    let x = (start.0 + to.0 - from.0).clamp(-most.0.max(0.), 0.);
+    let y = (start.1 + to.1 - from.1).clamp(-most.1.max(0.), 0.);
+    (x, y)
 }
 
 /// The most pixels a zoomed diagram is drawn with (before GPUI's own doubling); a larger one is

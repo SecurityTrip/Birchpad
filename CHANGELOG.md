@@ -33,6 +33,10 @@ version's release notes from its section here.
 
 ### Added
 
+- A PlantUML diagram is moved about by dragging it with the mouse, as by a hand, no further
+  than its edges; View > Preview > Fit Diagrams to Page and a button in the preview's toolbar
+  shrink a diagram larger than the preview, either way, to be seen whole (a wide sequence
+  diagram fitted to the width is too small to read).
 - PlantUML is a language of its own (Language menu, status bar;
   [ADR 0061](docs/adr/0061-plantuml-grammar-of-its-own.md)), with a grammar written for
   Birchpad: `@start`/`@end` lines, keywords, participants' kinds, arrows, preprocessor lines,

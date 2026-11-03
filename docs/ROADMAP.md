@@ -913,7 +913,7 @@ are drawn; what is missing is the editing of their text (7.4r).
       Birchpad's own, `birchpad-tree-sitter-plantuml`
       ([ADR 0061](adr/0061-plantuml-grammar-of-its-own.md)); notes, legends, headers and footers
       of several lines and blocks in braces fold too
-- [ ] 7.4s Moving about a diagram: dragging it with the mouse scrolls it, as a hand does; Fit
+- [x] 7.4s Moving about a diagram: dragging it with the mouse scrolls it, as a hand does; Fit
       Page beside Fit, the whole diagram in the preview, since a wide sequence diagram fitted to
       the width is too small to read
 - [ ] Release 0.7.7: the workspace version (0.7.7, set when its branch opens, so that nightly

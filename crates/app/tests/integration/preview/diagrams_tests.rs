@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
 use gpui_kit::{
-    Entity, Modifiers, Pixels, Point, ScrollDelta, ScrollWheelEvent, TestAppContext,
+    Entity, Modifiers, MouseButton, Pixels, Point, ScrollDelta, ScrollWheelEvent, TestAppContext,
     VisualTestContext, point, px,
 };
 
@@ -1195,6 +1195,70 @@ fn preferences_show_the_preview_settings() {
 }
 
 #[test]
+fn fit_page_shrinks_a_diagram_to_be_seen_whole() {
+    assert_eq!(
+        fit_page_scale((1000., 4000.), (500., 1000.)),
+        0.25,
+        "by its height"
+    );
+    assert_eq!(
+        fit_page_scale((2000., 100.), (500., 1000.)),
+        0.25,
+        "by its width"
+    );
+    assert_eq!(
+        fit_page_scale((100., 100.), (500., 1000.)),
+        1.,
+        "never enlarged"
+    );
+    assert_eq!(
+        fit_page_scale((500., 1000.), (500., 1000.)),
+        1.,
+        "exactly the room"
+    );
+    assert_eq!(fit_page_scale((0., 100.), (500., 1000.)), 1.);
+    assert_eq!(fit_page_scale((100., 100.), (0., 1000.)), 1., "no room yet");
+    assert_eq!(fit_page_scale((100., 100.), (-5., -5.)), 1.);
+    assert_eq!(Zoom::FitPage.percent(), None);
+    assert_eq!(Zoom::FitPage.zoom_out(), Zoom::Percent(90));
+    assert_ne!(Zoom::FitPage.label(), Zoom::Fit.label());
+}
+
+#[test]
+fn a_dragged_diagram_follows_the_mouse_within_its_edges() {
+    let most = (1000., 500.);
+    // Dragged left and up: the diagram moves with the mouse, scrolled right and down.
+    assert_eq!(
+        dragged_offset((0., 0.), (300., 300.), (200., 250.), most),
+        (-100., -50.)
+    );
+    assert_eq!(
+        dragged_offset((-100., -50.), (0., 0.), (40., 10.), most),
+        (-60., -40.),
+        "back"
+    );
+    // No further than the edges, either way.
+    assert_eq!(
+        dragged_offset((-10., -10.), (0., 0.), (100., 100.), most),
+        (0., 0.)
+    );
+    assert_eq!(
+        dragged_offset((0., 0.), (5000., 5000.), (0., 0.), most),
+        (-1000., -500.)
+    );
+    // Nothing to scroll: it stays.
+    assert_eq!(
+        dragged_offset((0., 0.), (0., 0.), (-50., -50.), (0., 0.)),
+        (0., 0.)
+    );
+    assert_eq!(
+        dragged_offset((0., 0.), (0., 0.), (-50., -50.), (-3., -3.)),
+        (0., 0.),
+        "a negative most is none"
+    );
+}
+
+#[test]
 fn zoom_goes_by_steps_and_stops_at_the_ends() {
     assert_eq!(Zoom::default(), Zoom::Fit);
     assert_eq!(Zoom::Fit.zoom_in(), Zoom::Percent(110), "from 100%");
@@ -1313,6 +1377,69 @@ fn the_zoom_commands_zoom_the_active_diagrams(cx: &mut TestAppContext) {
     assert_eq!(zoom(cx), Zoom::Percent(400));
     run(&workspace, "preview.fit", cx).unwrap();
     assert_eq!(zoom(cx), Zoom::Fit);
+    run(&workspace, "preview.fit-page", cx).unwrap();
+    assert_eq!(zoom(cx), Zoom::FitPage);
+    run(&workspace, "preview.zoom-in", cx).unwrap();
+    assert_eq!(zoom(cx), Zoom::Percent(110), "from 100%, as from Fit");
+}
+
+/// A drag over the diagrams with the left button, from their center by `by`.
+fn drag(by: Point<Pixels>, cx: &mut VisualTestContext) {
+    let from = cx.debug_bounds("plantuml-diagrams").unwrap().center();
+    cx.simulate_mouse_down(from, MouseButton::Left, Modifiers::default());
+    cx.simulate_mouse_move(from + by, Some(MouseButton::Left), Modifiers::default());
+    cx.simulate_mouse_up(from + by, MouseButton::Left, Modifiers::default());
+    cx.run_until_parked();
+}
+
+#[gpui_kit::test]
+fn dragging_a_diagram_scrolls_it(cx: &mut TestAppContext) {
+    let (workspace, cx) = open_workspace(cx);
+    let dir = tempfile::tempdir().unwrap();
+    let plantuml = sized_plantuml(dir.path(), 3000, 2000);
+    let shown = draw(
+        &workspace,
+        &plantuml,
+        dir.path(),
+        "wide.puml",
+        "@startuml\nA -> B\n@enduml\n",
+        cx,
+    );
+    run(&workspace, "preview.actual-size", cx).unwrap();
+    let (_, most) = scrolled(&shown, cx);
+    drag(point(px(-120.), px(-80.)), cx);
+    assert_eq!(scrolled(&shown, cx).0, point(px(-120.), px(-80.)));
+    assert!(
+        !shown.read_with(cx, |preview, _| preview.dragging()),
+        "let go"
+    );
+    // Back past the start: no further than the edge.
+    drag(point(px(500.), px(500.)), cx);
+    assert_eq!(scrolled(&shown, cx).0, point(px(0.), px(0.)));
+    drag(point(px(-1_000_000.), px(0.)), cx);
+    assert_eq!(scrolled(&shown, cx).0.x, -most.x);
+}
+
+#[gpui_kit::test]
+fn fit_page_shows_a_tall_diagram_whole(cx: &mut TestAppContext) {
+    let (workspace, cx) = open_workspace(cx);
+    let dir = tempfile::tempdir().unwrap();
+    let plantuml = sized_plantuml(dir.path(), 400, 20_000);
+    let shown = draw(
+        &workspace,
+        &plantuml,
+        dir.path(),
+        "tall.puml",
+        "@startuml\nA -> B\n@enduml\n",
+        cx,
+    );
+    // At Fit, as wide as it is: far taller than the preview.
+    assert!(scrolled(&shown, cx).1.y > px(0.));
+    run(&workspace, "preview.fit-page", cx).unwrap();
+    // Laid out once to know the room, then shown whole.
+    scrolled(&shown, cx);
+    let (_, most) = scrolled(&shown, cx);
+    assert_eq!(most, point(px(0.), px(0.)), "nothing to scroll");
 }
 
 /// A PlantUML that draws one diagram `width` by `height` pixels.
