@@ -117,6 +117,16 @@ pub(super) fn register_commands(registry: &mut CommandRegistry) {
             Ok(())
         },
     );
+    registry.workspace("preview.get-graphviz", |_, (), _, cx| {
+        crate::file_commands::shell(
+            crate::file_commands::Shell::Browse(GRAPHVIZ_DOWNLOAD.to_owned()),
+            cx,
+        )
+    });
+    registry.workspace("preview.choose-layout", |_, (), window, cx| {
+        crate::preferences::open_at(cx.entity().downgrade(), Some("Preview"), window, cx);
+        Ok(())
+    });
     registry.workspace("preview.redraw", |this, (), _, cx| {
         let preview = active_diagrams(this, cx)?;
         preview.update(cx, |preview, cx| preview.redraw(cx));
@@ -431,9 +441,34 @@ pub fn find_dot(
         .find(|dot| dot.is_file())
 }
 
+#[cfg(feature = "test-support")]
+thread_local! {
+    /// The `dot` tests have the system find instead of looking for it: `Some(None)` for none.
+    pub static DOT: std::cell::RefCell<Option<Option<PathBuf>>> = std::cell::RefCell::default();
+}
+
+/// Where Graphviz is downloaded from, for the link under a crash of smetana.
+pub const GRAPHVIZ_DOWNLOAD: &str = "https://graphviz.org/download/";
+
+/// How often a preview whose diagram smetana could not lay out looks for Graphviz again.
+pub const DOT_POLL: Duration = Duration::from_secs(5);
+
+/// Whether a preview showing `mistakes`, drawn with the layout named `layout` while the
+/// setting is `setting`, waits for Graphviz to be installed, to draw again with it: a crash of
+/// smetana, with the automatic layout.
+pub fn waits_for_graphviz(mistakes: &[Mistake], layout: &str, setting: DiagramLayout) -> bool {
+    setting == DiagramLayout::Automatic
+        && layout == Layout::Smetana.name()
+        && mistakes.iter().any(|mistake| mistake.details.is_some())
+}
+
 /// Graphviz's `dot` on this system, looked for as [`find_dot`] does: on Windows also in
 /// `Program Files\Graphviz\bin`, where its installer puts it.
 pub fn system_dot() -> Option<PathBuf> {
+    #[cfg(feature = "test-support")]
+    if let Some(dot) = DOT.with(|dot| dot.borrow().clone()) {
+        return dot;
+    }
     let more: Vec<PathBuf> = if cfg!(windows) {
         ["ProgramFiles", "ProgramW6432"]
             .iter()

@@ -303,6 +303,8 @@ pub const COMMANDS: &[CommandSpec] = &[
     workspace("preview.fit", "Fit Diagrams to Width"),
     workspace("preview.fit-page", "Fit Diagrams to Page"),
     workspace("preview.redraw", "Redraw Diagrams"),
+    workspace("preview.get-graphviz", "Get Graphviz"),
+    workspace("preview.choose-layout", "Choose PlantUML's Layout"),
     // Ctrl+click on a PlantUML `!include`: { "target": "common.iuml", "document": "C:\\a.puml" }
     workspace("preview.open-include", "Open Included File"),
     workspace("preview.white-background", "White Diagram Background"),

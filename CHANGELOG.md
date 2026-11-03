@@ -37,6 +37,10 @@ version's release notes from its section here.
 
 ### Added
 
+- A way to Graphviz from a diagram smetana cannot lay out: under the message, Get Graphviz
+  opens its download page in the browser and another link opens Preferences > Preview, where
+  the layout is chosen; with the automatic layout the preview looks for Graphviz every few
+  seconds and draws the diagram again by itself once it is installed.
 - Includes written with PlantUML's variables and functions are followed
   ([ADR 0062](docs/adr/0062-includes-through-the-preprocessor.md)):
   `!include $DIAGRAMS_ROOT/library/main.iuml` and `!include FromRoot(/billing/containers.puml)`

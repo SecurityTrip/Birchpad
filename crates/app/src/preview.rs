@@ -43,14 +43,17 @@ use crate::editor::widgets::{BarColors, Line, bar, error_text};
 use crate::theme::{paint, ui};
 use crate::workspace::Workspace;
 
+#[cfg(feature = "test-support")]
+pub use diagrams::DOT;
 pub use diagrams::{
-    DIAGRAM_END, Drawn, GRAPHVIZ_DOT_VARIABLE, INCLUDE_PATH_VARIABLE, Included, Layout,
-    MAX_PNG_SIDE, MAX_ZOOMED_PIXELS, Mistake, NotDrawn, PLANTUML_DELAY, Stop, StopOnDrop,
-    ZOOM_COMMANDS, ZOOM_STEPS, Zoom, ZoomChange, active_diagrams, background, diagram_starts,
-    dragged_offset, export_name, find_dot, find_include, fit_page_scale, include_path, line_offset,
-    mistake_trace, mistakes, normalized, pictured_line, place_in_includes, plantuml_command,
-    raster_factor, redraws_for, run_plantuml, setting_path, sized_svg, split_diagrams, svg_size,
-    svg_to_pixels, svg_to_png, system_dot, watched_folders,
+    DIAGRAM_END, DOT_POLL, Drawn, GRAPHVIZ_DOT_VARIABLE, GRAPHVIZ_DOWNLOAD, INCLUDE_PATH_VARIABLE,
+    Included, Layout, MAX_PNG_SIDE, MAX_ZOOMED_PIXELS, Mistake, NotDrawn, PLANTUML_DELAY, Stop,
+    StopOnDrop, ZOOM_COMMANDS, ZOOM_STEPS, Zoom, ZoomChange, active_diagrams, background,
+    diagram_starts, dragged_offset, export_name, find_dot, find_include, fit_page_scale,
+    include_path, line_offset, mistake_trace, mistakes, normalized, pictured_line,
+    place_in_includes, plantuml_command, raster_factor, redraws_for, run_plantuml, setting_path,
+    sized_svg, split_diagrams, svg_size, svg_to_pixels, svg_to_png, system_dot, waits_for_graphviz,
+    watched_folders,
 };
 pub use includes::{IncludeLink, Includes, MOST_INCLUDED_FILES, Preprocessor, walk_includes};
 
@@ -246,6 +249,9 @@ struct Diagrams {
     layout: &'static str,
     /// The details of a crash of PlantUML are shown.
     details: bool,
+    /// After a crash of smetana with the automatic layout: looking for Graphviz now and then,
+    /// to draw again with it once it is installed.
+    graphviz: Option<Task<()>>,
     /// The files the document includes, found when it was last drawn.
     included: Vec<PathBuf>,
     /// Watches the folders of the document and of the files it includes.
@@ -437,10 +443,14 @@ impl Preview {
                         if let Content::PlantUml(diagrams) = &mut this.content {
                             diagrams.layout = layout;
                         }
+                        let waits = drawn.as_ref().is_ok_and(|drawn| {
+                            waits_for_graphviz(&drawn.mistakes, layout, layout_setting)
+                        });
                         if !matches!(drawn, Err(NotDrawn::Stopped)) {
                             this.watch_included(included, cx);
                         }
                         this.show_diagrams(drawn);
+                        this.wait_for_graphviz(waits, cx);
                         cx.notify();
                     })
                     .ok();
@@ -871,6 +881,7 @@ impl Preview {
         details: &str,
         diagrams: &Diagrams,
         this: &WeakEntity<Self>,
+        workspace: &WeakEntity<Workspace>,
     ) -> AnyElement {
         let this = this.clone();
         let toggle = if diagrams.details {
@@ -889,11 +900,44 @@ impl Preview {
                 error = mistake.message.as_str()
             )))
             .when(diagrams.layout == Layout::Smetana.name(), |crash| {
-                crash.child(
+                let workspace = workspace.clone();
+                let link = |id: &'static str, text: String, command: &'static str| {
+                    let workspace = workspace.clone();
                     div()
-                        .text_color(paint(ui().muted))
-                        .child(t!("preview.plantuml-try-graphviz")),
-                )
+                        .id(id)
+                        .text_color(paint(ui().accent))
+                        .cursor_pointer()
+                        .hover(|link| link.underline())
+                        .on_click(move |_, window, cx| {
+                            if let Some(workspace) = workspace.upgrade() {
+                                workspace.update(cx, |workspace, cx| {
+                                    workspace.run(&Invocation::new(command), window, cx)
+                                });
+                            }
+                        })
+                        .child(text)
+                };
+                crash
+                    .child(
+                        div()
+                            .text_color(paint(ui().muted))
+                            .child(t!("preview.plantuml-try-graphviz")),
+                    )
+                    .child(
+                        div()
+                            .flex()
+                            .gap_4()
+                            .child(link(
+                                "plantuml-get-graphviz",
+                                t!("preview.plantuml-get-graphviz", url = GRAPHVIZ_DOWNLOAD),
+                                "preview.get-graphviz",
+                            ))
+                            .child(link(
+                                "plantuml-choose-layout",
+                                t!("preview.plantuml-choose-layout"),
+                                "preview.choose-layout",
+                            )),
+                    )
             })
             .child(
                 div()
@@ -917,6 +961,41 @@ impl Preview {
                 )
             })
             .into_any_element()
+    }
+
+    /// Looks for Graphviz every few seconds while `waits`, and draws again once it is there.
+    fn wait_for_graphviz(&mut self, waits: bool, cx: &mut Context<Self>) {
+        let Content::PlantUml(diagrams) = &mut self.content else {
+            return;
+        };
+        if !waits {
+            diagrams.graphviz = None;
+            return;
+        }
+        if diagrams.graphviz.is_some() {
+            return;
+        }
+        diagrams.graphviz = Some(cx.spawn(async move |this, cx| {
+            loop {
+                cx.background_executor().timer(DOT_POLL).await;
+                if system_dot().is_some() {
+                    this.update(cx, |this, cx| {
+                        if let Content::PlantUml(diagrams) = &mut this.content {
+                            diagrams.graphviz = None;
+                        }
+                        this.redraw(cx);
+                    })
+                    .ok();
+                    break;
+                }
+            }
+        }));
+    }
+
+    /// Whether the preview looks for Graphviz to draw again with it (for tests).
+    #[cfg(feature = "test-support")]
+    pub fn waiting_for_graphviz(&self) -> bool {
+        matches!(&self.content, Content::PlantUml(diagrams) if diagrams.graphviz.is_some())
     }
 
     /// Shows or folds the details of a crash of PlantUML.
@@ -943,7 +1022,11 @@ impl Preview {
     }
 
     /// PlantUML's mistakes, each a link to its line.
-    fn render_mistakes(diagrams: &Diagrams, this: &WeakEntity<Self>) -> impl IntoElement {
+    fn render_mistakes(
+        diagrams: &Diagrams,
+        this: &WeakEntity<Self>,
+        workspace: &WeakEntity<Workspace>,
+    ) -> impl IntoElement {
         let mistakes = &diagrams.mistakes;
         div()
             .w_full()
@@ -952,7 +1035,7 @@ impl Preview {
             .gap_1()
             .children(mistakes.iter().enumerate().map(|(index, mistake)| {
                 if let Some(details) = &mistake.details {
-                    return Self::render_crash(mistake, details, diagrams, this);
+                    return Self::render_crash(mistake, details, diagrams, this, workspace);
                 }
                 let message = mistake.message.as_str();
                 let text = match (mistake.line, &mistake.included) {
@@ -1065,7 +1148,7 @@ impl Preview {
                 list.child(div().w_full().text_color(paint(color)).child(message))
             })
             .when(!diagrams.mistakes.is_empty(), |list| {
-                list.child(Self::render_mistakes(diagrams, this))
+                list.child(Self::render_mistakes(diagrams, this, workspace))
             })
             .when(diagrams.missing, |list| {
                 list.child(Self::render_install(cx))

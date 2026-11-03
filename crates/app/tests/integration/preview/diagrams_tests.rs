@@ -426,6 +426,111 @@ fn mistakes_and_other_output_are_no_crash() {
 }
 
 #[test]
+fn a_crash_of_smetana_waits_for_graphviz_with_the_automatic_layout() {
+    use birchpad_config::DiagramLayout;
+    let crash = mistakes(CRASH, "@startuml\n@enduml", &[]);
+    assert!(waits_for_graphviz(
+        &crash,
+        "smetana",
+        DiagramLayout::Automatic
+    ));
+    // Chosen layouts are kept; Graphviz's own crash has nothing to wait for.
+    assert!(!waits_for_graphviz(
+        &crash,
+        "smetana",
+        DiagramLayout::Smetana
+    ));
+    assert!(!waits_for_graphviz(
+        &crash,
+        "Graphviz",
+        DiagramLayout::Automatic
+    ));
+    assert!(!waits_for_graphviz(
+        &crash,
+        "smetana",
+        DiagramLayout::Graphviz
+    ));
+    // A mistake of the text is no crash; no mistake neither.
+    let mistake = mistakes(
+        "ERROR\n1\nOops\n",
+        "@startuml\nx\n@enduml",
+        &[picture("Oops")],
+    );
+    assert!(!waits_for_graphviz(
+        &mistake,
+        "smetana",
+        DiagramLayout::Automatic
+    ));
+    assert!(!waits_for_graphviz(
+        &[],
+        "smetana",
+        DiagramLayout::Automatic
+    ));
+}
+
+#[gpui_kit::test]
+fn the_crash_links_to_graphviz_and_draws_again_once_it_is_found(cx: &mut TestAppContext) {
+    let (workspace, cx) = open_workspace(cx);
+    DOT.with(|dot| *dot.borrow_mut() = Some(None));
+    let dir = tempfile::tempdir().unwrap();
+    let plantuml = fake_plantuml(
+        dir.path(),
+        "echo ^<svg^>crash^</svg^>\n>&2 echo java.lang.NullPointerException\n\
+         >&2 echo 	at a.SmetanaEdge.draw(SmetanaEdge.java:1)\nexit /b 1",
+        "echo '<svg>crash</svg>'\necho java.lang.NullPointerException >&2\n\
+         printf '\\tat a.SmetanaEdge.draw(SmetanaEdge.java:1)\\n' >&2\nexit 1",
+    );
+    let shown = draw(
+        &workspace,
+        &plantuml,
+        dir.path(),
+        "large.puml",
+        "@startuml\nA -> B\n@enduml\n",
+        cx,
+    );
+    assert!(shown.read_with(cx, |preview, _| preview.waiting_for_graphviz()));
+    // The links: Graphviz's download page, and Preferences > Preview.
+    birchpad::file_commands::SHELL.with(|shell| shell.borrow_mut().clear());
+    run(&workspace, "preview.get-graphviz", cx).unwrap();
+    let asked = birchpad::file_commands::SHELL.with(|shell| shell.borrow().clone());
+    assert_eq!(
+        asked,
+        [birchpad::file_commands::Shell::Browse(
+            GRAPHVIZ_DOWNLOAD.to_owned()
+        )]
+    );
+    run(&workspace, "preview.choose-layout", cx).unwrap();
+    let preferences = birchpad::preferences::OPENED
+        .with(|opened| opened.borrow().clone().and_then(|weak| weak.upgrade()))
+        .expect("Preferences is open");
+    let section = preferences.read_with(cx, |preferences, _| preferences.section);
+    assert_eq!(birchpad::preferences::sections()[section], "Preview");
+    // Still no Graphviz: it keeps looking.
+    cx.executor().advance_clock(DOT_POLL);
+    cx.run_until_parked();
+    assert!(shown.read_with(cx, |preview, _| preview.waiting_for_graphviz()));
+    // Graphviz installed: drawn again with it, and no longer waiting.
+    let dot = dir.path().join("dot");
+    DOT.with(|found| *found.borrow_mut() = Some(Some(dot.clone())));
+    cx.executor().advance_clock(DOT_POLL);
+    cx.run_until_parked();
+    for _ in 0..500 {
+        if shown.read_with(cx, |preview, _| preview.layout()) == "Graphviz" {
+            break;
+        }
+        cx.executor().advance_clock(PLANTUML_DELAY);
+        cx.run_until_parked();
+        std::thread::sleep(Duration::from_millis(10));
+    }
+    assert_eq!(
+        shown.read_with(cx, |preview, _| preview.layout()),
+        "Graphviz"
+    );
+    assert!(!shown.read_with(cx, |preview, _| preview.waiting_for_graphviz()));
+    DOT.with(|found| *found.borrow_mut() = None);
+}
+
+#[test]
 fn layouts_follow_the_setting_and_what_is_installed() {
     use birchpad_config::DiagramLayout;
     let dot = PathBuf::from("dot");

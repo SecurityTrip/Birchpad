@@ -950,7 +950,7 @@ the ones smetana cannot lay out, with no Graphviz on that machine. What it still
       [ADR 0057](adr/0057-plantuml-preview-redone.md), decides how: Birchpad reads the
       preprocessor's variables and functions itself
       ([ADR 0062](adr/0062-includes-through-the-preprocessor.md))
-- [ ] 7.4w A way to Graphviz from the crash: the message of a diagram smetana cannot lay out says
+- [x] 7.4w A way to Graphviz from the crash: the message of a diagram smetana cannot lay out says
       that Graphviz lays it out, and stops there. Two links under it: Graphviz's download page
       and Preferences > Preview at the layout (`preview.plantuml-layout`), and the diagram drawn
       again by itself once a `dot` is found
