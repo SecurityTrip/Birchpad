@@ -859,6 +859,45 @@ impl Preview {
             .into_any_element()
     }
 
+    /// The quiet line above diagrams drawn by an earlier PlantUML of Birchpad's: a newer one lays
+    /// out what smetana cannot, with Update, then its progress, or why it failed.
+    fn render_update(cx: &App) -> AnyElement {
+        let state = crate::plantuml::state(cx);
+        let megabytes = |bytes: u64| format!("{:.1}", bytes as f64 / (1024. * 1024.));
+        let size = crate::plantuml::can_install(cx).unwrap_or_default();
+        let action = match state {
+            Some(state) if state.running => div()
+                .child(t!(
+                    "plantuml.installing",
+                    received = megabytes(state.received.load(std::sync::atomic::Ordering::Relaxed)),
+                    size = megabytes(size)
+                ))
+                .into_any_element(),
+            _ => div()
+                .id("plantuml-update")
+                .text_color(paint(ui().accent))
+                .cursor_pointer()
+                .hover(|link| link.underline())
+                .on_click(|_, window, cx| {
+                    if let Err(error) = crate::plantuml::install(cx) {
+                        crate::workspace::report_error(&error, window, cx);
+                    }
+                })
+                .child(t!("plantuml.update", size = megabytes(size)))
+                .into_any_element(),
+        };
+        div()
+            .w_full()
+            .flex()
+            .flex_wrap()
+            .gap_2()
+            .text_color(paint(ui().muted))
+            .child(t!("plantuml.update-available"))
+            .child(action)
+            .children(state.and_then(|state| state.error.clone()).map(error_text))
+            .into_any_element()
+    }
+
     /// What the preview offers when there is no PlantUML: to install it, its progress, or why
     /// it cannot be.
     fn render_install(cx: &App) -> AnyElement {
@@ -1234,6 +1273,9 @@ impl Preview {
             .when_some(message, |list, (message, color)| {
                 list.child(div().w_full().text_color(paint(color)).child(message))
             })
+            .when(crate::plantuml::offers_update(cx), |list| {
+                list.child(Self::render_update(cx))
+            })
             .when(diagrams.fell_back, |list| {
                 list.child(
                     div()
@@ -1467,10 +1509,10 @@ impl Preview {
 
 impl Render for Preview {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        // PlantUML was missing and has been installed since: draw again.
+        // PlantUML was installed since the diagrams were drawn (missing, crashed, or drawn by an
+        // earlier revision): draw again with it.
         let installs = crate::plantuml::state(cx).map_or(0, |state| state.generation);
         if let Content::PlantUml(diagrams) = &self.content
-            && diagrams.missing
             && diagrams.installs != installs
             && let Some(view) = self.view.upgrade()
         {

@@ -970,6 +970,8 @@ plantuml:
   no-data-folder: "Нет папки данных, куда можно установить PlantUML."
   no-package: "Для этой системы у Birchpad нет PlantUML: установите PlantUML и Java или задайте preview.plantuml"
   online-features-off: "Установка PlantUML скачивает его, а скачивание выключено (network.online-features). Установите PlantUML сами или задайте preview.plantuml."
+  update: "Обновить ({size} МБ)"
+  update-available: "Есть новый PlantUML: он раскладывает то, что не может smetana (ELK)."
   what-is-installed: "PlantUML и Java для него скачиваются из релизов Birchpad на GitHub, проверяются и хранятся в папке данных Birchpad."
 plural:
   binary-files:

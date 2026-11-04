@@ -1018,7 +1018,7 @@ draws the diagram again. What is left:
       an earlier revision keeps working until it is installed again. An ADR, over
       [ADR 0045](adr/0045-plantuml-installed-on-request.md) and
       [ADR 0059](adr/0059-plantuml-layouts-and-graphviz.md)
-- [ ] 7.4ac The newer PlantUML offered, and drawn with once installed: who installed PlantUML
+- [x] 7.4ac The newer PlantUML offered, and drawn with once installed: who installed PlantUML
       before 7.4ab keeps revision 1, without ELK, and is told of revision 3 only under a crash
       of smetana; and a preview drawn again after an installation only when it had no PlantUML,
       so the diagram that crashed stays crashed until Redraw. A preview drawn with an earlier

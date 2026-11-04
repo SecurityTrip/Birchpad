@@ -49,8 +49,11 @@ point about the EPL 1.0 of Graphviz was a small one, and does not stand against 
   too, the crash of smetana is shown as before (ADR 0059). `preview.plantuml-layout` gets
   `elk`, to lay out with ELK always.
 - **An earlier revision keeps working.** Birchpad uses the PlantUML of an earlier version or
-  revision still installed until the new one is; under a crash of smetana, the preview then
-  offers to install PlantUML again, with ELK.
+  revision still installed until the new one is. A preview drawn with it shows one quiet line
+  above the diagrams, that a newer PlantUML lays out what smetana cannot, with Update; under a
+  crash of smetana it also offers to install PlantUML again, with ELK. Nothing is downloaded
+  until one of them is clicked, as ADR 0045 asks. When an installation of PlantUML ends,
+  every PlantUML preview is drawn again with it.
 
 ## Consequences
 

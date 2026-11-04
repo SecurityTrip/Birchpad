@@ -220,3 +220,89 @@ fn an_earlier_plantuml_is_used_and_said_to_be_outdated(cx: &mut TestAppContext) 
     assert_eq!(cx.update(|_, cx| installed(cx)), Some(current));
     assert!(!cx.update(|_, cx| outdated(cx)));
 }
+
+/// An earlier revision of the PlantUML Birchpad installs, in `data`.
+fn install_earlier(data: &Path) -> std::path::PathBuf {
+    let earlier = data
+        .join("components")
+        .join(format!("{}-0.1-1", PLANTUML.name));
+    std::fs::create_dir_all(&earlier).unwrap();
+    std::fs::write(earlier.join(".installed"), "").unwrap();
+    earlier
+}
+
+#[gpui_kit::test]
+fn the_newer_plantuml_is_offered_and_installed_on_a_click(cx: &mut TestAppContext) {
+    let (_, cx) = open_workspace(cx);
+    let data = tempfile::tempdir().unwrap();
+    let body = package_body();
+    pin(&body);
+    with_data(data.path(), Arc::new(Serve(body)), cx);
+    assert!(
+        !cx.update(|_, cx| offers_update(cx)),
+        "nothing installed: no update"
+    );
+    install_earlier(data.path());
+    assert!(cx.update(|_, cx| offers_update(cx)));
+    // A PlantUML of the user's own: no offer.
+    cx.update(|_, cx| cx.global_mut::<AppState>().settings.preview.plantuml = "my.jar".into());
+    assert!(!cx.update(|_, cx| offers_update(cx)));
+    cx.update(|_, cx| cx.global_mut::<AppState>().settings.preview.plantuml = "plantuml".into());
+    // Downloads off: nothing can be installed, nothing offered.
+    cx.update(|_, cx| cx.global_mut::<AppState>().settings.network.online_features = false);
+    assert!(!cx.update(|_, cx| offers_update(cx)));
+    cx.update(|_, cx| cx.global_mut::<AppState>().settings.network.online_features = true);
+    // Taken: installed, and no longer offered.
+    cx.update(|_, cx| install(cx).unwrap());
+    cx.run_until_parked();
+    assert_eq!(
+        cx.update(|_, cx| installed(cx)),
+        Some(PLANTUML.folder(data.path()))
+    );
+    assert!(!cx.update(|_, cx| offers_update(cx)));
+    PACKAGE.with(|package| *package.borrow_mut() = None);
+}
+
+#[gpui_kit::test]
+fn every_plantuml_preview_is_drawn_again_when_an_installation_ends(cx: &mut TestAppContext) {
+    let (workspace, cx) = open_workspace(cx);
+    let dir = tempfile::tempdir().unwrap();
+    // The diagram is `common.iuml`, changed on disk while the preview shows the old one.
+    let plantuml = crate::preview_diagrams::fake_plantuml(
+        dir.path(),
+        "echo ^<svg^>\ntype common.iuml\necho ^</svg^>",
+        "echo \"<svg>$(cat common.iuml)</svg>\"",
+    );
+    std::fs::write(dir.path().join("common.iuml"), "class Before").unwrap();
+    let shown = crate::preview_diagrams::draw(
+        &workspace,
+        &plantuml,
+        dir.path(),
+        "flow.puml",
+        "@startuml\nA -> B\n@enduml\n",
+        cx,
+    );
+    std::fs::write(dir.path().join("common.iuml"), "class After").unwrap();
+    // An installation ends (it was drawn, not missing): drawn again.
+    cx.update(|_, cx| {
+        if !cx.has_global::<PlantUmlInstall>() {
+            cx.set_global(PlantUmlInstall::default());
+        }
+        cx.global_mut::<PlantUmlInstall>().generation += 1;
+        cx.refresh_windows();
+    });
+    for _ in 0..500 {
+        cx.run_until_parked();
+        let svg = shown.read_with(cx, |preview, _| preview.svgs());
+        if svg
+            .first()
+            .is_some_and(|svg| String::from_utf8_lossy(svg).contains("After"))
+        {
+            return;
+        }
+        cx.executor()
+            .advance_clock(birchpad::preview::PLANTUML_DELAY);
+        std::thread::sleep(std::time::Duration::from_millis(10));
+    }
+    panic!("not drawn again after the installation");
+}

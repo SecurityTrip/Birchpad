@@ -62,6 +62,19 @@ pub fn outdated(cx: &App) -> bool {
     PLANTUML.installed(&data).is_none() && PLANTUML.installed_or_earlier(&data).is_some()
 }
 
+/// Whether a preview offers the newer PlantUML (roadmap 7.4ac): the one it draws with is an
+/// earlier revision of the one Birchpad installs (`preview.plantuml` as it comes), and this one
+/// can be installed here. Nothing is downloaded until the offer is taken (ADR 0045).
+pub fn offers_update(cx: &App) -> bool {
+    let setting = AppState::global(cx)
+        .settings
+        .preview
+        .plantuml
+        .trim()
+        .to_owned();
+    matches!(setting.as_str(), "" | "plantuml") && outdated(cx) && can_install(cx).is_ok()
+}
+
 /// The installation's state.
 pub fn state(cx: &App) -> Option<&PlantUmlInstall> {
     cx.try_global::<PlantUmlInstall>()
