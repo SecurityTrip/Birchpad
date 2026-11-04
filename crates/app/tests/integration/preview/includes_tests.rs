@@ -130,7 +130,7 @@ const DOCUMENT: &str = "@startuml\n!$DIAGRAMS_ROOT ?= \"../..\"\n\
 fn includes_through_variables_and_functions_are_followed() {
     let (dir, views) = repository();
     let root = dir.path();
-    let found = walk_includes(DOCUMENT, Some(&views), &[views.clone()]);
+    let found = walk_includes(DOCUMENT, Some(&views), std::slice::from_ref(&views));
     assert_eq!(
         found.files,
         [
@@ -341,7 +341,7 @@ fn includes_through_such_a_function_are_followed() {
     std::fs::write(root.join("fullpath.iuml"), FROM_ROOT).unwrap();
     let text = "!$DIAGRAMS_ROOT ?= \"../..\"\n!include $DIAGRAMS_ROOT/fullpath.iuml\n\
                 !include FromRoot(/parts/billing/containers.puml)\n";
-    let found = walk_includes(text, Some(&views), &[views.clone()]);
+    let found = walk_includes(text, Some(&views), std::slice::from_ref(&views));
     assert_eq!(
         found.files,
         [

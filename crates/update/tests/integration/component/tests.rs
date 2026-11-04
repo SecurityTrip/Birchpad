@@ -401,11 +401,15 @@ fn an_earlier_folder_a_program_holds_is_left_for_later() {
         std::fs::OpenOptions::new()
             .write(true)
             .create(true)
+            .truncate(true)
             .share_mode(0)
             .open(earlier.join("java.exe"))
             .unwrap()
     };
-    assert_eq!(COMPONENT.remove_earlier(data.path()), [earlier.clone()]);
+    assert_eq!(
+        COMPONENT.remove_earlier(data.path()),
+        std::slice::from_ref(&earlier)
+    );
     drop(held);
     assert!(
         COMPONENT.remove_earlier(data.path()).is_empty(),

@@ -227,7 +227,7 @@ fn a_mistake_in_a_file_of_its_name_keeps_it() {
         }),
         details: None,
     }];
-    place_in_includes(&mut found, Some(dir.path()), &[lib.clone()]);
+    place_in_includes(&mut found, Some(dir.path()), std::slice::from_ref(&lib));
     let place = found[0].included.clone().unwrap();
     assert_eq!(
         place.path,
@@ -245,7 +245,7 @@ fn a_mistake_found_in_no_included_file_names_none() {
     std::fs::write(&lib, "a\n").unwrap();
     for (line, shown) in [(1, "b"), (0, "a"), (2, "a"), (1, "")] {
         let mut found = [untraced(line, shown)];
-        place_in_includes(&mut found, Some(dir.path()), &[lib.clone()]);
+        place_in_includes(&mut found, Some(dir.path()), std::slice::from_ref(&lib));
         let place = found[0].included.clone().unwrap();
         assert_eq!(
             (place.file.as_str(), place.path),
@@ -592,12 +592,16 @@ fn graphviz_is_found_by_its_variable_its_path_or_its_folder() {
         "a variable naming no file is passed over"
     );
     assert_eq!(
-        find_dot(Some(empty.as_os_str()), None, &[installed.clone()]),
+        find_dot(
+            Some(empty.as_os_str()),
+            None,
+            std::slice::from_ref(&installed)
+        ),
         Some(installed.join(name)),
         "a folder is no file; then where Graphviz installs itself"
     );
     assert_eq!(
-        find_dot(None, Some(empty.as_os_str()), &[empty.clone()]),
+        find_dot(None, Some(empty.as_os_str()), std::slice::from_ref(&empty)),
         None
     );
     assert_eq!(find_dot(None, None, &[]), None);
@@ -2095,7 +2099,7 @@ fn a_mistake_above_the_document_is_named_relative_to_it() {
     let file = billing.join("containers.puml");
     std::fs::write(&file, "a\n$audit_logger()\n").unwrap();
     let mut found = [untraced(2, "$audit_logger()")];
-    place_in_includes(&mut found, Some(&document), &[file.clone()]);
+    place_in_includes(&mut found, Some(&document), std::slice::from_ref(&file));
     let place = found[0].included.clone().unwrap();
     assert_eq!(
         Path::new(&place.file),
