@@ -178,7 +178,7 @@ fn plantuml_is_not_downloaded_when_it_cannot_be(cx: &mut TestAppContext) {
 #[test]
 fn a_package_with_libraries_runs_plantuml_with_them() {
     let dir = tempfile::tempdir().unwrap();
-    let folder = dir.path().join("plantuml-1.2026.9-2");
+    let folder = dir.path().join("plantuml-1.2026.9-3");
     std::fs::create_dir_all(folder.join("lib")).unwrap();
     let (_, args) = plantuml_command("plantuml", Some(&folder), &Layout::Elk);
     let separator = if cfg!(windows) { ";" } else { ":" };

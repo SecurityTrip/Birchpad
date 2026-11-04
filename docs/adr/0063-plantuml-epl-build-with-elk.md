@@ -35,8 +35,8 @@ point about the EPL 1.0 of Graphviz was a small one, and does not stand against 
 - **The EPL build.** The PlantUML package Birchpad installs (`.github/workflows/plantuml.yml`)
   is PlantUML's EPL build, with `lib/org.eclipse.xtext.xbase.lib.jar` from Maven Central, both
   checked against their SHA-256, and the Java runtime made for both; its `README.txt` gives
-  their licenses and where their sources are. It is revision 2 of the package,
-  `plantuml-1.2026.9-2`. The package's workflow checks that it draws with smetana and with ELK.
+  their licenses and where their sources are. It is revision 3 of the package,
+  `plantuml-1.2026.9-3` (the build of revision 2 stopped before it published anything). The package's workflow checks that it draws with smetana and with ELK.
 - **Running it.** A package with a `lib` folder runs PlantUML with the class path of
   `plantuml.jar` and `lib/*` and its main class, `net.sourceforge.plantuml.Run`; one without
   (revision 1) with `-jar`, as before.

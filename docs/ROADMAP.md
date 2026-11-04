@@ -1013,7 +1013,7 @@ draws the diagram again. What is left:
       help. ELK, PlantUML's third layout, lays out all of them. The PlantUML Birchpad installs
       is its EPL build (`plantuml-epl`, which has ELK; the MIT build has none), with the
       `org.eclipse.xtext.xbase.lib` that the EPL build's ELK needs and lacks, as revision
-      `1.2026.9-2` of the package; with the automatic layout a crash of smetana draws the
+      `1.2026.9-3` of the package; with the automatic layout a crash of smetana draws the
       diagram again with ELK, and says so; `preview.plantuml-layout` gets `elk`. A PlantUML of
       an earlier revision keeps working until it is installed again. An ADR, over
       [ADR 0045](adr/0045-plantuml-installed-on-request.md) and
