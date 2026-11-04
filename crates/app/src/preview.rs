@@ -1405,9 +1405,43 @@ impl Preview {
                     .children(toggle)
                     .when(shown, |column| column.child(card))
             }));
+        // While the diagrams are dragged, the mouse is followed over the whole window: an
+        // element hears only the moves over it, and a drag goes past the preview's edge.
+        let following = dragging.then(|| {
+            let this = this.clone();
+            gpui_kit::canvas(
+                |_, _, _| {},
+                move |_, (), window, _| {
+                    let moved = this.clone();
+                    window.on_mouse_event(move |event: &MouseMoveEvent, phase, _, cx: &mut App| {
+                        if phase != gpui_kit::DispatchPhase::Bubble {
+                            return;
+                        }
+                        moved
+                            .update(cx, |this, cx| {
+                                if event.pressed_button == Some(MouseButton::Left) {
+                                    this.drag_to(event.position, cx);
+                                } else {
+                                    this.end_drag(cx);
+                                }
+                            })
+                            .ok();
+                    });
+                    let released = this.clone();
+                    window.on_mouse_event(move |_: &MouseUpEvent, phase, _, cx: &mut App| {
+                        if phase == gpui_kit::DispatchPhase::Bubble {
+                            released.update(cx, |this, cx| this.end_drag(cx)).ok();
+                        }
+                    });
+                },
+            )
+            .absolute()
+            .size_full()
+        });
         div()
             .size_full()
             .relative()
+            .children(following)
             .child(
                 div()
                     .id("plantuml-diagrams")
@@ -1419,11 +1453,11 @@ impl Preview {
                     } else {
                         CursorStyle::OpenHand
                     })
+                    // Over the diagrams too, before the window's listener is there (the first
+                    // move of a drag); the offset comes from the drag's start, so twice is once.
                     .on_mouse_move(cx.listener(|this, event: &MouseMoveEvent, _, cx| {
                         if event.pressed_button == Some(MouseButton::Left) {
                             this.drag_to(event.position, cx);
-                        } else {
-                            this.end_drag(cx);
                         }
                     }))
                     .on_mouse_up(
