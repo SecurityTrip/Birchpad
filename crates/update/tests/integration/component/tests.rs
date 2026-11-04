@@ -272,7 +272,7 @@ fn plantuml_has_a_package_for_every_platform_birchpad_runs_on() {
             .find(|package| package.platform == platform)
             .unwrap_or_else(|| panic!("{platform}"));
         assert!(package.url.starts_with(
-            "https://github.com/SecurityTrip/Birchpad/releases/download/plantuml-1.2026.9-1/"
+            "https://github.com/SecurityTrip/Birchpad/releases/download/plantuml-1.2026.9-3/"
         ));
         assert!(package.url.ends_with(&format!("-{platform}.zip")));
         assert!(package.size > 1_000_000, "{platform} is published");
@@ -318,4 +318,180 @@ fn a_package_whose_names_leave_its_folder_is_refused_by_name() {
     );
     assert!(!data.path().join("escape.txt").exists());
     assert_eq!(component.installed(data.path()), None);
+}
+
+#[test]
+fn an_earlier_revision_is_used_until_this_one_is_installed() {
+    let data = tempfile::tempdir().unwrap();
+    let body = zip_of(&[("a", b"1")]);
+    let package = package_of(&body);
+    let transport = Serve::new(body);
+    assert_eq!(
+        COMPONENT.installed_or_earlier(data.path()),
+        None,
+        "nothing installed"
+    );
+    let older = Component {
+        version: "0.9-1",
+        ..COMPONENT
+    };
+    install_package(&older, &package, &transport, data.path(), &|_| {}).unwrap();
+    assert_eq!(COMPONENT.installed(data.path()), None);
+    assert_eq!(
+        COMPONENT.installed_or_earlier(data.path()),
+        Some(older.folder(data.path()))
+    );
+    // A folder not installed whole, and another component's, are no earlier revision.
+    let components = data.path().join("components");
+    std::fs::create_dir_all(components.join(format!("{}-0.99-1", COMPONENT.name))).unwrap();
+    std::fs::create_dir_all(components.join("other-9.9")).unwrap();
+    assert_eq!(
+        COMPONENT.installed_or_earlier(data.path()),
+        Some(older.folder(data.path()))
+    );
+    // This one installed: it comes first.
+    install_package(&COMPONENT, &package, &transport, data.path(), &|_| {}).unwrap();
+    assert_eq!(
+        COMPONENT.installed_or_earlier(data.path()),
+        Some(COMPONENT.folder(data.path()))
+    );
+}
+
+#[test]
+fn earlier_versions_go_once_this_one_is_installed() {
+    let data = tempfile::tempdir().unwrap();
+    let components = data.path().join("components");
+    let earlier = components.join(format!("{}-0.9-1", COMPONENT.name));
+    let other = components.join("other-0.9");
+    let unpacking = components.join(format!("{}-{}.part", COMPONENT.name, COMPONENT.version));
+    for folder in [&earlier, &other, &unpacking] {
+        std::fs::create_dir_all(folder).unwrap();
+        std::fs::write(folder.join("file"), "x").unwrap();
+    }
+    // This one not installed: the earlier one is in use, and stays.
+    assert!(COMPONENT.remove_earlier(data.path()).is_empty());
+    assert!(earlier.is_dir());
+    let current = COMPONENT.folder(data.path());
+    std::fs::create_dir_all(&current).unwrap();
+    std::fs::write(current.join(".installed"), "").unwrap();
+    assert!(COMPONENT.remove_earlier(data.path()).is_empty());
+    assert!(!earlier.exists(), "gone");
+    assert!(current.is_dir(), "this one stays");
+    assert!(other.is_dir(), "another component's stays");
+    assert!(unpacking.is_dir(), "a download under way stays");
+    // Nothing more to delete, and no components folder at all.
+    assert!(COMPONENT.remove_earlier(data.path()).is_empty());
+    let empty = tempfile::tempdir().unwrap();
+    assert!(COMPONENT.remove_earlier(empty.path()).is_empty());
+}
+
+#[cfg(windows)]
+#[test]
+fn an_earlier_folder_a_program_holds_is_left_for_later() {
+    let data = tempfile::tempdir().unwrap();
+    let components = data.path().join("components");
+    let earlier = components.join(format!("{}-0.9-1", COMPONENT.name));
+    std::fs::create_dir_all(&earlier).unwrap();
+    let current = COMPONENT.folder(data.path());
+    std::fs::create_dir_all(&current).unwrap();
+    std::fs::write(current.join(".installed"), "").unwrap();
+    // Held open without sharing its deletion, as a running program holds its files.
+    let held = {
+        use std::os::windows::fs::OpenOptionsExt as _;
+        std::fs::OpenOptions::new()
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .share_mode(0)
+            .open(earlier.join("java.exe"))
+            .unwrap()
+    };
+    assert_eq!(
+        COMPONENT.remove_earlier(data.path()),
+        std::slice::from_ref(&earlier)
+    );
+    drop(held);
+    assert!(
+        COMPONENT.remove_earlier(data.path()).is_empty(),
+        "deleted once let go"
+    );
+    assert!(!earlier.exists());
+}
+
+#[test]
+fn a_range_goes_on_only_from_where_the_file_stops() {
+    use birchpad_update::resumes;
+    assert!(resumes(1000, 206, Some("bytes 1000-1999/2000")));
+    assert!(
+        !resumes(1000, 200, Some("bytes 1000-1999/2000")),
+        "the whole file"
+    );
+    assert!(
+        !resumes(1000, 206, Some("bytes 0-1999/2000")),
+        "another start"
+    );
+    assert!(!resumes(1000, 206, None));
+    assert!(
+        !resumes(0, 206, Some("bytes 0-1999/2000")),
+        "nothing to go on from"
+    );
+    assert!(!resumes(1000, 206, Some("items 1000-1999/2000")));
+}
+
+/// Serves `body` from where the file it downloads into stops, as a server that takes a range.
+struct Resuming {
+    body: Vec<u8>,
+    from: Mutex<Vec<u64>>,
+}
+
+impl Transport for Resuming {
+    fn get(&self, _: &str) -> Result<Vec<u8>, String> {
+        Ok(self.body.clone())
+    }
+
+    fn download_resuming(&self, _: &str, to: &Path, _: u64, _: &dyn Fn(u64)) -> Result<(), String> {
+        let have = std::fs::metadata(to).map_or(0, |metadata| metadata.len()) as usize;
+        self.from.lock().unwrap().push(have as u64);
+        let mut file = std::fs::OpenOptions::new()
+            .append(true)
+            .create(true)
+            .open(to)
+            .unwrap();
+        file.write_all(&self.body[have.min(self.body.len())..])
+            .unwrap();
+        Ok(())
+    }
+}
+
+#[test]
+fn an_installation_cut_off_goes_on_where_it_stopped() {
+    let data = tempfile::tempdir().unwrap();
+    let body = zip_of(&[("a", b"1"), ("b", b"22")]);
+    let package = package_of(&body);
+    let components = data.path().join("components");
+    std::fs::create_dir_all(&components).unwrap();
+    let part = components.join(format!("{}-{}.zip.part", COMPONENT.name, COMPONENT.version));
+    let half = body.len() / 2;
+    std::fs::write(&part, &body[..half]).unwrap();
+    let transport = Resuming {
+        body: body.clone(),
+        from: Mutex::new(Vec::new()),
+    };
+    install_package(&COMPONENT, &package, &transport, data.path(), &|_| {}).unwrap();
+    assert_eq!(
+        *transport.from.lock().unwrap(),
+        [half as u64],
+        "from where it stopped"
+    );
+    assert!(COMPONENT.installed(data.path()).is_some());
+    assert!(!part.exists());
+    // A part that is not the start of the package: refused, and gone, to start afresh.
+    let other = tempfile::tempdir().unwrap();
+    let components = other.path().join("components");
+    std::fs::create_dir_all(&components).unwrap();
+    let part = components.join(format!("{}-{}.zip.part", COMPONENT.name, COMPONENT.version));
+    std::fs::write(&part, vec![0xFF; half]).unwrap();
+    assert!(install_package(&COMPONENT, &package, &transport, other.path(), &|_| {}).is_err());
+    assert!(!part.exists());
+    assert!(leftovers(other.path()).is_empty());
 }

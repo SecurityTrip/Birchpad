@@ -81,6 +81,19 @@ impl Workspace {
         self.open_path_with(path, false, window, cx);
     }
 
+    /// Opens a file as [`Self::open_path`] does, with the caret at the start of `line` (from 1).
+    pub fn open_path_at_line(
+        &mut self,
+        path: &Path,
+        line: usize,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let view = self.open_path_with(path, false, window, cx);
+        let target = birchpad_cli::CaretTarget::LineColumn { line, column: 1 };
+        view.update(cx, |view, cx| view.set_caret_target(target, cx));
+    }
+
     /// MISC > Session file ext. and Workspace file ext.: a file with one of them opens as a
     /// session, or in Project Panel 1, rather than as text. Returns whether it did.
     pub fn open_by_extension(

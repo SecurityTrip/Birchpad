@@ -472,3 +472,157 @@ fn proxies_as_written_or_from_the_environment() {
         assert!(HttpTransport::with_proxy("Birchpad/0.1.0 (test)", wrong).is_err());
     }
 }
+
+/// Answers one request after another with `(status, extra headers, body)`; returns each
+/// request's lines.
+fn serve_answers(
+    answers: Vec<(u16, &'static str, Vec<u8>)>,
+) -> (String, std::thread::JoinHandle<Vec<Vec<String>>>) {
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let address = listener.local_addr().unwrap();
+    let server = std::thread::spawn(move || {
+        let mut requests = Vec::new();
+        for (status, headers, body) in answers {
+            let (mut stream, _) = listener.accept().unwrap();
+            let mut request = Vec::new();
+            for line in BufReader::new(&stream).lines() {
+                let line = line.unwrap();
+                if line.is_empty() {
+                    break;
+                }
+                request.push(line);
+            }
+            write!(
+                stream,
+                "HTTP/1.1 {status} Status\r\n{headers}Content-Length: {}\r\nConnection: close\r\n\r\n",
+                body.len()
+            )
+            .unwrap();
+            stream.write_all(&body).ok();
+            requests.push(request);
+        }
+        requests
+    });
+    (format!("http://{address}"), server)
+}
+
+fn range_of(request: &[String]) -> Option<&str> {
+    request.iter().find_map(|line| {
+        line.strip_prefix("Range: ")
+            .or(line.strip_prefix("range: "))
+    })
+}
+
+#[test]
+fn an_http_download_goes_on_where_it_stopped() {
+    let transport = HttpTransport::build("Birchpad/0.1.0 (test)", None, STALL);
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("package.zip.part");
+
+    // Half there, the server sends the rest.
+    std::fs::write(&path, vec![b'a'; 1000]).unwrap();
+    let (base, server) = serve_answers(vec![(
+        206,
+        "Content-Range: bytes 1000-1999/2000\r\n",
+        vec![b'b'; 1000],
+    )]);
+    let progress = Mutex::new(Vec::new());
+    transport
+        .download_resuming(&format!("{base}/p"), &path, 2000, &|received| {
+            progress.lock().unwrap().push(received);
+        })
+        .unwrap();
+    let requests = server.join().unwrap();
+    assert_eq!(range_of(&requests[0]), Some("bytes=1000-"));
+    let file = std::fs::read(&path).unwrap();
+    assert_eq!(file.len(), 2000);
+    assert!(file[..1000].iter().all(|&byte| byte == b'a'));
+    assert!(file[1000..].iter().all(|&byte| byte == b'b'));
+    let progress = progress.into_inner().unwrap();
+    assert!(
+        progress.iter().all(|&received| received >= 1000),
+        "{progress:?}"
+    );
+    assert_eq!(progress.last(), Some(&2000));
+}
+
+#[test]
+fn an_http_download_starts_over_when_the_server_does_not_go_on() {
+    let transport = HttpTransport::build("Birchpad/0.1.0 (test)", None, STALL);
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("package.zip.part");
+
+    // The range is not heard: the whole file, written over what was there.
+    std::fs::write(&path, vec![b'a'; 1000]).unwrap();
+    let (base, server) = serve_answers(vec![(200, "", vec![b'c'; 2000])]);
+    transport
+        .download_resuming(&format!("{base}/p"), &path, 2000, &|_| {})
+        .unwrap();
+    server.join().unwrap();
+    assert_eq!(std::fs::read(&path).unwrap(), vec![b'c'; 2000]);
+
+    // The range is refused: asked again for the whole file, with no range.
+    std::fs::write(&path, vec![b'a'; 1000]).unwrap();
+    let (base, server) = serve_answers(vec![(416, "", Vec::new()), (200, "", vec![b'd'; 2000])]);
+    transport
+        .download_resuming(&format!("{base}/p"), &path, 2000, &|_| {})
+        .unwrap();
+    let requests = server.join().unwrap();
+    assert_eq!(range_of(&requests[0]), Some("bytes=1000-"));
+    assert_eq!(range_of(&requests[1]), None);
+    assert_eq!(std::fs::read(&path).unwrap(), vec![b'd'; 2000]);
+
+    // Larger than the package can be: thrown away and downloaded again.
+    std::fs::write(&path, vec![b'a'; 3000]).unwrap();
+    let (base, server) = serve_answers(vec![(200, "", vec![b'e'; 2000])]);
+    transport
+        .download_resuming(&format!("{base}/p"), &path, 2000, &|_| {})
+        .unwrap();
+    let requests = server.join().unwrap();
+    assert_eq!(range_of(&requests[0]), None);
+    assert_eq!(std::fs::read(&path).unwrap(), vec![b'e'; 2000]);
+}
+
+#[test]
+fn an_http_download_with_nothing_or_everything_there_asks_no_range() {
+    let transport = HttpTransport::build("Birchpad/0.1.0 (test)", None, STALL);
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("package.zip.part");
+
+    // Nothing there yet: an ordinary download.
+    let (base, server) = serve_answers(vec![(200, "", vec![b'f'; 2000])]);
+    transport
+        .download_resuming(&format!("{base}/p"), &path, 2000, &|_| {})
+        .unwrap();
+    let requests = server.join().unwrap();
+    assert_eq!(range_of(&requests[0]), None);
+    assert_eq!(std::fs::read(&path).unwrap(), vec![b'f'; 2000]);
+
+    // All of it there: nobody is asked (nobody listens), and the progress is full.
+    let address = TcpListener::bind("127.0.0.1:0")
+        .unwrap()
+        .local_addr()
+        .unwrap();
+    let progress = Mutex::new(0);
+    transport
+        .download_resuming(&format!("http://{address}/p"), &path, 2000, &|received| {
+            *progress.lock().unwrap() = received;
+        })
+        .unwrap();
+    assert_eq!(*progress.lock().unwrap(), 2000);
+    assert_eq!(std::fs::read(&path).unwrap(), vec![b'f'; 2000]);
+
+    // A rest that goes past the limit is refused.
+    std::fs::write(&path, vec![b'a'; 1000]).unwrap();
+    let (base, server) = serve_answers(vec![(
+        206,
+        "Content-Range: bytes 1000-2999/3000\r\n",
+        vec![b'b'; 2000],
+    )]);
+    assert!(
+        transport
+            .download_resuming(&format!("{base}/p"), &path, 2000, &|_| {})
+            .is_err()
+    );
+    server.join().ok();
+}

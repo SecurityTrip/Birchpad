@@ -15,7 +15,7 @@ use super::entries::ENTRIES;
 /// Whether the setting `key` does anything on this platform: minimizing to the tray does on
 /// Windows and macOS only.
 pub fn available_here(key: &str) -> bool {
-    key != "misc.minimize-to-tray" || crate::tray::SUPPORTED
+    !matches!(key, "misc.minimize-to-tray" | "misc.close-to-tray") || crate::tray::SUPPORTED
 }
 
 /// The sections in the order listed.

@@ -68,6 +68,30 @@ impl EditorView {
         }
     }
 
+    /// Ctrl+click on a PlantUML `!include` line with a file: asks the application to open the
+    /// file it includes (`preview.open-include`), with what the line says after the directive,
+    /// variables and calls too. Whether the line includes one.
+    fn include_at(&mut self, text: &Rope, pos: usize, cx: &mut Context<Self>) -> bool {
+        let buffer = self.buffer.read(cx);
+        if buffer
+            .language()
+            .is_none_or(|language| language.id != "plantuml")
+        {
+            return false;
+        }
+        let document = buffer.path().map(std::path::Path::to_path_buf);
+        let line = text.slice(line_range(text, line_of(text, pos))).to_string();
+        let Some(target) = birchpad_syntax::plantuml::include_argument(&line) else {
+            return false;
+        };
+        let invocation = birchpad_commands::Invocation::with_args(
+            "preview.open-include",
+            serde_json::json!({ "target": &line[target], "document": document }),
+        );
+        cx.emit(super::EditorEvent::Command(invocation));
+        true
+    }
+
     /// A Ctrl+click on a link opens it, and a double click too with `links.double-click`;
     /// Ctrl+double click selects between the delimiters around the click. Whether the click was
     /// taken.
@@ -80,6 +104,10 @@ impl EditorView {
         let settings = AppState::global(cx).settings.clone();
         let secondary = event.modifiers.secondary();
         let text = self.text(cx).clone();
+        if event.click_count == 1 && secondary && self.include_at(&text, pos, cx) {
+            self.drag = None;
+            return true;
+        }
         let opens = (event.click_count == 1 && secondary)
             || (event.click_count == 2 && !secondary && settings.links.double_click);
         if settings.links.enabled

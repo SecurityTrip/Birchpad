@@ -33,8 +33,10 @@ pub use highlighting::{HighlightingSettings, SmartHighlighting, TokenMatching};
 pub use instances::{DateSettings, InstanceMode, InstanceSettings};
 pub use languages::{LanguageMenuSettings, LanguageSettings, SqlSettings};
 pub use links::{CloudSettings, LinkSettings};
-pub use misc::MiscSettings;
-pub use print::{DiagramBackground, Paper, PreviewSettings, PrintColors, PrintSettings};
+pub use misc::{CloseToTray, MiscSettings};
+pub use print::{
+    DiagramBackground, DiagramLayout, Paper, PreviewSettings, PrintColors, PrintSettings,
+};
 pub use searching::{
     FinderSettings, PaletteSettings, SearchEngine, SearchEngineSettings, SearchingSettings,
 };

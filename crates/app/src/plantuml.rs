@@ -46,10 +46,33 @@ fn package() -> Option<ComponentPackage> {
         .copied()
 }
 
-/// The folder of the PlantUML Birchpad installed, if it did.
+/// The folder of the PlantUML Birchpad installed, if it did: this version's, or an earlier
+/// one's until this one is installed.
 pub fn installed(cx: &App) -> Option<PathBuf> {
     let data = AppState::global(cx).paths.user_data.clone()?;
-    PLANTUML.installed(&data)
+    PLANTUML.installed_or_earlier(&data)
+}
+
+/// Whether the PlantUML Birchpad installed is of an earlier version or revision than the one it
+/// installs now (before ELK, ADR 0063): installing it again brings this one.
+pub fn outdated(cx: &App) -> bool {
+    let Some(data) = AppState::global(cx).paths.user_data.clone() else {
+        return false;
+    };
+    PLANTUML.installed(&data).is_none() && PLANTUML.installed_or_earlier(&data).is_some()
+}
+
+/// Whether a preview offers the newer PlantUML (roadmap 7.4ac): the one it draws with is an
+/// earlier revision of the one Birchpad installs (`preview.plantuml` as it comes), and this one
+/// can be installed here. Nothing is downloaded until the offer is taken (ADR 0045).
+pub fn offers_update(cx: &App) -> bool {
+    let setting = AppState::global(cx)
+        .settings
+        .preview
+        .plantuml
+        .trim()
+        .to_owned();
+    matches!(setting.as_str(), "" | "plantuml") && outdated(cx) && can_install(cx).is_ok()
 }
 
 /// The installation's state.
@@ -113,17 +136,38 @@ pub fn install(cx: &mut App) -> Result<()> {
     });
     cx.spawn(async move |cx| {
         let result = downloading.await;
+        let installed = result.is_ok();
         cx.update(|cx| {
             let install = cx.global_mut::<PlantUmlInstall>();
             install.running = false;
             install.error = result.err();
             install.generation += 1;
             cx.refresh_windows();
+            if installed {
+                // The PlantUMLs kept running from an earlier folder hold its files (ADR 0060):
+                // ended, so that the folder can go; the next drawings start the new one.
+                crate::preview::server::stop_all();
+                remove_earlier(cx);
+            }
         });
         drop(ticking);
     })
     .detach();
     Ok(())
+}
+
+/// Deletes, in the background, the folders of earlier versions of the PlantUML Birchpad installs
+/// that are still there once this one is installed: at start, and after an installation.
+pub fn remove_earlier(cx: &mut App) {
+    let Some(data) = AppState::global(cx).paths.user_data.clone() else {
+        return;
+    };
+    cx.background_spawn(async move {
+        for left in PLANTUML.remove_earlier(&data) {
+            eprintln!("plantuml: cannot delete {} yet", left.display());
+        }
+    })
+    .detach();
 }
 
 pub fn register_commands(registry: &mut CommandRegistry) {

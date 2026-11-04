@@ -851,6 +851,222 @@ tests use stay where they are.
       builds are its pre-releases), `CHANGELOG.md` and this roadmap updated; the
       [release checklist](release-checklist.md) gone through
 
+### Release 0.7.7: PlantUML on a real repository
+
+What opening a real architecture repository in Birchpad showed: 124 PlantUML diagrams (C4
+context and container diagrams over thousands of lines of shared `!include` files, and
+sequence diagrams), each drawn the way the preview draws it (the PlantUML Birchpad installs,
+`-pipe`, smetana, the document's folder). 85 were drawn; of the 39 that were not, 19 are
+Birchpad's fault (7.4m), 2 are the smetana layout's (7.4o) and 18 are mistakes of the
+diagrams themselves, which the preview should show at the right place (7.4n). And a question
+from a user, whether sequence diagrams can be written as code in Birchpad: they can, and
+are drawn; what is missing is the editing of their text (7.4r).
+
+- [x] 7.4m Files included by included files found: PlantUML gets the document's folder as its
+      include path (`PLANTUML_INCLUDE_PATH`, which PlantUML reads as it reads
+      `-Dplantuml.include.path`, and which reaches it whatever runs it) besides running in it,
+      so that a file included from another folder (`shared/context.iuml`) that includes by
+      a path relative to the document (`../../shared/billing/billing_context.puml`) finds it, as
+      IDE plugins and Confluence's macro do. Without it, every context diagram of that repository failed with
+      "cannot include"; with it, all 19 are drawn. Folders of the user's own after the
+      document's (`preview.plantuml-include-path`, separated as in `PATH`, a relative one taken
+      from the document's folder), for libraries kept elsewhere, then those of the variable
+      Birchpad was started with
+- [x] 7.4n Mistakes in included files placed where they are: PlantUML's error output gives the
+      line in the file the mistake is in, and the preview takes it for a line of the document
+      ("Line 40: Syntax Error?" on 12 container diagrams, a link to an `!include` line that has
+      nothing to do with it; the mistake is an undefined procedure on line 40 of an included
+      file). The picture of the mistake says where it is (`[From string (line 75)]` for the
+      document, another name for an included file): a mistake in an included file says so and
+      links to the document's `!include` line that leads to it, the last of the document's
+      lines in the picture's trace, or to no line when none is found
+- [x] 7.4o Diagrams smetana cannot lay out: on the two largest diagrams (about 3,400 lines once
+      included) PlantUML's smetana layout crashes (`NullPointerException` in `SmetanaEdge`) and
+      the preview lists Java's stack trace as the mistake. A crash shown as one line (PlantUML
+      could not lay out the diagram, with the layout it used), its details folded; Graphviz
+      used where it is installed: `preview.plantuml-layout` (automatic, smetana, Graphviz), the
+      automatic one Graphviz's `dot` when it is found (`GRAPHVIZ_DOT`, `PATH`, Graphviz's folder
+      on Windows) and smetana
+      otherwise, so that diagrams are laid out as on Confluence and in IDEs, which use
+      Graphviz. An ADR, over [ADR 0057](adr/0057-plantuml-preview-redone.md), decides whether
+      Birchpad installs Graphviz on request as it installs PlantUML
+      ([ADR 0045](adr/0045-plantuml-installed-on-request.md)): it does not
+      ([ADR 0059](adr/0059-plantuml-layouts-and-graphviz.md))
+- [x] 7.4p The preview follows the files a diagram includes: it is drawn again when a PlantUML
+      file in the document's folder or one it includes from changes, saved in Birchpad or on
+      disk, rather than only when the document's own text changes; Redraw in the preview's
+      toolbar and View > Preview for the rest
+- [x] 7.4q Faster drawing: each drawing starts Java anew (0.6 s on its own, 1.5 to 3.5 s for a
+      diagram of that repository with its includes). PlantUML kept running for the window and
+      given each drawing in turn, started again when a run the text moved past is stopped;
+      measured before and after on the same diagrams, and kept only if it is faster. Kept
+      ([ADR 0060](adr/0060-plantuml-kept-running.md)): 0.5 to 0.7 s a drawing before, 0.01 to
+      0.02 s with a warm PlantUML, for Java (the installed PlantUML, a `plantuml.jar`); a
+      diagram still being typed, and a `plantuml` script, start PlantUML for each drawing
+- [x] 7.4r PlantUML as a language of its own: Birchpad shows a `.puml` as a normal text file. A
+      PlantUML language (Language menu, status bar): highlighting of `@start`/`@end` lines,
+      keywords and participants' kinds, arrows, `!` preprocessor lines, strings, colors and
+      comments (`'`, `/' '/`, which Toggle Comment uses); folding by blocks (`box`, `alt`,
+      `group`, `!if`, `!procedure` and their ends) rather than by indentation; the Function
+      List with participants, `==` sections, titles and `!procedure` and `!function`; Ctrl+click
+      on an `!include` with a path opens the file. A grammar of
+      Birchpad's own, `birchpad-tree-sitter-plantuml`
+      ([ADR 0061](adr/0061-plantuml-grammar-of-its-own.md)); notes, legends, headers and footers
+      of several lines and blocks in braces fold too
+- [x] 7.4s Moving about a diagram: dragging it with the mouse scrolls it, as a hand does; Fit
+      Page beside Fit, the whole diagram in the preview, since a wide sequence diagram fitted to
+      the width is too small to read
+- [x] 7.4t Closing to the tray, asked once: the tray (7.4) is reached only by minimizing, and
+      people do not find Preferences > MISC > Minimize to system tray. A new setting,
+      `misc.close-to-tray`, with no value until the user is asked: closing the main window (its
+      ×, Alt+F4) while it has none asks whether to minimize Birchpad to the system tray or to
+      close it, and saves the answer, so that it is asked only once; with a value, closing does
+      what it says without asking. The answer can be changed in Preferences > MISC (Close
+      button: ask, minimize to the tray, close). File > Exit always closes. Only where there is
+      a tray (Windows and macOS); on Linux nothing is asked and closing closes
+
+The same repository again, with the development build of 7.4m to 7.4s: 105 of the 124
+diagrams are drawn (85 before). Of the 19 that are not, 17 have mistakes of their own and 2 are
+the ones smetana cannot lay out, with no Graphviz on that machine. What it still showed:
+
+- [x] 7.4u Mistakes in included files when PlantUML does not name the file: on 16 of the 17
+      diagrams with mistakes the picture's trace is a single `[From desc2 (line 40)]`, with no
+      `string` line of the document, so 7.4n finds no line: the preview shows "desc2, line 40",
+      a name that is no file, and the mistake links nowhere. The file found by what the picture
+      shows: the line under the mistake (`$audit_logger()`) at that line number in one
+      of the files the diagram includes (7.4v); the mistake then names that file, relative to
+      the document, and opens it at the line. When none is found, it says the mistake is in an
+      included file, without PlantUML's internal name
+- [x] 7.4v Includes by variables and functions followed: Birchpad reads an `!include`'s path
+      only when it is written out, and every include of that repository goes through a
+      variable or a function (`!include $DIAGRAMS_ROOT/library/main.iuml`,
+      `!include FromRoot(/parts/billing/containers.puml)`). So the preview does not
+      follow the files those diagrams include (checked: an include added on disk to
+      `library/services/all.iuml` of a copy, the preview kept the old mistake until Redraw),
+      and Ctrl+click on such an `!include` opens nothing. Variables set in the document and in
+      what it includes (`!$DIAGRAMS_ROOT ?= "../.."`, `!$X = "..."`) put into the path; for a
+      path only PlantUML can work out (a function of the diagram's own), the files PlantUML
+      reads taken from it, if it can tell them; an ADR, over
+      [ADR 0057](adr/0057-plantuml-preview-redone.md), decides how: Birchpad reads the
+      preprocessor's variables and functions itself
+      ([ADR 0062](adr/0062-includes-through-the-preprocessor.md))
+- [x] 7.4w A way to Graphviz from the crash: the message of a diagram smetana cannot lay out says
+      that Graphviz lays it out, and stops there. Two links under it: Graphviz's download page
+      and Preferences > Preview at the layout (`preview.plantuml-layout`), and the diagram drawn
+      again by itself once a `dot` is found
+- [x] 7.4x The first drawing at Fit: the first time a sequence diagram was shown, at Fit, its
+      white card was as tall as the preview, the diagram at its top and white below it; after
+      switching to Fit Page and back it was as tall as the diagram. Reproduced and fixed, or
+      written down why it cannot be reproduced. The cause:
+      at Fit a card took its size from its image's, which is not known before the image is
+      decoded; a card now gets its size from the diagram's own (from its SVG) and the preview's
+      width, and the preview draws again once it is laid out
+
+Once more, with 7.4t to 7.4x built: the mistakes of all 124 diagrams placed as the preview
+places them, and the steps tried in the window on a copy of the repository. A first drawing at
+Fit, the links to Graphviz, Ctrl+click on `!include $DIAGRAMS_ROOT/...` and the redraw when such
+an included file changes on disk work. Of the 16 diagrams with a mistake in an included file, 6
+name the file and open it at the line; 10 still say only that it is in an included file:
+
+- [x] 7.4y Includes through functions of the diagram's own: the 10 include the file with the
+      mistake by `!include FromRoot(/parts/billing/containers.puml)`, and `FromRoot` is
+      not worked out. It is an `!unquoted function` with a `!local` variable,
+      `%get_variable_value("$BRANCH")` and an `!if`/`!else` around its two `!return`s
+      (`fullpath.iuml`), which the preprocessor of 7.4v does not follow. So for
+      `orders_containers.puml` and the other diagrams whose parts are included that way,
+      the mistake links nowhere, Ctrl+click on such an `!include` opens nothing, and those files
+      are not followed. Functions with `!unquoted`, `!local` variables, `!if`, `!elseif` and
+      `!else` around `!return`, and the built-in functions such paths use (`%get_variable_value`,
+      `%strpos`, `%string`), worked out far enough to give the path; what is still out of reach
+      stays as it is now
+- [x] 7.4z The included file named relative to the document: a mistake in one names it by its
+      whole path (`C:\Users\...\repo\parts\billing\containers.puml, line 41`), longer
+      than the message, because only the document's own folder is taken off the path and the
+      file is above it. Named relative to the document
+      (`../../parts/billing/containers.puml`). With it, the texts seen while checking:
+      the link under a crash reads "в Настройки > Предпросмотр" in Russian, which should be "в
+      Настройках > Предпросмотр"; the question when a file open in Birchpad changes on disk has
+      the title "Warning" in the Russian interface. Done but
+      for the title: GPUI's Windows dialog sets it itself, in English ("Info", "Warning",
+      "Critical", `gpui-fast-windows`), with no way to give it one; the only way around is
+      Birchpad drawing every question in its window instead of the system's dialog
+      (`set_prompt_builder`), a change of its own
+
+A third time, with 7.4y and 7.4z built: all 16 mistakes in included files name their file,
+relative to the document, and open it at the line, those included through a function of the
+diagram's own too; Ctrl+click on such an `!include` opens the file, and saving it in Birchpad
+draws the diagram again. What is left:
+
+- [x] 7.4aa The picture of a mistake folded: once the preview has listed a mistake above the
+      diagrams, with its file, line and message, PlantUML's picture of it says the same again,
+      as tall as the preview, and PlantUML adds to it at random its own banners ("Add your own
+      dedication into PlantUML. For just $5 per month", Patreon) and joke lines, on white or on
+      black. The picture of a mistake the preview has placed folded under Details, as the
+      details of a crash are (7.4o); shown as now when the mistake has no place, so that what
+      PlantUML says is not lost
+- [x] 7.4ab Diagrams smetana cannot lay out drawn with ELK: on C4 container diagrams with
+      boundaries inside boundaries and many relations between them (reproduced on 105 made-up
+      lines: two `System_Boundary` with `Container_Boundary` in them, 43 `Rel`, `BiRel`,
+      `Rel_Back` and `Rel_U/D/L/R` across them) smetana's routing of a spline fails
+      ("triangulation failed" in `routesplines`), loses the edge and crashes with
+      `NullPointerException` in `SmetanaEdge`; `skinparam linetype polyline` or `ortho` does not
+      help. ELK, PlantUML's third layout, lays out all of them. The PlantUML Birchpad installs
+      is its EPL build (`plantuml-epl`, which has ELK; the MIT build has none), with the
+      `org.eclipse.xtext.xbase.lib` that the EPL build's ELK needs and lacks, as revision
+      `1.2026.9-3` of the package; with the automatic layout a crash of smetana draws the
+      diagram again with ELK, and says so; `preview.plantuml-layout` gets `elk`. A PlantUML of
+      an earlier revision keeps working until it is installed again. An ADR, over
+      [ADR 0045](adr/0045-plantuml-installed-on-request.md) and
+      [ADR 0059](adr/0059-plantuml-layouts-and-graphviz.md)
+- [x] 7.4ac The newer PlantUML offered, and drawn with once installed: who installed PlantUML
+      before 7.4ab keeps revision 1, without ELK, and is told of revision 3 only under a crash
+      of smetana; and a preview drawn again after an installation only when it had no PlantUML,
+      so the diagram that crashed stays crashed until Redraw. A preview drawn with an earlier
+      revision of the PlantUML Birchpad installs shows one quiet line above the diagrams, that
+      a newer PlantUML lays out what smetana cannot, with Update (its size, then its progress);
+      it goes once the newer one is installed. Nothing is downloaded without that click, as
+      [ADR 0045](adr/0045-plantuml-installed-on-request.md) asks. Every PlantUML preview is drawn
+      again when an installation of PlantUML ends, whatever it showed
+
+Revision 3 checked: its Windows package matches the size and SHA-256 Birchpad pins, installs
+from the line of 7.4ac, and draws the 124 diagrams of the architecture repository with smetana
+as revision 1 did (105 drawn). With ELK it draws 67. What it showed:
+
+- [x] 7.4ad ELK crashes on diagrams smetana draws: of the 124, ELK crashes on 40 that smetana
+      draws, and on both that smetana crashes on, so the fallback of 7.4ab draws none of them
+      and `preview.plantuml-layout = elk` loses 40 diagrams. Each is a
+      `NullPointerException` ("node1" is null) in `ElkGraphUtil.createSimpleEdge`, reproduced in
+      six lines: `remove @unlinked`, `rectangle R {`, `component A`, `}`, `component B`,
+      `B --> R`, a relation to a group once unlinked elements are removed; `remove $tag` on an
+      element with a relation crashes it too. C4 container diagrams relate to boundaries and
+      remove what is unlinked. Reported to PlantUML with those lines; ADR 0063's "lays out
+      every one of those diagrams" put as measured; when ELK crashes too, the preview says
+      that neither smetana nor ELK could lay the diagram out and that Graphviz is left, rather
+      than showing smetana's crash alone; the description of `elk` in Preferences says what it
+      cannot lay out. The report to PlantUML is written; it is posted from the
+      maintainer's account
+- [x] 7.4ae The earlier PlantUML left behind: installing revision 3 while revision 1's
+      PlantUML is kept running (ADR 0060) cannot delete revision 1's folder on Windows, where
+      its Java holds the files. Its `.installed` goes and the rest, 63 MB, stays, and revision
+      1's two Java processes run until Birchpad ends. The PlantUML processes kept for a
+      component ended before its earlier folders are deleted, and a folder of an earlier
+      version that is still there deleted when Birchpad starts
+- [x] 7.4af An installation cut off goes on where it stopped: Birchpad closed at 36 of 58 MB
+      left a `.zip.part`, and the next installation started from nothing (the package took 16
+      minutes at the speed seen). The download goes on from the part when the server takes a
+      range, checked by its size and SHA-256 as now, and starts again when it does not
+- [x] 7.4ag What a crash of smetana offers, said once and clearly: with revision 1 the line of
+      7.4ac (Update) and the crash's link Install PlantUML again, with ELK offer the same at
+      once; one is left. With `preview.plantuml-layout = elk` and a PlantUML without ELK
+      (revision 1, a `plantuml` of PlantUML's MIT build) the preview shows
+      `ClassNotFoundException: org.eclipse.elk...` with nothing about why: it says that this
+      PlantUML has no ELK, and offers the one that has. And under Details, which folds the
+      crash's stack trace, PlantUML's picture of the crash shows the same stack trace unfolded;
+      the picture folded with it, as 7.4aa folds the picture of a placed mistake
+- [x] Release 0.7.7: the workspace version (0.7.7, set when its branch opens, so that nightly
+      builds are its pre-releases), `CHANGELOG.md` and this roadmap updated; the
+      [release checklist](release-checklist.md) gone through
+
 ### Release 0.8.0: development tools
 
 - [ ] 7.5 LSP client: diagnostics, completion, hover, go to definition and references,

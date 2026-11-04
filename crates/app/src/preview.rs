@@ -12,9 +12,12 @@
 //! when the user asks (`plantuml.rs`).
 
 mod diagrams;
+mod includes;
+pub mod server;
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use std::time::Duration;
 
 use anyhow::bail;
 use birchpad_commands::Invocation;
@@ -26,9 +29,10 @@ use gpui_kit::component::menu::{ContextMenuExt as _, PopupMenu, PopupMenuItem};
 use gpui_kit::component::scroll::{Scrollbar, ScrollbarAxis, ScrollbarMode};
 use gpui_kit::component::{IconName, Selectable as _, Sizable};
 use gpui_kit::{
-    AnyElement, App, AppContext as _, ClickEvent, Context, Entity, Image, ImageFormat, ImageSource,
-    ObjectFit, Pixels, Point, Resource, ScrollHandle, ScrollWheelEvent, SharedString, SharedUri,
-    Subscription, Task, WeakEntity, Window, div, img, point, prelude::*, px,
+    AnyElement, App, AppContext as _, ClickEvent, Context, CursorStyle, Entity, Image, ImageFormat,
+    ImageSource, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, ObjectFit, Pixels,
+    Point, Resource, ScrollHandle, ScrollWheelEvent, SharedString, SharedUri, Subscription, Task,
+    WeakEntity, Window, div, img, point, prelude::*, px,
 };
 
 use crate::app_state::AppState;
@@ -39,12 +43,20 @@ use crate::editor::widgets::{BarColors, Line, bar, error_text};
 use crate::theme::{paint, ui};
 use crate::workspace::Workspace;
 
+#[cfg(feature = "test-support")]
+pub use diagrams::DOT;
 pub use diagrams::{
-    DIAGRAM_END, Drawn, MAX_PNG_SIDE, MAX_ZOOMED_PIXELS, Mistake, NotDrawn, PLANTUML_DELAY, Stop,
-    StopOnDrop, ZOOM_COMMANDS, ZOOM_STEPS, Zoom, ZoomChange, active_diagrams, background,
-    diagram_starts, export_name, line_offset, mistakes, plantuml_command, raster_factor,
-    run_plantuml, setting_path, sized_svg, split_diagrams, svg_size, svg_to_pixels, svg_to_png,
+    DIAGRAM_END, DOT_POLL, Drawn, ElkAttempt, GRAPHVIZ_DOT_VARIABLE, GRAPHVIZ_DOWNLOAD,
+    INCLUDE_PATH_VARIABLE, Included, Layout, MAX_PNG_SIDE, MAX_ZOOMED_PIXELS, Mistake, NotDrawn,
+    PLANTUML_DELAY, PLANTUML_MAIN, Stop, StopOnDrop, ZOOM_COMMANDS, ZOOM_STEPS, Zoom, ZoomChange,
+    active_diagrams, background, crash_pictures, diagram_starts, dragged_offset,
+    draws_again_with_elk, elk_attempt, export_name, find_dot, find_include, fit_page_scale,
+    fit_width_scale, folded_pictures, include_path, lacks_elk, line_offset, mistake_trace,
+    mistakes, normalized, pictured_line, place_in_includes, plantuml_command, raster_factor,
+    redraws_for, relative_to, run_plantuml, setting_path, sized_svg, split_diagrams, svg_size,
+    svg_to_pixels, svg_to_png, system_dot, waits_for_graphviz, watched_folders,
 };
+pub use includes::{IncludeLink, Includes, MOST_INCLUDED_FILES, Preprocessor, walk_includes};
 
 /// What a document's preview shows.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -55,18 +67,20 @@ pub enum PreviewKind {
 }
 
 /// PlantUML's files: `.puml` and the other extensions its tools know.
-const PLANTUML_EXTENSIONS: [&str; 5] = ["puml", "plantuml", "pu", "iuml", "wsd"];
+pub(crate) const PLANTUML_EXTENSIONS: [&str; 5] = ["puml", "plantuml", "pu", "iuml", "wsd"];
 
-/// The preview `buffer` has: from its language, or for PlantUML (which has no language of its
-/// own yet) from its file's extension.
+/// The preview `buffer` has: from its language, or for PlantUML from its file's extension too
+/// (a `.puml` shown as another language still has its diagrams).
 pub fn kind_of(buffer: &Buffer) -> Option<PreviewKind> {
     kind_for(buffer.language().map(|language| language.id), buffer.path())
 }
 
 /// The preview of a document in `language` (by id) kept at `path`.
 pub fn kind_for(language: Option<&str>, path: Option<&Path>) -> Option<PreviewKind> {
-    if language == Some("markdown") {
-        return Some(PreviewKind::Markdown);
+    match language {
+        Some("markdown") => return Some(PreviewKind::Markdown),
+        Some("plantuml") => return Some(PreviewKind::PlantUml),
+        _ => {}
     }
     let extension = path?.extension()?.to_str()?;
     PLANTUML_EXTENSIONS
@@ -217,6 +231,9 @@ struct Diagrams {
     zoom: Zoom,
     /// Ctrl with the mouse wheel: the scrolling not yet turned into a zoom step.
     wheel: f32,
+    /// A drag of the diagrams with the mouse, as by a hand: where the mouse was and where the
+    /// diagrams were scrolled to when it started.
+    drag: Option<(Point<Pixels>, Point<Pixels>)>,
     /// Where the diagrams are scrolled to, both ways.
     scroll: ScrollHandle,
     /// The mistakes PlantUML found in the text the diagrams show.
@@ -229,6 +246,34 @@ struct Diagrams {
     drawing: Option<Task<()>>,
     /// The installations of PlantUML when it last drew ([`crate::plantuml::PlantUmlInstall`]).
     installs: u64,
+    /// The name of the layout the diagrams were last drawn with.
+    layout: &'static str,
+    /// Smetana crashed, and ELK was tried in its place (ADR 0063): what came of it.
+    elk: ElkAttempt,
+    /// The details of a crash of PlantUML are shown.
+    details: bool,
+    /// After a crash of smetana with the automatic layout: looking for Graphviz now and then,
+    /// to draw again with it once it is installed.
+    graphviz: Option<Task<()>>,
+    /// The diagrams that are pictures of mistakes placed above them, folded ([`folded_pictures`]).
+    folded: Vec<usize>,
+    /// Those of them shown all the same, by a click.
+    unfolded: Vec<usize>,
+    /// The diagrams that are PlantUML's pictures of a crash, shown with its details.
+    crash_pictures: Vec<usize>,
+    /// The files the document includes, found when it was last drawn.
+    included: Vec<PathBuf>,
+    /// Watches the folders of the document and of the files it includes.
+    watch: Option<IncludeWatch>,
+}
+
+/// Watching the files a diagram includes, so that it is drawn again when one changes.
+struct IncludeWatch {
+    /// The system's watcher; none in tests, whose events come from [`Preview::files_changed`]:
+    /// its thread would wake the test scheduler from outside, which it refuses.
+    watcher: Option<notify::RecommendedWatcher>,
+    folders: Vec<PathBuf>,
+    _listening: Option<Task<()>>,
 }
 
 /// One diagram PlantUML drew.
@@ -280,7 +325,8 @@ impl Diagram {
 
 enum Content {
     Markdown(Entity<TextViewState>),
-    PlantUml(Diagrams),
+    // Boxed: far larger than a Markdown preview's state.
+    PlantUml(Box<Diagrams>),
 }
 
 /// The preview of one view: the rendered text, kept up to date as the text changes.
@@ -310,7 +356,7 @@ impl Preview {
                     .scrollable(true)
                     .selectable(true)
             })),
-            PreviewKind::PlantUml => Content::PlantUml(Diagrams::default()),
+            PreviewKind::PlantUml => Content::PlantUml(Box::default()),
         };
         let mut this = Self {
             view: view.downgrade(),
@@ -339,7 +385,10 @@ impl Preview {
                 markdown.update(cx, |markdown, cx| markdown.set_text(&text, cx));
             }
             Content::PlantUml(diagrams) => {
-                let setting = &AppState::global(cx).settings.preview.plantuml;
+                let settings = &AppState::global(cx).settings.preview;
+                let setting = &settings.plantuml;
+                let includes = settings.plantuml_include_path.clone();
+                let layout_setting = settings.plantuml_layout;
                 // PlantUML runs in the document's folder: a relative setting is Birchpad's.
                 let setting = match std::env::current_dir() {
                     Ok(base) => setting_path(setting, &base),
@@ -350,6 +399,11 @@ impl Preview {
                     .path()
                     .and_then(Path::parent)
                     .map(Path::to_path_buf);
+                let include = include_path(
+                    folder.as_deref(),
+                    &includes,
+                    std::env::var_os(INCLUDE_PATH_VARIABLE).as_deref(),
+                );
                 let installed = crate::plantuml::installed(cx);
                 diagrams.installs = crate::plantuml::state(cx).map_or(0, |state| state.generation);
                 let executor = cx.background_executor().clone();
@@ -360,15 +414,74 @@ impl Preview {
                     }
                     let stop = StopOnDrop(Stop::default());
                     let running = stop.0.clone();
-                    let drawn = executor
+                    let (drawn, layout, included, elk) = executor
                         .spawn(async move {
-                            let (program, args) = plantuml_command(&setting, installed.as_deref());
-                            run_plantuml(&program, &args, folder.as_deref(), &text, &running)
+                            let folders: Vec<PathBuf> = include
+                                .as_deref()
+                                .map(|path| std::env::split_paths(path).collect())
+                                .unwrap_or_default();
+                            let included = walk_includes(&text, folder.as_deref(), &folders).files;
+                            // Graphviz is looked for at each drawing: it may have been installed.
+                            let dot = match layout_setting {
+                                birchpad_config::DiagramLayout::Smetana => None,
+                                _ => system_dot(),
+                            };
+                            let mut layout = Layout::resolve(layout_setting, dot);
+                            let draw = |layout: &Layout| {
+                                let (program, args) =
+                                    plantuml_command(&setting, installed.as_deref(), layout);
+                                server::draw(
+                                    &program,
+                                    &args,
+                                    folder.as_deref(),
+                                    include.as_deref(),
+                                    &layout.env(),
+                                    &text,
+                                    &running,
+                                )
+                            };
+                            let mut drawn = draw(&layout);
+                            // Smetana crashed: ELK, where PlantUML has it, lays the diagram out.
+                            let mut elk = ElkAttempt::NotTried;
+                            let again = drawn.as_ref().is_ok_and(|drawn| {
+                                draws_again_with_elk(&drawn.mistakes, &layout, layout_setting)
+                            });
+                            if again {
+                                let with_elk = draw(&Layout::Elk);
+                                elk = elk_attempt(&with_elk);
+                                if elk == ElkAttempt::Drew {
+                                    drawn = with_elk;
+                                    layout = Layout::Elk;
+                                }
+                            }
+                            // Mistakes PlantUML traced to no file of the diagram's, placed.
+                            let drawn = drawn.map(|mut drawn| {
+                                place_in_includes(
+                                    &mut drawn.mistakes,
+                                    folder.as_deref(),
+                                    &included,
+                                );
+                                drawn
+                            });
+                            (drawn, layout.name(), included, elk)
                         })
                         .await;
                     drop(stop);
                     this.update(cx, |this, cx| {
+                        if let Content::PlantUml(diagrams) = &mut this.content
+                            && !matches!(drawn, Err(NotDrawn::Stopped))
+                        {
+                            diagrams.layout = layout;
+                            diagrams.elk = elk;
+                        }
+                        let waits = drawn.as_ref().is_ok_and(|drawn| {
+                            waits_for_graphviz(&drawn.mistakes, layout, layout_setting)
+                        });
+                        if !matches!(drawn, Err(NotDrawn::Stopped)) {
+                            this.watch_included(included, cx);
+                        }
                         this.show_diagrams(drawn);
+                        this.wait_for_graphviz(waits, cx);
                         cx.notify();
                     })
                     .ok();
@@ -376,6 +489,135 @@ impl Preview {
             }
         }
         cx.notify();
+    }
+
+    /// Whether the diagrams are being dragged with the mouse (for tests).
+    #[cfg(feature = "test-support")]
+    pub fn dragging(&self) -> bool {
+        matches!(&self.content, Content::PlantUml(diagrams) if diagrams.drag.is_some())
+    }
+
+    /// Draws the diagrams again, as they are on disk now: View > Preview > Redraw, and a change
+    /// to a file they include.
+    pub fn redraw(&mut self, cx: &mut Context<Self>) {
+        if let Some(view) = self.view.upgrade() {
+            self.shown = None;
+            let buffer = view.read(cx).buffer.clone();
+            self.update_text(&buffer, cx);
+        }
+    }
+
+    /// Watches the folders of the document and of `included`, the files it includes.
+    fn watch_included(&mut self, included: Vec<PathBuf>, cx: &mut Context<Self>) {
+        let folder = self.folder(cx);
+        let Content::PlantUml(diagrams) = &mut self.content else {
+            return;
+        };
+        let folders = watched_folders(folder.as_deref(), &included);
+        diagrams.included = included;
+        #[cfg(feature = "test-support")]
+        if diagrams.watch.is_none() {
+            diagrams.watch = Some(IncludeWatch {
+                watcher: None,
+                folders: Vec::new(),
+                _listening: None,
+            });
+        }
+        if diagrams.watch.is_none() {
+            let (sender, mut events) = futures::channel::mpsc::unbounded::<Vec<PathBuf>>();
+            let watcher =
+                notify::recommended_watcher(move |event: notify::Result<notify::Event>| {
+                    if let Ok(event) = event
+                        && !event.kind.is_access()
+                    {
+                        sender.unbounded_send(event.paths).ok();
+                    }
+                });
+            let Ok(watcher) = watcher else {
+                return;
+            };
+            let listening = cx.spawn(async move |this, cx| {
+                use futures::StreamExt as _;
+                while let Some(mut paths) = events.next().await {
+                    // A program writing a file sets off several events: draw once they stop.
+                    cx.background_executor()
+                        .timer(Duration::from_millis(150))
+                        .await;
+                    while let Ok(more) = events.try_recv() {
+                        paths.extend(more);
+                    }
+                    let redrawn = this.update(cx, |this, cx| this.files_changed(&paths, cx));
+                    if redrawn.is_err() {
+                        break;
+                    }
+                }
+            });
+            diagrams.watch = Some(IncludeWatch {
+                watcher: Some(watcher),
+                folders: Vec::new(),
+                _listening: Some(listening),
+            });
+        }
+        let Some(watch) = &mut diagrams.watch else {
+            return;
+        };
+        use notify::Watcher as _;
+        let Some(watcher) = &mut watch.watcher else {
+            watch.folders = folders;
+            return;
+        };
+        for gone in watch.folders.iter().filter(|old| !folders.contains(old)) {
+            watcher.unwatch(gone).ok();
+        }
+        let mut watched = Vec::new();
+        for folder in folders {
+            let ok = watch.folders.contains(&folder)
+                || watcher
+                    .watch(&folder, notify::RecursiveMode::NonRecursive)
+                    .is_ok();
+            if ok {
+                watched.push(folder);
+            }
+        }
+        watch.folders = watched;
+    }
+
+    /// Files at `paths` changed on disk: the diagrams are drawn again if one of them is a file
+    /// they include, or a PlantUML file ([`redraws_for`]).
+    pub fn files_changed(&mut self, paths: &[PathBuf], cx: &mut Context<Self>) {
+        let document = self.path(cx);
+        let included = match &self.content {
+            Content::PlantUml(diagrams) => diagrams.included.clone(),
+            Content::Markdown(_) => Vec::new(),
+        };
+        if paths
+            .iter()
+            .any(|path| redraws_for(path, document.as_deref(), &included))
+        {
+            self.redraw(cx);
+        }
+    }
+
+    /// The folders watched for changes to the files the diagrams include (for tests).
+    #[cfg(feature = "test-support")]
+    pub fn watched_folders(&self) -> Vec<PathBuf> {
+        match &self.content {
+            Content::PlantUml(diagrams) => diagrams
+                .watch
+                .as_ref()
+                .map(|watch| watch.folders.clone())
+                .unwrap_or_default(),
+            Content::Markdown(_) => Vec::new(),
+        }
+    }
+
+    /// The files the diagrams include, as found when they were last drawn (for tests).
+    #[cfg(feature = "test-support")]
+    pub fn included(&self) -> Vec<PathBuf> {
+        match &self.content {
+            Content::PlantUml(diagrams) => diagrams.included.clone(),
+            Content::Markdown(_) => Vec::new(),
+        }
     }
 
     fn show_diagrams(&mut self, drawn: Result<Drawn, NotDrawn>) {
@@ -387,9 +629,13 @@ impl Preview {
                 let zoom = diagrams.zoom;
                 diagrams.images = drawn
                     .diagrams
-                    .into_iter()
+                    .iter()
+                    .cloned()
                     .map(|svg| Diagram::new(svg, zoom))
                     .collect();
+                diagrams.folded = folded_pictures(&drawn.mistakes, &drawn.diagrams);
+                diagrams.crash_pictures = crash_pictures(&drawn.mistakes, &drawn.diagrams);
+                diagrams.unfolded.clear();
                 diagrams.mistakes = drawn.mistakes;
                 diagrams.error = None;
                 diagrams.missing = false;
@@ -491,6 +737,44 @@ impl Preview {
         true
     }
 
+    /// The left button pressed on the diagrams: they follow the mouse until it is let go.
+    fn start_drag(&mut self, position: Point<Pixels>, cx: &mut Context<Self>) {
+        if let Content::PlantUml(diagrams) = &mut self.content {
+            diagrams.drag = Some((position, diagrams.scroll.offset()));
+            cx.notify();
+        }
+    }
+
+    /// The mouse moved while the diagrams are dragged: they are scrolled with it. Whether they
+    /// are dragged.
+    fn drag_to(&mut self, position: Point<Pixels>, cx: &mut Context<Self>) -> bool {
+        let Content::PlantUml(diagrams) = &self.content else {
+            return false;
+        };
+        let Some((from, start)) = diagrams.drag else {
+            return false;
+        };
+        let most = diagrams.scroll.max_offset();
+        let (x, y) = dragged_offset(
+            (f32::from(start.x), f32::from(start.y)),
+            (f32::from(from.x), f32::from(from.y)),
+            (f32::from(position.x), f32::from(position.y)),
+            (f32::from(most.x), f32::from(most.y)),
+        );
+        diagrams.scroll.set_offset(point(px(x), px(y)));
+        cx.notify();
+        true
+    }
+
+    /// The mouse let go: the drag ends.
+    fn end_drag(&mut self, cx: &mut Context<Self>) {
+        if let Content::PlantUml(diagrams) = &mut self.content
+            && diagrams.drag.take().is_some()
+        {
+            cx.notify();
+        }
+    }
+
     /// Ctrl with the mouse wheel over the diagrams: a step of zoom for each notch.
     fn wheel_zoom(&mut self, event: &ScrollWheelEvent, cx: &mut Context<Self>) {
         let Content::PlantUml(diagrams) = &mut self.content else {
@@ -542,6 +826,21 @@ impl Preview {
         window.focus(&focus, cx);
     }
 
+    /// Opens `path` at `line` (from 1) in the window of `this`: a mistake in an included file.
+    pub fn open_at(
+        this: &Entity<Self>,
+        path: &Path,
+        line: usize,
+        window: &mut Window,
+        cx: &mut App,
+    ) {
+        if let Some(workspace) = this.read(cx).workspace.upgrade() {
+            workspace.update(cx, |workspace, cx| {
+                workspace.open_path_at_line(path, line, window, cx);
+            });
+        }
+    }
+
     /// The text the preview shows, without its formatting, or what PlantUML did (for tests).
     #[cfg(feature = "test-support")]
     pub fn rendered(&self, cx: &App) -> String {
@@ -573,6 +872,45 @@ impl Preview {
             .on_link_click(move |link, _, window, cx| {
                 follow_link(link, folder.as_deref(), &workspace, window, cx);
             })
+            .into_any_element()
+    }
+
+    /// The quiet line above diagrams drawn by an earlier PlantUML of Birchpad's: a newer one lays
+    /// out what smetana cannot, with Update, then its progress, or why it failed.
+    fn render_update(cx: &App) -> AnyElement {
+        let state = crate::plantuml::state(cx);
+        let megabytes = |bytes: u64| format!("{:.1}", bytes as f64 / (1024. * 1024.));
+        let size = crate::plantuml::can_install(cx).unwrap_or_default();
+        let action = match state {
+            Some(state) if state.running => div()
+                .child(t!(
+                    "plantuml.installing",
+                    received = megabytes(state.received.load(std::sync::atomic::Ordering::Relaxed)),
+                    size = megabytes(size)
+                ))
+                .into_any_element(),
+            _ => div()
+                .id("plantuml-update")
+                .text_color(paint(ui().accent))
+                .cursor_pointer()
+                .hover(|link| link.underline())
+                .on_click(|_, window, cx| {
+                    if let Err(error) = crate::plantuml::install(cx) {
+                        crate::workspace::report_error(&error, window, cx);
+                    }
+                })
+                .child(t!("plantuml.update", size = megabytes(size)))
+                .into_any_element(),
+        };
+        div()
+            .w_full()
+            .flex()
+            .flex_wrap()
+            .gap_2()
+            .text_color(paint(ui().muted))
+            .child(t!("plantuml.update-available"))
+            .child(action)
+            .children(state.and_then(|state| state.error.clone()).map(error_text))
             .into_any_element()
     }
 
@@ -625,49 +963,329 @@ impl Preview {
             .into_any_element()
     }
 
+    /// What a crash of PlantUML shows: one line, with the layout it used, and its stack trace
+    /// folded under it.
+    fn render_crash(
+        mistake: &Mistake,
+        details: &str,
+        diagrams: &Diagrams,
+        this: &WeakEntity<Self>,
+        workspace: &WeakEntity<Workspace>,
+        offers_update: bool,
+    ) -> AnyElement {
+        let this = this.clone();
+        // ELK asked for, by the setting or after a crash of smetana, of a PlantUML without it.
+        let no_elk = lacks_elk(&diagrams.mistakes) || diagrams.elk == ElkAttempt::Missing;
+        let asked_for_elk = diagrams.layout == Layout::Elk.name() && lacks_elk(&diagrams.mistakes);
+        let toggle = if diagrams.details {
+            t!("preview.plantuml-hide-details")
+        } else {
+            t!("preview.plantuml-show-details")
+        };
+        div()
+            .w_full()
+            .flex()
+            .flex_col()
+            .gap_1()
+            .child(div().text_color(paint(ui().error)).child(if asked_for_elk {
+                t!("preview.plantuml-no-elk")
+            } else if diagrams.elk == ElkAttempt::Crashed {
+                t!(
+                    "preview.plantuml-neither-layout",
+                    error = mistake.message.as_str()
+                )
+            } else {
+                t!(
+                    "preview.plantuml-crashed",
+                    layout = diagrams.layout,
+                    error = mistake.message.as_str()
+                )
+            }))
+            .when(
+                [Layout::Smetana.name(), Layout::Elk.name()].contains(&diagrams.layout),
+                |crash| {
+                    let workspace = workspace.clone();
+                    let link = |id: &'static str, text: String, command: &'static str| {
+                        let workspace = workspace.clone();
+                        div()
+                            .id(id)
+                            .text_color(paint(ui().accent))
+                            .cursor_pointer()
+                            .hover(|link| link.underline())
+                            .on_click(move |_, window, cx| {
+                                if let Some(workspace) = workspace.upgrade() {
+                                    workspace.update(cx, |workspace, cx| {
+                                        workspace.run(&Invocation::new(command), window, cx)
+                                    });
+                                }
+                            })
+                            .child(text)
+                    };
+                    crash
+                        .when(no_elk && !asked_for_elk, |crash| {
+                            crash.child(
+                                div()
+                                    .text_color(paint(ui().muted))
+                                    .child(t!("preview.plantuml-has-no-elk")),
+                            )
+                        })
+                        .when(no_elk && !offers_update, |crash| {
+                            crash.child(
+                                div()
+                                    .text_color(paint(ui().muted))
+                                    .child(t!("preview.plantuml-get-elk")),
+                            )
+                        })
+                        .child(
+                            div()
+                                .text_color(paint(ui().muted))
+                                .child(t!("preview.plantuml-try-graphviz")),
+                        )
+                        .child(
+                            div()
+                                .flex()
+                                .gap_4()
+                                .child(link(
+                                    "plantuml-get-graphviz",
+                                    t!("preview.plantuml-get-graphviz", url = GRAPHVIZ_DOWNLOAD),
+                                    "preview.get-graphviz",
+                                ))
+                                .child(link(
+                                    "plantuml-choose-layout",
+                                    t!("preview.plantuml-choose-layout"),
+                                    "preview.choose-layout",
+                                )),
+                        )
+                },
+            )
+            .child(
+                div()
+                    .id("plantuml-crash-details")
+                    .text_color(paint(ui().muted))
+                    .cursor_pointer()
+                    .hover(|row| row.underline())
+                    .on_click(move |_, _, cx| {
+                        this.update(cx, |this, cx| this.toggle_details(cx)).ok();
+                    })
+                    .child(toggle),
+            )
+            .when(diagrams.details, |crash| {
+                crash.child(
+                    div()
+                        .font_family(crate::MONOSPACE)
+                        .text_xs()
+                        .text_color(paint(ui().muted))
+                        .whitespace_normal()
+                        .children(details.lines().map(|line| div().child(line.to_owned()))),
+                )
+            })
+            .into_any_element()
+    }
+
+    /// Looks for Graphviz every few seconds while `waits`, and draws again once it is there.
+    fn wait_for_graphviz(&mut self, waits: bool, cx: &mut Context<Self>) {
+        let Content::PlantUml(diagrams) = &mut self.content else {
+            return;
+        };
+        if !waits {
+            diagrams.graphviz = None;
+            return;
+        }
+        if diagrams.graphviz.is_some() {
+            return;
+        }
+        diagrams.graphviz = Some(cx.spawn(async move |this, cx| {
+            loop {
+                cx.background_executor().timer(DOT_POLL).await;
+                if system_dot().is_some() {
+                    this.update(cx, |this, cx| {
+                        if let Content::PlantUml(diagrams) = &mut this.content {
+                            diagrams.graphviz = None;
+                        }
+                        this.redraw(cx);
+                    })
+                    .ok();
+                    break;
+                }
+            }
+        }));
+    }
+
+    /// Whether smetana crashed and ELK drew the diagrams instead (for tests).
+    #[cfg(feature = "test-support")]
+    pub fn fell_back_to_elk(&self) -> bool {
+        matches!(&self.content, Content::PlantUml(diagrams) if diagrams.elk == ElkAttempt::Drew)
+    }
+
+    /// What came of trying ELK after a crash of smetana (for tests).
+    #[cfg(feature = "test-support")]
+    pub fn elk_attempt(&self) -> ElkAttempt {
+        match &self.content {
+            Content::PlantUml(diagrams) => diagrams.elk,
+            Content::Markdown(_) => ElkAttempt::NotTried,
+        }
+    }
+
+    /// Whether the preview looks for Graphviz to draw again with it (for tests).
+    #[cfg(feature = "test-support")]
+    pub fn waiting_for_graphviz(&self) -> bool {
+        matches!(&self.content, Content::PlantUml(diagrams) if diagrams.graphviz.is_some())
+    }
+
+    /// Shows the folded picture of a placed mistake, diagram `index`, or folds it again.
+    pub fn toggle_picture(&mut self, index: usize, cx: &mut Context<Self>) {
+        if let Content::PlantUml(diagrams) = &mut self.content
+            && diagrams.folded.contains(&index)
+        {
+            match diagrams.unfolded.iter().position(|&shown| shown == index) {
+                Some(at) => {
+                    diagrams.unfolded.remove(at);
+                }
+                None => diagrams.unfolded.push(index),
+            }
+            cx.notify();
+        }
+    }
+
+    /// The diagrams folded as pictures of placed mistakes, and those shown all the same (for
+    /// tests).
+    #[cfg(feature = "test-support")]
+    pub fn folded(&self) -> (Vec<usize>, Vec<usize>) {
+        match &self.content {
+            Content::PlantUml(diagrams) => (diagrams.folded.clone(), diagrams.unfolded.clone()),
+            Content::Markdown(_) => (Vec::new(), Vec::new()),
+        }
+    }
+
+    /// Shows or folds the details of a crash of PlantUML.
+    pub fn toggle_details(&mut self, cx: &mut Context<Self>) {
+        if let Content::PlantUml(diagrams) = &mut self.content {
+            diagrams.details = !diagrams.details;
+            cx.notify();
+        }
+    }
+
+    /// Whether the details of a crash are shown (for tests).
+    #[cfg(feature = "test-support")]
+    pub fn details_shown(&self) -> bool {
+        matches!(&self.content, Content::PlantUml(diagrams) if diagrams.details)
+    }
+
+    /// The name of the layout the diagrams were last drawn with (for tests).
+    #[cfg(feature = "test-support")]
+    pub fn layout(&self) -> &'static str {
+        match &self.content {
+            Content::PlantUml(diagrams) => diagrams.layout,
+            Content::Markdown(_) => "",
+        }
+    }
+
     /// PlantUML's mistakes, each a link to its line.
-    fn render_mistakes(mistakes: &[Mistake], this: &WeakEntity<Self>) -> impl IntoElement {
+    fn render_mistakes(
+        diagrams: &Diagrams,
+        this: &WeakEntity<Self>,
+        workspace: &WeakEntity<Workspace>,
+        offers_update: bool,
+    ) -> impl IntoElement {
+        let mistakes = &diagrams.mistakes;
         div()
             .w_full()
             .flex()
             .flex_col()
             .gap_1()
             .children(mistakes.iter().enumerate().map(|(index, mistake)| {
-                let text = match mistake.line {
-                    Some(line) => t!(
-                        "preview.plantuml-mistake",
+                if let Some(details) = &mistake.details {
+                    return Self::render_crash(
+                        mistake,
+                        details,
+                        diagrams,
+                        this,
+                        workspace,
+                        offers_update,
+                    );
+                }
+                let message = mistake.message.as_str();
+                let text = match (mistake.line, &mistake.included) {
+                    (Some(line), Some(included)) => t!(
+                        "preview.plantuml-mistake-included",
                         line = line + 1,
-                        message = mistake.message.as_str()
+                        file = included.file.as_str(),
+                        at = included.line,
+                        message = message
                     ),
-                    None => mistake.message.clone(),
+                    (None, Some(included)) if included.file.is_empty() => {
+                        t!("preview.plantuml-mistake-in-an-include", message = message)
+                    }
+                    (None, Some(included)) => t!(
+                        "preview.plantuml-mistake-in-file",
+                        file = included.file.as_str(),
+                        at = included.line,
+                        message = message
+                    ),
+                    (Some(line), None) => {
+                        t!(
+                            "preview.plantuml-mistake",
+                            line = line + 1,
+                            message = message
+                        )
+                    }
+                    (None, None) => mistake.message.clone(),
                 };
                 let this = this.clone();
                 let line = mistake.line;
+                // Placed in no line of the document: its file, at its line.
+                let file = mistake
+                    .included
+                    .as_ref()
+                    .and_then(|included| Some((included.path.clone()?, included.line)));
+                let linked = line.is_some() || file.is_some();
                 div()
                     .id(("plantuml-mistake", index))
                     .text_color(paint(ui().error))
-                    .when(line.is_some(), |row| {
+                    .when(linked, |row| {
                         row.cursor_pointer().hover(|row| row.underline())
                     })
                     .on_click(move |_, window, cx| {
-                        if let Some(line) = line
-                            && let Some(this) = this.upgrade()
-                        {
+                        let Some(this) = this.upgrade() else {
+                            return;
+                        };
+                        if let Some(line) = line {
                             Self::go_to_line(&this, line, window, cx);
+                        } else if let Some((path, at)) = &file {
+                            Self::open_at(&this, path, *at, window, cx);
                         }
                     })
                     .child(text)
+                    .into_any_element()
             }))
     }
 
     fn render_diagrams(
         diagrams: &Diagrams,
         workspace: &WeakEntity<Workspace>,
+        window: &mut Window,
         cx: &mut Context<Self>,
     ) -> AnyElement {
         let this = &cx.entity().downgrade();
         let white = background(cx) == DiagramBackground::White;
         let zoom = diagrams.zoom.percent().map(|percent| percent as f32 / 100.);
+        // At Fit and Fit Page, the room the diagrams have: the preview's area, less its margins.
+        // Each diagram is given its size from its own and the room's, rather than from its
+        // image's, which is not known before the image is decoded: the first drawing at Fit
+        // was otherwise as tall as the preview, its diagram at the top (roadmap 7.4x).
+        let viewport = diagrams.scroll.bounds().size;
+        let room = (
+            f32::from(viewport.width) - 32.,
+            f32::from(viewport.height) - 32.,
+        );
+        let laid_out = room.0 > 0. && room.1 > 0.;
+        let fit_page = diagrams.zoom == Zoom::FitPage && laid_out;
+        let fit = diagrams.zoom == Zoom::Fit && laid_out;
+        // Not laid out yet: drawn again once the preview has its size.
+        if !laid_out && zoom.is_none() && !diagrams.images.is_empty() {
+            window.request_animation_frame();
+        }
+        let dragging = diagrams.drag.is_some();
         let message = match (&diagrams.error, &diagrams.drawing) {
             (Some(error), _) => Some((error.clone(), ui().error)),
             (None, Some(_)) if diagrams.images.is_empty() => {
@@ -689,6 +1307,12 @@ impl Preview {
             .flex_col()
             .items_start()
             .gap_4()
+            .on_mouse_down(
+                MouseButton::Left,
+                cx.listener(|this, event: &MouseDownEvent, _, cx| {
+                    this.start_drag(event.position, cx);
+                }),
+            )
             .on_scroll_wheel(cx.listener(|this, event: &ScrollWheelEvent, window, cx| {
                 if event.modifiers.secondary() {
                     this.wheel_zoom(event, cx);
@@ -700,40 +1324,151 @@ impl Preview {
             .when_some(message, |list, (message, color)| {
                 list.child(div().w_full().text_color(paint(color)).child(message))
             })
+            .when(crate::plantuml::offers_update(cx), |list| {
+                list.child(Self::render_update(cx))
+            })
+            .when(diagrams.elk == ElkAttempt::Drew, |list| {
+                list.child(
+                    div()
+                        .w_full()
+                        .text_color(paint(ui().muted))
+                        .child(t!("preview.plantuml-drawn-with-elk")),
+                )
+            })
             .when(!diagrams.mistakes.is_empty(), |list| {
-                list.child(Self::render_mistakes(&diagrams.mistakes, this))
+                list.child(Self::render_mistakes(
+                    diagrams,
+                    this,
+                    workspace,
+                    crate::plantuml::offers_update(cx),
+                ))
             })
             .when(diagrams.missing, |list| {
                 list.child(Self::render_install(cx))
             })
             .children(diagrams.images.iter().enumerate().map(|(index, diagram)| {
+                let folded = diagrams.folded.contains(&index);
+                // A crash's picture shows with the crash's details, and is folded with them.
+                let crash = diagrams.crash_pictures.contains(&index);
+                let shown =
+                    (!folded || diagrams.unfolded.contains(&index)) && (!crash || diagrams.details);
+                // The picture of a placed mistake: a line that shows it, or hides it again.
+                let toggle = folded.then(|| {
+                    let this = this.clone();
+                    div()
+                        .id(("plantuml-picture-toggle", index))
+                        .w_full()
+                        .text_color(paint(ui().muted))
+                        .cursor_pointer()
+                        .hover(|row| row.underline())
+                        .on_click(move |_, _, cx| {
+                            this.update(cx, |this, cx| this.toggle_picture(index, cx))
+                                .ok();
+                        })
+                        .child(if shown {
+                            t!("preview.plantuml-hide-picture")
+                        } else {
+                            t!("preview.plantuml-show-picture")
+                        })
+                });
                 let image = img(ImageSource::Image(diagram.shown()));
                 // At a zoom, the diagram's size times it; at Fit, no wider than the preview.
                 let image = match (zoom, diagram.size) {
                     (Some(zoom), Some((width, height))) => {
                         image.w(px(width * zoom)).h(px(height * zoom))
                     }
+                    (None, Some((width, height))) if fit_page => {
+                        let scale = fit_page_scale((width, height), room);
+                        image.w(px(width * scale)).h(px(height * scale))
+                    }
+                    (None, Some((width, height))) if fit => {
+                        let scale = fit_width_scale((width, height), room.0);
+                        image.w(px(width * scale)).h(px(height * scale))
+                    }
                     _ => image.max_w_full().object_fit(ObjectFit::Contain),
                 };
                 // Diagrams are made for paper: on white, unless the theme's background is asked.
                 // Centered while it fits; a wider one starts at the left, to scroll to.
-                div()
+                let card = div()
                     .id(("plantuml-diagram", index))
+                    .debug_selector(move || format!("plantuml-diagram-{index}"))
                     .flex_none()
                     .mx_auto()
                     .when(zoom.is_none(), |card| card.max_w_full())
                     .when(white, |card| card.bg(gpui_kit::white()))
                     .child(image)
-                    .context_menu(Self::diagram_menu(index, workspace.clone()))
+                    .context_menu(Self::diagram_menu(index, workspace.clone()));
+                div()
+                    .w_full()
+                    .flex()
+                    .flex_col()
+                    .gap_2()
+                    .children(toggle)
+                    .when(shown, |column| column.child(card))
             }));
+        // While the diagrams are dragged, the mouse is followed over the whole window: an
+        // element hears only the moves over it, and a drag goes past the preview's edge.
+        let following = dragging.then(|| {
+            let this = this.clone();
+            gpui_kit::canvas(
+                |_, _, _| {},
+                move |_, (), window, _| {
+                    let moved = this.clone();
+                    window.on_mouse_event(move |event: &MouseMoveEvent, phase, _, cx: &mut App| {
+                        if phase != gpui_kit::DispatchPhase::Bubble {
+                            return;
+                        }
+                        moved
+                            .update(cx, |this, cx| {
+                                if event.pressed_button == Some(MouseButton::Left) {
+                                    this.drag_to(event.position, cx);
+                                } else {
+                                    this.end_drag(cx);
+                                }
+                            })
+                            .ok();
+                    });
+                    let released = this.clone();
+                    window.on_mouse_event(move |_: &MouseUpEvent, phase, _, cx: &mut App| {
+                        if phase == gpui_kit::DispatchPhase::Bubble {
+                            released.update(cx, |this, cx| this.end_drag(cx)).ok();
+                        }
+                    });
+                },
+            )
+            .absolute()
+            .size_full()
+        });
         div()
             .size_full()
             .relative()
+            .children(following)
             .child(
                 div()
                     .id("plantuml-diagrams")
                     .debug_selector(|| "plantuml-diagrams".into())
                     .size_full()
+                    // A hand that drags the diagrams, held while it does.
+                    .cursor(if dragging {
+                        CursorStyle::ClosedHand
+                    } else {
+                        CursorStyle::OpenHand
+                    })
+                    // Over the diagrams too, before the window's listener is there (the first
+                    // move of a drag); the offset comes from the drag's start, so twice is once.
+                    .on_mouse_move(cx.listener(|this, event: &MouseMoveEvent, _, cx| {
+                        if event.pressed_button == Some(MouseButton::Left) {
+                            this.drag_to(event.position, cx);
+                        }
+                    }))
+                    .on_mouse_up(
+                        MouseButton::Left,
+                        cx.listener(|this, _: &MouseUpEvent, _, cx| this.end_drag(cx)),
+                    )
+                    .on_mouse_up_out(
+                        MouseButton::Left,
+                        cx.listener(|this, _: &MouseUpEvent, _, cx| this.end_drag(cx)),
+                    )
                     // Not stretched to the preview's height: as tall as the diagrams.
                     .flex()
                     .items_start()
@@ -830,7 +1565,24 @@ impl Preview {
                     .selected(zoom == Zoom::Fit)
                     .on_click(run("preview.fit")),
             )
+            .child(
+                Button::new("zoom-fit-page")
+                    .xsmall()
+                    .ghost()
+                    .icon(IconName::Frame)
+                    .tooltip(crate::menus::command_title("preview.fit-page"))
+                    .selected(zoom == Zoom::FitPage)
+                    .on_click(run("preview.fit-page")),
+            )
             .child(div().w(px(1.)).h(px(16.)).bg(paint(ui().border)))
+            .child(
+                Button::new("redraw")
+                    .xsmall()
+                    .ghost()
+                    .icon(IconName::RefreshCw)
+                    .tooltip(crate::menus::command_title("preview.redraw"))
+                    .on_click(run("preview.redraw")),
+            )
             .child(
                 Button::new("diagram-background")
                     .xsmall()
@@ -844,11 +1596,11 @@ impl Preview {
 }
 
 impl Render for Preview {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        // PlantUML was missing and has been installed since: draw again.
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        // PlantUML was installed since the diagrams were drawn (missing, crashed, or drawn by an
+        // earlier revision): draw again with it.
         let installs = crate::plantuml::state(cx).map_or(0, |state| state.generation);
         if let Content::PlantUml(diagrams) = &self.content
-            && diagrams.missing
             && diagrams.installs != installs
             && let Some(view) = self.view.upgrade()
         {
@@ -867,6 +1619,7 @@ impl Render for Preview {
                 .child(div().flex_1().min_h_0().child(Self::render_diagrams(
                     diagrams,
                     &self.workspace,
+                    window,
                     cx,
                 )))
                 .into_any_element(),

@@ -146,6 +146,12 @@ mod preview;
 #[path = "preview/diagrams_tests.rs"]
 mod preview_diagrams;
 
+#[path = "preview/includes_tests.rs"]
+mod preview_includes;
+
+#[path = "preview/server_tests.rs"]
+mod preview_server;
+
 #[path = "print/tests.rs"]
 mod print;
 

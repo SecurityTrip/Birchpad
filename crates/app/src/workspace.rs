@@ -141,6 +141,9 @@ impl Workspace {
         window.on_window_should_close(cx, move |window, cx| {
             workspace
                 .update(cx, |workspace, cx| {
+                    if !workspace.close_requested(window, cx) {
+                        return false;
+                    }
                     if workspace.can_quit_now(cx) {
                         workspace.save_session_for_quit(cx);
                         return true;

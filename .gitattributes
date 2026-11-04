@@ -22,3 +22,9 @@ fuzz/seeds/** -text -diff
 
 # Built plugins for the tests.
 *.wasm binary
+
+# The parser tree-sitter generates from grammar.js: not code to review line by line.
+crates/tree-sitter-plantuml/src/parser.c linguist-generated
+crates/tree-sitter-plantuml/src/grammar.json linguist-generated
+crates/tree-sitter-plantuml/src/node-types.json linguist-generated
+crates/tree-sitter-plantuml/src/tree_sitter/*.h linguist-generated

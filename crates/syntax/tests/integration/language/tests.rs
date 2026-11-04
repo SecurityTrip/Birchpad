@@ -78,3 +78,36 @@ fn embedded_blocks_name_languages_many_ways() {
     assert_eq!(named("div"), None);
     assert_eq!(named(""), None);
 }
+
+#[test]
+fn plantuml_is_a_language_of_its_own() {
+    for path in [
+        "flow.puml",
+        "flow.PUML",
+        "flow.plantuml",
+        "a.pu",
+        "lib.iuml",
+        "old.wsd",
+    ] {
+        assert_eq!(detected(path, ""), Some("plantuml"), "{path}");
+    }
+    assert_eq!(
+        detected("notes.txt", "@startuml"),
+        Some("plantuml"),
+        "by its first line"
+    );
+    assert_eq!(detected("notes.txt", "' @startuml"), None);
+    assert_eq!(detected("flow.pum", ""), None);
+    let language = by_id("plantuml").unwrap();
+    assert_eq!(language.name, "PlantUML");
+    assert_eq!(language.line_comment, Some("'"));
+    assert_eq!(language.block_comment, Some(("/'", "'/")));
+    assert_eq!(
+        injected("plantuml").map(|language| language.id),
+        Some("plantuml")
+    );
+    assert_eq!(
+        injected("puml").map(|language| language.id),
+        Some("plantuml")
+    );
+}

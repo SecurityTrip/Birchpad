@@ -35,6 +35,16 @@ pub(super) const ENTRIES: &[Entry] = &[
     ),
     entry(
         "MISC",
+        "misc.close-to-tray",
+        "Close button",
+        Kind::Choice(&[
+            ("ask", "Ask"),
+            ("tray", "Minimize to the tray"),
+            ("close", "Close"),
+        ]),
+    ),
+    entry(
+        "MISC",
         "session.session-extension",
         "Session file extension",
         Kind::Text,

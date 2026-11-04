@@ -1,6 +1,7 @@
-# PlantUML for the preview (ADR 0045): PlantUML's MIT build and a Java runtime made for it with
-# jlink (Eclipse Temurin), a ZIP for each platform Birchpad runs on, published as the release of
-# the tag pushed, `plantuml-<PlantUML's version>-<revision>`. Birchpad pins each package's URL,
+# PlantUML for the preview (ADR 0045, ADR 0063): PlantUML's EPL build, which has the ELK layout,
+# the Xtext library its ELK needs, and a Java runtime made for them with jlink (Eclipse Temurin),
+# a ZIP for each platform Birchpad runs on, published as the release of the tag pushed,
+# `plantuml-<PlantUML's version>-<revision>`. Birchpad pins each package's URL,
 # size and SHA-256 (`crates/update/src/component.rs`) and downloads one only when the user
 # installs PlantUML from a preview.
 
@@ -15,8 +16,12 @@ permissions:
 
 env:
   PLANTUML_VERSION: "1.2026.9"
-  # Of plantuml-mit-1.2026.9.jar on Maven Central.
-  PLANTUML_SHA256: "e84e45b37ad3030cf802e7be18a687d209eca55733a5679b1f1f1a515f7f70dd"
+  # Of plantuml-epl-1.2026.9.jar on Maven Central.
+  PLANTUML_SHA256: "190dcdde4b5dd7aca450d4c97202b7fa8f8e3efa1407f56a5a3539c4cea0c5fa"
+  # ELK in the EPL build calls Xtext's library (`CollectionLiterals`), which the build lacks.
+  XBASE_VERSION: "2.40.0"
+  # Of org.eclipse.xtext.xbase.lib-2.40.0.jar on Maven Central.
+  XBASE_SHA256: "5a810154295fc20a0268cae4cbbc6e5a35a8b32480d8727dc8301910524e4b79"
   JAVA_VERSION: "21"
 
 jobs:
@@ -49,39 +54,69 @@ jobs:
           distribution: temurin
           java-version: ${{ env.JAVA_VERSION }}
           architecture: ${{ matrix.arch }}
-      - name: Download PlantUML
+      - name: Download PlantUML and Xtext's library
         shell: bash
         run: |
-          curl -sSfL -o plantuml.jar \
-            "https://repo1.maven.org/maven2/net/sourceforge/plantuml/plantuml-mit/$PLANTUML_VERSION/plantuml-mit-$PLANTUML_VERSION.jar"
-          actual=$(openssl dgst -sha256 -r plantuml.jar | cut -d' ' -f1)
-          if [ "$actual" != "$PLANTUML_SHA256" ]; then
-            echo "::error::plantuml-mit-$PLANTUML_VERSION.jar has SHA-256 $actual, not $PLANTUML_SHA256"
-            exit 1
-          fi
+          # A file from Maven Central, checked against its SHA-256.
+          fetch() {
+            curl -sSfL -o "$1" "https://repo1.maven.org/maven2/$2"
+            actual=$(openssl dgst -sha256 -r "$1" | cut -d' ' -f1)
+            if [ "$actual" != "$3" ]; then
+              echo "::error::$2 has SHA-256 $actual, not $3"
+              exit 1
+            fi
+          }
+          fetch plantuml.jar \
+            "net/sourceforge/plantuml/plantuml-epl/$PLANTUML_VERSION/plantuml-epl-$PLANTUML_VERSION.jar" \
+            "$PLANTUML_SHA256"
+          fetch xbase.jar \
+            "org/eclipse/xtext/org.eclipse.xtext.xbase.lib/$XBASE_VERSION/org.eclipse.xtext.xbase.lib-$XBASE_VERSION.jar" \
+            "$XBASE_SHA256"
       - name: Make the Java runtime
         shell: bash
         run: |
-          modules=$(jdeps --ignore-missing-deps --print-module-deps --multi-release "$JAVA_VERSION" plantuml.jar)
+          # jdeps cannot list them for the EPL build: the Guava in it names a module that is not
+          # there. These are what the MIT build's runtime had, on which ELK was checked, with
+          # jdk.unsupported, which Guava uses when it is there.
+          modules="java.base,java.datatransfer,java.desktop,java.logging,java.prefs,java.scripting,java.xml,jdk.unsupported"
           echo "Modules: $modules"
           jlink --add-modules "$modules" --strip-debug --no-man-pages --no-header-files \
             --compress=zip-6 --output package/jre
+          mkdir package/lib
           cp plantuml.jar package/plantuml.jar
+          cp xbase.jar package/lib/org.eclipse.xtext.xbase.lib.jar
           cat > package/README.txt <<EOF
           PlantUML $PLANTUML_VERSION for Birchpad's previews.
 
-          plantuml.jar: PlantUML's MIT build (https://plantuml.com), under the MIT license.
+          plantuml.jar: PlantUML's EPL build (https://plantuml.com), with the ELK layout, under
+          the Eclipse Public License 2.0 (https://www.eclipse.org/legal/epl-2.0/); its notices
+          are in the jar (META-INF, about.html), and its source is on Maven Central as
+          net.sourceforge.plantuml:plantuml-epl:$PLANTUML_VERSION:sources.
+          lib/org.eclipse.xtext.xbase.lib.jar: Eclipse Xtext's library $XBASE_VERSION
+          (https://eclipse.dev/Xtext/), which ELK needs, under the Eclipse Public License 2.0;
+          its source is on Maven Central as
+          org.eclipse.xtext:org.eclipse.xtext.xbase.lib:$XBASE_VERSION:sources.
           jre: a Java $JAVA_VERSION runtime made with jlink from Eclipse Temurin
           (https://adoptium.net), under the GNU General Public License version 2 with the
           Classpath Exception; its notices are in jre/legal.
           EOF
-      - name: Check that it draws without Graphviz
+      - name: Check that it draws without Graphviz, with smetana and with ELK
         shell: bash
         run: |
           java=package/jre/bin/java
-          printf '@startuml\nclass A\nA --> B\n@enduml\n' |
-            "$java" -Djava.awt.headless=true -jar package/plantuml.jar -tsvg -pipe -Playout=smetana > drawn.svg
-          grep -q "<svg" drawn.svg
+          separator=":"
+          if [ "$RUNNER_OS" = "Windows" ]; then separator=";"; fi
+          for layout in smetana elk; do
+            printf '@startuml\npackage P {\nclass A\n}\nA --> B\n@enduml\n' |
+              "$java" -Djava.awt.headless=true -cp "package/plantuml.jar${separator}package/lib/*" \
+                net.sourceforge.plantuml.Run -tsvg -pipe -Playout=$layout > drawn.svg 2> errors.txt
+            cat errors.txt
+            grep -q "<svg" drawn.svg
+            if grep -q "Exception" errors.txt; then
+              echo "::error::PlantUML could not lay out with $layout"
+              exit 1
+            fi
+          done
       - name: Pack
         shell: bash
         run: |

@@ -85,3 +85,30 @@ fn plain_text_folds_by_indentation() {
         ["0..4 a", "1..3   b", "5..7 e"]
     );
 }
+
+#[test]
+fn plantuml_folds_by_its_blocks() {
+    let source = "@startuml\nalt paid\n  A -> B\nelse\n  B -> A\nend\n\
+                  box \"Inside\"\n  participant C\nend box\n\
+                  note left of A\n  text\nend note\n\
+                  !procedure $call($a)\n  $a -> B\n!endprocedure\n\
+                  !if %true()\n  A -> B\n!endif\n\
+                  package Shop {\n  class Order\n}\n\
+                      indented -> but not a block\n@enduml\n";
+    assert_eq!(
+        folds("plantuml", source),
+        [
+            "0..22 @startuml",
+            "1..5 alt paid",
+            "6..8 box \"Inside\"",
+            "9..11 note left of A",
+            "12..14 !procedure $call($a)",
+            "15..17 !if %true()",
+            "18..20 package Shop {",
+        ]
+    );
+    // A diagram being typed folds as far as it goes; one line folds nothing.
+    assert_eq!(folds("plantuml", "@startuml\nA -> B\n"), ["0..1 @startuml"]);
+    assert!(folds("plantuml", "@startuml").is_empty());
+    assert!(folds("plantuml", "").is_empty());
+}

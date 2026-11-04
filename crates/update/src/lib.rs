@@ -111,6 +111,31 @@ pub trait Transport: Send + Sync {
         progress(body.len() as u64);
         std::fs::write(to, body).map_err(|error| error.to_string())
     }
+
+    /// Downloads `url` into `to` as [`Transport::download`] does, going on from what `to`
+    /// already holds (a download cut off, roadmap 7.4af) when the server takes a range, and from
+    /// the start otherwise. What it holds is never trusted: the caller checks the whole file.
+    fn download_resuming(
+        &self,
+        url: &str,
+        to: &Path,
+        limit: u64,
+        progress: &dyn Fn(u64),
+    ) -> Result<(), String> {
+        std::fs::remove_file(to).ok();
+        self.download(url, to, limit, progress)
+    }
+}
+
+/// Whether a response to a request for the bytes of a file from `have` on goes on from there:
+/// `206 Partial Content`, its `Content-Range` starting at `have` (`bytes 1000-1999/2000`).
+/// Anything else (`200`, another start, none) is the file from its start.
+pub fn resumes(have: u64, status: u16, content_range: Option<&str>) -> bool {
+    let start = content_range
+        .and_then(|range| range.trim().strip_prefix("bytes "))
+        .and_then(|range| range.split_once('-'))
+        .and_then(|(start, _)| start.trim().parse::<u64>().ok());
+    have > 0 && status == 206 && start == Some(have)
 }
 
 /// The manifest to read: `updates.url` if set, the official one otherwise.
@@ -394,15 +419,76 @@ impl Transport for HttpTransport {
             .header("Accept", "application/octet-stream")
             .call()
             .map_err(|error| error.to_string())?;
+        let file = File::create(to).map_err(|error| error.to_string())?;
+        self.receive(&mut response, file, 0, limit, progress)
+    }
+
+    fn download_resuming(
+        &self,
+        url: &str,
+        to: &Path,
+        limit: u64,
+        progress: &dyn Fn(u64),
+    ) -> Result<(), String> {
+        let have = std::fs::metadata(to).map_or(0, |metadata| metadata.len());
+        if have == 0 || have >= limit {
+            // Nothing to go on from; or all of it, which the caller checks.
+            if have != limit {
+                std::fs::remove_file(to).ok();
+                return self.download(url, to, limit, progress);
+            }
+            progress(have);
+            return Ok(());
+        }
+        let response = self
+            .agent
+            .get(url)
+            .header("Accept", "application/octet-stream")
+            .header("Range", format!("bytes={have}-"))
+            .call();
+        // A range refused (416, say): the whole file again.
+        let Ok(mut response) = response else {
+            std::fs::remove_file(to).ok();
+            return self.download(url, to, limit, progress);
+        };
+        let content_range = response
+            .headers()
+            .get("Content-Range")
+            .and_then(|value| value.to_str().ok())
+            .map(str::to_owned);
+        let status = response.status().as_u16();
+        if resumes(have, status, content_range.as_deref()) {
+            let file = std::fs::OpenOptions::new()
+                .append(true)
+                .open(to)
+                .map_err(|error| error.to_string())?;
+            self.receive(&mut response, file, have, limit, progress)
+        } else {
+            let file = File::create(to).map_err(|error| error.to_string())?;
+            self.receive(&mut response, file, 0, limit, progress)
+        }
+    }
+}
+
+impl HttpTransport {
+    /// Writes the body of `response` to `file`, which holds `received` bytes already, up to
+    /// `limit` bytes in all, telling `progress` the bytes there are.
+    fn receive(
+        &self,
+        response: &mut ureq::http::Response<ureq::Body>,
+        mut file: File,
+        mut received: u64,
+        limit: u64,
+        progress: &dyn Fn(u64),
+    ) -> Result<(), String> {
         // As in `get`: a package is exactly as large as the manifest says, which is the limit.
         let mut reader = response
             .body_mut()
             .with_config()
-            .limit(limit.saturating_add(1))
+            .limit(limit.saturating_sub(received).saturating_add(1))
             .reader();
-        let mut file = File::create(to).map_err(|error| error.to_string())?;
         let mut buffer = vec![0; 64 * 1024];
-        let mut received = 0;
+        progress(received);
         loop {
             let read = reader
                 .read(&mut buffer)

@@ -44,6 +44,9 @@ mod settings_finding_tests;
 #[path = "settings/link_tests.rs"]
 mod settings_link_tests;
 
+#[path = "settings/misc_tests.rs"]
+mod settings_misc_tests;
+
 #[path = "settings/preview_tests.rs"]
 mod settings_preview_tests;
 

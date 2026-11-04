@@ -93,6 +93,7 @@ fn sources(language: &Language) -> &'static [&'static str] {
         "makefile" => &[include_str!("../queries/tags/makefile.scm")],
         "markdown" => &[include_str!("../queries/tags/markdown.scm")],
         "php" => &[tree_sitter_php::TAGS_QUERY],
+        "plantuml" => &[include_str!("../queries/tags/plantuml.scm")],
         "powershell" => &[include_str!("../queries/tags/powershell.scm")],
         "python" => &[tree_sitter_python::TAGS_QUERY],
         "r" => &[tree_sitter_r::TAGS_QUERY],

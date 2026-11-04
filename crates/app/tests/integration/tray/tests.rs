@@ -59,3 +59,90 @@ fn the_window_is_watched_and_sent_to_the_tray(cx: &mut TestAppContext) {
     assert!(tray::WATCHED.with(std::cell::Cell::get));
     assert!(tray::IN_TRAY.with(std::cell::Cell::get));
 }
+
+use birchpad::close_to_tray::{Closing, closing};
+use birchpad_config::CloseToTray;
+
+#[test]
+fn closing_asks_once_where_there_is_a_tray() {
+    assert_eq!(closing(CloseToTray::Ask, true), Closing::Ask);
+    assert_eq!(closing(CloseToTray::Tray, true), Closing::Tray);
+    assert_eq!(closing(CloseToTray::Close, true), Closing::Close);
+    // Without a tray, closing closes, whatever the setting.
+    for setting in [CloseToTray::Ask, CloseToTray::Tray, CloseToTray::Close] {
+        assert_eq!(closing(setting, false), Closing::Close);
+    }
+    assert_eq!(
+        birchpad::preferences::available_here("misc.close-to-tray"),
+        tray::SUPPORTED
+    );
+}
+
+/// Closes the main window as its close button does: whether it closes now.
+fn close(
+    workspace: &gpui_kit::Entity<birchpad::workspace::Workspace>,
+    cx: &mut VisualTestContext,
+) -> bool {
+    let closes = workspace.update_in(cx, |workspace, window, cx| {
+        workspace.close_requested(window, cx)
+    });
+    cx.run_until_parked();
+    closes
+}
+
+#[gpui_kit::test]
+fn the_first_close_asks_and_the_answer_is_kept(cx: &mut TestAppContext) {
+    if !tray::SUPPORTED {
+        return;
+    }
+    let (workspace, cx) = open_workspace(cx);
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("settings.toml");
+    cx.update(|_, cx| cx.global_mut::<AppState>().paths.user_settings = Some(path.clone()));
+    assert!(!close(&workspace, cx), "not closed while it asks");
+    assert!(cx.has_pending_prompt());
+    cx.simulate_prompt_answer("Minimize to Tray");
+    cx.run_until_parked();
+    assert!(tray::IN_TRAY.with(std::cell::Cell::get));
+    assert!(
+        std::fs::read_to_string(&path)
+            .unwrap()
+            .contains("close-to-tray = \"tray\"")
+    );
+    // Asked once: the next close goes to the tray without a question.
+    tray::IN_TRAY.with(|in_tray| in_tray.set(false));
+    assert!(!close(&workspace, cx));
+    assert!(!cx.has_pending_prompt());
+    assert!(tray::IN_TRAY.with(std::cell::Cell::get));
+}
+
+#[gpui_kit::test]
+fn cancelling_the_question_changes_nothing(cx: &mut TestAppContext) {
+    if !tray::SUPPORTED {
+        return;
+    }
+    let (workspace, cx) = open_workspace(cx);
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("settings.toml");
+    cx.update(|_, cx| cx.global_mut::<AppState>().paths.user_settings = Some(path.clone()));
+    assert!(!close(&workspace, cx));
+    cx.simulate_prompt_answer("Cancel");
+    cx.run_until_parked();
+    assert!(!tray::IN_TRAY.with(std::cell::Cell::get));
+    assert!(!path.exists(), "nothing saved");
+    assert_eq!(
+        cx.update(|_, cx| AppState::global(cx).settings.misc.close_to_tray),
+        CloseToTray::Ask
+    );
+}
+
+#[gpui_kit::test]
+fn closing_closes_when_that_was_the_answer(cx: &mut TestAppContext) {
+    let (workspace, cx) = open_workspace(cx);
+    cx.update(|_, cx| {
+        cx.global_mut::<AppState>().settings.misc.close_to_tray = CloseToTray::Close;
+    });
+    assert!(close(&workspace, cx));
+    assert!(!cx.has_pending_prompt());
+    assert!(!tray::IN_TRAY.with(std::cell::Cell::get));
+}

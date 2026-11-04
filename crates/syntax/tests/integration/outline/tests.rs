@@ -153,3 +153,33 @@ fn captures_name_the_kinds_the_outline_shows() {
         assert_eq!(SymbolKind::of_capture(left_out), None, "{left_out}");
     }
 }
+
+#[test]
+fn plantuml_lists_participants_sections_titles_and_procedures() {
+    let source = "@startuml\ntitle Orders\nparticipant \"Web shop\" as Shop\nactor User\n\
+                  == Ordering ==\nUser -> Shop : order\n\
+                  box Inside\n  database Store\nend box\n\
+                  !procedure $ask($a)\n  $a -> Shop\n!endprocedure\n\
+                  !function $twice($x)\n!return $x + $x\n!endfunction\n@enduml\n";
+    assert_eq!(
+        symbols("plantuml", source),
+        [
+            (0, Section, "Orders".to_owned()),
+            (0, Class, "\"Web shop\"".to_owned()),
+            (0, Class, "User".to_owned()),
+            (0, Section, "Ordering".to_owned()),
+            (0, Class, "Store".to_owned()),
+            (0, Function, "$ask".to_owned()),
+            (0, Function, "$twice".to_owned()),
+        ]
+    );
+    // Messages and notes name nothing; a title without a name is no section.
+    assert!(
+        symbols(
+            "plantuml",
+            "@startuml\ntitle\nA -> B : participant C\n@enduml\n"
+        )
+        .is_empty()
+    );
+    assert!(symbols("plantuml", "").is_empty());
+}

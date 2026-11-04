@@ -29,7 +29,7 @@ pub struct ComponentPackage {
 pub struct Component {
     /// Its folder's name in the data folder, with [`Self::version`].
     pub name: &'static str,
-    /// Its version and the package's revision (`1.2026.9-1`).
+    /// Its version and the package's revision (`1.2026.9-3`).
     pub version: &'static str,
     pub packages: &'static [ComponentPackage],
 }
@@ -40,8 +40,8 @@ macro_rules! plantuml {
         ComponentPackage {
             platform: $platform,
             url: concat!(
-                "https://github.com/SecurityTrip/Birchpad/releases/download/plantuml-1.2026.9-1/",
-                "birchpad-plantuml-1.2026.9-1-",
+                "https://github.com/SecurityTrip/Birchpad/releases/download/plantuml-1.2026.9-3/",
+                "birchpad-plantuml-1.2026.9-3-",
                 $platform,
                 ".zip"
             ),
@@ -51,36 +51,37 @@ macro_rules! plantuml {
     };
 }
 
-/// PlantUML (its MIT build) and a Java runtime made for it with `jlink` (Eclipse Temurin), built
-/// by `.github/workflows/plantuml.yml` (the release `plantuml-1.2026.9-1`).
+/// PlantUML (its EPL build, with ELK, and the Xtext library ELK needs, ADR 0063) and a Java
+/// runtime made for them with `jlink` (Eclipse Temurin), built by
+/// `.github/workflows/plantuml.yml` (the release `plantuml-1.2026.9-3`).
 pub const PLANTUML: Component = Component {
     name: "plantuml",
-    version: "1.2026.9-1",
+    version: "1.2026.9-3",
     packages: &[
         plantuml!(
             "windows-x64",
-            49360935,
-            "8e1701ba9d14b1a66ee3eae2892752295ea78825b611c741638aab188dd654c6"
+            60685250,
+            "04d290c0ebd3cc7b9a1d6771b629d23f9ba31536519b95295fe7a7a75b11be49"
         ),
         plantuml!(
             "windows-arm64",
-            47513164,
-            "11b8e46cb9d4febe3ba952149f9b3503085648f5f76931bde2f0870b0b1696bc"
+            58727434,
+            "0345d0ebcefd8bedd98c3bbd44a165ab7cd187186c57354d6b5d686fbfb96340"
         ),
         plantuml!(
             "linux-x64",
-            53301943,
-            "6de6243862f5d7f3cf239eb11573add3d5bfb0b26700ed5332d991b2e8fd3ead"
+            64646018,
+            "48845a29fdcb48a5aad58ed40ed8b0f19f4cd43bdbea2f8616ae34af961e982f"
         ),
         plantuml!(
             "macos-arm64",
-            49257738,
-            "9b4e9e8d47c6dd18cde4ce23c3391386c2cb5533dbaffdd20e8e6172a2cda466"
+            60281721,
+            "7f58da8f8614498db13335d76a0d2e30a170bf186b1f31b13f2be58dd91c8993"
         ),
         plantuml!(
             "macos-x64",
-            50428512,
-            "a2c04e8a3d8b676a42a72346199d52d59c4b7249f90e15f12563eaf8f5cb2767"
+            61436047,
+            "836bf553eb30ff0edb6c8bf6329cd405190037518f87418df57cc66aca5988cf"
         ),
     ],
 };
@@ -136,6 +137,58 @@ impl Component {
         folder.join(INSTALLED).is_file().then_some(folder)
     }
 
+    /// Its folder in `data` if it is installed whole, else that of an earlier version or
+    /// revision of it still installed there (the last by name), which keeps working until it is
+    /// installed again.
+    pub fn installed_or_earlier(&self, data: &Path) -> Option<PathBuf> {
+        if let Some(folder) = self.installed(data) {
+            return Some(folder);
+        }
+        let prefix = format!("{}-", self.name);
+        let mut earlier: Vec<PathBuf> = fs::read_dir(data.join("components"))
+            .ok()?
+            .filter_map(Result::ok)
+            .map(|entry| entry.path())
+            .filter(|folder| {
+                folder
+                    .file_name()
+                    .and_then(|name| name.to_str())
+                    .is_some_and(|name| name.starts_with(&prefix))
+                    && folder.join(INSTALLED).is_file()
+            })
+            .collect();
+        earlier.sort();
+        earlier.pop()
+    }
+
+    /// Deletes the folders of its earlier versions and revisions in `data`, once this one is
+    /// installed (never the one in use until then). Returns those that could not be deleted
+    /// whole: on Windows, the files of a program still running from one stay (roadmap 7.4ae).
+    pub fn remove_earlier(&self, data: &Path) -> Vec<PathBuf> {
+        if self.installed(data).is_none() {
+            return Vec::new();
+        }
+        let current = self.folder(data);
+        let prefix = format!("{}-", self.name);
+        let mut left = Vec::new();
+        let Ok(entries) = fs::read_dir(data.join("components")) else {
+            return left;
+        };
+        for entry in entries.flatten() {
+            let path = entry.path();
+            let file_name = entry.file_name().to_string_lossy().into_owned();
+            // `name-1.2.zip.part` and `name-1.2.part` of this version are its downloads.
+            let earlier = file_name.starts_with(&prefix)
+                && path != current
+                && path.is_dir()
+                && !file_name.ends_with(".part");
+            if earlier && fs::remove_dir_all(&path).is_err() && path.exists() {
+                left.push(path);
+            }
+        }
+        left
+    }
+
     /// Downloads the package of `platform` through `transport`, checks its size and SHA-256,
     /// and unpacks it into `data`, in place of an earlier version. `progress` is told the bytes
     /// received. Returns the component's folder.
@@ -174,14 +227,19 @@ pub fn install_package(
         fs::remove_file(&archive).ok();
         fs::remove_dir_all(&unpacking).ok();
     };
-    cleanup();
-    let result = transport
-        .download(package.url, &archive, package.size, progress)
-        .map_err(|reason| {
-            birchpad_i18n::t!("update.cannot-download", url = package.url, reason = reason)
-        })
-        .and_then(|()| verify(&archive, package))
-        .and_then(|()| unpack(&archive, &unpacking));
+    // A download cut off is gone on from (roadmap 7.4af); what it holds is checked whole below.
+    fs::remove_dir_all(&unpacking).ok();
+    if let Err(reason) = transport.download_resuming(package.url, &archive, package.size, progress)
+    {
+        // Kept, to go on from the next time.
+        fs::remove_dir_all(&unpacking).ok();
+        return Err(birchpad_i18n::t!(
+            "update.cannot-download",
+            url = package.url,
+            reason = reason
+        ));
+    }
+    let result = verify(&archive, package).and_then(|()| unpack(&archive, &unpacking));
     if let Err(error) = result {
         cleanup();
         return Err(error);
@@ -194,16 +252,8 @@ pub fn install_package(
         cleanup();
         error.to_string()
     })?;
-    // Earlier versions of the component go.
-    if let Ok(entries) = fs::read_dir(&components) {
-        let prefix = format!("{}-", component.name);
-        for entry in entries.flatten() {
-            let file_name = entry.file_name().to_string_lossy().into_owned();
-            if file_name.starts_with(&prefix) && file_name != name && entry.path().is_dir() {
-                fs::remove_dir_all(entry.path()).ok();
-            }
-        }
-    }
+    // Earlier versions of the component go; those a running program holds stay, for later.
+    component.remove_earlier(data);
     Ok(folder)
 }
 

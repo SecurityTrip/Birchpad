@@ -1,0 +1,31 @@
+' An order, as a sequence diagram
+@startuml
+!include common.iuml
+!$accent = "#1E88E5"
+title Ordering
+autonumber 10
+participant "Web shop" as Shop #lightblue
+actor User
+database Store <<stock>>
+== Order ==
+User -> Shop : order(2 items)
+alt paid
+  Shop --> User : confirmed
+  note right of Shop
+    sent by mail
+  end note
+else declined
+  Shop -[#red]>x User
+end
+box "Inside" #white
+  participant Billing
+end box
+/' Billing is
+   called later '/
+!procedure $ask($from, $to)
+  $from -> $to : ask
+!endprocedure
+!if %variable_exists("DEBUG")
+  Shop -> Store : log
+!endif
+@enduml
