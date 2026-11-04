@@ -120,7 +120,7 @@
       "members": [
         {
           "type": "SYMBOL",
-          "name": "block"
+          "name": "group_block"
         },
         {
           "type": "SYMBOL",
@@ -172,7 +172,7 @@
         }
       ]
     },
-    "block": {
+    "group_block": {
       "type": "SEQ",
       "members": [
         {

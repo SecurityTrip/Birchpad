@@ -57,7 +57,7 @@ module.exports = grammar({
     end_line: $ => seq(alias(/@end[A-Za-z_]*/, $.end), optional($.rest), $._line_end),
 
     _content: $ => choice(
-      $.block,
+      $.group_block,
       $.if_block,
       $.procedure,
       $.brace_block,
@@ -73,7 +73,7 @@ module.exports = grammar({
     ),
 
     // `alt` ... `else` ... `end`, `box` ... `end box`.
-    block: $ => seq(
+    group_block: $ => seq(
       field('opener', alias(choice(...BLOCKS), $.keyword)),
       optional($.rest),
       $._line_end,

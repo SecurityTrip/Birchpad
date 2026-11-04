@@ -35,7 +35,7 @@ fn structure(text: &str) -> Vec<(usize, String)> {
     out.retain(|(_, kind)| {
         [
             "diagram",
-            "block",
+            "group_block",
             "if_block",
             "procedure",
             "brace_block",
@@ -75,11 +75,11 @@ fn a_sequence_diagram_is_lines_in_blocks() {
             (2, "participant_declaration"),
             (2, "section"),
             (2, "statement"),
-            (2, "block"),
+            (2, "group_block"),
             (3, "statement"),
             (3, "statement"),
             (3, "statement"),
-            (2, "block"),
+            (2, "group_block"),
             (3, "participant_declaration"),
         ])
     );
@@ -137,14 +137,18 @@ fn an_empty_text_is_an_empty_document() {
 }
 
 #[test]
-fn an_end_without_its_block_is_a_mistake() {
-    let tree = parse("@startuml\nA -> B\nend box\n!endif\n@enduml\n");
-    assert!(tree.root_node().has_error());
+fn an_end_without_its_block_is_a_line() {
+    // The grammar is for highlighting: an end with no block is a line like the others, and
+    // PlantUML says in the preview what is wrong with it.
+    assert_eq!(
+        structure("@startuml\nA -> B\nend box\n!endif\n@enduml\n"),
+        pairs(&[(1, "diagram"), (2, "statement"), (2, "statement")])
+    );
     // An `end note` inside a block ends the note, not the block.
     let text = "alt x\nnote over A\nend\nend note\nend\n";
     assert_eq!(
         structure(text),
-        pairs(&[(1, "block"), (2, "note")]),
+        pairs(&[(1, "group_block"), (2, "note")]),
         "`end` in a note is text"
     );
 }

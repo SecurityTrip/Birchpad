@@ -1,83 +1,5 @@
 [
   {
-    "type": "block",
-    "named": true,
-    "fields": {
-      "opener": {
-        "multiple": false,
-        "required": true,
-        "types": [
-          {
-            "type": "keyword",
-            "named": true
-          }
-        ]
-      }
-    },
-    "children": {
-      "multiple": true,
-      "required": true,
-      "types": [
-        {
-          "type": "block",
-          "named": true
-        },
-        {
-          "type": "block_end",
-          "named": true
-        },
-        {
-          "type": "brace_block",
-          "named": true
-        },
-        {
-          "type": "comment",
-          "named": true
-        },
-        {
-          "type": "directive",
-          "named": true
-        },
-        {
-          "type": "if_block",
-          "named": true
-        },
-        {
-          "type": "include",
-          "named": true
-        },
-        {
-          "type": "note",
-          "named": true
-        },
-        {
-          "type": "participant_declaration",
-          "named": true
-        },
-        {
-          "type": "procedure",
-          "named": true
-        },
-        {
-          "type": "rest",
-          "named": true
-        },
-        {
-          "type": "section",
-          "named": true
-        },
-        {
-          "type": "statement",
-          "named": true
-        },
-        {
-          "type": "title",
-          "named": true
-        }
-      ]
-    }
-  },
-  {
     "type": "block_end",
     "named": true,
     "fields": {},
@@ -105,10 +27,6 @@
           "named": true
         },
         {
-          "type": "block",
-          "named": true
-        },
-        {
           "type": "brace_block",
           "named": true
         },
@@ -122,6 +40,10 @@
         },
         {
           "type": "directive",
+          "named": true
+        },
+        {
+          "type": "group_block",
           "named": true
         },
         {
@@ -209,10 +131,6 @@
       "required": true,
       "types": [
         {
-          "type": "block",
-          "named": true
-        },
-        {
           "type": "brace_block",
           "named": true
         },
@@ -226,6 +144,10 @@
         },
         {
           "type": "end_line",
+          "named": true
+        },
+        {
+          "type": "group_block",
           "named": true
         },
         {
@@ -332,10 +254,6 @@
       "required": false,
       "types": [
         {
-          "type": "block",
-          "named": true
-        },
-        {
           "type": "brace_block",
           "named": true
         },
@@ -349,6 +267,10 @@
         },
         {
           "type": "directive",
+          "named": true
+        },
+        {
+          "type": "group_block",
           "named": true
         },
         {
@@ -444,6 +366,84 @@
     }
   },
   {
+    "type": "group_block",
+    "named": true,
+    "fields": {
+      "opener": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "keyword",
+            "named": true
+          }
+        ]
+      }
+    },
+    "children": {
+      "multiple": true,
+      "required": true,
+      "types": [
+        {
+          "type": "block_end",
+          "named": true
+        },
+        {
+          "type": "brace_block",
+          "named": true
+        },
+        {
+          "type": "comment",
+          "named": true
+        },
+        {
+          "type": "directive",
+          "named": true
+        },
+        {
+          "type": "group_block",
+          "named": true
+        },
+        {
+          "type": "if_block",
+          "named": true
+        },
+        {
+          "type": "include",
+          "named": true
+        },
+        {
+          "type": "note",
+          "named": true
+        },
+        {
+          "type": "participant_declaration",
+          "named": true
+        },
+        {
+          "type": "procedure",
+          "named": true
+        },
+        {
+          "type": "rest",
+          "named": true
+        },
+        {
+          "type": "section",
+          "named": true
+        },
+        {
+          "type": "statement",
+          "named": true
+        },
+        {
+          "type": "title",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
     "type": "if_block",
     "named": true,
     "fields": {},
@@ -451,10 +451,6 @@
       "multiple": true,
       "required": true,
       "types": [
-        {
-          "type": "block",
-          "named": true
-        },
         {
           "type": "brace_block",
           "named": true
@@ -477,6 +473,10 @@
         },
         {
           "type": "endif_line",
+          "named": true
+        },
+        {
+          "type": "group_block",
           "named": true
         },
         {
@@ -690,10 +690,6 @@
       "required": true,
       "types": [
         {
-          "type": "block",
-          "named": true
-        },
-        {
           "type": "brace_block",
           "named": true
         },
@@ -707,6 +703,10 @@
         },
         {
           "type": "directive_name",
+          "named": true
+        },
+        {
+          "type": "group_block",
           "named": true
         },
         {
