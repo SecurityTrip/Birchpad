@@ -1018,6 +1018,15 @@ draws the diagram again. What is left:
       an earlier revision keeps working until it is installed again. An ADR, over
       [ADR 0045](adr/0045-plantuml-installed-on-request.md) and
       [ADR 0059](adr/0059-plantuml-layouts-and-graphviz.md)
+- [ ] 7.4ac The newer PlantUML offered, and drawn with once installed: who installed PlantUML
+      before 7.4ab keeps revision 1, without ELK, and is told of revision 3 only under a crash
+      of smetana; and a preview drawn again after an installation only when it had no PlantUML,
+      so the diagram that crashed stays crashed until Redraw. A preview drawn with an earlier
+      revision of the PlantUML Birchpad installs shows one quiet line above the diagrams, that
+      a newer PlantUML lays out what smetana cannot, with Update (its size, then its progress);
+      it goes once the newer one is installed. Nothing is downloaded without that click, as
+      [ADR 0045](adr/0045-plantuml-installed-on-request.md) asks. Every PlantUML preview is drawn
+      again when an installation of PlantUML ends, whatever it showed
 - [ ] Release 0.7.7: the workspace version (0.7.7, set when its branch opens, so that nightly
       builds are its pre-releases), `CHANGELOG.md` and this roadmap updated; the
       [release checklist](release-checklist.md) gone through
