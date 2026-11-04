@@ -46,10 +46,20 @@ fn package() -> Option<ComponentPackage> {
         .copied()
 }
 
-/// The folder of the PlantUML Birchpad installed, if it did.
+/// The folder of the PlantUML Birchpad installed, if it did: this version's, or an earlier
+/// one's until this one is installed.
 pub fn installed(cx: &App) -> Option<PathBuf> {
     let data = AppState::global(cx).paths.user_data.clone()?;
-    PLANTUML.installed(&data)
+    PLANTUML.installed_or_earlier(&data)
+}
+
+/// Whether the PlantUML Birchpad installed is of an earlier version or revision than the one it
+/// installs now (before ELK, ADR 0063): installing it again brings this one.
+pub fn outdated(cx: &App) -> bool {
+    let Some(data) = AppState::global(cx).paths.user_data.clone() else {
+        return false;
+    };
+    PLANTUML.installed(&data).is_none() && PLANTUML.installed_or_earlier(&data).is_some()
 }
 
 /// The installation's state.

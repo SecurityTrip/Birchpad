@@ -1420,7 +1420,7 @@ fn preferences_show_the_preview_settings() {
         )
         .unwrap();
     }
-    assert_eq!(layouts.len(), 3);
+    assert_eq!(layouts.len(), 4);
     let Kind::Choice(values) = find("preview.plantuml-background").kind else {
         panic!("a choice");
     };
@@ -2200,4 +2200,141 @@ fn the_picture_of_a_placed_mistake_shows_on_a_click(cx: &mut TestAppContext) {
         shown.read_with(cx, |preview, _| preview.folded()),
         (vec![0], vec![])
     );
+}
+
+#[test]
+fn a_crash_of_smetana_is_drawn_again_with_elk_with_the_automatic_layout() {
+    use birchpad_config::DiagramLayout;
+    let crash = mistakes(CRASH, "@startuml\n@enduml", &[]);
+    assert!(draws_again_with_elk(
+        &crash,
+        &Layout::Smetana,
+        DiagramLayout::Automatic
+    ));
+    // A layout chosen is kept; Graphviz's and ELK's crashes are their own.
+    for setting in [
+        DiagramLayout::Smetana,
+        DiagramLayout::Graphviz,
+        DiagramLayout::Elk,
+    ] {
+        assert!(
+            !draws_again_with_elk(&crash, &Layout::Smetana, setting),
+            "{setting:?}"
+        );
+    }
+    assert!(!draws_again_with_elk(
+        &crash,
+        &Layout::Graphviz(None),
+        DiagramLayout::Automatic
+    ));
+    assert!(!draws_again_with_elk(
+        &crash,
+        &Layout::Elk,
+        DiagramLayout::Automatic
+    ));
+    // A mistake of the text, or none, is no crash.
+    let mistake = mistakes(
+        "ERROR\n1\nOops\n",
+        "@startuml\nx\n@enduml",
+        &[picture("Oops")],
+    );
+    assert!(!draws_again_with_elk(
+        &mistake,
+        &Layout::Smetana,
+        DiagramLayout::Automatic
+    ));
+    assert!(!draws_again_with_elk(
+        &[],
+        &Layout::Smetana,
+        DiagramLayout::Automatic
+    ));
+    assert_eq!(Layout::resolve(DiagramLayout::Elk, None), Layout::Elk);
+    assert_eq!(
+        Layout::resolve(DiagramLayout::Elk, Some(PathBuf::from("dot"))),
+        Layout::Elk,
+        "ELK chosen, even with Graphviz there"
+    );
+    assert_eq!(Layout::Elk.name(), "ELK");
+    assert!(Layout::Elk.env().is_empty());
+    let (_, args) = plantuml_command("plantuml", None, &Layout::Elk);
+    assert_eq!(args.last().map(String::as_str), Some("-Playout=elk"));
+}
+
+/// A PlantUML that crashes with smetana, as on the diagrams of 7.4ab, and draws with ELK; with
+/// `elk_crashes`, ELK crashes too. (cmd splits `-Playout=smetana` in two.)
+fn plantuml_smetana_crashes(dir: &Path, elk_crashes: bool) -> PathBuf {
+    let elk = if elk_crashes {
+        "smetana elk"
+    } else {
+        "smetana"
+    };
+    fake_plantuml(
+        dir,
+        &format!(
+            "for %%l in ({elk}) do if \"%8\"==\"%%l\" (\n\
+             echo ^<svg^>crash %8^</svg^>\n\
+             >&2 echo java.lang.NullPointerException: splines is null\n\
+             >&2 echo 	at a.SmetanaEdge.draw(SmetanaEdge.java:1)\nexit /b 1\n)\n\
+             echo ^<svg^>drawn with %8^</svg^>"
+        ),
+        &format!(
+            "for layout in {elk}; do\n\
+             if [ \"$7\" = \"-Playout=$layout\" ]; then\n\
+             echo \"<svg>crash $7</svg>\"\necho 'java.lang.NullPointerException: splines is null' >&2\n\
+             printf '\\tat a.SmetanaEdge.draw(SmetanaEdge.java:1)\\n' >&2\nexit 1\nfi\ndone\n\
+             echo \"<svg>drawn with $7</svg>\""
+        ),
+    )
+}
+
+#[gpui_kit::test]
+fn the_preview_draws_with_elk_where_smetana_crashes(cx: &mut TestAppContext) {
+    let (workspace, cx) = open_workspace(cx);
+    DOT.with(|dot| *dot.borrow_mut() = Some(None));
+    let dir = tempfile::tempdir().unwrap();
+    let plantuml = plantuml_smetana_crashes(dir.path(), false);
+    let shown = draw(
+        &workspace,
+        &plantuml,
+        dir.path(),
+        "large.puml",
+        "@startuml\nA -> B\n@enduml\n",
+        cx,
+    );
+    let svg =
+        String::from_utf8(shown.read_with(cx, |preview, _| preview.svgs()).remove(0)).unwrap();
+    assert!(svg.contains("drawn with") && svg.contains("elk"), "{svg}");
+    assert!(shown.read_with(cx, |preview, _| preview.fell_back_to_elk()));
+    assert_eq!(shown.read_with(cx, |preview, _| preview.layout()), "ELK");
+    assert!(
+        shown
+            .read_with(cx, |preview, _| preview.mistakes())
+            .is_empty()
+    );
+    assert!(!shown.read_with(cx, |preview, _| preview.waiting_for_graphviz()));
+    DOT.with(|dot| *dot.borrow_mut() = None);
+}
+
+#[gpui_kit::test]
+fn a_crash_of_elk_too_shows_the_crash_of_smetana(cx: &mut TestAppContext) {
+    let (workspace, cx) = open_workspace(cx);
+    DOT.with(|dot| *dot.borrow_mut() = Some(None));
+    let dir = tempfile::tempdir().unwrap();
+    let plantuml = plantuml_smetana_crashes(dir.path(), true);
+    let shown = draw(
+        &workspace,
+        &plantuml,
+        dir.path(),
+        "large.puml",
+        "@startuml\nA -> B\n@enduml\n",
+        cx,
+    );
+    assert!(!shown.read_with(cx, |preview, _| preview.fell_back_to_elk()));
+    assert_eq!(
+        shown.read_with(cx, |preview, _| preview.layout()),
+        "smetana"
+    );
+    let found = shown.read_with(cx, |preview, _| preview.mistakes());
+    assert!(found[0].details.is_some(), "the crash, with its details");
+    DOT.with(|dot| *dot.borrow_mut() = None);
 }

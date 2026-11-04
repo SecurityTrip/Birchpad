@@ -1,6 +1,6 @@
 # ADR 0059: PlantUML's layouts, and Graphviz
 
-- Status: accepted
+- Status: accepted, changed by [ADR 0063](0063-plantuml-epl-build-with-elk.md)
 - Date: 2026-11-04
 - Changes [ADR 0057](0057-plantuml-preview-redone.md): which layout PlantUML lays diagrams out
   with, and how a crash of it is shown. Keeps [ADR 0045](0045-plantuml-installed-on-request.md)

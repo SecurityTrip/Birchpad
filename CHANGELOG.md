@@ -47,6 +47,13 @@ version's release notes from its section here.
 
 ### Added
 
+- Diagrams smetana cannot lay out are drawn with ELK
+  ([ADR 0063](docs/adr/0063-plantuml-epl-build-with-elk.md)): on C4 container diagrams with
+  boundaries in boundaries and many relations smetana crashes (`NullPointerException` in
+  `SmetanaEdge`); with the automatic layout the preview draws such a diagram again with ELK and
+  says so. The PlantUML Birchpad installs is its EPL build, which has ELK, with the Xtext
+  library ELK needs; an earlier PlantUML of Birchpad's keeps working, and the crash offers to
+  install it again. `preview.plantuml-layout` can be `elk`.
 - A way to Graphviz from a diagram smetana cannot lay out: under the message, Get Graphviz
   opens its download page in the browser and another link opens Preferences > Preview, where
   the layout is chosen; with the automatic layout the preview looks for Graphviz every few

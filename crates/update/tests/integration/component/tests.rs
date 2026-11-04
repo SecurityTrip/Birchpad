@@ -319,3 +319,40 @@ fn a_package_whose_names_leave_its_folder_is_refused_by_name() {
     assert!(!data.path().join("escape.txt").exists());
     assert_eq!(component.installed(data.path()), None);
 }
+
+#[test]
+fn an_earlier_revision_is_used_until_this_one_is_installed() {
+    let data = tempfile::tempdir().unwrap();
+    let body = zip_of(&[("a", b"1")]);
+    let package = package_of(&body);
+    let transport = Serve::new(body);
+    assert_eq!(
+        COMPONENT.installed_or_earlier(data.path()),
+        None,
+        "nothing installed"
+    );
+    let older = Component {
+        version: "0.9-1",
+        ..COMPONENT
+    };
+    install_package(&older, &package, &transport, data.path(), &|_| {}).unwrap();
+    assert_eq!(COMPONENT.installed(data.path()), None);
+    assert_eq!(
+        COMPONENT.installed_or_earlier(data.path()),
+        Some(older.folder(data.path()))
+    );
+    // A folder not installed whole, and another component's, are no earlier revision.
+    let components = data.path().join("components");
+    std::fs::create_dir_all(components.join(format!("{}-0.99-1", COMPONENT.name))).unwrap();
+    std::fs::create_dir_all(components.join("other-9.9")).unwrap();
+    assert_eq!(
+        COMPONENT.installed_or_earlier(data.path()),
+        Some(older.folder(data.path()))
+    );
+    // This one installed: it comes first.
+    install_package(&COMPONENT, &package, &transport, data.path(), &|_| {}).unwrap();
+    assert_eq!(
+        COMPONENT.installed_or_earlier(data.path()),
+        Some(COMPONENT.folder(data.path()))
+    );
+}

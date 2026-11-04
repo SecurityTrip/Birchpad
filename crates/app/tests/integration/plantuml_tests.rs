@@ -174,3 +174,49 @@ fn plantuml_is_not_downloaded_when_it_cannot_be(cx: &mut TestAppContext) {
     assert_eq!(cx.update(|_, cx| installed(cx)), None);
     PACKAGE.with(|package| *package.borrow_mut() = None);
 }
+
+#[test]
+fn a_package_with_libraries_runs_plantuml_with_them() {
+    let dir = tempfile::tempdir().unwrap();
+    let folder = dir.path().join("plantuml-1.2026.9-2");
+    std::fs::create_dir_all(folder.join("lib")).unwrap();
+    let (_, args) = plantuml_command("plantuml", Some(&folder), &Layout::Elk);
+    let separator = if cfg!(windows) { ";" } else { ":" };
+    assert_eq!(args[1], "-cp");
+    assert_eq!(
+        args[2],
+        format!(
+            "{}{separator}{}",
+            folder.join("plantuml.jar").display(),
+            folder.join("lib").join("*").display()
+        )
+    );
+    assert_eq!(args[3], birchpad::preview::PLANTUML_MAIN);
+    assert_eq!(args.last().map(String::as_str), Some("-Playout=elk"));
+    // Revision 1 has no `lib`: `-jar`, as before.
+    std::fs::remove_dir(folder.join("lib")).unwrap();
+    let (_, args) = plantuml_command("plantuml", Some(&folder), &Layout::Smetana);
+    assert_eq!(args[1], "-jar");
+}
+
+#[gpui_kit::test]
+fn an_earlier_plantuml_is_used_and_said_to_be_outdated(cx: &mut TestAppContext) {
+    let (_, cx) = open_workspace(cx);
+    let data = tempfile::tempdir().unwrap();
+    with_data(data.path(), Arc::new(Serve(Vec::new())), cx);
+    assert!(!cx.update(|_, cx| outdated(cx)), "nothing installed");
+    let earlier = data
+        .path()
+        .join("components")
+        .join(format!("{}-0.1-1", PLANTUML.name));
+    std::fs::create_dir_all(&earlier).unwrap();
+    std::fs::write(earlier.join(".installed"), "").unwrap();
+    assert_eq!(cx.update(|_, cx| installed(cx)), Some(earlier));
+    assert!(cx.update(|_, cx| outdated(cx)));
+    // This version installed: not outdated.
+    let current = PLANTUML.folder(data.path());
+    std::fs::create_dir_all(&current).unwrap();
+    std::fs::write(current.join(".installed"), "").unwrap();
+    assert_eq!(cx.update(|_, cx| installed(cx)), Some(current));
+    assert!(!cx.update(|_, cx| outdated(cx)));
+}

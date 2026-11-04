@@ -136,6 +136,30 @@ impl Component {
         folder.join(INSTALLED).is_file().then_some(folder)
     }
 
+    /// Its folder in `data` if it is installed whole, else that of an earlier version or
+    /// revision of it still installed there (the last by name), which keeps working until it is
+    /// installed again.
+    pub fn installed_or_earlier(&self, data: &Path) -> Option<PathBuf> {
+        if let Some(folder) = self.installed(data) {
+            return Some(folder);
+        }
+        let prefix = format!("{}-", self.name);
+        let mut earlier: Vec<PathBuf> = fs::read_dir(data.join("components"))
+            .ok()?
+            .filter_map(Result::ok)
+            .map(|entry| entry.path())
+            .filter(|folder| {
+                folder
+                    .file_name()
+                    .and_then(|name| name.to_str())
+                    .is_some_and(|name| name.starts_with(&prefix))
+                    && folder.join(INSTALLED).is_file()
+            })
+            .collect();
+        earlier.sort();
+        earlier.pop()
+    }
+
     /// Downloads the package of `platform` through `transport`, checks its size and SHA-256,
     /// and unpacks it into `data`, in place of an earlier version. `progress` is told the bytes
     /// received. Returns the component's folder.

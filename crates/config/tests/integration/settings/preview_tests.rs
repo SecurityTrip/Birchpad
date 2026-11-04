@@ -96,6 +96,7 @@ fn the_layout_is_automatic_by_default_and_one_of_three() {
         ("automatic", DiagramLayout::Automatic),
         ("smetana", DiagramLayout::Smetana),
         ("graphviz", DiagramLayout::Graphviz),
+        ("elk", DiagramLayout::Elk),
     ] {
         let settings: Settings =
             toml::from_str(&format!("[preview]\nplantuml-layout = \"{value}\"\n")).unwrap();
@@ -106,7 +107,7 @@ fn the_layout_is_automatic_by_default_and_one_of_three() {
         )
         .unwrap();
     }
-    for value in ["dot", "", "Graphviz", "elk"] {
+    for value in ["dot", "", "Graphviz", "ELK", "orthogonal"] {
         assert!(
             check_setting(
                 "preview.plantuml-layout",

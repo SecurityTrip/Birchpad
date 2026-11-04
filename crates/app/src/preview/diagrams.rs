@@ -378,6 +378,18 @@ pub fn background(cx: &App) -> DiagramBackground {
     AppState::global(cx).settings.preview.plantuml_background
 }
 
+/// PlantUML's main class, run with the libraries of `lib` on the class path.
+pub const PLANTUML_MAIN: &str = "net.sourceforge.plantuml.Run";
+
+/// Whether a drawing with the layout named `layout`, the setting being `setting`, that has
+/// `mistakes`, is drawn again with ELK (ADR 0063): a crash of smetana, with the automatic
+/// layout.
+pub fn draws_again_with_elk(mistakes: &[Mistake], layout: &Layout, setting: DiagramLayout) -> bool {
+    setting == DiagramLayout::Automatic
+        && *layout == Layout::Smetana
+        && mistakes.iter().any(|mistake| mistake.details.is_some())
+}
+
 /// The variable PlantUML finds Graphviz's `dot` by.
 pub const GRAPHVIZ_DOT_VARIABLE: &str = "GRAPHVIZ_DOT";
 
@@ -388,6 +400,8 @@ pub enum Layout {
     Smetana,
     /// Graphviz: the `dot` found, or none for PlantUML to look for itself.
     Graphviz(Option<PathBuf>),
+    /// ELK, in PlantUML's EPL build.
+    Elk,
 }
 
 impl Layout {
@@ -396,6 +410,7 @@ impl Layout {
     pub fn resolve(setting: DiagramLayout, dot: Option<PathBuf>) -> Self {
         match (setting, dot) {
             (DiagramLayout::Smetana, _) | (DiagramLayout::Automatic, None) => Layout::Smetana,
+            (DiagramLayout::Elk, _) => Layout::Elk,
             (DiagramLayout::Automatic | DiagramLayout::Graphviz, dot) => Layout::Graphviz(dot),
         }
     }
@@ -405,6 +420,7 @@ impl Layout {
         match self {
             Layout::Smetana => "smetana",
             Layout::Graphviz(_) => "Graphviz",
+            Layout::Elk => "ELK",
         }
     }
 
@@ -508,7 +524,11 @@ pub fn plantuml_command(
     ]
     .map(str::to_owned)
     .into_iter()
-    .chain((*layout == Layout::Smetana).then(|| "-Playout=smetana".to_owned()))
+    .chain(match layout {
+        Layout::Smetana => Some("-Playout=smetana".to_owned()),
+        Layout::Elk => Some("-Playout=elk".to_owned()),
+        Layout::Graphviz(_) => None,
+    })
     .collect::<Vec<_>>();
     if let Some(folder) = installed.filter(|_| setting == "plantuml") {
         let java =
@@ -516,11 +536,20 @@ pub fn plantuml_command(
                 .join("jre")
                 .join("bin")
                 .join(if cfg!(windows) { "java.exe" } else { "java" });
-        let mut args = vec![
-            "-Djava.awt.headless=true".to_owned(),
-            "-jar".to_owned(),
-            folder.join("plantuml.jar").display().to_string(),
-        ];
+        let mut args = vec!["-Djava.awt.headless=true".to_owned()];
+        // Revision 2 on (ADR 0063): the libraries ELK needs, in `lib`, beside PlantUML.
+        let jar = folder.join("plantuml.jar");
+        let lib = folder.join("lib");
+        if lib.is_dir() {
+            let separator = if cfg!(windows) { ";" } else { ":" };
+            args.extend([
+                "-cp".to_owned(),
+                format!("{}{separator}{}", jar.display(), lib.join("*").display()),
+                PLANTUML_MAIN.to_owned(),
+            ]);
+        } else {
+            args.extend(["-jar".to_owned(), jar.display().to_string()]);
+        }
         args.extend(options);
         return (java.display().to_string(), args);
     }
