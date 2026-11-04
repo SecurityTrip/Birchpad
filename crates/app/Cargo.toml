@@ -30,7 +30,7 @@ birchpad-update = { workspace = true, features = ["installer"] }
 birchpad-view.workspace = true
 chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
 futures = "0.3"
-gpui-kit = "0.7"
+gpui-kit = "0.8"
 raw-window-handle = "0.6"
 # PlantUML diagrams exported as PNG: the SVG renderer GPUI draws them with.
 resvg = "0.46"
@@ -66,7 +66,7 @@ birchpad-editor = { workspace = true, features = ["test-support"] }
 birchpad-ui = { workspace = true, features = ["test-support"] }
 # Tests switch the language each in its own thread.
 birchpad-i18n = { workspace = true, features = ["per-thread"] }
-gpui-kit = { version = "0.7", features = ["test-support"] }
+gpui-kit = { version = "0.8", features = ["test-support"] }
 # The map type of GPUI's keyboard mapper trait, for a test mapper.
 rustc-hash = "2"
 # The SHA-256 of an update package served in a test.
