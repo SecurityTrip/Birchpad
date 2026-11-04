@@ -1027,6 +1027,41 @@ draws the diagram again. What is left:
       it goes once the newer one is installed. Nothing is downloaded without that click, as
       [ADR 0045](adr/0045-plantuml-installed-on-request.md) asks. Every PlantUML preview is drawn
       again when an installation of PlantUML ends, whatever it showed
+
+Revision 3 checked: its Windows package matches the size and SHA-256 Birchpad pins, installs
+from the line of 7.4ac, and draws the 124 diagrams of the architecture repository with smetana
+as revision 1 did (105 drawn). With ELK it draws 67. What it showed:
+
+- [ ] 7.4ad ELK crashes on diagrams smetana draws: of the 124, ELK crashes on 40 that smetana
+      draws, and on both that smetana crashes on, so the fallback of 7.4ab draws none of them
+      and `preview.plantuml-layout = elk` loses 40 diagrams. Each is a
+      `NullPointerException` ("node1" is null) in `ElkGraphUtil.createSimpleEdge`, reproduced in
+      six lines: `remove @unlinked`, `rectangle R {`, `component A`, `}`, `component B`,
+      `B --> R`, a relation to a group once unlinked elements are removed; `remove $tag` on an
+      element with a relation crashes it too. C4 container diagrams relate to boundaries and
+      remove what is unlinked. Reported to PlantUML with those lines; ADR 0063's "lays out
+      every one of those diagrams" put as measured; when ELK crashes too, the preview says
+      that neither smetana nor ELK could lay the diagram out and that Graphviz is left, rather
+      than showing smetana's crash alone; the description of `elk` in Preferences says what it
+      cannot lay out
+- [ ] 7.4ae The earlier PlantUML left behind: installing revision 3 while revision 1's
+      PlantUML is kept running (ADR 0060) cannot delete revision 1's folder on Windows, where
+      its Java holds the files. Its `.installed` goes and the rest, 63 MB, stays, and revision
+      1's two Java processes run until Birchpad ends. The PlantUML processes kept for a
+      component ended before its earlier folders are deleted, and a folder of an earlier
+      version that is still there deleted when Birchpad starts
+- [ ] 7.4af An installation cut off goes on where it stopped: Birchpad closed at 36 of 58 MB
+      left a `.zip.part`, and the next installation started from nothing (the package took 16
+      minutes at the speed seen). The download goes on from the part when the server takes a
+      range, checked by its size and SHA-256 as now, and starts again when it does not
+- [ ] 7.4ag What a crash of smetana offers, said once and clearly: with revision 1 the line of
+      7.4ac (Update) and the crash's link Install PlantUML again, with ELK offer the same at
+      once; one is left. With `preview.plantuml-layout = elk` and a PlantUML without ELK
+      (revision 1, a `plantuml` of PlantUML's MIT build) the preview shows
+      `ClassNotFoundException: org.eclipse.elk...` with nothing about why: it says that this
+      PlantUML has no ELK, and offers the one that has. And under Details, which folds the
+      crash's stack trace, PlantUML's picture of the crash shows the same stack trace unfolded;
+      the picture folded with it, as 7.4aa folds the picture of a placed mistake
 - [ ] Release 0.7.7: the workspace version (0.7.7, set when its branch opens, so that nightly
       builds are its pre-releases), `CHANGELOG.md` and this roadmap updated; the
       [release checklist](release-checklist.md) gone through
