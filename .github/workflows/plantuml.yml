@@ -75,8 +75,10 @@ jobs:
       - name: Make the Java runtime
         shell: bash
         run: |
-          modules=$(jdeps --ignore-missing-deps --print-module-deps --multi-release "$JAVA_VERSION" \
-            plantuml.jar xbase.jar)
+          # jdeps cannot list them for the EPL build: the Guava in it names a module that is not
+          # there. These are what the MIT build's runtime had, on which ELK was checked, with
+          # jdk.unsupported, which Guava uses when it is there.
+          modules="java.base,java.datatransfer,java.desktop,java.logging,java.prefs,java.scripting,java.xml,jdk.unsupported"
           echo "Modules: $modules"
           jlink --add-modules "$modules" --strip-debug --no-man-pages --no-header-files \
             --compress=zip-6 --output package/jre
