@@ -52,8 +52,8 @@ version's release notes from its section here.
   boundaries in boundaries and many relations smetana crashes (`NullPointerException` in
   `SmetanaEdge`); with the automatic layout the preview draws such a diagram again with ELK and
   says so. The PlantUML Birchpad installs is its EPL build, which has ELK, with the Xtext
-  library ELK needs; an earlier PlantUML of Birchpad's keeps working, and the crash offers to
-  install it again. `preview.plantuml-layout` can be `elk`.
+  library ELK needs (the package `plantuml-1.2026.9-3`); an earlier PlantUML of Birchpad's
+  keeps working, and the crash offers to install it again. `preview.plantuml-layout` can be `elk`.
 - A way to Graphviz from a diagram smetana cannot lay out: under the message, Get Graphviz
   opens its download page in the browser and another link opens Preferences > Preview, where
   the layout is chosen; with the automatic layout the preview looks for Graphviz every few

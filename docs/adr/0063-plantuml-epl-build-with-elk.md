@@ -36,7 +36,10 @@ point about the EPL 1.0 of Graphviz was a small one, and does not stand against 
   is PlantUML's EPL build, with `lib/org.eclipse.xtext.xbase.lib.jar` from Maven Central, both
   checked against their SHA-256, and the Java runtime made for both; its `README.txt` gives
   their licenses and where their sources are. It is revision 3 of the package,
-  `plantuml-1.2026.9-3` (the build of revision 2 stopped before it published anything). The package's workflow checks that it draws with smetana and with ELK.
+  `plantuml-1.2026.9-3` (the build of revision 2 stopped before it published anything). The
+  package's workflow checks that it draws with smetana and with ELK. Its runtime's modules are
+  named (those of revision 1's runtime, with `jdk.unsupported`): `jdeps` cannot list them for
+  the EPL build, whose Guava names a module that is not there.
 - **Running it.** A package with a `lib` folder runs PlantUML with the class path of
   `plantuml.jar` and `lib/*` and its main class, `net.sourceforge.plantuml.Run`; one without
   (revision 1) with `-jar`, as before.
@@ -54,7 +57,8 @@ point about the EPL 1.0 of Graphviz was a small one, and does not stand against 
 - Diagrams smetana cannot lay out are drawn without Graphviz, by the PlantUML Birchpad
   installs; Graphviz, when found, still comes first.
 - The PlantUML Birchpad installs is under the EPL 2.0 rather than MIT, and its package is about
-  10 MB larger (ELK, EMF and Guava). The rule of ADR 0045, nothing under the GPL shipped, holds.
+  10 MB larger (ELK, EMF and Guava: 59 to 65 MB for each platform, from 48 to 54). The rule of
+  ADR 0045, nothing under the GPL shipped, holds.
 - ELK lays diagrams out otherwise than smetana and Graphviz: a diagram drawn with it after a
   crash looks different from the same diagram drawn on Confluence.
 - A crash costs a second run of PlantUML, with ELK, before the preview shows anything.

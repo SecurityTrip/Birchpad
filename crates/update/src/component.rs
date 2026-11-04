@@ -29,7 +29,7 @@ pub struct ComponentPackage {
 pub struct Component {
     /// Its folder's name in the data folder, with [`Self::version`].
     pub name: &'static str,
-    /// Its version and the package's revision (`1.2026.9-1`).
+    /// Its version and the package's revision (`1.2026.9-3`).
     pub version: &'static str,
     pub packages: &'static [ComponentPackage],
 }
@@ -40,8 +40,8 @@ macro_rules! plantuml {
         ComponentPackage {
             platform: $platform,
             url: concat!(
-                "https://github.com/SecurityTrip/Birchpad/releases/download/plantuml-1.2026.9-1/",
-                "birchpad-plantuml-1.2026.9-1-",
+                "https://github.com/SecurityTrip/Birchpad/releases/download/plantuml-1.2026.9-3/",
+                "birchpad-plantuml-1.2026.9-3-",
                 $platform,
                 ".zip"
             ),
@@ -51,36 +51,37 @@ macro_rules! plantuml {
     };
 }
 
-/// PlantUML (its MIT build) and a Java runtime made for it with `jlink` (Eclipse Temurin), built
-/// by `.github/workflows/plantuml.yml` (the release `plantuml-1.2026.9-1`).
+/// PlantUML (its EPL build, with ELK, and the Xtext library ELK needs, ADR 0063) and a Java
+/// runtime made for them with `jlink` (Eclipse Temurin), built by
+/// `.github/workflows/plantuml.yml` (the release `plantuml-1.2026.9-3`).
 pub const PLANTUML: Component = Component {
     name: "plantuml",
-    version: "1.2026.9-1",
+    version: "1.2026.9-3",
     packages: &[
         plantuml!(
             "windows-x64",
-            49360935,
-            "8e1701ba9d14b1a66ee3eae2892752295ea78825b611c741638aab188dd654c6"
+            60685250,
+            "04d290c0ebd3cc7b9a1d6771b629d23f9ba31536519b95295fe7a7a75b11be49"
         ),
         plantuml!(
             "windows-arm64",
-            47513164,
-            "11b8e46cb9d4febe3ba952149f9b3503085648f5f76931bde2f0870b0b1696bc"
+            58727434,
+            "0345d0ebcefd8bedd98c3bbd44a165ab7cd187186c57354d6b5d686fbfb96340"
         ),
         plantuml!(
             "linux-x64",
-            53301943,
-            "6de6243862f5d7f3cf239eb11573add3d5bfb0b26700ed5332d991b2e8fd3ead"
+            64646018,
+            "48845a29fdcb48a5aad58ed40ed8b0f19f4cd43bdbea2f8616ae34af961e982f"
         ),
         plantuml!(
             "macos-arm64",
-            49257738,
-            "9b4e9e8d47c6dd18cde4ce23c3391386c2cb5533dbaffdd20e8e6172a2cda466"
+            60281721,
+            "7f58da8f8614498db13335d76a0d2e30a170bf186b1f31b13f2be58dd91c8993"
         ),
         plantuml!(
             "macos-x64",
-            50428512,
-            "a2c04e8a3d8b676a42a72346199d52d59c4b7249f90e15f12563eaf8f5cb2767"
+            61436047,
+            "836bf553eb30ff0edb6c8bf6329cd405190037518f87418df57cc66aca5988cf"
         ),
     ],
 };

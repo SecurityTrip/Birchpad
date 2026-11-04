@@ -272,7 +272,7 @@ fn plantuml_has_a_package_for_every_platform_birchpad_runs_on() {
             .find(|package| package.platform == platform)
             .unwrap_or_else(|| panic!("{platform}"));
         assert!(package.url.starts_with(
-            "https://github.com/SecurityTrip/Birchpad/releases/download/plantuml-1.2026.9-1/"
+            "https://github.com/SecurityTrip/Birchpad/releases/download/plantuml-1.2026.9-3/"
         ));
         assert!(package.url.ends_with(&format!("-{platform}.zip")));
         assert!(package.size > 1_000_000, "{platform} is published");

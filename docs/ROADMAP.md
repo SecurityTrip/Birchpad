@@ -1004,7 +1004,7 @@ draws the diagram again. What is left:
       black. The picture of a mistake the preview has placed folded under Details, as the
       details of a crash are (7.4o); shown as now when the mistake has no place, so that what
       PlantUML says is not lost
-- [ ] 7.4ab Diagrams smetana cannot lay out drawn with ELK: on C4 container diagrams with
+- [x] 7.4ab Diagrams smetana cannot lay out drawn with ELK: on C4 container diagrams with
       boundaries inside boundaries and many relations between them (reproduced on 105 made-up
       lines: two `System_Boundary` with `Container_Boundary` in them, 43 `Rel`, `BiRel`,
       `Rel_Back` and `Rel_U/D/L/R` across them) smetana's routing of a spline fails
