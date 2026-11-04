@@ -1350,9 +1350,18 @@ fn a_change_to_an_included_file_redraws(cx: &mut TestAppContext) {
         "@startuml\n!include common.iuml\n@enduml\n",
         cx,
     );
-    // Changed by another program: no command, the watcher sees it.
+    // Changed by another program: no command, the watcher tells the preview (in tests, the
+    // test tells it, as the system's watcher's thread would upset the test scheduler).
     std::fs::write(dir.path().join("common.iuml"), "class Changed").unwrap();
+    let common = dir.path().join("common.iuml");
+    shown.update(cx, |preview, cx| preview.files_changed(&[common], cx));
     wait_for_diagram(&shown, "class Changed", cx);
+    // A file the diagram does not include, and no PlantUML file: nothing drawn again.
+    std::fs::write(dir.path().join("common.iuml"), "class Unseen").unwrap();
+    let notes = dir.path().join("notes.txt");
+    shown.update(cx, |preview, cx| preview.files_changed(&[notes], cx));
+    cx.run_until_parked();
+    assert!(diagram_text(&shown, cx).contains("class Changed"));
 }
 
 #[gpui_kit::test]

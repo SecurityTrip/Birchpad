@@ -269,9 +269,11 @@ struct Diagrams {
 
 /// Watching the files a diagram includes, so that it is drawn again when one changes.
 struct IncludeWatch {
-    watcher: notify::RecommendedWatcher,
+    /// The system's watcher; none in tests, whose events come from [`Preview::files_changed`]:
+    /// its thread would wake the test scheduler from outside, which it refuses.
+    watcher: Option<notify::RecommendedWatcher>,
     folders: Vec<PathBuf>,
-    _listening: Task<()>,
+    _listening: Option<Task<()>>,
 }
 
 /// One diagram PlantUML drew.
@@ -512,6 +514,14 @@ impl Preview {
         };
         let folders = watched_folders(folder.as_deref(), &included);
         diagrams.included = included;
+        #[cfg(feature = "test-support")]
+        if diagrams.watch.is_none() {
+            diagrams.watch = Some(IncludeWatch {
+                watcher: None,
+                folders: Vec::new(),
+                _listening: None,
+            });
+        }
         if diagrams.watch.is_none() {
             let (sender, mut events) = futures::channel::mpsc::unbounded::<Vec<PathBuf>>();
             let watcher =
@@ -535,42 +545,33 @@ impl Preview {
                     while let Ok(more) = events.try_recv() {
                         paths.extend(more);
                     }
-                    let redrawn = this.update(cx, |this, cx| {
-                        let document = this.path(cx);
-                        let included = match &this.content {
-                            Content::PlantUml(diagrams) => diagrams.included.clone(),
-                            Content::Markdown(_) => Vec::new(),
-                        };
-                        if paths
-                            .iter()
-                            .any(|path| redraws_for(path, document.as_deref(), &included))
-                        {
-                            this.redraw(cx);
-                        }
-                    });
+                    let redrawn = this.update(cx, |this, cx| this.files_changed(&paths, cx));
                     if redrawn.is_err() {
                         break;
                     }
                 }
             });
             diagrams.watch = Some(IncludeWatch {
-                watcher,
+                watcher: Some(watcher),
                 folders: Vec::new(),
-                _listening: listening,
+                _listening: Some(listening),
             });
         }
         let Some(watch) = &mut diagrams.watch else {
             return;
         };
         use notify::Watcher as _;
+        let Some(watcher) = &mut watch.watcher else {
+            watch.folders = folders;
+            return;
+        };
         for gone in watch.folders.iter().filter(|old| !folders.contains(old)) {
-            watch.watcher.unwatch(gone).ok();
+            watcher.unwatch(gone).ok();
         }
         let mut watched = Vec::new();
         for folder in folders {
             let ok = watch.folders.contains(&folder)
-                || watch
-                    .watcher
+                || watcher
                     .watch(&folder, notify::RecursiveMode::NonRecursive)
                     .is_ok();
             if ok {
@@ -578,6 +579,22 @@ impl Preview {
             }
         }
         watch.folders = watched;
+    }
+
+    /// Files at `paths` changed on disk: the diagrams are drawn again if one of them is a file
+    /// they include, or a PlantUML file ([`redraws_for`]).
+    pub fn files_changed(&mut self, paths: &[PathBuf], cx: &mut Context<Self>) {
+        let document = self.path(cx);
+        let included = match &self.content {
+            Content::PlantUml(diagrams) => diagrams.included.clone(),
+            Content::Markdown(_) => Vec::new(),
+        };
+        if paths
+            .iter()
+            .any(|path| redraws_for(path, document.as_deref(), &included))
+        {
+            self.redraw(cx);
+        }
     }
 
     /// The folders watched for changes to the files the diagrams include (for tests).
