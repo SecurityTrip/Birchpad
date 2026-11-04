@@ -227,14 +227,19 @@ pub fn install_package(
         fs::remove_file(&archive).ok();
         fs::remove_dir_all(&unpacking).ok();
     };
-    cleanup();
-    let result = transport
-        .download(package.url, &archive, package.size, progress)
-        .map_err(|reason| {
-            birchpad_i18n::t!("update.cannot-download", url = package.url, reason = reason)
-        })
-        .and_then(|()| verify(&archive, package))
-        .and_then(|()| unpack(&archive, &unpacking));
+    // A download cut off is gone on from (roadmap 7.4af); what it holds is checked whole below.
+    fs::remove_dir_all(&unpacking).ok();
+    if let Err(reason) = transport.download_resuming(package.url, &archive, package.size, progress)
+    {
+        // Kept, to go on from the next time.
+        fs::remove_dir_all(&unpacking).ok();
+        return Err(birchpad_i18n::t!(
+            "update.cannot-download",
+            url = package.url,
+            reason = reason
+        ));
+    }
+    let result = verify(&archive, package).and_then(|()| unpack(&archive, &unpacking));
     if let Err(error) = result {
         cleanup();
         return Err(error);

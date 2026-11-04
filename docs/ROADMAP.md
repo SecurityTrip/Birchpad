@@ -1051,7 +1051,7 @@ as revision 1 did (105 drawn). With ELK it draws 67. What it showed:
       1's two Java processes run until Birchpad ends. The PlantUML processes kept for a
       component ended before its earlier folders are deleted, and a folder of an earlier
       version that is still there deleted when Birchpad starts
-- [ ] 7.4af An installation cut off goes on where it stopped: Birchpad closed at 36 of 58 MB
+- [x] 7.4af An installation cut off goes on where it stopped: Birchpad closed at 36 of 58 MB
       left a `.zip.part`, and the next installation started from nothing (the package took 16
       minutes at the speed seen). The download goes on from the part when the server takes a
       range, checked by its size and SHA-256 as now, and starts again when it does not

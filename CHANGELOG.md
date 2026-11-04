@@ -30,6 +30,9 @@ version's release notes from its section here.
 
 ### Fixed
 
+- An installation of PlantUML cut off (Birchpad closed, the network lost) goes on where it
+  stopped the next time, when the server takes a range, rather than from nothing; what it holds
+  is checked by its size and SHA-256 as before.
 - Installing a newer PlantUML no longer leaves the earlier one's folder behind on Windows
   (63 MB), where its kept-running Java held the files: those processes end first, and a folder
   still left is deleted when Birchpad starts.
