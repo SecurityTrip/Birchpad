@@ -69,9 +69,12 @@ static DRAWINGS: AtomicU64 = AtomicU64::new(0);
 
 /// Whether `program` is kept running between drawings: Java, which runs the PlantUML Birchpad
 /// installs and a `plantuml.jar`. A program of another kind (a script that runs PlantUML, or
-/// something else) is started for each drawing, as it may not read its input as it comes.
+/// something else) is started for each drawing, as it may not read its input as it comes. The
+/// name is read after the last `/` or `\` on every system, as a setting copied from Windows has
+/// backslashes that `Path` reads as a separator only there.
 pub fn keeps_running(program: &str) -> bool {
-    Path::new(program)
+    let name = program.rsplit(['/', '\\']).next().unwrap_or(program);
+    Path::new(name)
         .file_stem()
         .and_then(|stem| stem.to_str())
         .is_some_and(|stem| stem.eq_ignore_ascii_case("java"))

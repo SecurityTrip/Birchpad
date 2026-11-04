@@ -25,6 +25,7 @@ fn java_is_kept_running_and_nothing_else() {
         "my-java",
         "",
         "/usr/bin/",
+        r"C:\jre\bin\",
     ] {
         assert!(!keeps_running(program), "{program}");
     }
