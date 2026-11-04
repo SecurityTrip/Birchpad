@@ -12,6 +12,8 @@ punctuation              =
 string                   "#1E88E5"
 keyword                  title
 markup.heading           Ordering
+keyword                  autonumber
+number                   10
 keyword                  participant
 type                     "Web shop"
 keyword                  as

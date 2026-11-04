@@ -3,6 +3,7 @@
 !include common.iuml
 !$accent = "#1E88E5"
 title Ordering
+autonumber 10
 participant "Web shop" as Shop #lightblue
 actor User
 database Store <<stock>>
