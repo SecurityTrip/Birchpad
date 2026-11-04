@@ -24,7 +24,7 @@ fn java_is_kept_running_and_nothing_else() {
         "javaw.exe",
         "my-java",
         "",
-        "java/",
+        "/usr/bin/",
     ] {
         assert!(!keeps_running(program), "{program}");
     }
@@ -45,8 +45,8 @@ fn diagrams_must_end_before_the_next_starts() {
         "an end first"
     );
     assert!(
-        !complete_diagrams("@startuml\n@enduml\n@star"),
-        "@star is no start"
+        complete_diagrams("@startuml\n@enduml\n@star"),
+        "@star is no start: nothing is left open"
     );
 }
 

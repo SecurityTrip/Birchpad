@@ -1144,23 +1144,19 @@ fn included_files_are_found_where_plantuml_finds_them() {
     let dir = tempfile::tempdir().unwrap();
     let root = dir.path();
     let document = root.join("views").join("context");
-    let domains = root.join("domains");
+    let shared = root.join("shared");
     let library = root.join("library");
-    for folder in [&document, &domains.join("billing"), &library] {
+    for folder in [&document, &shared.join("billing"), &library] {
         std::fs::create_dir_all(folder).unwrap();
     }
     // As on that repository: included from another folder, including by the document's path.
     std::fs::write(
-        domains.join("context.iuml"),
+        shared.join("context.iuml"),
         "!include ../../shared/billing/billing.puml\n!include next.iuml\n!include lib.iuml\n!include gone.iuml",
     )
     .unwrap();
-    std::fs::write(domains.join("next.iuml"), "' next to the file including it").unwrap();
-    std::fs::write(
-        domains.join("billing").join("billing.puml"),
-        "class Billing",
-    )
-    .unwrap();
+    std::fs::write(shared.join("next.iuml"), "' next to the file including it").unwrap();
+    std::fs::write(shared.join("billing").join("billing.puml"), "class Billing").unwrap();
     std::fs::write(library.join("lib.iuml"), "' from the include path").unwrap();
     let folders = [document.clone(), library.clone()];
     let found = walk_includes(
@@ -1172,9 +1168,9 @@ fn included_files_are_found_where_plantuml_finds_them() {
     assert_eq!(
         found,
         [
-            domains.join("context.iuml"),
-            domains.join("billing").join("billing.puml"),
-            domains.join("next.iuml"),
+            shared.join("context.iuml"),
+            shared.join("billing").join("billing.puml"),
+            shared.join("next.iuml"),
             library.join("lib.iuml"),
         ]
     );
@@ -2270,27 +2266,36 @@ fn a_crash_of_smetana_is_drawn_again_with_elk_with_the_automatic_layout() {
 }
 
 /// A PlantUML that crashes with smetana, as on the diagrams of 7.4ab, and draws with ELK; with
-/// `elk_crashes`, ELK crashes too. (cmd splits `-Playout=smetana` in two.)
+/// `elk_crashes`, ELK crashes too. (Rust quotes `-Playout=smetana` for cmd, which splits it in
+/// two at `=` otherwise: both forms are looked at.)
 fn plantuml_smetana_crashes(dir: &Path, elk_crashes: bool) -> PathBuf {
     let elk = if elk_crashes {
         "smetana elk"
     } else {
         "smetana"
     };
+    let windows_elk = if elk_crashes {
+        "if \"%~7\"==\"-Playout=elk\" goto crash\nif \"%8\"==\"elk\" goto crash\n"
+    } else {
+        ""
+    };
     fake_plantuml(
         dir,
         &format!(
-            "for %%l in ({elk}) do if \"%8\"==\"%%l\" (\n\
-             echo ^<svg^>crash %8^</svg^>\n\
+            "if \"%~7\"==\"-Playout=smetana\" goto crash\n\
+             if \"%8\"==\"smetana\" goto crash\n{windows_elk}\
+             echo ^<svg^>drawn with %~7 %8^</svg^>\nexit /b 0\n:crash\n\
+             echo ^<svg^>crash %~7 %8^</svg^>\n\
              >&2 echo java.lang.NullPointerException: splines is null\n\
-             >&2 echo 	at a.SmetanaEdge.draw(SmetanaEdge.java:1)\nexit /b 1\n)\n\
-             echo ^<svg^>drawn with %8^</svg^>"
+             >&2 echo \tat a.SmetanaEdge.draw(SmetanaEdge.java:1)\nexit /b 1"
         ),
         &format!(
             "for layout in {elk}; do\n\
              if [ \"$7\" = \"-Playout=$layout\" ]; then\n\
-             echo \"<svg>crash $7</svg>\"\necho 'java.lang.NullPointerException: splines is null' >&2\n\
-             printf '\\tat a.SmetanaEdge.draw(SmetanaEdge.java:1)\\n' >&2\nexit 1\nfi\ndone\n\
+             echo \"<svg>crash $7</svg>\"\n\
+             echo 'java.lang.NullPointerException: splines is null' >&2\n\
+             printf '\\tat a.SmetanaEdge.draw(SmetanaEdge.java:1)\\n' >&2\n\
+             exit 1\nfi\ndone\n\
              echo \"<svg>drawn with $7</svg>\""
         ),
     )

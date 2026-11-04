@@ -312,14 +312,14 @@ fn built_in_functions_and_operators() {
         ("$N + 2", "5"),
         ("$N - 5", "-2"),
         ("$N + \"x\"", "3x"),
-        ("($N + 1) * 2", ""),
+        ("($N + 1) * 2", "<none>"),
         ("$N >= 3 && $N < 4", "1"),
         ("10 > 9", "1"),
         ("\"10\" == \"10\"", "1"),
         ("\"b\" > \"a\"", "1"),
         ("1 != 1", "0"),
     ] {
-        let expected = (!expected.is_empty()).then(|| expected.to_owned());
+        let expected = (expected != "<none>").then(|| expected.to_owned());
         assert_eq!(value(expr), expected, "{expr}");
     }
     // What cannot be worked out has no value.
