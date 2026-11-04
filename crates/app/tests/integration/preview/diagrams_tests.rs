@@ -2331,10 +2331,56 @@ fn a_crash_of_elk_too_shows_the_crash_of_smetana(cx: &mut TestAppContext) {
     );
     assert!(!shown.read_with(cx, |preview, _| preview.fell_back_to_elk()));
     assert_eq!(
+        shown.read_with(cx, |preview, _| preview.elk_attempt()),
+        ElkAttempt::Crashed,
+        "said: neither smetana nor ELK"
+    );
+    assert_eq!(
         shown.read_with(cx, |preview, _| preview.layout()),
         "smetana"
     );
     let found = shown.read_with(cx, |preview, _| preview.mistakes());
     assert!(found[0].details.is_some(), "the crash, with its details");
     DOT.with(|dot| *dot.borrow_mut() = None);
+}
+
+/// Java's error output when PlantUML has no ELK and is asked for it.
+const NO_ELK: &str = "java.lang.ClassNotFoundException: org.eclipse.elk.graph.util.ElkGraphUtil\n\
+                      \tat java.base/jdk.internal.loader.BuiltinClassLoader.loadClass(Unknown Source)\n";
+
+/// Java's error output when ELK crashes, as on relations to groups once unlinked ones go.
+const ELK_CRASH: &str = "java.lang.NullPointerException: \"node1\" is null\n\
+                         \tat org.eclipse.elk.graph.util.ElkGraphUtil.createSimpleEdge(ElkGraphUtil.java:200)\n";
+
+fn drawn_with(stderr: &str) -> Result<Drawn, NotDrawn> {
+    Ok(Drawn {
+        diagrams: vec![picture("crash")],
+        mistakes: mistakes(stderr, "@startuml\n@enduml", &[picture("crash")]),
+    })
+}
+
+#[test]
+fn what_came_of_elk_is_told_apart() {
+    assert_eq!(elk_attempt(&drawn_with("")), ElkAttempt::Drew);
+    assert_eq!(elk_attempt(&drawn_with(ELK_CRASH)), ElkAttempt::Crashed);
+    assert_eq!(
+        elk_attempt(&drawn_with(NO_ELK)),
+        ElkAttempt::Missing,
+        "not there"
+    );
+    assert_eq!(
+        elk_attempt(&Err(NotDrawn::Failed("no diagram".into()))),
+        ElkAttempt::Crashed,
+        "drew nothing"
+    );
+    assert_eq!(ElkAttempt::default(), ElkAttempt::NotTried);
+    assert!(lacks_elk(&mistakes(NO_ELK, "", &[])));
+    assert!(
+        !lacks_elk(&mistakes(ELK_CRASH, "", &[])),
+        "ELK is there; it crashed"
+    );
+    // A class of another library missing is no missing ELK.
+    let other = "java.lang.ClassNotFoundException: org.other.Thing\n\tat a.B.c(B.java:1)\n";
+    assert!(!lacks_elk(&mistakes(other, "", &[])));
+    assert!(!lacks_elk(&[]));
 }

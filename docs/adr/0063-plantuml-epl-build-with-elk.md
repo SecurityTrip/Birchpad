@@ -21,8 +21,15 @@ PlantUML has a third layout, ELK (Eclipse Layout Kernel). Since PlantUML 1.2024.
 under the GPL is shipped): ELK is under the Eclipse Public License 2.0. PlantUML's EPL build
 (`plantuml-epl` on Maven Central) has it, with EMF and Guava, but lacks Xtext's library
 (`org.eclipse.xtext.xbase.lib`), which ELK's layered algorithm calls; with that library on the
-class path, ELK lays out every one of those diagrams, smetana's crashes too, in about the time
-smetana takes.
+class path, ELK lays out every one of those made-up diagrams, smetana's crashes too, in about
+the time smetana takes.
+
+Measured afterwards on the 124 diagrams of the repository (roadmap 7.4ad): smetana draws 105,
+ELK 67. ELK crashes on 40 that smetana draws and on both that smetana crashes on, each with a
+`NullPointerException` ("node1" is null) in `ElkGraphUtil.createSimpleEdge`: a relation to a
+group once unlinked elements are removed (`remove @unlinked`, and `remove $tag` on an element
+with a relation), which C4 container diagrams do. So ELK is a way out for some diagrams smetana
+cannot lay out, not for all; Graphviz is left for the others.
 
 The EPL is no GPL: a weak copyleft, by file. Shipping PlantUML's EPL build unchanged, beside
 Birchpad and run as a program of its own, asks for its notices (in the jar) and for where its
@@ -52,13 +59,17 @@ point about the EPL 1.0 of Graphviz was a small one, and does not stand against 
   revision still installed until the new one is. A preview drawn with it shows one quiet line
   above the diagrams, that a newer PlantUML lays out what smetana cannot, with Update; under a
   crash of smetana it also offers to install PlantUML again, with ELK. Nothing is downloaded
-  until one of them is clicked, as ADR 0045 asks. When an installation of PlantUML ends,
+  until one of them is clicked, as ADR 0045 asks.
+- **When ELK crashes too**, the preview says that neither smetana nor ELK could lay the
+  diagram out and that Graphviz lays out what they cannot, rather than showing smetana's crash
+  alone. Preferences says, beside `elk`, what it cannot lay out. When an installation of PlantUML ends,
   every PlantUML preview is drawn again with it.
 
 ## Consequences
 
-- Diagrams smetana cannot lay out are drawn without Graphviz, by the PlantUML Birchpad
-  installs; Graphviz, when found, still comes first.
+- Some diagrams smetana cannot lay out are drawn without Graphviz, by the PlantUML Birchpad
+  installs; Graphviz, when found, still comes first, and is the way out for those ELK cannot
+  lay out either. Choosing `elk` always loses the diagrams ELK crashes on (40 of the 124).
 - The PlantUML Birchpad installs is under the EPL 2.0 rather than MIT, and its package is about
   10 MB larger (ELK, EMF and Guava: 59 to 65 MB for each platform, from 48 to 54). The rule of
   ADR 0045, nothing under the GPL shipped, holds.

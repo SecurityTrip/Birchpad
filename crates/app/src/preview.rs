@@ -46,14 +46,15 @@ use crate::workspace::Workspace;
 #[cfg(feature = "test-support")]
 pub use diagrams::DOT;
 pub use diagrams::{
-    DIAGRAM_END, DOT_POLL, Drawn, GRAPHVIZ_DOT_VARIABLE, GRAPHVIZ_DOWNLOAD, INCLUDE_PATH_VARIABLE,
-    Included, Layout, MAX_PNG_SIDE, MAX_ZOOMED_PIXELS, Mistake, NotDrawn, PLANTUML_DELAY,
-    PLANTUML_MAIN, Stop, StopOnDrop, ZOOM_COMMANDS, ZOOM_STEPS, Zoom, ZoomChange, active_diagrams,
-    background, diagram_starts, dragged_offset, draws_again_with_elk, export_name, find_dot,
-    find_include, fit_page_scale, fit_width_scale, folded_pictures, include_path, line_offset,
-    mistake_trace, mistakes, normalized, pictured_line, place_in_includes, plantuml_command,
-    raster_factor, redraws_for, relative_to, run_plantuml, setting_path, sized_svg, split_diagrams,
-    svg_size, svg_to_pixels, svg_to_png, system_dot, waits_for_graphviz, watched_folders,
+    DIAGRAM_END, DOT_POLL, Drawn, ElkAttempt, GRAPHVIZ_DOT_VARIABLE, GRAPHVIZ_DOWNLOAD,
+    INCLUDE_PATH_VARIABLE, Included, Layout, MAX_PNG_SIDE, MAX_ZOOMED_PIXELS, Mistake, NotDrawn,
+    PLANTUML_DELAY, PLANTUML_MAIN, Stop, StopOnDrop, ZOOM_COMMANDS, ZOOM_STEPS, Zoom, ZoomChange,
+    active_diagrams, background, diagram_starts, dragged_offset, draws_again_with_elk, elk_attempt,
+    export_name, find_dot, find_include, fit_page_scale, fit_width_scale, folded_pictures,
+    include_path, lacks_elk, line_offset, mistake_trace, mistakes, normalized, pictured_line,
+    place_in_includes, plantuml_command, raster_factor, redraws_for, relative_to, run_plantuml,
+    setting_path, sized_svg, split_diagrams, svg_size, svg_to_pixels, svg_to_png, system_dot,
+    waits_for_graphviz, watched_folders,
 };
 pub use includes::{IncludeLink, Includes, MOST_INCLUDED_FILES, Preprocessor, walk_includes};
 
@@ -247,8 +248,8 @@ struct Diagrams {
     installs: u64,
     /// The name of the layout the diagrams were last drawn with.
     layout: &'static str,
-    /// Smetana crashed, and ELK drew the diagrams instead (ADR 0063).
-    fell_back: bool,
+    /// Smetana crashed, and ELK was tried in its place (ADR 0063): what came of it.
+    elk: ElkAttempt,
     /// The details of a crash of PlantUML are shown.
     details: bool,
     /// After a crash of smetana with the automatic layout: looking for Graphviz now and then,
@@ -408,7 +409,7 @@ impl Preview {
                     }
                     let stop = StopOnDrop(Stop::default());
                     let running = stop.0.clone();
-                    let (drawn, layout, included, fell_back) = executor
+                    let (drawn, layout, included, elk) = executor
                         .spawn(async move {
                             let folders: Vec<PathBuf> = include
                                 .as_deref()
@@ -436,22 +437,16 @@ impl Preview {
                             };
                             let mut drawn = draw(&layout);
                             // Smetana crashed: ELK, where PlantUML has it, lays the diagram out.
-                            let mut fell_back = false;
+                            let mut elk = ElkAttempt::NotTried;
                             let again = drawn.as_ref().is_ok_and(|drawn| {
                                 draws_again_with_elk(&drawn.mistakes, &layout, layout_setting)
                             });
                             if again {
                                 let with_elk = draw(&Layout::Elk);
-                                let crashed = with_elk.as_ref().map_or(true, |drawn| {
-                                    drawn
-                                        .mistakes
-                                        .iter()
-                                        .any(|mistake| mistake.details.is_some())
-                                });
-                                if !crashed {
+                                elk = elk_attempt(&with_elk);
+                                if elk == ElkAttempt::Drew {
                                     drawn = with_elk;
                                     layout = Layout::Elk;
-                                    fell_back = true;
                                 }
                             }
                             // Mistakes PlantUML traced to no file of the diagram's, placed.
@@ -463,7 +458,7 @@ impl Preview {
                                 );
                                 drawn
                             });
-                            (drawn, layout.name(), included, fell_back)
+                            (drawn, layout.name(), included, elk)
                         })
                         .await;
                     drop(stop);
@@ -472,7 +467,7 @@ impl Preview {
                             && !matches!(drawn, Err(NotDrawn::Stopped))
                         {
                             diagrams.layout = layout;
-                            diagrams.fell_back = fell_back;
+                            diagrams.elk = elk;
                         }
                         let waits = drawn.as_ref().is_ok_and(|drawn| {
                             waits_for_graphviz(&drawn.mistakes, layout, layout_setting)
@@ -968,59 +963,71 @@ impl Preview {
             .flex()
             .flex_col()
             .gap_1()
-            .child(div().text_color(paint(ui().error)).child(t!(
-                "preview.plantuml-crashed",
-                layout = diagrams.layout,
-                error = mistake.message.as_str()
-            )))
-            .when(diagrams.layout == Layout::Smetana.name(), |crash| {
-                let workspace = workspace.clone();
-                let link = |id: &'static str, text: String, command: &'static str| {
+            .child(div().text_color(paint(ui().error)).child(
+                if diagrams.elk == ElkAttempt::Crashed {
+                    t!(
+                        "preview.plantuml-neither-layout",
+                        error = mistake.message.as_str()
+                    )
+                } else {
+                    t!(
+                        "preview.plantuml-crashed",
+                        layout = diagrams.layout,
+                        error = mistake.message.as_str()
+                    )
+                },
+            ))
+            .when(
+                [Layout::Smetana.name(), Layout::Elk.name()].contains(&diagrams.layout),
+                |crash| {
                     let workspace = workspace.clone();
-                    div()
-                        .id(id)
-                        .text_color(paint(ui().accent))
-                        .cursor_pointer()
-                        .hover(|link| link.underline())
-                        .on_click(move |_, window, cx| {
-                            if let Some(workspace) = workspace.upgrade() {
-                                workspace.update(cx, |workspace, cx| {
-                                    workspace.run(&Invocation::new(command), window, cx)
-                                });
-                            }
-                        })
-                        .child(text)
-                };
-                crash
-                    .child(
+                    let link = |id: &'static str, text: String, command: &'static str| {
+                        let workspace = workspace.clone();
                         div()
-                            .text_color(paint(ui().muted))
-                            .child(t!("preview.plantuml-try-graphviz")),
-                    )
-                    .child(
-                        div()
-                            .flex()
-                            .gap_4()
-                            .child(link(
-                                "plantuml-get-graphviz",
-                                t!("preview.plantuml-get-graphviz", url = GRAPHVIZ_DOWNLOAD),
-                                "preview.get-graphviz",
-                            ))
-                            .child(link(
-                                "plantuml-choose-layout",
-                                t!("preview.plantuml-choose-layout"),
-                                "preview.choose-layout",
-                            ))
-                            // An earlier PlantUML of Birchpad's, without ELK (ADR 0063).
-                            .when(outdated, |links| {
-                                links.child(link(
-                                    "plantuml-install-elk",
-                                    t!("preview.plantuml-install-with-elk"),
-                                    "preview.install-plantuml",
+                            .id(id)
+                            .text_color(paint(ui().accent))
+                            .cursor_pointer()
+                            .hover(|link| link.underline())
+                            .on_click(move |_, window, cx| {
+                                if let Some(workspace) = workspace.upgrade() {
+                                    workspace.update(cx, |workspace, cx| {
+                                        workspace.run(&Invocation::new(command), window, cx)
+                                    });
+                                }
+                            })
+                            .child(text)
+                    };
+                    crash
+                        .child(
+                            div()
+                                .text_color(paint(ui().muted))
+                                .child(t!("preview.plantuml-try-graphviz")),
+                        )
+                        .child(
+                            div()
+                                .flex()
+                                .gap_4()
+                                .child(link(
+                                    "plantuml-get-graphviz",
+                                    t!("preview.plantuml-get-graphviz", url = GRAPHVIZ_DOWNLOAD),
+                                    "preview.get-graphviz",
                                 ))
-                            }),
-                    )
-            })
+                                .child(link(
+                                    "plantuml-choose-layout",
+                                    t!("preview.plantuml-choose-layout"),
+                                    "preview.choose-layout",
+                                ))
+                                // An earlier PlantUML of Birchpad's, without ELK (ADR 0063).
+                                .when(outdated, |links| {
+                                    links.child(link(
+                                        "plantuml-install-elk",
+                                        t!("preview.plantuml-install-with-elk"),
+                                        "preview.install-plantuml",
+                                    ))
+                                }),
+                        )
+                },
+            )
             .child(
                 div()
                     .id("plantuml-crash-details")
@@ -1077,7 +1084,16 @@ impl Preview {
     /// Whether smetana crashed and ELK drew the diagrams instead (for tests).
     #[cfg(feature = "test-support")]
     pub fn fell_back_to_elk(&self) -> bool {
-        matches!(&self.content, Content::PlantUml(diagrams) if diagrams.fell_back)
+        matches!(&self.content, Content::PlantUml(diagrams) if diagrams.elk == ElkAttempt::Drew)
+    }
+
+    /// What came of trying ELK after a crash of smetana (for tests).
+    #[cfg(feature = "test-support")]
+    pub fn elk_attempt(&self) -> ElkAttempt {
+        match &self.content {
+            Content::PlantUml(diagrams) => diagrams.elk,
+            Content::Markdown(_) => ElkAttempt::NotTried,
+        }
     }
 
     /// Whether the preview looks for Graphviz to draw again with it (for tests).
@@ -1276,7 +1292,7 @@ impl Preview {
             .when(crate::plantuml::offers_update(cx), |list| {
                 list.child(Self::render_update(cx))
             })
-            .when(diagrams.fell_back, |list| {
+            .when(diagrams.elk == ElkAttempt::Drew, |list| {
                 list.child(
                     div()
                         .w_full()

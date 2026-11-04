@@ -390,6 +390,47 @@ pub fn draws_again_with_elk(mistakes: &[Mistake], layout: &Layout, setting: Diag
         && mistakes.iter().any(|mistake| mistake.details.is_some())
 }
 
+/// What came of drawing a diagram again with ELK after smetana crashed on it (ADR 0063).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum ElkAttempt {
+    /// Not tried: smetana did not crash, or the layout was chosen.
+    #[default]
+    NotTried,
+    /// ELK drew it.
+    Drew,
+    /// ELK crashed too.
+    Crashed,
+    /// The PlantUML that runs has no ELK (its MIT build, or revision 1 of Birchpad's).
+    Missing,
+}
+
+/// Whether `mistakes` say that the PlantUML that ran has no ELK: Java found none of its classes.
+pub fn lacks_elk(mistakes: &[Mistake]) -> bool {
+    mistakes.iter().any(|mistake| {
+        mistake.details.as_deref().is_some_and(|details| {
+            (details.contains("ClassNotFoundException") || details.contains("NoClassDefFoundError"))
+                && details.contains("org.eclipse.elk")
+        })
+    })
+}
+
+/// What a drawing with ELK came to.
+pub fn elk_attempt(drawn: &Result<Drawn, NotDrawn>) -> ElkAttempt {
+    match drawn {
+        Ok(drawn) if lacks_elk(&drawn.mistakes) => ElkAttempt::Missing,
+        Ok(drawn)
+            if drawn
+                .mistakes
+                .iter()
+                .any(|mistake| mistake.details.is_some()) =>
+        {
+            ElkAttempt::Crashed
+        }
+        Ok(_) => ElkAttempt::Drew,
+        Err(_) => ElkAttempt::Crashed,
+    }
+}
+
 /// The variable PlantUML finds Graphviz's `dot` by.
 pub const GRAPHVIZ_DOT_VARIABLE: &str = "GRAPHVIZ_DOT";
 

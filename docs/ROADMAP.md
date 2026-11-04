@@ -1032,7 +1032,7 @@ Revision 3 checked: its Windows package matches the size and SHA-256 Birchpad pi
 from the line of 7.4ac, and draws the 124 diagrams of the architecture repository with smetana
 as revision 1 did (105 drawn). With ELK it draws 67. What it showed:
 
-- [ ] 7.4ad ELK crashes on diagrams smetana draws: of the 124, ELK crashes on 40 that smetana
+- [x] 7.4ad ELK crashes on diagrams smetana draws: of the 124, ELK crashes on 40 that smetana
       draws, and on both that smetana crashes on, so the fallback of 7.4ab draws none of them
       and `preview.plantuml-layout = elk` loses 40 diagrams. Each is a
       `NullPointerException` ("node1" is null) in `ElkGraphUtil.createSimpleEdge`, reproduced in
@@ -1043,7 +1043,8 @@ as revision 1 did (105 drawn). With ELK it draws 67. What it showed:
       every one of those diagrams" put as measured; when ELK crashes too, the preview says
       that neither smetana nor ELK could lay the diagram out and that Graphviz is left, rather
       than showing smetana's crash alone; the description of `elk` in Preferences says what it
-      cannot lay out
+      cannot lay out. The report to PlantUML is written; it is posted from the
+      maintainer's account
 - [ ] 7.4ae The earlier PlantUML left behind: installing revision 3 while revision 1's
       PlantUML is kept running (ADR 0060) cannot delete revision 1's folder on Windows, where
       its Java holds the files. Its `.installed` goes and the rest, 63 MB, stays, and revision

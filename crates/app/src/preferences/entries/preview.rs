@@ -23,7 +23,10 @@ pub(super) const ENTRIES: &[Entry] = &[
             ("automatic", "Graphviz when installed, else smetana"),
             ("smetana", "Smetana (built into PlantUML)"),
             ("graphviz", "Graphviz"),
-            ("elk", "ELK"),
+            (
+                "elk",
+                "ELK (not with relations to groups when unlinked ones are removed)",
+            ),
         ]),
     ),
     entry(

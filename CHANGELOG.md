@@ -55,7 +55,10 @@ version's release notes from its section here.
   library ELK needs (the package `plantuml-1.2026.9-3`); an earlier PlantUML of Birchpad's
   keeps working; a preview drawn with it shows one quiet line above the diagrams with Update,
   and nothing is downloaded until it is clicked. When an installation of PlantUML ends, every
-  PlantUML preview is drawn again with it, those that crashed too. `preview.plantuml-layout` can be `elk`.
+  PlantUML preview is drawn again with it, those that crashed too.
+  ELK is no way out for every such diagram: it crashes on relations to groups once unlinked
+  elements are removed, as C4 container diagrams do. When it crashes too, the preview says that
+  neither smetana nor ELK could lay the diagram out, and that Graphviz is left. `preview.plantuml-layout` can be `elk`.
 - A way to Graphviz from a diagram smetana cannot lay out: under the message, Get Graphviz
   opens its download page in the browser and another link opens Preferences > Preview, where
   the layout is chosen; with the automatic layout the preview looks for Graphviz every few
