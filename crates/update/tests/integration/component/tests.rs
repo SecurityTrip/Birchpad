@@ -356,3 +356,60 @@ fn an_earlier_revision_is_used_until_this_one_is_installed() {
         Some(COMPONENT.folder(data.path()))
     );
 }
+
+#[test]
+fn earlier_versions_go_once_this_one_is_installed() {
+    let data = tempfile::tempdir().unwrap();
+    let components = data.path().join("components");
+    let earlier = components.join(format!("{}-0.9-1", COMPONENT.name));
+    let other = components.join("other-0.9");
+    let unpacking = components.join(format!("{}-{}.part", COMPONENT.name, COMPONENT.version));
+    for folder in [&earlier, &other, &unpacking] {
+        std::fs::create_dir_all(folder).unwrap();
+        std::fs::write(folder.join("file"), "x").unwrap();
+    }
+    // This one not installed: the earlier one is in use, and stays.
+    assert!(COMPONENT.remove_earlier(data.path()).is_empty());
+    assert!(earlier.is_dir());
+    let current = COMPONENT.folder(data.path());
+    std::fs::create_dir_all(&current).unwrap();
+    std::fs::write(current.join(".installed"), "").unwrap();
+    assert!(COMPONENT.remove_earlier(data.path()).is_empty());
+    assert!(!earlier.exists(), "gone");
+    assert!(current.is_dir(), "this one stays");
+    assert!(other.is_dir(), "another component's stays");
+    assert!(unpacking.is_dir(), "a download under way stays");
+    // Nothing more to delete, and no components folder at all.
+    assert!(COMPONENT.remove_earlier(data.path()).is_empty());
+    let empty = tempfile::tempdir().unwrap();
+    assert!(COMPONENT.remove_earlier(empty.path()).is_empty());
+}
+
+#[cfg(windows)]
+#[test]
+fn an_earlier_folder_a_program_holds_is_left_for_later() {
+    let data = tempfile::tempdir().unwrap();
+    let components = data.path().join("components");
+    let earlier = components.join(format!("{}-0.9-1", COMPONENT.name));
+    std::fs::create_dir_all(&earlier).unwrap();
+    let current = COMPONENT.folder(data.path());
+    std::fs::create_dir_all(&current).unwrap();
+    std::fs::write(current.join(".installed"), "").unwrap();
+    // Held open without sharing its deletion, as a running program holds its files.
+    let held = {
+        use std::os::windows::fs::OpenOptionsExt as _;
+        std::fs::OpenOptions::new()
+            .write(true)
+            .create(true)
+            .share_mode(0)
+            .open(earlier.join("java.exe"))
+            .unwrap()
+    };
+    assert_eq!(COMPONENT.remove_earlier(data.path()), [earlier.clone()]);
+    drop(held);
+    assert!(
+        COMPONENT.remove_earlier(data.path()).is_empty(),
+        "deleted once let go"
+    );
+    assert!(!earlier.exists());
+}

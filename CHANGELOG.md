@@ -30,6 +30,9 @@ version's release notes from its section here.
 
 ### Fixed
 
+- Installing a newer PlantUML no longer leaves the earlier one's folder behind on Windows
+  (63 MB), where its kept-running Java held the files: those processes end first, and a folder
+  still left is deleted when Birchpad starts.
 - A mistake in an included file above the document's folder names the file relative to the
   document (`../../parts/billing/containers.puml`) rather than by its whole path.
 - Russian: "в Настройках > ..." in the link under a crash of smetana and in the question of

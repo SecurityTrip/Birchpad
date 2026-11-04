@@ -306,3 +306,25 @@ fn every_plantuml_preview_is_drawn_again_when_an_installation_ends(cx: &mut Test
     }
     panic!("not drawn again after the installation");
 }
+
+#[gpui_kit::test]
+fn an_earlier_plantuml_left_behind_is_deleted(cx: &mut TestAppContext) {
+    let (_, cx) = open_workspace(cx);
+    let data = tempfile::tempdir().unwrap();
+    with_data(data.path(), Arc::new(Serve(Vec::new())), cx);
+    let earlier = install_earlier(data.path());
+    // Only the earlier one: it is in use, and stays.
+    cx.update(|_, cx| remove_earlier(cx));
+    cx.run_until_parked();
+    assert!(earlier.is_dir());
+    let current = PLANTUML.folder(data.path());
+    std::fs::create_dir_all(&current).unwrap();
+    std::fs::write(current.join(".installed"), "").unwrap();
+    cx.update(|_, cx| remove_earlier(cx));
+    cx.run_until_parked();
+    assert!(!earlier.exists(), "deleted, as at start");
+    assert!(current.is_dir());
+    // No data folder: nothing to do.
+    cx.update(|_, cx| cx.global_mut::<AppState>().paths.user_data = None);
+    cx.update(|_, cx| remove_earlier(cx));
+}

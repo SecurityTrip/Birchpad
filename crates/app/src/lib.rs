@@ -177,6 +177,8 @@ pub fn run() {
             macros::init(cx);
             run_menu::init(cx);
             user_languages::init(cx);
+            // An earlier PlantUML left behind by an installation while it ran (roadmap 7.4ae).
+            plantuml::remove_earlier(cx);
             let proxy = AppState::global(cx).settings.updates.proxy.clone();
             updates::Updates::install(
                 updates::Updates::http(&proxy),

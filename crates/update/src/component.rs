@@ -161,6 +161,34 @@ impl Component {
         earlier.pop()
     }
 
+    /// Deletes the folders of its earlier versions and revisions in `data`, once this one is
+    /// installed (never the one in use until then). Returns those that could not be deleted
+    /// whole: on Windows, the files of a program still running from one stay (roadmap 7.4ae).
+    pub fn remove_earlier(&self, data: &Path) -> Vec<PathBuf> {
+        if self.installed(data).is_none() {
+            return Vec::new();
+        }
+        let current = self.folder(data);
+        let prefix = format!("{}-", self.name);
+        let mut left = Vec::new();
+        let Ok(entries) = fs::read_dir(data.join("components")) else {
+            return left;
+        };
+        for entry in entries.flatten() {
+            let path = entry.path();
+            let file_name = entry.file_name().to_string_lossy().into_owned();
+            // `name-1.2.zip.part` and `name-1.2.part` of this version are its downloads.
+            let earlier = file_name.starts_with(&prefix)
+                && path != current
+                && path.is_dir()
+                && !file_name.ends_with(".part");
+            if earlier && fs::remove_dir_all(&path).is_err() && path.exists() {
+                left.push(path);
+            }
+        }
+        left
+    }
+
     /// Downloads the package of `platform` through `transport`, checks its size and SHA-256,
     /// and unpacks it into `data`, in place of an earlier version. `progress` is told the bytes
     /// received. Returns the component's folder.
@@ -219,16 +247,8 @@ pub fn install_package(
         cleanup();
         error.to_string()
     })?;
-    // Earlier versions of the component go.
-    if let Ok(entries) = fs::read_dir(&components) {
-        let prefix = format!("{}-", component.name);
-        for entry in entries.flatten() {
-            let file_name = entry.file_name().to_string_lossy().into_owned();
-            if file_name.starts_with(&prefix) && file_name != name && entry.path().is_dir() {
-                fs::remove_dir_all(entry.path()).ok();
-            }
-        }
-    }
+    // Earlier versions of the component go; those a running program holds stay, for later.
+    component.remove_earlier(data);
     Ok(folder)
 }
 

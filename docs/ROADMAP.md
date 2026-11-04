@@ -1045,7 +1045,7 @@ as revision 1 did (105 drawn). With ELK it draws 67. What it showed:
       than showing smetana's crash alone; the description of `elk` in Preferences says what it
       cannot lay out. The report to PlantUML is written; it is posted from the
       maintainer's account
-- [ ] 7.4ae The earlier PlantUML left behind: installing revision 3 while revision 1's
+- [x] 7.4ae The earlier PlantUML left behind: installing revision 3 while revision 1's
       PlantUML is kept running (ADR 0060) cannot delete revision 1's folder on Windows, where
       its Java holds the files. Its `.installed` goes and the rest, 63 MB, stays, and revision
       1's two Java processes run until Birchpad ends. The PlantUML processes kept for a

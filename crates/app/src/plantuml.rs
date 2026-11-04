@@ -136,17 +136,38 @@ pub fn install(cx: &mut App) -> Result<()> {
     });
     cx.spawn(async move |cx| {
         let result = downloading.await;
+        let installed = result.is_ok();
         cx.update(|cx| {
             let install = cx.global_mut::<PlantUmlInstall>();
             install.running = false;
             install.error = result.err();
             install.generation += 1;
             cx.refresh_windows();
+            if installed {
+                // The PlantUMLs kept running from an earlier folder hold its files (ADR 0060):
+                // ended, so that the folder can go; the next drawings start the new one.
+                crate::preview::server::stop_all();
+                remove_earlier(cx);
+            }
         });
         drop(ticking);
     })
     .detach();
     Ok(())
+}
+
+/// Deletes, in the background, the folders of earlier versions of the PlantUML Birchpad installs
+/// that are still there once this one is installed: at start, and after an installation.
+pub fn remove_earlier(cx: &mut App) {
+    let Some(data) = AppState::global(cx).paths.user_data.clone() else {
+        return;
+    };
+    cx.background_spawn(async move {
+        for left in PLANTUML.remove_earlier(&data) {
+            eprintln!("plantuml: cannot delete {} yet", left.display());
+        }
+    })
+    .detach();
 }
 
 pub fn register_commands(registry: &mut CommandRegistry) {
