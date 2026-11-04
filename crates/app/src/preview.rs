@@ -325,7 +325,8 @@ impl Diagram {
 
 enum Content {
     Markdown(Entity<TextViewState>),
-    PlantUml(Diagrams),
+    // Boxed: far larger than a Markdown preview's state.
+    PlantUml(Box<Diagrams>),
 }
 
 /// The preview of one view: the rendered text, kept up to date as the text changes.
@@ -355,7 +356,7 @@ impl Preview {
                     .scrollable(true)
                     .selectable(true)
             })),
-            PreviewKind::PlantUml => Content::PlantUml(Diagrams::default()),
+            PreviewKind::PlantUml => Content::PlantUml(Box::default()),
         };
         let mut this = Self {
             view: view.downgrade(),
