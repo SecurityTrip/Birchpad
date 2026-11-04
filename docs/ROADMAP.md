@@ -1063,7 +1063,7 @@ as revision 1 did (105 drawn). With ELK it draws 67. What it showed:
       PlantUML has no ELK, and offers the one that has. And under Details, which folds the
       crash's stack trace, PlantUML's picture of the crash shows the same stack trace unfolded;
       the picture folded with it, as 7.4aa folds the picture of a placed mistake
-- [ ] Release 0.7.7: the workspace version (0.7.7, set when its branch opens, so that nightly
+- [x] Release 0.7.7: the workspace version (0.7.7, set when its branch opens, so that nightly
       builds are its pre-releases), `CHANGELOG.md` and this roadmap updated; the
       [release checklist](release-checklist.md) gone through
 

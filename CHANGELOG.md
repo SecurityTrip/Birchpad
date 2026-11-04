@@ -6,54 +6,7 @@ version's release notes from its section here.
 
 ## [Unreleased]
 
-### Changed
-
-- A crash of PlantUML says it once and clearly: the newer PlantUML is offered by the one line
-  above the diagrams, not by the crash as well; a PlantUML without ELK asked for it says so,
-  and where the one with ELK is, rather than Java's `ClassNotFoundException`; and PlantUML's
-  picture of the crash, which repeats the stack trace, is folded with the crash's details.
-- PlantUML's picture of a mistake the preview has placed (on a line of the document, or in
-  an included file) is folded under a line that shows it on a click: the list above the
-  diagrams says the same, and the picture, as tall as the preview, carried PlantUML's own
-  banners. A mistake with no place keeps its picture shown.
-- PlantUML diagrams are drawn much faster as they are edited
-  ([ADR 0060](docs/adr/0060-plantuml-kept-running.md)): the PlantUML Birchpad installs, and a
-  `plantuml.jar`, are kept running and given each drawing in turn, rather than Java being
-  started for each one (0.5 to 0.7 s a drawing before, 0.01 to 0.03 s once warm). A diagram
-  still being typed (`@startuml` without its `@enduml`) and a `plantuml` script are run for
-  each drawing, as before.
-- When PlantUML crashes (smetana on the largest diagrams, with a `NullPointerException`), the
-  preview shows one line, the layout it used and the exception, with Java's stack trace folded
-  under it, rather than the whole trace as a mistake.
-- A PlantUML of the user's own without Graphviz lays diagrams out with smetana (the automatic
-  layout) rather than failing on them.
-
-### Fixed
-
-- An installation of PlantUML cut off (Birchpad closed, the network lost) goes on where it
-  stopped the next time, when the server takes a range, rather than from nothing; what it holds
-  is checked by its size and SHA-256 as before.
-- Installing a newer PlantUML no longer leaves the earlier one's folder behind on Windows
-  (63 MB), where its kept-running Java held the files: those processes end first, and a folder
-  still left is deleted when Birchpad starts.
-- A mistake in an included file above the document's folder names the file relative to the
-  document (`../../parts/billing/containers.puml`) rather than by its whole path.
-- Russian: "в Настройках > ..." in the link under a crash of smetana and in the question of
-  closing to the tray.
-- The first drawing of a PlantUML diagram at Fit is as tall as the diagram: its white card
-  was at times as tall as the preview, the diagram at its top, until the zoom was changed.
-- A PlantUML file included from another folder finds what it includes by a path relative to
-  the document, as IDE plugins and Confluence's macro find it: the preview gives PlantUML the
-  document's folder as its include path (`PLANTUML_INCLUDE_PATH`) besides running it there.
-  Before, such diagrams were not drawn ("cannot include").
-- A mistake in a file a PlantUML diagram includes is no longer listed on a line of the
-  document it has nothing to do with: the preview reads where it is from PlantUML's picture of
-  it, names the file and its line, and links to the document's `!include` line that leads to it
-  (none when there is none).
-- A mistake PlantUML traces only to a name of its own (`[From desc2 (line 40)]`) is found
-  among the files the diagram includes, by the line its picture shows: it names that file,
-  relative to the document, and a click opens it at the line. When none holds it, it says the
-  mistake is in an included file, rather than giving PlantUML's internal name.
+## [0.7.7] - 2026-11-05
 
 ### Added
 
@@ -112,6 +65,55 @@ version's release notes from its section here.
   be chosen. Birchpad does not install Graphviz.
 - `preview.plantuml-include-path` (Preferences > Preview): folders `!include` looks in after
   the document's, separated as in `PATH`, a relative one taken from the document's folder.
+
+### Changed
+
+- A crash of PlantUML says it once and clearly: the newer PlantUML is offered by the one line
+  above the diagrams, not by the crash as well; a PlantUML without ELK asked for it says so,
+  and where the one with ELK is, rather than Java's `ClassNotFoundException`; and PlantUML's
+  picture of the crash, which repeats the stack trace, is folded with the crash's details.
+- PlantUML's picture of a mistake the preview has placed (on a line of the document, or in
+  an included file) is folded under a line that shows it on a click: the list above the
+  diagrams says the same, and the picture, as tall as the preview, carried PlantUML's own
+  banners. A mistake with no place keeps its picture shown.
+- PlantUML diagrams are drawn much faster as they are edited
+  ([ADR 0060](docs/adr/0060-plantuml-kept-running.md)): the PlantUML Birchpad installs, and a
+  `plantuml.jar`, are kept running and given each drawing in turn, rather than Java being
+  started for each one (0.5 to 0.7 s a drawing before, 0.01 to 0.03 s once warm). A diagram
+  still being typed (`@startuml` without its `@enduml`) and a `plantuml` script are run for
+  each drawing, as before.
+- When PlantUML crashes (smetana on the largest diagrams, with a `NullPointerException`), the
+  preview shows one line, the layout it used and the exception, with Java's stack trace folded
+  under it, rather than the whole trace as a mistake.
+- A PlantUML of the user's own without Graphviz lays diagrams out with smetana (the automatic
+  layout) rather than failing on them.
+
+### Fixed
+
+- An installation of PlantUML cut off (Birchpad closed, the network lost) goes on where it
+  stopped the next time, when the server takes a range, rather than from nothing; what it holds
+  is checked by its size and SHA-256 as before.
+- Installing a newer PlantUML no longer leaves the earlier one's folder behind on Windows
+  (63 MB), where its kept-running Java held the files: those processes end first, and a folder
+  still left is deleted when Birchpad starts.
+- A mistake in an included file above the document's folder names the file relative to the
+  document (`../../parts/billing/containers.puml`) rather than by its whole path.
+- Russian: "в Настройках > ..." in the link under a crash of smetana and in the question of
+  closing to the tray.
+- The first drawing of a PlantUML diagram at Fit is as tall as the diagram: its white card
+  was at times as tall as the preview, the diagram at its top, until the zoom was changed.
+- A PlantUML file included from another folder finds what it includes by a path relative to
+  the document, as IDE plugins and Confluence's macro find it: the preview gives PlantUML the
+  document's folder as its include path (`PLANTUML_INCLUDE_PATH`) besides running it there.
+  Before, such diagrams were not drawn ("cannot include").
+- A mistake in a file a PlantUML diagram includes is no longer listed on a line of the
+  document it has nothing to do with: the preview reads where it is from PlantUML's picture of
+  it, names the file and its line, and links to the document's `!include` line that leads to it
+  (none when there is none).
+- A mistake PlantUML traces only to a name of its own (`[From desc2 (line 40)]`) is found
+  among the files the diagram includes, by the line its picture shows: it names that file,
+  relative to the document, and a click opens it at the line. When none holds it, it says the
+  mistake is in an included file, rather than giving PlantUML's internal name.
 
 ## [0.7.6] - 2026-10-30
 
@@ -917,7 +919,8 @@ The first release: a Notepad++-like editor for Windows, Linux and macOS.
   entirely (`updates.mode = "off"`).
 - Nightly builds of `main` on the nightly channel.
 
-[Unreleased]: https://github.com/SecurityTrip/Birchpad/compare/v0.7.6...HEAD
+[Unreleased]: https://github.com/SecurityTrip/Birchpad/compare/v0.7.7...HEAD
+[0.7.7]: https://github.com/SecurityTrip/Birchpad/compare/v0.7.6...v0.7.7
 [0.7.6]: https://github.com/SecurityTrip/Birchpad/compare/v0.7.5...v0.7.6
 [0.7.5]: https://github.com/SecurityTrip/Birchpad/compare/v0.7.3...v0.7.5
 [0.7.3]: https://github.com/SecurityTrip/Birchpad/compare/v0.7.2...v0.7.3
