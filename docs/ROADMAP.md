@@ -1004,6 +1004,20 @@ draws the diagram again. What is left:
       black. The picture of a mistake the preview has placed folded under Details, as the
       details of a crash are (7.4o); shown as now when the mistake has no place, so that what
       PlantUML says is not lost
+- [ ] 7.4ab Diagrams smetana cannot lay out drawn with ELK: on C4 container diagrams with
+      boundaries inside boundaries and many relations between them (reproduced on 105 made-up
+      lines: two `System_Boundary` with `Container_Boundary` in them, 43 `Rel`, `BiRel`,
+      `Rel_Back` and `Rel_U/D/L/R` across them) smetana's routing of a spline fails
+      ("triangulation failed" in `routesplines`), loses the edge and crashes with
+      `NullPointerException` in `SmetanaEdge`; `skinparam linetype polyline` or `ortho` does not
+      help. ELK, PlantUML's third layout, lays out all of them. The PlantUML Birchpad installs
+      is its EPL build (`plantuml-epl`, which has ELK; the MIT build has none), with the
+      `org.eclipse.xtext.xbase.lib` that the EPL build's ELK needs and lacks, as revision
+      `1.2026.9-2` of the package; with the automatic layout a crash of smetana draws the
+      diagram again with ELK, and says so; `preview.plantuml-layout` gets `elk`. A PlantUML of
+      an earlier revision keeps working until it is installed again. An ADR, over
+      [ADR 0045](adr/0045-plantuml-installed-on-request.md) and
+      [ADR 0059](adr/0059-plantuml-layouts-and-graphviz.md)
 - [ ] Release 0.7.7: the workspace version (0.7.7, set when its branch opens, so that nightly
       builds are its pre-releases), `CHANGELOG.md` and this roadmap updated; the
       [release checklist](release-checklist.md) gone through
