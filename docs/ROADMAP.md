@@ -1055,7 +1055,7 @@ as revision 1 did (105 drawn). With ELK it draws 67. What it showed:
       left a `.zip.part`, and the next installation started from nothing (the package took 16
       minutes at the speed seen). The download goes on from the part when the server takes a
       range, checked by its size and SHA-256 as now, and starts again when it does not
-- [ ] 7.4ag What a crash of smetana offers, said once and clearly: with revision 1 the line of
+- [x] 7.4ag What a crash of smetana offers, said once and clearly: with revision 1 the line of
       7.4ac (Update) and the crash's link Install PlantUML again, with ELK offer the same at
       once; one is left. With `preview.plantuml-layout = elk` and a PlantUML without ELK
       (revision 1, a `plantuml` of PlantUML's MIT build) the preview shows

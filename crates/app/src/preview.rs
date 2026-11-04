@@ -49,12 +49,12 @@ pub use diagrams::{
     DIAGRAM_END, DOT_POLL, Drawn, ElkAttempt, GRAPHVIZ_DOT_VARIABLE, GRAPHVIZ_DOWNLOAD,
     INCLUDE_PATH_VARIABLE, Included, Layout, MAX_PNG_SIDE, MAX_ZOOMED_PIXELS, Mistake, NotDrawn,
     PLANTUML_DELAY, PLANTUML_MAIN, Stop, StopOnDrop, ZOOM_COMMANDS, ZOOM_STEPS, Zoom, ZoomChange,
-    active_diagrams, background, diagram_starts, dragged_offset, draws_again_with_elk, elk_attempt,
-    export_name, find_dot, find_include, fit_page_scale, fit_width_scale, folded_pictures,
-    include_path, lacks_elk, line_offset, mistake_trace, mistakes, normalized, pictured_line,
-    place_in_includes, plantuml_command, raster_factor, redraws_for, relative_to, run_plantuml,
-    setting_path, sized_svg, split_diagrams, svg_size, svg_to_pixels, svg_to_png, system_dot,
-    waits_for_graphviz, watched_folders,
+    active_diagrams, background, crash_pictures, diagram_starts, dragged_offset,
+    draws_again_with_elk, elk_attempt, export_name, find_dot, find_include, fit_page_scale,
+    fit_width_scale, folded_pictures, include_path, lacks_elk, line_offset, mistake_trace,
+    mistakes, normalized, pictured_line, place_in_includes, plantuml_command, raster_factor,
+    redraws_for, relative_to, run_plantuml, setting_path, sized_svg, split_diagrams, svg_size,
+    svg_to_pixels, svg_to_png, system_dot, waits_for_graphviz, watched_folders,
 };
 pub use includes::{IncludeLink, Includes, MOST_INCLUDED_FILES, Preprocessor, walk_includes};
 
@@ -259,6 +259,8 @@ struct Diagrams {
     folded: Vec<usize>,
     /// Those of them shown all the same, by a click.
     unfolded: Vec<usize>,
+    /// The diagrams that are PlantUML's pictures of a crash, shown with its details.
+    crash_pictures: Vec<usize>,
     /// The files the document includes, found when it was last drawn.
     included: Vec<PathBuf>,
     /// Watches the folders of the document and of the files it includes.
@@ -614,6 +616,7 @@ impl Preview {
                     .map(|svg| Diagram::new(svg, zoom))
                     .collect();
                 diagrams.folded = folded_pictures(&drawn.mistakes, &drawn.diagrams);
+                diagrams.crash_pictures = crash_pictures(&drawn.mistakes, &drawn.diagrams);
                 diagrams.unfolded.clear();
                 diagrams.mistakes = drawn.mistakes;
                 diagrams.error = None;
@@ -950,9 +953,12 @@ impl Preview {
         diagrams: &Diagrams,
         this: &WeakEntity<Self>,
         workspace: &WeakEntity<Workspace>,
-        outdated: bool,
+        offers_update: bool,
     ) -> AnyElement {
         let this = this.clone();
+        // ELK asked for, by the setting or after a crash of smetana, of a PlantUML without it.
+        let no_elk = lacks_elk(&diagrams.mistakes) || diagrams.elk == ElkAttempt::Missing;
+        let asked_for_elk = diagrams.layout == Layout::Elk.name() && lacks_elk(&diagrams.mistakes);
         let toggle = if diagrams.details {
             t!("preview.plantuml-hide-details")
         } else {
@@ -963,20 +969,20 @@ impl Preview {
             .flex()
             .flex_col()
             .gap_1()
-            .child(div().text_color(paint(ui().error)).child(
-                if diagrams.elk == ElkAttempt::Crashed {
-                    t!(
-                        "preview.plantuml-neither-layout",
-                        error = mistake.message.as_str()
-                    )
-                } else {
-                    t!(
-                        "preview.plantuml-crashed",
-                        layout = diagrams.layout,
-                        error = mistake.message.as_str()
-                    )
-                },
-            ))
+            .child(div().text_color(paint(ui().error)).child(if asked_for_elk {
+                t!("preview.plantuml-no-elk")
+            } else if diagrams.elk == ElkAttempt::Crashed {
+                t!(
+                    "preview.plantuml-neither-layout",
+                    error = mistake.message.as_str()
+                )
+            } else {
+                t!(
+                    "preview.plantuml-crashed",
+                    layout = diagrams.layout,
+                    error = mistake.message.as_str()
+                )
+            }))
             .when(
                 [Layout::Smetana.name(), Layout::Elk.name()].contains(&diagrams.layout),
                 |crash| {
@@ -998,6 +1004,20 @@ impl Preview {
                             .child(text)
                     };
                     crash
+                        .when(no_elk && !asked_for_elk, |crash| {
+                            crash.child(
+                                div()
+                                    .text_color(paint(ui().muted))
+                                    .child(t!("preview.plantuml-has-no-elk")),
+                            )
+                        })
+                        .when(no_elk && !offers_update, |crash| {
+                            crash.child(
+                                div()
+                                    .text_color(paint(ui().muted))
+                                    .child(t!("preview.plantuml-get-elk")),
+                            )
+                        })
                         .child(
                             div()
                                 .text_color(paint(ui().muted))
@@ -1016,15 +1036,7 @@ impl Preview {
                                     "plantuml-choose-layout",
                                     t!("preview.plantuml-choose-layout"),
                                     "preview.choose-layout",
-                                ))
-                                // An earlier PlantUML of Birchpad's, without ELK (ADR 0063).
-                                .when(outdated, |links| {
-                                    links.child(link(
-                                        "plantuml-install-elk",
-                                        t!("preview.plantuml-install-with-elk"),
-                                        "preview.install-plantuml",
-                                    ))
-                                }),
+                                )),
                         )
                 },
             )
@@ -1155,7 +1167,7 @@ impl Preview {
         diagrams: &Diagrams,
         this: &WeakEntity<Self>,
         workspace: &WeakEntity<Workspace>,
-        outdated: bool,
+        offers_update: bool,
     ) -> impl IntoElement {
         let mistakes = &diagrams.mistakes;
         div()
@@ -1166,7 +1178,12 @@ impl Preview {
             .children(mistakes.iter().enumerate().map(|(index, mistake)| {
                 if let Some(details) = &mistake.details {
                     return Self::render_crash(
-                        mistake, details, diagrams, this, workspace, outdated,
+                        mistake,
+                        details,
+                        diagrams,
+                        this,
+                        workspace,
+                        offers_update,
                     );
                 }
                 let message = mistake.message.as_str();
@@ -1305,7 +1322,7 @@ impl Preview {
                     diagrams,
                     this,
                     workspace,
-                    crate::plantuml::outdated(cx),
+                    crate::plantuml::offers_update(cx),
                 ))
             })
             .when(diagrams.missing, |list| {
@@ -1313,7 +1330,10 @@ impl Preview {
             })
             .children(diagrams.images.iter().enumerate().map(|(index, diagram)| {
                 let folded = diagrams.folded.contains(&index);
-                let shown = !folded || diagrams.unfolded.contains(&index);
+                // A crash's picture shows with the crash's details, and is folded with them.
+                let crash = diagrams.crash_pictures.contains(&index);
+                let shown =
+                    (!folded || diagrams.unfolded.contains(&index)) && (!crash || diagrams.details);
                 // The picture of a placed mistake: a line that shows it, or hides it again.
                 let toggle = folded.then(|| {
                     let this = this.clone();

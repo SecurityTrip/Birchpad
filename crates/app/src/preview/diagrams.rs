@@ -1334,6 +1334,32 @@ pub fn folded_pictures(mistakes: &[Mistake], diagrams: &[Vec<u8>]) -> Vec<usize>
     folded
 }
 
+/// The diagrams (by index) that are PlantUML's pictures of its crashes: they show the stack
+/// trace again, unfolded, and are folded with the crash's details. Each crash's picture is the
+/// first, after the last one found, that names its exception (`java.lang.NullPointerException`).
+pub fn crash_pictures(mistakes: &[Mistake], diagrams: &[Vec<u8>]) -> Vec<usize> {
+    let mut found = Vec::new();
+    let mut next = 0;
+    for mistake in mistakes.iter().filter(|mistake| mistake.details.is_some()) {
+        let exception = mistake
+            .message
+            .split([':', ' '])
+            .next()
+            .unwrap_or_default()
+            .trim();
+        if exception.is_empty() {
+            continue;
+        }
+        if let Some(index) = (next..diagrams.len())
+            .find(|&index| String::from_utf8_lossy(&diagrams[index]).contains(exception))
+        {
+            found.push(index);
+            next = index + 1;
+        }
+    }
+    found
+}
+
 /// Where line `line` (from 0) of `text` starts, in bytes; the end of the text past its last
 /// line. `\n`, `\r\n` and `\r` end lines.
 pub fn line_offset(text: &str, line: usize) -> usize {

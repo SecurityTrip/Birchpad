@@ -57,9 +57,11 @@ point about the EPL 1.0 of Graphviz was a small one, and does not stand against 
   `elk`, to lay out with ELK always.
 - **An earlier revision keeps working.** Birchpad uses the PlantUML of an earlier version or
   revision still installed until the new one is. A preview drawn with it shows one quiet line
-  above the diagrams, that a newer PlantUML lays out what smetana cannot, with Update; under a
-  crash of smetana it also offers to install PlantUML again, with ELK. Nothing is downloaded
-  until one of them is clicked, as ADR 0045 asks.
+  above the diagrams, that a newer PlantUML lays out what smetana cannot, with Update; it is
+  the one offer of it (roadmap 7.4ag), a crash of smetana offering nothing more. Nothing is
+  downloaded until it is clicked, as ADR 0045 asks. A PlantUML without ELK asked for it (the
+  setting `elk`, or the fallback) says that it has no ELK, and where the one with it is, rather
+  than Java's `ClassNotFoundException`.
 - **When ELK crashes too**, the preview says that neither smetana nor ELK could lay the
   diagram out and that Graphviz lays out what they cannot, rather than showing smetana's crash
   alone. Preferences says, beside `elk`, what it cannot lay out. When an installation of PlantUML ends,

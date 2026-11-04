@@ -2384,3 +2384,67 @@ fn what_came_of_elk_is_told_apart() {
     assert!(!lacks_elk(&mistakes(other, "", &[])));
     assert!(!lacks_elk(&[]));
 }
+
+#[test]
+fn pictures_of_crashes_are_found_by_their_exception() {
+    let crash = mistakes(CRASH, "@startuml\n@enduml", &[]);
+    let diagrams = [
+        b"<svg>A B</svg>".to_vec(),
+        b"<svg><text>An error has occurred : java.lang.NullPointerException: x</text></svg>"
+            .to_vec(),
+    ];
+    assert_eq!(crash_pictures(&crash, &diagrams), [1]);
+    // A picture that names no exception, a mistake that is no crash: nothing.
+    assert!(crash_pictures(&crash, &[picture("crash")]).is_empty());
+    let mistake = mistakes(
+        "ERROR\n1\nOops\n",
+        "@startuml\nx\n@enduml",
+        &[picture("Oops")],
+    );
+    assert!(crash_pictures(&mistake, &[picture("Oops")]).is_empty());
+    assert!(crash_pictures(&[], &diagrams).is_empty());
+    assert!(crash_pictures(&crash, &[]).is_empty());
+    // Two crashes, two pictures, in order.
+    let twice: Vec<Mistake> = crash.iter().chain(&crash).cloned().collect();
+    let both = [diagrams[1].clone(), diagrams[1].clone()];
+    assert_eq!(crash_pictures(&twice, &both), [0, 1]);
+}
+
+#[gpui_kit::test]
+fn the_picture_of_a_crash_is_folded_with_its_details(cx: &mut TestAppContext) {
+    let (workspace, cx) = open_workspace(cx);
+    DOT.with(|dot| *dot.borrow_mut() = Some(None));
+    cx.update(|_, cx| {
+        cx.global_mut::<AppState>().settings.preview.plantuml_layout =
+            birchpad_config::DiagramLayout::Smetana;
+    });
+    let dir = tempfile::tempdir().unwrap();
+    let plantuml = fake_plantuml(
+        dir.path(),
+        "echo ^<svg width=\"200px\" height=\"80px\"^>java.lang.NullPointerException^</svg^>\n\
+         >&2 echo java.lang.NullPointerException\n\
+         >&2 echo 	at a.SmetanaEdge.draw(SmetanaEdge.java:1)\nexit /b 1",
+        "echo '<svg width=\"200px\" height=\"80px\">java.lang.NullPointerException</svg>'\n\
+         echo java.lang.NullPointerException >&2\n\
+         printf '\tat a.SmetanaEdge.draw(SmetanaEdge.java:1)\n' >&2\nexit 1",
+    );
+    let shown = draw(
+        &workspace,
+        &plantuml,
+        dir.path(),
+        "large.puml",
+        "@startuml\nA -> B\n@enduml\n",
+        cx,
+    );
+    cx.update(|window, _| window.refresh());
+    cx.run_until_parked();
+    assert!(cx.debug_bounds("plantuml-diagram-0").is_none(), "folded");
+    shown.update(cx, |preview, cx| preview.toggle_details(cx));
+    cx.update(|window, _| window.refresh());
+    cx.run_until_parked();
+    assert!(
+        cx.debug_bounds("plantuml-diagram-0").is_some(),
+        "shown with the details"
+    );
+    DOT.with(|dot| *dot.borrow_mut() = None);
+}

@@ -8,6 +8,10 @@ version's release notes from its section here.
 
 ### Changed
 
+- A crash of PlantUML says it once and clearly: the newer PlantUML is offered by the one line
+  above the diagrams, not by the crash as well; a PlantUML without ELK asked for it says so,
+  and where the one with ELK is, rather than Java's `ClassNotFoundException`; and PlantUML's
+  picture of the crash, which repeats the stack trace, is folded with the crash's details.
 - PlantUML's picture of a mistake the preview has placed (on a line of the document, or in
   an included file) is folded under a line that shows it on a click: the list above the
   diagrams says the same, and the picture, as tall as the preview, carried PlantUML's own
