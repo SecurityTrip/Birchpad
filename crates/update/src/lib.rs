@@ -97,6 +97,13 @@ pub trait Transport: Send + Sync {
     /// The body of `url`, at most [`MAX_MANIFEST_SIZE`] bytes.
     fn get(&self, url: &str) -> Result<Vec<u8>, String>;
 
+    /// The body of the answer to a `POST` of the JSON `body` to `url`, at most
+    /// [`MAX_MANIFEST_SIZE`] bytes; an answer other than `200 OK` is an error. A transport that
+    /// does not post (the tests' fakes) fails, and checks then read the manifest from GitHub.
+    fn post_json(&self, url: &str, _body: &[u8]) -> Result<Vec<u8>, String> {
+        Err(format!("cannot post to {url}"))
+    }
+
     /// Downloads `url` into `to`, at most `limit` bytes, reporting the bytes received so far.
     fn download(
         &self,
@@ -393,18 +400,26 @@ impl Transport for HttpTransport {
             .header("Accept", "application/json, application/octet-stream")
             .call()
             .map_err(|error| error.to_string())?;
-        // ureq fails the read after its limit is reached even when the body ends there: allow a
-        // byte more, so that a body of exactly the limit ends normally, and check the size here.
-        let body = response
-            .body_mut()
-            .with_config()
-            .limit(MAX_MANIFEST_SIZE + 1)
-            .read_to_vec()
-            .map_err(|error| self.read_error(&error.into_io()))?;
-        if body.len() as u64 > MAX_MANIFEST_SIZE {
-            return Err(format!("larger than {MAX_MANIFEST_SIZE} bytes"));
+        self.read_manifest(&mut response)
+    }
+
+    fn post_json(&self, url: &str, body: &[u8]) -> Result<Vec<u8>, String> {
+        // Not redirected: the answer is the service's own, or none.
+        let mut response = self
+            .agent
+            .post(url)
+            .config()
+            .max_redirects(0)
+            .build()
+            .header("Content-Type", "application/json")
+            .header("Accept", "application/json")
+            .send(body)
+            .map_err(|error| error.to_string())?;
+        let status = response.status().as_u16();
+        if status != 200 {
+            return Err(format!("{url} answered {status}"));
         }
-        Ok(body)
+        self.read_manifest(&mut response)
     }
 
     fn download(
@@ -472,6 +487,25 @@ impl Transport for HttpTransport {
 }
 
 impl HttpTransport {
+    /// The body of `response`, at most [`MAX_MANIFEST_SIZE`] bytes.
+    fn read_manifest(
+        &self,
+        response: &mut ureq::http::Response<ureq::Body>,
+    ) -> Result<Vec<u8>, String> {
+        // ureq fails the read after its limit is reached even when the body ends there: allow a
+        // byte more, so that a body of exactly the limit ends normally, and check the size here.
+        let body = response
+            .body_mut()
+            .with_config()
+            .limit(MAX_MANIFEST_SIZE + 1)
+            .read_to_vec()
+            .map_err(|error| self.read_error(&error.into_io()))?;
+        if body.len() as u64 > MAX_MANIFEST_SIZE {
+            return Err(format!("larger than {MAX_MANIFEST_SIZE} bytes"));
+        }
+        Ok(body)
+    }
+
     /// Writes the body of `response` to `file`, which holds `received` bytes already, up to
     /// `limit` bytes in all, telling `progress` the bytes there are.
     fn receive(

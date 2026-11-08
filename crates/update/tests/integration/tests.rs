@@ -627,3 +627,139 @@ fn an_http_download_with_nothing_or_everything_there_asks_no_range() {
     );
     server.join().ok();
 }
+
+/// A request a server read: its lines, then its body.
+type Posted = (Vec<String>, Vec<u8>);
+
+/// Answers one request after another with `(status, extra headers, body)`, reading each
+/// request's body too; returns what was asked.
+fn serve_posts(
+    answers: Vec<(u16, String, Vec<u8>)>,
+) -> (String, std::thread::JoinHandle<Vec<Posted>>) {
+    use std::io::Read as _;
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let address = listener.local_addr().unwrap();
+    let server = std::thread::spawn(move || {
+        let mut requests = Vec::new();
+        for (status, headers, body) in answers {
+            let (mut stream, _) = listener.accept().unwrap();
+            let mut reader = BufReader::new(stream.try_clone().unwrap());
+            let mut lines = Vec::new();
+            loop {
+                let mut line = String::new();
+                reader.read_line(&mut line).unwrap();
+                let line = line.trim_end().to_owned();
+                if line.is_empty() {
+                    break;
+                }
+                lines.push(line);
+            }
+            let length = lines
+                .iter()
+                .find_map(|line| {
+                    let (name, value) = line.split_once(':')?;
+                    name.eq_ignore_ascii_case("content-length")
+                        .then(|| value.trim().parse::<usize>().unwrap())
+                })
+                .unwrap_or(0);
+            let mut sent = vec![0; length];
+            reader.read_exact(&mut sent).unwrap();
+            write!(
+                stream,
+                "HTTP/1.1 {status} Status\r\n{headers}Content-Length: {}\r\nConnection: close\r\n\r\n",
+                body.len()
+            )
+            .unwrap();
+            stream.write_all(&body).ok();
+            requests.push((lines, sent));
+        }
+        requests
+    });
+    (format!("http://{address}"), server)
+}
+
+fn header<'a>(lines: &'a [String], name: &str) -> Option<&'a str> {
+    lines.iter().find_map(|line| {
+        let (key, value) = line.split_once(':')?;
+        key.eq_ignore_ascii_case(name).then(|| value.trim())
+    })
+}
+
+#[test]
+fn http_transport_posts_json_and_reads_the_answer() {
+    let transport = HttpTransport::build("Birchpad/0.8.0 (test)", None, STALL);
+    let (base, server) = serve_posts(vec![(200, String::new(), signed(&["1.0.0"]))]);
+    let body = br#"{"installId":"0b3c6f1e-6a1f-4c4e-9a59-3c1f7f0d2a11"}"#;
+    let answer = transport
+        .post_json(&format!("{base}/v1/updates/check"), body)
+        .unwrap();
+    assert_eq!(answer, signed(&["1.0.0"]));
+    let requests = server.join().unwrap();
+    let (lines, sent) = &requests[0];
+    assert_eq!(lines[0], "POST /v1/updates/check HTTP/1.1");
+    assert_eq!(header(lines, "content-type"), Some("application/json"));
+    assert_eq!(header(lines, "accept"), Some("application/json"));
+    assert_eq!(header(lines, "user-agent"), Some("Birchpad/0.8.0 (test)"));
+    assert_eq!(sent, body);
+
+    // `{}` is a body too.
+    let (base, server) = serve_posts(vec![(200, String::new(), b"x".to_vec())]);
+    assert_eq!(transport.post_json(&base, b"{}").unwrap(), b"x");
+    assert_eq!(server.join().unwrap()[0].1, b"{}");
+}
+
+#[test]
+fn http_posts_answered_other_than_200_are_errors() {
+    let transport = HttpTransport::build("Birchpad/0.8.0 (test)", None, STALL);
+    for status in [503, 400, 413, 404, 204, 201] {
+        let (base, server) = serve_posts(vec![(status, String::new(), signed(&["1.0.0"]))]);
+        let error = transport.post_json(&base, b"{}").unwrap_err();
+        assert!(error.contains(&status.to_string()), "{status}: {error}");
+        server.join().unwrap();
+    }
+    // A redirect is not followed, even to a signed manifest: the answer is the service's own.
+    let (elsewhere, _never_joined) = serve_posts(vec![(200, String::new(), signed(&["1.0.0"]))]);
+    for status in [301, 302, 303, 307, 308] {
+        let location = format!("Location: {elsewhere}/m\r\n");
+        let (base, server) = serve_posts(vec![(status, location, Vec::new())]);
+        assert!(transport.post_json(&base, b"{}").is_err(), "{status}");
+        server.join().unwrap();
+    }
+    // Nobody listens on a port that was just freed.
+    let address = TcpListener::bind("127.0.0.1:0")
+        .unwrap()
+        .local_addr()
+        .unwrap();
+    assert!(
+        transport
+            .post_json(&format!("http://{address}/v1"), b"{}")
+            .is_err()
+    );
+}
+
+#[test]
+fn posted_answers_up_to_the_limit_are_read_and_larger_ones_refused() {
+    let transport = HttpTransport::build("Birchpad/0.8.0 (test)", None, STALL);
+    let limit = MAX_MANIFEST_SIZE as usize;
+    let (base, server) = serve_posts(vec![(200, String::new(), vec![b'{'; limit])]);
+    assert_eq!(transport.post_json(&base, b"{}").unwrap().len(), limit);
+    server.join().unwrap();
+    let (base, server) = serve_posts(vec![(200, String::new(), vec![b'{'; limit + 1])]);
+    let error = transport.post_json(&base, b"{}").unwrap_err();
+    assert!(error.contains("larger than"), "{error}");
+    server.join().ok();
+    let (base, server) = serve_posts(vec![(200, String::new(), Vec::new())]);
+    assert_eq!(transport.post_json(&base, b"{}").unwrap(), b"");
+    server.join().unwrap();
+}
+
+#[test]
+fn transports_that_do_not_post_fail_to() {
+    let transport = Fixed(b"12345".to_vec());
+    let error = transport
+        .post_json("https://api.example.com/v1", b"{}")
+        .unwrap_err();
+    assert!(error.contains("https://api.example.com/v1"), "{error}");
+    // Getting still works.
+    assert_eq!(transport.get("u").unwrap(), b"12345");
+}
