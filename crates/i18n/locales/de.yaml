@@ -1283,6 +1283,7 @@ preferences:
   search-results-one-entry-per-line: "Suchergebnisse: ein Eintrag pro Zeile"
   searching: "Suchen"
   selected-text-in-its-own-color: "Ausgewählter Text in eigener Farbe"
+  send-install-statistics: "Installationsstatistik senden"
   session-file-extension: "Dateiendung für Sitzungen"
   set: "Festlegen"
   set-by-your-administrator: "Von Ihrem Administrator festgelegt"

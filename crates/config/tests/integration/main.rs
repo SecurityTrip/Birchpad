@@ -56,6 +56,9 @@ mod settings_print_tests;
 #[path = "settings/search_engine_tests.rs"]
 mod settings_search_engine_tests;
 
+#[path = "settings/updates_tests.rs"]
+mod settings_updates_tests;
+
 #[path = "state/tests.rs"]
 mod state;
 

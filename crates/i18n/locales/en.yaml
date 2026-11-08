@@ -1285,6 +1285,7 @@ preferences:
   search-results-one-entry-per-line: "Search results: one entry per line"
   searching: "Searching"
   selected-text-in-its-own-color: "Selected text in its own color"
+  send-install-statistics: "Send install statistics"
   session-file-extension: "Session file extension"
   set: "Set"
   set-by-your-administrator: "Set by your administrator"

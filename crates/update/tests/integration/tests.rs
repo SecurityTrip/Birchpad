@@ -77,6 +77,7 @@ fn settings(mode: UpdateMode, channel: UpdateChannel) -> UpdateSettings {
         channel,
         url: None,
         proxy: String::new(),
+        statistics: true,
     }
 }
 

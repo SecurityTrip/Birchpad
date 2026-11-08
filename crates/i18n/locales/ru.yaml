@@ -1297,6 +1297,7 @@ preferences:
   search-results-one-entry-per-line: "Результаты поиска: одна запись на строку"
   searching: "Поиск"
   selected-text-in-its-own-color: "Выделенный текст своим цветом"
+  send-install-statistics: "Отправлять статистику установок"
   session-file-extension: "Расширение файлов сеанса"
   set: "Задать"
   set-by-your-administrator: "Задано администратором"

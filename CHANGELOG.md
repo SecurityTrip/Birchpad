@@ -6,6 +6,13 @@ version's release notes from its section here.
 
 ## [Unreleased]
 
+### Added
+
+- `updates.statistics` (Preferences > Updates > Send install statistics, on by default) and
+  the `UpdateStatistics` policy (`REG_DWORD`; 0 turns the statistics off, which users cannot
+  override): whether update checks say which copy of Birchpad asks
+  ([ADR 0064](docs/adr/0064-update-api-and-install-statistics.md)).
+
 ## [0.7.7] - 2026-11-05
 
 ### Added
