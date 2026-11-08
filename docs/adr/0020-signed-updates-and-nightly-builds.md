@@ -1,6 +1,7 @@
 # ADR 0020: Signed updates, nightly builds and the per-user installer
 
-- Status: accepted
+- Status: accepted, extended by [ADR 0064](0064-update-api-and-install-statistics.md)
+  (the manifest read from Birchpad's Update API first, GitHub when it fails)
 - Date: 2026-10-05
 
 ## Context

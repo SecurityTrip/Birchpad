@@ -1074,6 +1074,12 @@ as revision 1 did (105 drawn). With ELK it draws 67. What it showed:
 - [ ] 7.6 Git: changes in the gutter, blame of the line, the diff of a file against its last
       commit
 - [ ] 7.7 Integrated terminal in a panel
+- [ ] 7.7a Update checks through Birchpad's Update API, with install statistics
+      ([ADR 0064](adr/0064-update-api-and-install-statistics.md)): the signed manifest read from
+      `api.birchpad.ru` and verified as the one from GitHub, which stays the way when the API
+      fails; the request says, unless `updates.statistics = false` or the `UpdateStatistics`
+      policy, a random id of the copy, its version, channel, platform and PlantUML, and the
+      privacy policy says so
 - [ ] Release 0.8.0: the workspace version (0.8.0, set when its branch opens, so that nightly
       builds are its pre-releases), `CHANGELOG.md` and this roadmap updated; the
       [release checklist](release-checklist.md) gone through
