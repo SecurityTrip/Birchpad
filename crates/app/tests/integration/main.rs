@@ -200,6 +200,9 @@ mod tray;
 #[path = "updates/tests.rs"]
 mod updates;
 
+#[path = "updates/statistics_tests.rs"]
+mod updates_statistics;
+
 #[path = "user_languages/define_tests.rs"]
 mod user_languages_define_tests;
 

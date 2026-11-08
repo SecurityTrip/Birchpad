@@ -23,6 +23,7 @@ use anyhow::{Context as _, Result};
 use birchpad_config::UpdateMode;
 use birchpad_update::install::Installer;
 use birchpad_update::manifest::{self, PLATFORM};
+use birchpad_update::statistics::Statistics;
 use birchpad_update::{
     CheckError, CheckRequest, Checked, HttpTransport, Outcome, Release, Transport, VerifyingKey,
 };
@@ -300,6 +301,21 @@ pub fn install_id(cx: &mut App) -> Option<String> {
     id
 }
 
+/// What a check tells the Update API (ADR 0064): with `updates.statistics` on, this copy's install
+/// id, version, channel, platform and PlantUML; with it off, nothing, and the install id is
+/// deleted.
+pub fn statistics(cx: &mut App) -> Option<Statistics> {
+    let install_id = install_id(cx)?;
+    let settings = &AppState::global(cx).settings.updates;
+    Some(Statistics {
+        install_id,
+        version: VERSION.to_owned(),
+        channel: settings.channel,
+        platform: birchpad_update::component::platform().map(str::to_owned),
+        plantuml: crate::plantuml::in_use(cx),
+    })
+}
+
 /// Whether this build checks in the background: release builds, and development builds with
 /// `BIRCHPAD_BACKGROUND_UPDATES` set (for trying it out).
 pub fn checks_in_background() -> bool {
@@ -384,6 +400,15 @@ impl Workspace {
             .max(BUILD_TIME.parse().unwrap_or(0));
         cx.global_mut::<Updates>().checking = true;
         let current = Version::parse(VERSION).expect("the version is semver");
+        // Only for the Update API: a mirror (`updates.url`) is told nothing, and no install id
+        // is made for it.
+        let statistics = match birchpad_update::mirror(&settings) {
+            None => statistics(cx),
+            Some(_) => {
+                forget_install_id_when_off(cx);
+                None
+            }
+        };
         let check = cx.background_spawn(async move {
             let request = CheckRequest {
                 settings: &settings,
@@ -392,7 +417,7 @@ impl Workspace {
                 keys: &keys,
                 now: now(),
                 newest_seen,
-                statistics: None,
+                statistics: statistics.as_ref(),
             };
             birchpad_update::check(&request, transport.as_ref())
         });
