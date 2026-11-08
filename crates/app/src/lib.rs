@@ -186,6 +186,8 @@ pub fn run() {
                 birchpad_update::install::detect(),
                 cx,
             );
+            // Statistics turned off by a policy since the last run (ADR 0064).
+            updates::forget_install_id_when_off(cx);
             commands::init(user_keymap.as_deref(), cx);
             cx.on_window_closed(|cx, _| {
                 if cx.windows().is_empty() {

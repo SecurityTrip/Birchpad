@@ -279,6 +279,27 @@ pub fn now() -> u64 {
         .map_or(0, |elapsed| elapsed.as_secs())
 }
 
+/// Deletes the install id from `state.toml` once statistics are off (ADR 0064), so that turning
+/// them on again makes a new one that nothing ties to it.
+pub fn forget_install_id_when_off(cx: &mut App) {
+    let state = AppState::global(cx);
+    if !state.settings.updates.statistics && state.state.updates.install_id.is_some() {
+        AppState::update_state(cx, |state, _| state.updates.install_id = None);
+    }
+}
+
+/// The install id a check sends: with statistics on, the one in `state.toml`, made and saved at
+/// the first check; with them off, none, and the one there was deleted.
+pub fn install_id(cx: &mut App) -> Option<String> {
+    let statistics = AppState::global(cx).settings.updates.statistics;
+    let mut id = AppState::global(cx).state.updates.install_id.clone();
+    if birchpad_update::statistics::keep_install_id(&mut id, statistics) {
+        let kept = id.clone();
+        AppState::update_state(cx, |state, _| state.updates.install_id = kept);
+    }
+    id
+}
+
 /// Whether this build checks in the background: release builds, and development builds with
 /// `BIRCHPAD_BACKGROUND_UPDATES` set (for trying it out).
 pub fn checks_in_background() -> bool {

@@ -13,6 +13,7 @@ pub mod component;
 pub mod install;
 mod keys;
 pub mod manifest;
+pub mod statistics;
 
 use std::fs::File;
 use std::io::{Read as _, Write as _};

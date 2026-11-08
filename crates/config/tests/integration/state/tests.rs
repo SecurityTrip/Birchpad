@@ -49,6 +49,7 @@ fn round_trips_and_survives_damage() {
             last_check: 1_790_000_000,
             manifest_timestamp: 1_789_000_000,
             announced: Some("0.2.0".into()),
+            install_id: Some("0b3c6f1e-6a1f-4c4e-9a59-3c1f7f0d2a11".into()),
         },
         ..UserState::default()
     };
@@ -88,4 +89,34 @@ fn find_in_files_options_round_trip_and_default_when_missing() {
     assert_eq!(toml::from_str::<UserState>(&text).unwrap(), state);
     // A wrong type is damage: the whole state is the default, as for any other key.
     assert!(toml::from_str::<UserState>("[find-in-files]\nsubfolders = 3").is_err());
+}
+
+#[test]
+fn the_install_id_is_written_only_when_there_is_one() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("state.toml");
+    let mut state = UserState::default();
+    state.updates.last_check = 1;
+    state.save(&path).unwrap();
+    let text = fs::read_to_string(&path).unwrap();
+    assert!(!text.contains("install-id"), "{text}");
+    assert_eq!(UserState::load(&path).updates.install_id, None);
+
+    state.updates.install_id = Some("0b3c6f1e-6a1f-4c4e-9a59-3c1f7f0d2a11".into());
+    state.save(&path).unwrap();
+    let text = fs::read_to_string(&path).unwrap();
+    assert!(
+        text.contains(r#"install-id = "0b3c6f1e-6a1f-4c4e-9a59-3c1f7f0d2a11""#),
+        "{text}"
+    );
+    // Deleted, it is gone from the file too.
+    state.updates.install_id = None;
+    state.save(&path).unwrap();
+    assert!(!fs::read_to_string(&path).unwrap().contains("install-id"));
+    // An empty one in the file is read as it is: checks replace it (it is no UUID).
+    fs::write(&path, "[updates]\ninstall-id = \"\"\n").unwrap();
+    assert_eq!(
+        UserState::load(&path).updates.install_id.as_deref(),
+        Some("")
+    );
 }

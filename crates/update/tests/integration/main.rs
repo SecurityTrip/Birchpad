@@ -14,5 +14,8 @@ mod install_velopack_installer;
 #[path = "manifest/tests.rs"]
 mod manifest;
 
+#[path = "statistics/tests.rs"]
+mod statistics;
+
 #[path = "tests.rs"]
 mod lib_tests;

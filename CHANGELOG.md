@@ -12,6 +12,10 @@ version's release notes from its section here.
   the `UpdateStatistics` policy (`REG_DWORD`; 0 turns the statistics off, which users cannot
   override): whether update checks say which copy of Birchpad asks
   ([ADR 0064](docs/adr/0064-update-api-and-install-statistics.md)).
+- The install id of the statistics: a random UUID (version 4) a copy of Birchpad makes for
+  itself at its first check with statistics on, kept in `state.toml` (`[updates] install-id`)
+  and derived from nothing on the computer. Turning statistics off deletes it; turning them on
+  again makes a new one, which nothing ties to the old.
 
 ## [0.7.7] - 2026-11-05
 
