@@ -1,6 +1,9 @@
 //! The crate's tests through its public interface, one module per part of `src`, in one
 //! test binary.
 
+#[path = "api_tests.rs"]
+mod api;
+
 #[path = "catalog/tests.rs"]
 mod catalog;
 

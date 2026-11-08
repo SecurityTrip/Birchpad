@@ -99,6 +99,7 @@ fn run(
         keys: &keys,
         now: NOW,
         newest_seen: 0,
+        statistics: None,
     };
     check(&request, transport)
 }

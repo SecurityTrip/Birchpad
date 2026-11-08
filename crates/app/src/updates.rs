@@ -392,6 +392,7 @@ impl Workspace {
                 keys: &keys,
                 now: now(),
                 newest_seen,
+                statistics: None,
             };
             birchpad_update::check(&request, transport.as_ref())
         });
@@ -433,6 +434,10 @@ impl Workspace {
                 return;
             }
         };
+        // The manifest came from GitHub: why the Update API failed is only logged (ADR 0064).
+        if let Some(error) = &checked.api_error {
+            eprintln!("update check: {error}");
+        }
         AppState::update_state(cx, |state, _| {
             state.updates.last_check = now();
             state.updates.manifest_timestamp =

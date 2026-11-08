@@ -8,6 +8,17 @@ version's release notes from its section here.
 
 ### Added
 
+- Update checks through Birchpad's Update API
+  ([ADR 0064](docs/adr/0064-update-api-and-install-statistics.md)): Birchpad posts to
+  `https://api.birchpad.ru/v1/updates/check`, which answers with the signed update manifest as
+  published on GitHub, byte for byte, and verifies it as it verifies the one from GitHub (the
+  same keys, no manifest older than one seen, none expired). When the API fails (no answer, a
+  status other than 200, a manifest that does not verify), the check reads the manifest from
+  GitHub as before, and reports GitHub's error if that fails too; the API's error is only
+  logged. The request says, with statistics on, the copy's install id, version, channel,
+  platform and PlantUML (`component`, `custom` or `none`, and the component's version), and
+  nothing (`{}`) with them off.
+
 - `updates.statistics` (Preferences > Updates > Send install statistics, on by default) and
   the `UpdateStatistics` policy (`REG_DWORD`; 0 turns the statistics off, which users cannot
   override): whether update checks say which copy of Birchpad asks
