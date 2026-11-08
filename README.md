@@ -78,7 +78,9 @@ built from this repository's source on GitHub-hosted runners.
 
 Privacy policy: Birchpad collects no personal data, and connects to the network only to check
 for and download updates, which can be turned off, and, when you ask, to install PlantUML,
-plugins and dictionaries; see [PRIVACY.md](PRIVACY.md).
+plugins and dictionaries. Update checks send install statistics (a random id of the copy, its
+version, channel, platform and PlantUML) unless `updates.statistics = false`; see
+[PRIVACY.md](PRIVACY.md).
 
 ## Building
 
@@ -131,7 +133,10 @@ with it) and Birchpad keeps its settings and data in a `data` folder next to it.
 policies of the machine still apply.
 
 On its own, Birchpad uses the network only to check for updates: once a day, and when you pick
-Help > Check for Updates. It reads a manifest signed with the project's key and refuses any other; installed
+Help > Check for Updates. It reads a manifest signed with the project's key and refuses any
+other, from Birchpad's update service (`api.birchpad.ru`) or, when that fails, from GitHub; the
+request carries the install statistics, or nothing with `updates.statistics = false`
+([ADR 0064](docs/adr/0064-update-api-and-install-statistics.md)); installed
 copies (the Windows installer) update themselves when Birchpad restarts, other copies show where
 to download the new version. With `updates.mode = "off"` (a setting or an administrator policy)
 Birchpad makes no update requests; `"notify"` announces new versions without downloading them.

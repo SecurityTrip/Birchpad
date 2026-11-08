@@ -48,6 +48,10 @@ Silicon, Linux (Ubuntu или Debian, под X11 и под Wayland). Windows н�
       а установленная прошлая версия с `updates.mode = "auto"` обновляется сама и запускается
       снова со своей сессией
 - [ ] С `updates.mode = "off"` ничего не уходит в сеть (Help > Check for Updates недоступен)
+- [ ] Проверка отправляет `POST` на `api.birchpad.ru` и получает тот же подписанный манифест,
+      что на GitHub; при заблокированном `api.birchpad.ru` она всё равно находит новый выпуск, с
+      GitHub; при `updates.statistics = false` тело запроса — `{}`, а `install-id` в
+      `state.toml` нет ([ADR 0064](adr/0064-update-api-and-install-statistics.md))
 
 ## Методы ввода и клавиатуры
 

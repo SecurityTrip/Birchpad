@@ -48,6 +48,10 @@ desktops are welcome but not required.
       again with its session
 - [ ] With `updates.mode = "off"`, nothing goes to the network (Help > Check for Updates is
       disabled)
+- [ ] The check posts to `api.birchpad.ru` and is answered with the same signed manifest as
+      GitHub's; with `api.birchpad.ru` blocked it still finds the new release, from GitHub; with
+      `updates.statistics = false` the body is `{}` and `install-id` is gone from `state.toml`
+      ([ADR 0064](adr/0064-update-api-and-install-statistics.md))
 
 ## Input methods and keyboards
 

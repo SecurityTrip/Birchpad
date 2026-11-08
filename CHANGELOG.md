@@ -18,7 +18,6 @@ version's release notes from its section here.
   logged. The request says, with statistics on, the copy's install id, version, channel,
   platform and PlantUML (`component`, `custom` or `none`, and the component's version), and
   nothing (`{}`) with them off.
-
 - `updates.statistics` (Preferences > Updates > Send install statistics, on by default) and
   the `UpdateStatistics` policy (`REG_DWORD`; 0 turns the statistics off, which users cannot
   override): whether update checks say which copy of Birchpad asks
@@ -27,6 +26,17 @@ version's release notes from its section here.
   itself at its first check with statistics on, kept in `state.toml` (`[updates] install-id`)
   and derived from nothing on the computer. Turning statistics off deletes it; turning them on
   again makes a new one, which nothing ties to the old.
+
+### Changed
+
+- The privacy policy ([PRIVACY.md](PRIVACY.md)) no longer says "no telemetry": it says what
+  update checks send to `api.birchpad.ru` (the install statistics) and why, what the service
+  keeps (one row per copy: the first and the current version, channel, platform, PlantUML, the
+  times of the first and the last check) and what it does not (IP addresses, the
+  `User-Agent`, a history of checks), and how to turn them off (`updates.statistics = false`,
+  the `UpdateStatistics` policy, `updates.mode = "off"`).
+- Help > About names `api.birchpad.ru` as where updates are read from, unless `updates.url`
+  names a mirror.
 
 ## [0.7.7] - 2026-11-05
 
