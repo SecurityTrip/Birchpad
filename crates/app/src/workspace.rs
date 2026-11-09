@@ -49,6 +49,8 @@ pub struct Workspace {
     pub find_bar: Entity<FindBar>,
     pub incremental: Entity<IncrementalBar>,
     pub search_results: Entity<SearchResults>,
+    /// View > Terminal (ADR 0067).
+    pub terminal: Entity<crate::terminal::TerminalPanel>,
     /// The inactive tab the mouse is over, which the Document Map shows (MISC > Document
     /// Peeker).
     pub peeked: Option<gpui_kit::WeakEntity<EditorView>>,
@@ -95,6 +97,7 @@ impl Workspace {
         let incremental = cx.new(|cx| IncrementalBar::new(window, cx));
         subscriptions.push(cx.subscribe_in(&incremental, window, Self::on_incremental_event));
         let search_results = cx.new(SearchResults::new);
+        let terminal = cx.new(crate::terminal::TerminalPanel::new);
         subscriptions.push(cx.subscribe_in(&search_results, window, Self::on_search_results_event));
         let mut this = Self {
             focus_handle: cx.focus_handle(),
@@ -106,6 +109,7 @@ impl Workspace {
             find_bar,
             incremental,
             search_results,
+            terminal,
             peeked: None,
             title: String::new(),
             title_add: None,

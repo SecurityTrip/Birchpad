@@ -452,6 +452,8 @@ pub const COMMANDS: &[CommandSpec] = &[
     workspace("lsp.previous-diagnostic", "Previous Diagnostic"),
     workspace("lsp.diagnostics", "List Diagnostics"),
     workspace("lsp.restart", "Restart Language Server"),
+    // View > Terminal (ADR 0067): shows the shell's panel, or hides it
+    workspace("view.terminal", "Terminal"),
     // Tools > Git (ADR 0066): the active document's file
     workspace("git.blame", "Blame Line"),
     workspace("git.next-change", "Next Change"),

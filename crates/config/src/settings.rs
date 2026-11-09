@@ -15,6 +15,7 @@ mod misc;
 mod print;
 mod searching;
 mod tabs;
+mod terminal;
 mod tools;
 mod updates;
 
@@ -45,6 +46,7 @@ pub use searching::{
     FinderSettings, PaletteSettings, SearchEngine, SearchEngineSettings, SearchingSettings,
 };
 pub use tabs::TabSettings;
+pub use terminal::{MAX_SCROLLBACK, TerminalSettings};
 pub use tools::{CompareSettings, HexSettings, SpellScope, SpellSettings};
 pub use updates::{
     DiagnosticsSettings, NetworkSettings, PluginInstall, PluginSettings, UpdateChannel, UpdateMode,
@@ -93,4 +95,6 @@ pub struct Settings {
     pub lsp: LspSettings,
     /// Preferences > Git (ADR 0066).
     pub git: GitSettings,
+    /// Preferences > Terminal (ADR 0067).
+    pub terminal: TerminalSettings,
 }

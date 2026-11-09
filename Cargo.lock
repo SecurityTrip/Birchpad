@@ -611,6 +611,7 @@ dependencies = [
  "birchpad-quick-pick",
  "birchpad-search-results",
  "birchpad-syntax",
+ "birchpad-terminal",
  "birchpad-theme",
  "birchpad-tools",
  "birchpad-tray",

@@ -57,6 +57,7 @@ pub mod shortcut_mapper;
 pub mod spell_check;
 pub mod status_bar;
 pub mod style_configurator;
+pub mod terminal;
 pub mod themes;
 pub mod toolbar;
 pub mod tools;

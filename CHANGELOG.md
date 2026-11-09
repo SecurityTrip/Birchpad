@@ -37,6 +37,17 @@ version's release notes from its section here.
   changes; Compare with Last Commit is Compare to Git HEAD. Git that cannot run is told once.
   The new crate `birchpad-git` holds it without a window; blame's output is fuzzed as
   `git_blame`.
+- An integrated terminal (roadmap 7.7, [ADR 0067](docs/adr/0067-integrated-terminal.md)):
+  View > Terminal (``Ctrl+` ``) shows a panel under the documents (under the search results
+  when both show) with a shell started the first time it opens, in the active document's
+  folder: `terminal.shell` (Preferences > Terminal), or the system's (`%COMSPEC%` on Windows,
+  `$SHELL` elsewhere). It draws in the editor's font with the theme's text and background and
+  the 256 colors of xterm, takes the keys before the window's shortcuts (but for switching
+  tabs, ``Ctrl+` `` and Cmd), pastes with `Ctrl+Shift+V` and `Shift+Insert` (bracketed when
+  the program asks), scrolls back through `terminal.scrollback` lines (10 000), and starts a
+  new shell with Enter once the last exited. The new crate `birchpad-terminal` holds the
+  pseudo-terminal and the emulator (`alacritty_terminal`, Apache-2.0) without a window; what
+  programs write to it is fuzzed as `terminal_output`.
 - Update checks through Birchpad's Update API
   ([ADR 0064](docs/adr/0064-update-api-and-install-statistics.md)): Birchpad posts to
   `https://api.birchpad.ru/v1/updates/check`, which answers with the signed update manifest as

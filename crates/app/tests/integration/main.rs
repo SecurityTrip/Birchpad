@@ -188,6 +188,9 @@ mod status_bar;
 #[path = "style_configurator/tests.rs"]
 mod style_configurator;
 
+#[path = "terminal/tests.rs"]
+mod terminal;
+
 #[path = "themes/interface_tests.rs"]
 mod themes_interface_tests;
 

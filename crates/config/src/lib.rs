@@ -40,12 +40,12 @@ pub use settings::{
     DiagnosticsSettings, DiagramBackground, DiagramLayout, Edge, EditorSettings, EolStyle,
     FileSettings, FinderSettings, FoldStyle, GitSettings, HexSettings, HighlightingSettings,
     InstanceMode, InstanceSettings, InterfaceMode, LanguageMenuSettings, LanguageSettings,
-    LineNumberWidth, LinkSettings, LspSettings, MiscSettings, NetworkSettings, NewDocumentSettings,
-    NonPrintingStyle, PaletteSettings, Paper, PluginInstall, PluginSettings, PreviewSettings,
-    PrintColors, PrintSettings, SearchEngine, SearchEngineSettings, SearchingSettings,
-    SessionSettings, Settings, SmartHighlighting, SpellScope, SpellSettings, SqlSettings,
-    TabSettings, TokenMatching, ToolbarSettings, ToolbarSize, UpdateChannel, UpdateMode,
-    UpdateSettings, WrapIndent,
+    LineNumberWidth, LinkSettings, LspSettings, MAX_SCROLLBACK, MiscSettings, NetworkSettings,
+    NewDocumentSettings, NonPrintingStyle, PaletteSettings, Paper, PluginInstall, PluginSettings,
+    PreviewSettings, PrintColors, PrintSettings, SearchEngine, SearchEngineSettings,
+    SearchingSettings, SessionSettings, Settings, SmartHighlighting, SpellScope, SpellSettings,
+    SqlSettings, TabSettings, TerminalSettings, TokenMatching, ToolbarSettings, ToolbarSize,
+    UpdateChannel, UpdateMode, UpdateSettings, WrapIndent,
 };
 pub use state::{
     FindInFilesState, MAX_RECENT_COMMANDS, MAX_RECENT_FILES, PanelsState, PreviewMode,

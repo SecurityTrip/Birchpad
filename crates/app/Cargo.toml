@@ -24,6 +24,7 @@ birchpad-plugin.workspace = true
 birchpad-quick-pick.workspace = true
 birchpad-search-results.workspace = true
 birchpad-syntax.workspace = true
+birchpad-terminal.workspace = true
 birchpad-theme.workspace = true
 birchpad-tools.workspace = true
 birchpad-tray.workspace = true

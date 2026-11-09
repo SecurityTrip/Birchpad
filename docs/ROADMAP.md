@@ -1086,7 +1086,14 @@ as revision 1 did (105 drawn). With ELK it draws 67. What it showed:
       document's text as it is, goes to the next and the previous change, and compares with the
       last commit through Compare to Git HEAD; `birchpad-git` holds it without a window, its
       blame fuzzed as `git_blame`
-- [ ] 7.7 Integrated terminal in a panel
+- [x] 7.7 Integrated terminal in a panel ([ADR 0067](adr/0067-integrated-terminal.md)):
+      View > Terminal (``Ctrl+` ``) shows the shell (`terminal.shell`, the system's when empty)
+      under the documents, started in the active document's folder, on `alacritty_terminal`'s
+      pseudo-terminal and emulator; the theme's colors, the shell's keys before the window's
+      shortcuts, pastes, scrollback (`terminal.scrollback`), and Enter to start a new shell
+      once it exited; `birchpad-terminal` holds it without a window, what programs write fuzzed
+      as `terminal_output`. Several terminals in tabs and copying with the mouse are left for
+      later
 - [x] 7.7a Update checks through Birchpad's Update API, with install statistics
       ([ADR 0064](adr/0064-update-api-and-install-statistics.md)): the signed manifest read from
       `api.birchpad.ru` and verified as the one from GitHub, which stays the way when the API

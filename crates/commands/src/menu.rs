@@ -695,6 +695,7 @@ pub fn main_menu() -> Vec<Menu> {
             cmd("panel.document-map"),
             cmd("panel.document-list"),
             cmd("panel.function-list"),
+            cmd("view.terminal"),
             Separator,
             Submenu(Menu::new(
                 "Preview",

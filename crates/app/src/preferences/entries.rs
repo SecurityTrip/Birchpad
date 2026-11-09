@@ -29,6 +29,7 @@ mod search_engine;
 mod searching;
 mod spell_checker;
 mod tab_bar;
+mod terminal;
 mod toolbar;
 mod updates;
 
@@ -43,6 +44,7 @@ const SECTIONS: &[&[Entry]] = &[
     language::ENTRIES,
     language_servers::ENTRIES,
     git::ENTRIES,
+    terminal::ENTRIES,
     default_directory::ENTRIES,
     multi_instance_and_date::ENTRIES,
     cloud_and_link::ENTRIES,

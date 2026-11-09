@@ -45,6 +45,7 @@ impl Workspace {
         let zoom_sync = !AppState::global(cx).state.zoom_per_view;
         let close_tags = AppState::global(cx).settings.completion.close_tags;
         let hex_shown = self.active_hex_editor(cx).is_some();
+        let terminal_shown = self.terminal.read(cx).visible;
         let white_diagrams =
             crate::preview::background(cx) == birchpad_config::DiagramBackground::White;
         let checked = |invocation: &Invocation| {
@@ -114,6 +115,9 @@ impl Workspace {
             }
             if invocation.command == "hex.editor" {
                 return hex_shown;
+            }
+            if invocation.command == "view.terminal" {
+                return terminal_shown;
             }
             let Some(format) = format else {
                 return false;

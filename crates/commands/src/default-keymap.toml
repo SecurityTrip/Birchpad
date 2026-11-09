@@ -1204,6 +1204,12 @@ command = "macro.start-recording"
 keys = "secondary-shift-p"
 command = "macro.playback"
 
+# --- Terminal (ADR 0067) -----------------------------------------------------------------------
+
+[[binding]]
+keys = "ctrl-`"
+command = "view.terminal"
+
 # --- Language Server (ADR 0065) ----------------------------------------------------------------
 # Other editors' F2 and F12 are Notepad++'s bookmarks and Post-It here.
 
