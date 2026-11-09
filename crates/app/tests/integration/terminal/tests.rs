@@ -191,11 +191,13 @@ fn shell() -> &'static str {
 }
 
 /// A shell that prints and exits.
+/// A shell that prints and exits a moment later: one that exits at once may be gone before the
+/// pseudo-terminal has passed on what it printed.
 fn printing(text: &str) -> String {
     if cfg!(windows) {
-        format!("cmd.exe /c echo {text}")
+        format!("cmd.exe /c \"echo {text} & ping -n 2 127.0.0.1 >nul\"")
     } else {
-        format!("/bin/sh -c \"echo {text}\"")
+        format!("/bin/sh -c \"echo {text}; sleep 1\"")
     }
 }
 

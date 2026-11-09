@@ -18,10 +18,16 @@ fn options(program: &str, args: &[&str], folder: &std::path::Path) -> SessionOpt
 
 /// A shell command that prints `text` and exits.
 fn echo(text: &str, folder: &std::path::Path) -> SessionOptions {
+    // A moment before exiting: a shell that exits at once may be gone before the
+    // pseudo-terminal has passed on what it printed.
     if cfg!(windows) {
-        options("cmd.exe", &["/c", &format!("echo {text}")], folder)
+        options(
+            "cmd.exe",
+            &["/c", &format!("echo {text} & ping -n 2 127.0.0.1 >nul")],
+            folder,
+        )
     } else {
-        options("/bin/sh", &["-c", &format!("echo {text}")], folder)
+        options("/bin/sh", &["-c", &format!("echo {text}; sleep 1")], folder)
     }
 }
 
