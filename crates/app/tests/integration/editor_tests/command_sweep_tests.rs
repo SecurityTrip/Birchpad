@@ -43,6 +43,8 @@ const SKIPPED: &[&str] = &[
     "help.update-now",
     "help.restart-to-update",
     "help.about",
+    // Starts a shell on a pseudo-terminal, whose thread a test's scheduler does not allow.
+    "view.terminal",
 ];
 
 /// Commands that read the document again rather than edit it: undo does not take them back,
