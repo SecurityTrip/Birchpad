@@ -82,7 +82,8 @@ fn modes_programs_ask_for() {
     // A full-screen program's screen, and back.
     let screen = screen_of(b"shell\x1b[?1049hfull");
     assert!(screen.alternate);
-    assert_eq!(screen.text(), "full");
+    // The cursor stays where the shell left it.
+    assert_eq!(screen.text().trim(), "full");
     let screen = screen_of(b"shell\x1b[?1049hfull\x1b[?1049l");
     assert!(!screen.alternate);
     assert_eq!(screen.text(), "shell");

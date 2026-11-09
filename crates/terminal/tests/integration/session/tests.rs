@@ -9,7 +9,8 @@ fn options(program: &str, args: &[&str], folder: &std::path::Path) -> SessionOpt
         program: program.to_owned(),
         args: args.iter().map(|arg| (*arg).to_owned()).collect(),
         folder: folder.to_owned(),
-        columns: 60,
+        // Wide enough for a prompt in a deep temporary folder and a command on one line.
+        columns: 200,
         lines: 10,
         scrollback: 100,
     }
@@ -62,7 +63,7 @@ fn a_shell_runs_prints_and_exits() {
         assert_eq!(code, 0);
     }
     assert!(woken.load(Ordering::SeqCst) > 0, "the window was told");
-    assert_eq!(session.size(), (60, 10));
+    assert_eq!(session.size(), (200, 10));
 }
 
 #[test]
