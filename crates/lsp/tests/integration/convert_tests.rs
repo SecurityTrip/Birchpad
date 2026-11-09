@@ -275,7 +275,7 @@ fn completion_entries_match_what_was_typed() {
     assert!(matches("println", "pn"), "in order, not together");
     assert!(matches("anything", ""));
     assert!(!matches("println", "rint"), "the first character first");
-    assert!(!matches("println", "pnl"), "out of order");
+    assert!(!matches("println", "plr"), "out of order");
     assert!(!matches("", "a"));
     assert!(matches("Ёлка", "ёл"));
 }
