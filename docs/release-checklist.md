@@ -79,6 +79,20 @@ desktops are welcome but not required.
 - [ ] Fonts: CJK text, emoji and combining marks render; the caret blinks and the selection
       shows in both views
 
+## Development tools
+
+- [ ] View > Terminal on each platform (ConPTY on Windows, a pty on macOS and Linux): the
+      system's shell starts in the document's folder, colors and full-screen programs (`vim`,
+      `htop` or `less`) draw, Ctrl+C interrupts, resizing the panel resizes the terminal, and
+      `exit` offers a new shell with Enter ([ADR 0067](adr/0067-integrated-terminal.md))
+- [ ] A language server (`rust-analyzer` or `clangd`) in Preferences > Language Servers:
+      diagnostics underlined, completions in the list, hover, Go to Definition, Find References,
+      Rename Symbol and Format Document; quitting Birchpad leaves no server process
+      ([ADR 0065](adr/0065-language-server-client.md))
+- [ ] A file in a Git repository: the Git margin marks added, modified and deleted lines, a
+      commit made outside Birchpad clears them when the window comes back, and Blame Line shows
+      the last commit ([ADR 0066](adr/0066-git-through-its-command-line.md))
+
 ## The rest of the desktop
 
 - [ ] Files and a folder dragged from the file manager open as tabs and as Folder as Workspace

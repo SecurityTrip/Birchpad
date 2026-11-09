@@ -1100,7 +1100,7 @@ as revision 1 did (105 drawn). With ELK it draws 67. What it showed:
       fails; the request says, unless `updates.statistics = false` or the `UpdateStatistics`
       policy, a random id of the copy, its version, channel, platform and PlantUML, and the
       privacy policy says so
-- [ ] Release 0.8.0: the workspace version (0.8.0, set when its branch opens, so that nightly
+- [x] Release 0.8.0: the workspace version (0.8.0, set when its branch opens, so that nightly
       builds are its pre-releases), `CHANGELOG.md` and this roadmap updated; the
       [release checklist](release-checklist.md) gone through
 

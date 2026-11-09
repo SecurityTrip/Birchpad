@@ -6,6 +6,8 @@ version's release notes from its section here.
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-11-09
+
 ### Added
 
 - A language server client (roadmap 7.5,
@@ -993,7 +995,8 @@ The first release: a Notepad++-like editor for Windows, Linux and macOS.
   entirely (`updates.mode = "off"`).
 - Nightly builds of `main` on the nightly channel.
 
-[Unreleased]: https://github.com/SecurityTrip/Birchpad/compare/v0.7.7...HEAD
+[Unreleased]: https://github.com/SecurityTrip/Birchpad/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/SecurityTrip/Birchpad/compare/v0.7.7...v0.8.0
 [0.7.7]: https://github.com/SecurityTrip/Birchpad/compare/v0.7.6...v0.7.7
 [0.7.6]: https://github.com/SecurityTrip/Birchpad/compare/v0.7.5...v0.7.6
 [0.7.5]: https://github.com/SecurityTrip/Birchpad/compare/v0.7.3...v0.7.5
