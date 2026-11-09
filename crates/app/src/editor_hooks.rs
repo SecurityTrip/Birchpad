@@ -1,5 +1,6 @@
 //! The application's part in the editor (`birchpad_editor::EditorHooks`): macro recording,
-//! links opened in the browser, the right-click menu, user defined languages and spelling.
+//! links opened in the browser, the right-click menu, user defined languages, spelling, and a
+//! language server's diagnostics and completions.
 
 use birchpad_editor::{EditorHooks, EditorView};
 use gpui_kit::component::menu::{PopupMenu, PopupMenuItem};
@@ -15,6 +16,8 @@ pub fn install(cx: &mut App) {
         user_language_for_file: crate::user_languages::for_file,
         user_language_style: crate::user_languages::style_of,
         misspelled: crate::spell_check::underlined,
+        diagnostics: crate::language_servers::underlined,
+        server_completion: crate::language_servers::server_completion,
     });
 }
 

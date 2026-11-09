@@ -76,6 +76,9 @@ mod incremental;
 #[path = "json_xml/tests.rs"]
 mod json_xml;
 
+#[path = "language_servers/tests.rs"]
+mod language_servers;
+
 #[path = "language_tests.rs"]
 mod language_tests;
 

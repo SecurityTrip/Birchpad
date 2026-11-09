@@ -12,10 +12,10 @@ authors = ["The Birchpad Contributors"]
 
 [workspace.dependencies]
 birchpad-cli = { path = "crates/cli", version = "0.7.1" }
-birchpad-commands = { path = "crates/commands", version = "0.7.7" }
+birchpad-commands = { path = "crates/commands", version = "0.8.0" }
 birchpad-config = { path = "crates/config", version = "0.8.0" }
 birchpad-core = { path = "crates/core", version = "0.7.6" }
-birchpad-editor = { path = "crates/editor", version = "0.7.7" }
+birchpad-editor = { path = "crates/editor", version = "0.8.0" }
 birchpad-i18n = { path = "crates/i18n", version = "0.8.0" }
 birchpad-io = { path = "crates/io", version = "0.7.0" }
 birchpad-lsp = { path = "crates/lsp", version = "0.8.0" }
@@ -23,9 +23,9 @@ birchpad-menu-bar = { path = "crates/menu-bar", version = "0.5.0" }
 birchpad-plugin = { path = "crates/plugin", version = "0.7.6" }
 birchpad-print-dialog = { path = "crates/print-dialog", version = "0.7.5" }
 birchpad-quick-pick = { path = "crates/quick-pick", version = "0.7.5" }
-birchpad-search-results = { path = "crates/search-results", version = "0.7.5" }
+birchpad-search-results = { path = "crates/search-results", version = "0.8.0" }
 birchpad-syntax = { path = "crates/syntax", version = "0.7.7" }
-birchpad-theme = { path = "crates/theme", version = "0.7.1" }
+birchpad-theme = { path = "crates/theme", version = "0.8.0" }
 birchpad-tools = { path = "crates/tools", version = "0.7.6" }
 birchpad-tray = { path = "crates/tray", version = "0.7.5" }
 birchpad-tree-sitter-plantuml = { path = "crates/tree-sitter-plantuml", version = "0.7.7" }

@@ -35,7 +35,7 @@ pub mod syntax_selection;
 pub mod theme;
 pub mod widgets;
 
-pub use hooks::{ActiveFindOptions, EditorHooks, Ranges};
+pub use hooks::{ActiveFindOptions, DiagnosticLevel, Diagnostics, EditorHooks, Ranges};
 
 /// The platform's monospaced font: the editor's when the theme names none.
 pub const MONOSPACE: &str = if cfg!(windows) {

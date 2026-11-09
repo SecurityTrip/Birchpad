@@ -579,6 +579,7 @@ dependencies = [
  "birchpad-editor",
  "birchpad-i18n",
  "birchpad-io",
+ "birchpad-lsp",
  "birchpad-menu-bar",
  "birchpad-plugin",
  "birchpad-print-dialog",
@@ -626,7 +627,7 @@ dependencies = [
 
 [[package]]
 name = "birchpad-commands"
-version = "0.7.7"
+version = "0.8.0"
 dependencies = [
  "birchpad-i18n",
  "proptest",
@@ -673,7 +674,7 @@ dependencies = [
 
 [[package]]
 name = "birchpad-editor"
-version = "0.7.7"
+version = "0.8.0"
 dependencies = [
  "anyhow",
  "birchpad-cli",
@@ -818,7 +819,7 @@ dependencies = [
 
 [[package]]
 name = "birchpad-search-results"
-version = "0.7.5"
+version = "0.8.0"
 dependencies = [
  "birchpad-config",
  "birchpad-core",
@@ -896,7 +897,7 @@ dependencies = [
 
 [[package]]
 name = "birchpad-theme"
-version = "0.7.1"
+version = "0.8.0"
 dependencies = [
  "birchpad-i18n",
  "roxmltree 0.21.2",

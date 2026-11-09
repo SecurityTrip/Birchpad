@@ -9,6 +9,7 @@ mod highlighting;
 mod instances;
 mod languages;
 mod links;
+mod lsp;
 mod misc;
 mod print;
 mod searching;
@@ -33,6 +34,7 @@ pub use highlighting::{HighlightingSettings, SmartHighlighting, TokenMatching};
 pub use instances::{DateSettings, InstanceMode, InstanceSettings};
 pub use languages::{LanguageMenuSettings, LanguageSettings, SqlSettings};
 pub use links::{CloudSettings, LinkSettings};
+pub use lsp::LspSettings;
 pub use misc::{CloseToTray, MiscSettings};
 pub use print::{
     DiagramBackground, DiagramLayout, Paper, PreviewSettings, PrintColors, PrintSettings,
@@ -85,4 +87,6 @@ pub struct Settings {
     pub misc: MiscSettings,
     pub language_menu: LanguageMenuSettings,
     pub sql: SqlSettings,
+    /// Preferences > Language Servers (ADR 0065).
+    pub lsp: LspSettings,
 }

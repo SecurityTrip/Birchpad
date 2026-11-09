@@ -36,6 +36,7 @@ pub mod hex_view;
 pub mod i18n;
 pub mod incremental;
 pub mod json_xml;
+pub mod language_servers;
 pub mod macros;
 pub mod menus;
 pub mod navigation;
@@ -245,6 +246,8 @@ pub fn run() {
                 quitting
                     .update(cx, |workspace, cx| workspace.save_session_for_quit(cx))
                     .ok();
+                // Language servers are processes of their own: they stop with Birchpad.
+                language_servers::stop_all_now(cx);
                 async {}
             })
             .detach();

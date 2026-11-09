@@ -69,8 +69,8 @@ toolchains and their licenses; the user installs the ones they use, as they inst
   filtered by what has been typed since, before the document's words and the API's.
   Function Completion (`Ctrl+Space`) asks for them too. Snippets are not offered to servers; a
   snippet sent anyway is inserted as its plain text.
-- **Show Hover** (`Ctrl+Alt+K`) shows the server's text, as plain text, and the messages of
-  the diagnostics at the caret in the call tip.
+- **Show Hover** (`Ctrl+Alt+K`, `Cmd+Alt+K` on macOS) shows the server's text, as plain text,
+  and the messages of the diagnostics at the caret in the call tip.
 - **Go to Definition** (`Alt+F12`) opens the file and selects the range; several definitions
   are listed in the search results panel. **Find References** (`Shift+F12`) lists them there.
 - **Rename Symbol** (`Alt+F2`) asks for the new name and applies the server's edit: each
@@ -80,13 +80,13 @@ toolchains and their licenses; the user installs the ones they use, as they inst
   the document's tab size and spaces.
 - Requests the server makes are answered without asking the user: `workspace/configuration`
   with nothing set, registrations and progress accepted, `workspace/applyEdit` refused.
-  `window/showMessage` errors go to the status bar, the rest to the log.
+  `window/showMessage` errors and warnings show as notifications, the rest go to the log.
 
 ### Failures
 
-- A server that cannot start, or exits, is reported once in the status bar; its documents work
-  as without a server, and it is not restarted by itself. A request unanswered after ten
-  seconds is reported and forgotten.
+- A server that cannot start, or exits, is reported once, in a notification of the window that
+  started it; its documents work as without a server, and it is not restarted by itself. A
+  request unanswered after ten seconds is reported and forgotten.
 - Nothing about a server goes anywhere but to the process the user configured.
 
 ## Consequences

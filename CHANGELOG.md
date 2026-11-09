@@ -8,6 +8,24 @@ version's release notes from its section here.
 
 ### Added
 
+- A language server client (roadmap 7.5,
+  [ADR 0065](docs/adr/0065-language-server-client.md)): `lsp.servers.<language id>` names the
+  command line of a language's server (Preferences > Language Servers, where `lsp.enabled`
+  turns them all off); none is bundled, and with none configured nothing starts. One server
+  runs per language and root folder (the nearest folder with `.git`, or the file's own) for
+  the documents with a path, a language and less than a large file's size; it gets each
+  document's full text after edits (at most every 150 ms, and before each request) and is told
+  of saves, and it stops with the last of its documents, when its command line changes, or
+  with Birchpad. Its diagnostics are underlined with wavy lines in four new theme colors
+  (`diagnostic-error`, `-warning`, `-information`, `-hint`), move with the edits, and Tools >
+  Language Server goes to the next and previous one (`Alt+F8`, `Alt+Shift+F8`) and lists them
+  in the search results. Its completions come first in the auto-completion list, after a word
+  character, one of its trigger characters, or Function Completion. Show Hover
+  (`Ctrl+Alt+K`), Go to Definition (`Alt+F12`), Find References (`Shift+F12`, in the search
+  results), Rename Symbol (`Alt+F2`: every file changed in one undoable step, none saved, an
+  edit that creates or deletes files refused) and Format Document (`Alt+Shift+F`). A server
+  that cannot start or exits is told once; a request unanswered in ten seconds is reported.
+  The protocol is the new crate `birchpad-lsp`, without a window, fuzzed as `language_server`.
 - Update checks through Birchpad's Update API
   ([ADR 0064](docs/adr/0064-update-api-and-install-statistics.md)): Birchpad posts to
   `https://api.birchpad.ru/v1/updates/check`, which answers with the signed update manifest as

@@ -70,6 +70,8 @@ pub struct Workspace {
     pub modes: crate::window_modes::WindowModes,
     /// The toolbar's commands whose switch is on, shown pressed.
     pub toolbar_checked: Vec<String>,
+    /// Its window, where what happens later (a language server's failure) is told.
+    window: Option<gpui_kit::AnyWindowHandle>,
     _subscriptions: Vec<Subscription>,
 }
 
@@ -116,6 +118,7 @@ impl Workspace {
             docks: Docks::default(),
             modes: Default::default(),
             toolbar_checked: Vec::new(),
+            window: Some(window.window_handle()),
             _subscriptions: subscriptions,
         };
         // Back in front: files may have changed meanwhile.
@@ -146,11 +149,16 @@ impl Workspace {
                     }
                     if workspace.can_quit_now(cx) {
                         workspace.save_session_for_quit(cx);
+                        crate::language_servers::forget_workspace(cx.entity_id(), cx);
                         return true;
                     }
                     let ready = workspace.prepare_to_quit(window, cx);
-                    cx.spawn_in(window, async move |_, cx| {
+                    cx.spawn_in(window, async move |this, cx| {
                         if ready.await {
+                            this.update(cx, |_, cx| {
+                                crate::language_servers::forget_workspace(cx.entity_id(), cx);
+                            })
+                            .ok();
                             cx.update(|window, _| window.remove_window()).ok();
                         }
                     })
@@ -317,11 +325,21 @@ impl Workspace {
         result
     }
 
+    /// Brings the language servers in step with this window's documents (ADR 0065).
+    pub fn sync_language_servers(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        crate::language_servers::sync_workspace(self, window.window_handle(), cx);
+    }
+
     /// Redraws every editor after a view setting (zoom, word wrap, Show Symbol) changed.
     pub fn refresh_views(&mut self, cx: &mut Context<Self>) {
         for view in self.all_views(cx) {
             view.update(cx, |view, cx| view.settings_changed(cx));
         }
+        // Preferences > Language Servers may have changed.
+        if let Some(window) = self.window {
+            crate::language_servers::sync_workspace(self, window, cx);
+        }
+        cx.refresh_windows();
         // The tab bar's settings.
         for pane in &self.panes {
             pane.update(cx, |_, cx| cx.notify());

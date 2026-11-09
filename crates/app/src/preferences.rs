@@ -5,11 +5,13 @@
 mod entries;
 mod languages;
 mod plugins;
+mod servers;
 mod values;
 
 pub use entries::ENTRIES;
 pub use languages::language_id;
 pub use plugins::plugin_settings;
+pub use servers::server_language;
 pub use values::{available_here, current_value, display, parse_field, sections, set};
 
 use std::collections::HashMap;
@@ -48,6 +50,8 @@ pub enum Kind {
     },
     /// Preferences > Language: tab size and spaces of each language (`languages`).
     LanguageTabs,
+    /// Preferences > Language Servers: the server of each language (`lsp.servers`).
+    LanguageServers,
     /// "Edit with Birchpad" in the Windows Explorer's menu of files, for the user: the
     /// registry's, not a setting.
     ExplorerMenu,
@@ -103,6 +107,9 @@ pub struct Preferences {
     language_input: Entity<InputState>,
     language_width: Entity<InputState>,
     language_spaces: bool,
+    /// Preferences > Language Servers: the language and the command line to set.
+    server_language: Entity<InputState>,
+    server_command: Entity<InputState>,
     /// Preferences > Plugins: the fields of the plugins' settings, by plugin and key.
     pub plugin_inputs: HashMap<(String, String), Entity<InputState>>,
     /// What went wrong with a plugin's setting, by plugin and key.
@@ -162,6 +169,7 @@ impl Preferences {
                 Kind::Bool
                     | Kind::Choice(_)
                     | Kind::LanguageTabs
+                    | Kind::LanguageServers
                     | Kind::ExplorerMenu
                     | Kind::PluginSettings
             ) {
@@ -187,6 +195,11 @@ impl Preferences {
                 .new(|cx| InputState::new(window, cx).placeholder(t!("preferences.language-id"))),
             language_width: cx.new(|cx| InputState::new(window, cx).default_value("4")),
             language_spaces: false,
+            server_language: cx
+                .new(|cx| InputState::new(window, cx).placeholder(t!("preferences.language-id"))),
+            server_command: cx.new(|cx| {
+                InputState::new(window, cx).placeholder(t!("preferences.server-command-line"))
+            }),
             plugin_inputs: HashMap::new(),
             plugin_errors: HashMap::new(),
         }
@@ -269,6 +282,8 @@ impl Render for Preferences {
         let section = sections[self.section.min(sections.len() - 1)];
         let mut language_tabs = (section == "Language")
             .then(|| self.render_language_tabs(locked_keys.contains(&"languages"), cx));
+        let mut language_servers = (section == "Language Servers")
+            .then(|| self.render_language_servers(locked_keys.contains(&servers::SERVERS), cx));
         let mut plugin_settings = (section == "Plugins").then(|| {
             self.make_plugin_inputs(window, cx);
             self.render_plugin_settings(cx)
@@ -346,6 +361,9 @@ impl Render for Preferences {
                             .into_any_element()
                     }
                     Kind::LanguageTabs => language_tabs
+                        .take()
+                        .unwrap_or_else(|| div().into_any_element()),
+                    Kind::LanguageServers => language_servers
                         .take()
                         .unwrap_or_else(|| div().into_any_element()),
                     Kind::PluginSettings => plugin_settings

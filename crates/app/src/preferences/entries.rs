@@ -15,6 +15,7 @@ mod go_to_file;
 mod hex_editor;
 mod highlighting;
 mod language;
+mod language_servers;
 mod margins;
 mod misc;
 mod multi_instance_and_date;
@@ -39,6 +40,7 @@ const SECTIONS: &[&[Entry]] = &[
     tab_bar::ENTRIES,
     new_document::ENTRIES,
     language::ENTRIES,
+    language_servers::ENTRIES,
     default_directory::ENTRIES,
     multi_instance_and_date::ENTRIES,
     cloud_and_link::ENTRIES,

@@ -42,6 +42,11 @@ compare-inline = "#e2a03f70"
 compare-padding = "#ffffff0c"
 # Plugins > Spell Checker: under misspelled words.
 spell-error = "#f44747"
+# A language server's diagnostics: errors, warnings, information and hints.
+diagnostic-error = "#f14c4c"
+diagnostic-warning = "#cca700"
+diagnostic-information = "#3794ff"
+diagnostic-hint = "#a0a0a0"
 
 [ui]
 background = "#1e1e1e"

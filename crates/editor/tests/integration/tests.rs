@@ -305,3 +305,51 @@ fn typing_into_a_ten_megabyte_line(cx: &mut TestAppContext) {
     }
     assert_eq!(active_text(&workspace, cx).len(), line.len() + 40);
 }
+
+#[gpui_kit::test]
+fn a_language_servers_diagnostics_are_underlined_with_wavy_lines(cx: &mut TestAppContext) {
+    use birchpad_editor::theme::Paint;
+    use birchpad_editor::{DiagnosticLevel, EditorHooks};
+    let (workspace, cx) = open_workspace(cx);
+    cx.update(|_, cx| {
+        cx.set_global(EditorHooks {
+            diagnostics: |_, _| {
+                std::rc::Rc::new(vec![
+                    (0..3, DiagnosticLevel::Warning),
+                    (1..2, DiagnosticLevel::Error),
+                    (4..5, DiagnosticLevel::Hint),
+                    // Past the end of the text: not drawn, and no panic.
+                    (90..99, DiagnosticLevel::Information),
+                ])
+            },
+            ..EditorHooks::default()
+        });
+    });
+    cx.simulate_input("abc de");
+    cx.update(|window, cx| {
+        window.refresh();
+        window.draw(cx).clear(cx);
+    });
+    let view = workspace.read_with(cx, |workspace, cx| workspace.active_view(cx).unwrap());
+    let colors = birchpad_editor::theme::editor();
+    let paint = |color| Paint::Wavy(birchpad_editor::theme::paint(color));
+    let wavy: Vec<Paint> = view.read_with(cx, |view, _| {
+        view.layout
+            .as_ref()
+            .expect("a frame was drawn")
+            .decorations
+            .iter()
+            .map(|(_, paint)| *paint)
+            .filter(|paint| matches!(paint, Paint::Wavy(_)))
+            .collect()
+    });
+    // The most serious last, over the others.
+    assert_eq!(
+        wavy,
+        [
+            paint(colors.diagnostic_hint),
+            paint(colors.diagnostic_warning),
+            paint(colors.diagnostic_error),
+        ]
+    );
+}

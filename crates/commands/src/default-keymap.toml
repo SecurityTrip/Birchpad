@@ -1204,6 +1204,37 @@ command = "macro.start-recording"
 keys = "secondary-shift-p"
 command = "macro.playback"
 
+# --- Language Server (ADR 0065) ----------------------------------------------------------------
+# Other editors' F2 and F12 are Notepad++'s bookmarks and Post-It here.
+
+[[binding]]
+keys = "secondary-alt-k"
+command = "lsp.hover"
+
+[[binding]]
+keys = "alt-f12"
+command = "lsp.definition"
+
+[[binding]]
+keys = "shift-f12"
+command = "lsp.references"
+
+[[binding]]
+keys = "alt-f2"
+command = "lsp.rename"
+
+[[binding]]
+keys = "alt-shift-f"
+command = "lsp.format"
+
+[[binding]]
+keys = "alt-f8"
+command = "lsp.next-diagnostic"
+
+[[binding]]
+keys = "alt-shift-f8"
+command = "lsp.previous-diagnostic"
+
 # --- Auto-completion ----------------------------------------------------------------------------
 # While the completion list or a call tip shows, the editor's context also has `Completion` or
 # `CallTip`; these come last, so they win over the editor's own keys.

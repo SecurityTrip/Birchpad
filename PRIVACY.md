@@ -44,7 +44,9 @@ through the one of `HTTPS_PROXY` or `ALL_PROXY` or, on Windows, the system's.
 
 The Markdown preview loads no images from the web, and a link in it opens in your browser
 only when you click it. PlantUML diagrams are drawn by PlantUML on your computer (yours, or the
-one Birchpad installed), not by a server.
+one Birchpad installed), not by a server. Language servers (Preferences > Language Servers) are
+programs you configure, which Birchpad starts on your computer and sends the text of your
+documents of their language; Birchpad sends nothing about them anywhere else.
 
 GitHub serves the other files and, like any web server, sees the requests: the address of your
 computer or network and the time. Its

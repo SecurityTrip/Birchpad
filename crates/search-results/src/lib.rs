@@ -68,6 +68,8 @@ impl FileResults {
 /// One search: what was searched for, and its documents.
 pub struct SearchRun {
     pattern: String,
+    /// A heading of its own instead of `Search "pattern"` (a language server's references).
+    heading: Option<String>,
     /// How many documents were searched.
     searched: usize,
     pub files: Vec<FileResults>,
@@ -78,9 +80,18 @@ impl SearchRun {
     pub fn new(pattern: &str, files: Vec<FileResults>, searched: usize) -> Self {
         Self {
             pattern: pattern.to_owned(),
+            heading: None,
             searched,
             files,
             collapsed: false,
+        }
+    }
+
+    /// A list that is no search: `heading` stands where `Search "pattern"` would.
+    pub fn titled(heading: &str, files: Vec<FileResults>, searched: usize) -> Self {
+        Self {
+            heading: Some(heading.to_owned()),
+            ..Self::new(heading, files, searched)
         }
     }
 
@@ -89,16 +100,20 @@ impl SearchRun {
     pub fn title(&self) -> String {
         let hits: usize = self.files.iter().map(|file| file.hits).sum();
         let count = birchpad_i18n::count;
-        t!(
-            "search-results.title",
-            pattern = self.pattern,
-            found = t!(
-                "find-in-files.found",
-                hits = count(hits, "hit", "hits"),
-                files = count(self.files.len(), "file", "files"),
-                searched = self.searched
-            )
-        )
+        let found = t!(
+            "find-in-files.found",
+            hits = count(hits, "hit", "hits"),
+            files = count(self.files.len(), "file", "files"),
+            searched = self.searched
+        );
+        match &self.heading {
+            Some(heading) => format!("{heading} ({found})"),
+            None => t!(
+                "search-results.title",
+                pattern = self.pattern,
+                found = found
+            ),
+        }
     }
 }
 

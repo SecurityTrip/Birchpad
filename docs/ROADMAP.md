@@ -1069,8 +1069,15 @@ as revision 1 did (105 drawn). With ELK it draws 67. What it showed:
 
 ### Release 0.8.0: development tools
 
-- [ ] 7.5 LSP client: diagnostics, completion, hover, go to definition and references,
+- [x] 7.5 LSP client: diagnostics, completion, hover, go to definition and references,
       rename, formatting; servers configured per language, none bundled
+      ([ADR 0065](adr/0065-language-server-client.md)): `lsp.servers.<language>` names a
+      server's command line (Preferences > Language Servers); one server runs per language and
+      root folder (the nearest with `.git`), with the full text after edits; diagnostics are
+      underlined and listed, the server's completions come first in the auto-completion list,
+      and Tools > Language Server shows hover, goes to definitions, lists references in the
+      search results, renames in every file without saving and formats; `birchpad-lsp` holds
+      the protocol without a window, fuzzed as `language_server`
 - [ ] 7.6 Git: changes in the gutter, blame of the line, the diff of a file against its last
       commit
 - [ ] 7.7 Integrated terminal in a panel

@@ -19,6 +19,8 @@ pub enum Paint {
     Outline(Rgba),
     /// A line under the text.
     Underline(Rgba),
+    /// A wavy line under the text: a language server's diagnostic (ADR 0065).
+    Wavy(Rgba),
 }
 
 /// How highlighted text looks. Colors are `0xRRGGBBAA`.

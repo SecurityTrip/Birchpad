@@ -433,3 +433,155 @@ fn a_users_api_file_takes_the_place_of_birchpads(cx: &mut TestAppContext) {
     });
     forget_api_files();
 }
+
+fn server_item(label: &str, insert: &str) -> ServerItem {
+    ServerItem {
+        label: label.to_owned(),
+        detail: Some(format!("fn {label}()")),
+        insert: insert.to_owned(),
+        filter: label.to_owned(),
+    }
+}
+
+#[test]
+fn server_entries_match_the_typed_characters_in_order() {
+    assert!(server_item_matches("println", "pri"));
+    assert!(server_item_matches("println", "PLN"));
+    assert!(server_item_matches("println", "pn"));
+    assert!(server_item_matches("println", ""));
+    assert!(server_item_matches("p", "p"));
+    assert!(!server_item_matches("println", "rint"), "the first first");
+    assert!(!server_item_matches("println", "nlp"), "out of order");
+    assert!(!server_item_matches("", "p"));
+    assert!(!server_item_matches("p", "pp"), "longer than the entry");
+    assert!(server_item_matches("Ёлка", "ёл"));
+}
+
+#[gpui_kit::test]
+fn a_servers_entries_come_first_and_follow_the_typing(cx: &mut TestAppContext) {
+    let (workspace, cx) = open_workspace(cx);
+    let view = view(&workspace, cx);
+    run(
+        &workspace,
+        Invocation::with_args("edit.insert-text", json!({ "text": "prints\n" })),
+        cx,
+    );
+    cx.simulate_input("pri");
+    let start = "prints\n".len();
+    view.update(cx, |view, cx| {
+        view.offer_server_items(
+            start,
+            vec![
+                server_item("println", "println!()"),
+                server_item("private", "private"),
+                server_item("other", "other"),
+            ],
+            cx,
+        )
+    });
+    // The server's, filtered by "pri", then the document's word.
+    assert_eq!(
+        labels(&view, cx),
+        Some(vec!["println".into(), "private".into(), "prints".into()])
+    );
+    // Typing on filters them, without asking again.
+    cx.simulate_input("n");
+    assert_eq!(
+        labels(&view, cx),
+        Some(vec!["println".into(), "prints".into()])
+    );
+    // Taking one inserts its text in place of the word typed.
+    run(&workspace, Invocation::new("completion.accept"), cx);
+    assert_eq!(active_text(&workspace, cx), "prints\nprintln!()");
+    assert!(view.read_with(cx, |view, _| view.server_items.is_none()));
+}
+
+#[gpui_kit::test]
+fn a_servers_entries_for_another_word_are_left_out(cx: &mut TestAppContext) {
+    let (workspace, cx) = open_workspace(cx);
+    let view = view(&workspace, cx);
+    cx.simulate_input("ab cd");
+    // Offered for "ab", while the caret is in "cd": stale.
+    view.update(cx, |view, cx| {
+        view.offer_server_items(0, vec![server_item("abc", "abc")], cx)
+    });
+    assert!(view.read_with(cx, |view, _| view.server_items.is_none()));
+    // Past the end of the text, or after the caret: stale too.
+    view.update(cx, |view, cx| {
+        view.offer_server_items(99, vec![server_item("x", "x")], cx);
+        view.offer_server_items(4, vec![server_item("x", "x")], cx);
+    });
+    assert!(view.read_with(cx, |view, _| view.server_items.is_none()));
+    // After a trigger character the word starts at the caret: all of them, none typed.
+    cx.simulate_input(".");
+    view.update(cx, |view, cx| {
+        view.offer_server_items(
+            6,
+            vec![
+                server_item("len", "len"),
+                server_item("is_empty", "is_empty"),
+            ],
+            cx,
+        )
+    });
+    assert_eq!(
+        labels(&view, cx),
+        Some(vec!["len".into(), "is_empty".into()])
+    );
+    // None at all: no list.
+    run(&workspace, Invocation::new("completion.cancel"), cx);
+    view.update(cx, |view, cx| view.offer_server_items(6, Vec::new(), cx));
+    assert_eq!(labels(&view, cx), None);
+}
+
+#[gpui_kit::test]
+fn the_call_tip_shows_a_servers_text_until_the_next_command(cx: &mut TestAppContext) {
+    let (workspace, cx) = open_workspace(cx);
+    let view = view(&workspace, cx);
+    cx.simulate_input("value");
+    view.update(cx, |view, cx| {
+        view.show_tip("let value: i32\n\nThe value.".into(), cx)
+    });
+    let shown = view.read_with(cx, |view, _| view.call_tip.as_ref().map(CallTip::text));
+    assert_eq!(shown.as_deref(), Some("let value: i32\n\nThe value."));
+    assert_eq!(
+        view.read_with(cx, |view, _| view.key_context()),
+        "Editor CallTip"
+    );
+    // A key that moves the caret runs a command, which closes it.
+    cx.simulate_keystrokes(crate::test_support::document_start());
+    assert!(view.read_with(cx, |view, _| view.call_tip.is_none()));
+    // An empty text still shows a tip, as asked.
+    view.update(cx, |view, cx| view.show_tip(String::new(), cx));
+    assert!(view.read_with(cx, |view, _| view.call_tip.is_some()));
+}
+
+#[gpui_kit::test]
+fn the_server_is_asked_after_typing_and_when_completion_is_asked(cx: &mut TestAppContext) {
+    thread_local! {
+        static ASKED: std::cell::RefCell<Vec<Option<String>>> = std::cell::RefCell::default();
+    }
+    let (workspace, cx) = open_workspace(cx);
+    cx.update(|_, cx| {
+        cx.set_global(EditorHooks {
+            server_completion: |_, typed, _| {
+                ASKED.with(|asked| asked.borrow_mut().push(typed.map(str::to_owned)))
+            },
+            ..EditorHooks::default()
+        });
+    });
+    cx.simulate_input("a.");
+    run(&workspace, Invocation::new("completion.complete"), cx);
+    let asked = ASKED.with(|asked| asked.borrow().clone());
+    assert_eq!(asked, [Some("a".into()), Some(".".into()), None]);
+    // With auto-completion off, typing does not ask; asking still does.
+    cx.update(|_, cx| {
+        let completion = &mut cx.global_mut::<AppState>().settings.completion;
+        completion.words = false;
+        completion.api = false;
+    });
+    ASKED.with(|asked| asked.borrow_mut().clear());
+    cx.simulate_input("b");
+    run(&workspace, Invocation::new("completion.complete"), cx);
+    assert_eq!(ASKED.with(|asked| asked.borrow().clone()), [None]);
+}

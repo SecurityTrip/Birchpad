@@ -179,6 +179,12 @@ palette! {
         compare_padding,
         /// The wavy line under a misspelled word.
         spell_error,
+        /// The wavy lines under a language server's diagnostics (ADR 0065): errors, warnings,
+        /// information and hints.
+        diagnostic_error,
+        diagnostic_warning,
+        diagnostic_information,
+        diagnostic_hint,
     }
 }
 
@@ -550,6 +556,10 @@ impl Theme {
                 compare_inline: black,
                 compare_padding: black,
                 spell_error: black,
+                diagnostic_error: black,
+                diagnostic_warning: black,
+                diagnostic_information: black,
+                diagnostic_hint: black,
             },
             ui: UiColors {
                 background: black,

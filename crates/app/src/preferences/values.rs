@@ -90,6 +90,7 @@ pub fn parse_field(kind: Kind, text: &str) -> Result<Option<Value>> {
         Kind::Bool
         | Kind::Choice(_)
         | Kind::LanguageTabs
+        | Kind::LanguageServers
         | Kind::ExplorerMenu
         | Kind::PluginSettings => {
             bail!("{}", t!("preferences.this-setting-has-no-text-field"))

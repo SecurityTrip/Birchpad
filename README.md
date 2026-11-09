@@ -156,6 +156,7 @@ not with `network.online-features = false`. See [ADR 0020](docs/adr/0020-signed-
 | `crates/view` | Layout of a document view in cells: tab stops, word wrap, visual rows, right-to-left text. No UI. |
 | `crates/syntax` | Languages and syntax trees: detection, tree-sitter parsing, highlighting, folding. No UI. |
 | `crates/cli` | Notepad++-compatible command line and the single-instance hand-off. No UI. |
+| `crates/lsp` | Language server client: the protocol, the server process, positions and URIs, the servers' answers as plain values. No UI. |
 | `crates/tools` | Built-in tools: JSON and XML formatting, XPath and schemas, hex dumps, comparing texts, spell checking, date formats, HTML export. No UI. |
 | `crates/plugin` | Plugins as WebAssembly components (`wit/birchpad.wit`), Rhai scripts, the plugin manager. No UI. |
 | `crates/update` | Updates: the signed update manifest, channels, versions, installing (Velopack on Windows); the online catalog. No UI. |

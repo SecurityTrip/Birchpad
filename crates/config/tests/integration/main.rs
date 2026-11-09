@@ -50,6 +50,9 @@ mod settings_misc_tests;
 #[path = "settings/preview_tests.rs"]
 mod settings_preview_tests;
 
+#[path = "settings/lsp_tests.rs"]
+mod settings_lsp_tests;
+
 #[path = "settings/print_tests.rs"]
 mod settings_print_tests;
 

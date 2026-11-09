@@ -181,6 +181,17 @@ impl Element for EditorElement {
                             );
                             window.paint_quad(fill(line, color));
                         }
+                        Paint::Wavy(color) => {
+                            window.paint_underline(
+                                point(bounds.left(), bounds.bottom() - px(3.)),
+                                bounds.size.width,
+                                &gpui_kit::UnderlineStyle {
+                                    color: Some(color.into()),
+                                    thickness: px(1.),
+                                    wavy: true,
+                                },
+                            );
+                        }
                     }
                 }
                 for underline in &layout.fold_underlines {

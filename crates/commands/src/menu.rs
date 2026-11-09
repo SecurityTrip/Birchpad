@@ -819,6 +819,24 @@ pub fn main_menu() -> Vec<Menu> {
             Separator,
             convert("ascii-to-hex", "ASCII to HEX"),
             convert("hex-to-ascii", "HEX to ASCII"),
+            Separator,
+            Submenu(Menu::new(
+                "Language Server",
+                vec![
+                    cmd("lsp.hover"),
+                    cmd("lsp.definition"),
+                    cmd("lsp.references"),
+                    Separator,
+                    cmd("lsp.rename"),
+                    cmd("lsp.format"),
+                    Separator,
+                    cmd("lsp.next-diagnostic"),
+                    cmd("lsp.previous-diagnostic"),
+                    cmd("lsp.diagnostics"),
+                    Separator,
+                    cmd("lsp.restart"),
+                ],
+            )),
         ],
     );
 
