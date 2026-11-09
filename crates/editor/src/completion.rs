@@ -408,6 +408,8 @@ impl EditorView {
             return;
         }
         self.server_items = Some(ServerItems { start, items });
+        // The server's best entry is selected, whatever was before.
+        self.completion = None;
         let typed = text.slice(start..head).chars().count();
         let settings = &AppState::global(cx).settings.completion;
         let sources = Sources::for_typed(settings, typed);
