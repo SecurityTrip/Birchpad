@@ -1139,6 +1139,17 @@ smetana так же, как ревизия 1 (нарисованы 105). С ELK 
       сборки были её предварительными выпусками), обновлены `CHANGELOG.md` и этот план; пройден
       [список проверок выпуска](release-checklist.ru.md)
 
+### Release 0.8.1: обновления зависимостей
+
+- [ ] Обновления Dependabot: gpui-kit 0.8.1
+      ([#64](https://github.com/SecurityTrip/Birchpad/pull/64)) и группа cargo из девяти
+      ([#70](https://github.com/SecurityTrip/Birchpad/pull/70)): trash, zip, encoding_rs,
+      tree-sitter-cmake, tree-sitter-powershell, tree-sitter-scala, uuid, ureq и
+      unicode-width
+- [ ] Release 0.8.1: версия рабочей области (0.8.1, задаётся при открытии её ветки, чтобы ночные
+      сборки были её предварительными выпусками), обновлены `CHANGELOG.md` и этот план; пройден
+      [список проверок выпуска](release-checklist.ru.md)
+
 ### Release 0.9.0: большие и удалённые файлы, другие способы правки
 
 - [ ] 7.8 Файлы в несколько гигабайт через отображение в память: читаются и ищутся без загрузки

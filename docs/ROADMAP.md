@@ -1104,6 +1104,17 @@ as revision 1 did (105 drawn). With ELK it draws 67. What it showed:
       builds are its pre-releases), `CHANGELOG.md` and this roadmap updated; the
       [release checklist](release-checklist.md) gone through
 
+### Release 0.8.1: dependency updates
+
+- [ ] Dependabot's updates: gpui-kit 0.8.1
+      ([#64](https://github.com/SecurityTrip/Birchpad/pull/64)) and the cargo group of nine
+      ([#70](https://github.com/SecurityTrip/Birchpad/pull/70)): trash, zip, encoding_rs,
+      tree-sitter-cmake, tree-sitter-powershell, tree-sitter-scala, uuid, ureq and
+      unicode-width
+- [ ] Release 0.8.1: the workspace version (0.8.1, set when its branch opens, so that nightly
+      builds are its pre-releases), `CHANGELOG.md` and this roadmap updated; the
+      [release checklist](release-checklist.md) gone through
+
 ### Release 0.9.0: large and remote files, other ways to edit
 
 - [ ] 7.8 Multi-gigabyte files through memory mapping, read and searched without loading them
