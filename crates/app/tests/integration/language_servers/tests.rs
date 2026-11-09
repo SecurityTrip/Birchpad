@@ -768,7 +768,7 @@ fn renaming_changes_every_file_without_saving(cx: &mut TestAppContext) {
         |workspace, cx| {
             workspace
                 .view_for_path(&other, cx)
-                .is_some_and(|view| view.read(cx).text(cx).to_string() == "start();\n")
+                .is_some_and(|view| view.read(cx).text(cx) == "start();\n")
         }
     )));
     assert_eq!(std::fs::read_to_string(&other).unwrap(), "main();\n");

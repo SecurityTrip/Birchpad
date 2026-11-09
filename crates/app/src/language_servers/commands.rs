@@ -347,7 +347,7 @@ pub fn line_hits(
                 cut = text.floor_char_boundary(cut);
                 let shown = text.slice(bounds.start..cut).to_string();
                 let highlights = if start < shown.len() {
-                    vec![start..end.min(shown.len())]
+                    std::iter::once(start..end.min(shown.len())).collect()
                 } else {
                     Vec::new()
                 };
@@ -758,7 +758,7 @@ fn list_diagnostics(this: &mut Workspace, cx: &mut Context<Workspace>) -> Result
             birchpad_core::search::LineHit {
                 line,
                 text: shown,
-                highlights: vec![0..label.saturating_sub(2)],
+                highlights: std::iter::once(0..label.saturating_sub(2)).collect(),
                 target: start..end,
                 matches: 1,
             }

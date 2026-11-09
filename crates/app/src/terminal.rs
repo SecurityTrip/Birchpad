@@ -328,7 +328,7 @@ impl TerminalPanel {
             return;
         };
         let line_height = window.line_height();
-        let lines = f32::from(event.delta.pixel_delta(line_height).y / line_height).round() as i32;
+        let lines = (event.delta.pixel_delta(line_height).y / line_height).round() as i32;
         if lines != 0 {
             session.scroll(lines);
             cx.notify();
