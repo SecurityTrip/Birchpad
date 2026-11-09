@@ -1,0 +1,3 @@
+user@host:~$ ls
+[01;34mfolder[0m  file.txt
+user@host:~$ 

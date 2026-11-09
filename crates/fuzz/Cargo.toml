@@ -20,6 +20,7 @@ birchpad-io.workspace = true
 birchpad-lsp.workspace = true
 birchpad-plugin.workspace = true
 birchpad-syntax.workspace = true
+birchpad-terminal.workspace = true
 birchpad-theme.workspace = true
 birchpad-tools.workspace = true
 birchpad-update.workspace = true

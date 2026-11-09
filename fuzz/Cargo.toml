@@ -230,3 +230,10 @@ path = "fuzz_targets/git_blame.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "terminal_output"
+path = "fuzz_targets/terminal_output.rs"
+test = false
+doc = false
+bench = false

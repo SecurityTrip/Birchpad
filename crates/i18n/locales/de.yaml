@@ -1802,6 +1802,8 @@ core:
     too-complex: "der reguläre Ausdruck ist zu komplex: {reason}"
   sort:
     not-a-number: "Zeile {line} beginnt nicht mit einer Zahl"
+terminal:
+  cannot-start: "{program} kann nicht gestartet werden: {reason}"
 git:
   blame-unreadable: "die Blame-Ausgabe von Git kann nicht gelesen werden"
   cannot-run: "{program} kann nicht ausgeführt werden: {reason}"

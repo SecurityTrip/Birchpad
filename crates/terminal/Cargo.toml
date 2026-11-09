@@ -1,0 +1,23 @@
+[package]
+name = "birchpad-terminal"
+description = "Birchpad's terminal without a window: the emulator, a shell on a pseudo-terminal, keys as bytes, the screen with its colors."
+version = "0.8.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[dependencies]
+# The pseudo-terminal and the emulator (ADR 0067); without serde, which Birchpad does not use.
+alacritty_terminal = { version = "0.26", default-features = false }
+birchpad-i18n.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+# Tests switch the language each in its own thread.
+birchpad-i18n = { workspace = true, features = ["per-thread"] }
+tempfile = "3"
+
+[lints]
+workspace = true

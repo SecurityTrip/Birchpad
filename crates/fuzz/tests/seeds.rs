@@ -356,4 +356,5 @@ fuzz_tests!(
     rhai_script,
     language_server,
     git_blame,
+    terminal_output,
 );

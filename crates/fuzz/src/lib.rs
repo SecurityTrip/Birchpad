@@ -58,6 +58,7 @@ pub const TARGETS: &[(&str, Check)] = &[
     ("rhai_script", rhai_script),
     ("language_server", language_server),
     ("git_blame", git_blame),
+    ("terminal_output", terminal_output),
 ];
 
 /// Every encoding a file can be opened in.
@@ -1141,4 +1142,31 @@ pub fn git_blame(data: &[u8]) -> bool {
     assert!(blame.date().len() >= "1970-01-01".len());
     let _ = blame.describe();
     true
+}
+
+/// What a program writes to the terminal (ADR 0067): any bytes, at any size, give a screen of
+/// that size with the cursor on it, and resizing keeps it so.
+pub fn terminal_output(data: &[u8]) -> bool {
+    use birchpad_terminal::{Emulator, Palette};
+    let check = |emulator: &Emulator, columns: usize, lines: usize| {
+        let screen = emulator.screen(&Palette::DARK);
+        assert_eq!((screen.columns, screen.lines), (columns, lines));
+        assert_eq!(screen.rows.len(), lines);
+        assert!(screen.rows.iter().all(|row| row.len() == columns));
+        if let Some((line, column)) = screen.cursor {
+            assert!(line < lines && column < columns);
+        }
+        let _ = screen.text();
+    };
+    let mut emulator = Emulator::new(20, 6, 50);
+    emulator.feed(data);
+    check(&emulator, 20, 6);
+    emulator.scroll(3);
+    check(&emulator, 20, 6);
+    emulator.resize(7, 3);
+    check(&emulator, 7, 3);
+    emulator.feed(data);
+    emulator.scroll_to_bottom();
+    check(&emulator, 7, 3);
+    !data.is_empty()
 }

@@ -1816,6 +1816,8 @@ core:
     too-complex: "регулярное выражение слишком сложное: {reason}"
   sort:
     not-a-number: "строка {line} не начинается с числа"
+terminal:
+  cannot-start: "не удаётся запустить {program}: {reason}"
 git:
   blame-unreadable: "вывод git blame не читается"
   cannot-run: "не удаётся запустить {program}: {reason}"

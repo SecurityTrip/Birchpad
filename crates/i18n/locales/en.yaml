@@ -1804,6 +1804,8 @@ core:
     too-complex: "the regular expression is too complex to match: {reason}"
   sort:
     not-a-number: "line {line} does not start with a number"
+terminal:
+  cannot-start: "cannot start {program}: {reason}"
 git:
   blame-unreadable: "Git's blame cannot be read"
   cannot-run: "cannot run {program}: {reason}"

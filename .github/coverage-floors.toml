@@ -28,6 +28,7 @@ io = 95
 # New in 0.8.0 (ADR 0065), to be raised once measured.
 lsp = 85
 git = 85
+terminal = 85
 menu-bar = 95
 plugin = 95
 quick-pick = 82
