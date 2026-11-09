@@ -216,8 +216,10 @@ fn head_read(
     if let Some(message) = warning
         && let Some(window) = state.window
     {
-        let _ = cx.update_window(window, |_, window, cx| {
-            crate::workspace::report_warning(message, window, cx);
+        cx.defer(move |cx| {
+            let _ = cx.update_window(window, |_, window, cx| {
+                crate::workspace::report_warning(message, window, cx);
+            });
         });
     }
     compare(id, cx);
