@@ -1,0 +1,22 @@
+[package]
+name = "birchpad-git"
+description = "Git for Birchpad without a window, through the git program: a file's text in HEAD, a line's blame, the changes of lines."
+version = "0.8.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[dependencies]
+birchpad-core.workspace = true
+birchpad-i18n.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+# Tests switch the language each in its own thread.
+birchpad-i18n = { workspace = true, features = ["per-thread"] }
+tempfile = "3"
+
+[lints]
+workspace = true

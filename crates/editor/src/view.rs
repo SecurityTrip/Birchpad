@@ -119,6 +119,8 @@ pub struct EditorView {
     pub completion: Option<completion::Popup>,
     /// A function's parameters, while they show.
     pub call_tip: Option<completion::CallTip>,
+    /// The entries a language server offered for the word being typed (ADR 0065).
+    pub server_items: Option<completion::ServerItems>,
     pub display: DisplayMap,
     pub(crate) wrap_job: Option<WrapJob>,
     /// Where to put the caret once the file has been read (`-n`, `-c`, `-p`).
@@ -271,6 +273,7 @@ impl EditorView {
             overwrite: false,
             rtl: false,
             completion: None,
+            server_items: None,
             call_tip: None,
             display,
             wrap_job: None,

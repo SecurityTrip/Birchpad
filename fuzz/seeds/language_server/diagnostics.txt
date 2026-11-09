@@ -1,0 +1,5 @@
+Content-Length: 404
+
+{"jsonrpc": "2.0", "method": "textDocument/publishDiagnostics", "params": {"uri": "file:///src/main.rs", "version": 2, "diagnostics": [{"range": {"start": {"line": 1, "character": 8}, "end": {"line": 1, "character": 10}}, "severity": 2, "source": "rustc", "message": "unused variable"}, {"range": {"start": {"line": 9, "character": 0}, "end": {"line": 99, "character": 99}}, "message": "past the end"}]}}Content-Length: 92
+
+{"jsonrpc": "2.0", "method": "window/logMessage", "params": {"type": 3, "message": "ready"}}

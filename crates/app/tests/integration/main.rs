@@ -58,6 +58,9 @@ mod find_in_files_tests;
 #[path = "find_mouse_tests.rs"]
 mod find_mouse_tests;
 
+#[path = "git/tests.rs"]
+mod git;
+
 #[path = "help/tests.rs"]
 mod help;
 
@@ -75,6 +78,9 @@ mod incremental;
 
 #[path = "json_xml/tests.rs"]
 mod json_xml;
+
+#[path = "language_servers/tests.rs"]
+mod language_servers;
 
 #[path = "language_tests.rs"]
 mod language_tests;
@@ -182,6 +188,9 @@ mod status_bar;
 #[path = "style_configurator/tests.rs"]
 mod style_configurator;
 
+#[path = "terminal/tests.rs"]
+mod terminal;
+
 #[path = "themes/interface_tests.rs"]
 mod themes_interface_tests;
 
@@ -199,6 +208,9 @@ mod tray;
 
 #[path = "updates/tests.rs"]
 mod updates;
+
+#[path = "updates/statistics_tests.rs"]
+mod updates_statistics;
 
 #[path = "user_languages/define_tests.rs"]
 mod user_languages_define_tests;

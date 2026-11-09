@@ -441,6 +441,23 @@ pub const COMMANDS: &[CommandSpec] = &[
     ),
     // { "to": "base64-encode" | "base64-decode" | "url-encode" | "url-decode" | "ascii-to-hex" | "hex-to-ascii" }
     editor("edit.convert", "Convert"),
+    // Tools > Language Server (ADR 0065): the active document's server
+    workspace("lsp.hover", "Show Hover"),
+    workspace("lsp.definition", "Go to Definition"),
+    workspace("lsp.references", "Find References"),
+    // { "name": "new_name" }; without it, asks for the new name
+    workspace("lsp.rename", "Rename Symbol..."),
+    workspace("lsp.format", "Format Document"),
+    workspace("lsp.next-diagnostic", "Next Diagnostic"),
+    workspace("lsp.previous-diagnostic", "Previous Diagnostic"),
+    workspace("lsp.diagnostics", "List Diagnostics"),
+    workspace("lsp.restart", "Restart Language Server"),
+    // View > Terminal (ADR 0067): shows the shell's panel, or hides it
+    workspace("view.terminal", "Terminal"),
+    // Tools > Git (ADR 0066): the active document's file
+    workspace("git.blame", "Blame Line"),
+    workspace("git.next-change", "Next Change"),
+    workspace("git.previous-change", "Previous Change"),
     // Run; { "line": <a command line> } or { "name": <a saved one> }; neither asks for it
     workspace("run.run", "Run..."),
     // { "name": "Google Search" }: one of Notepad++'s own Run menu entries

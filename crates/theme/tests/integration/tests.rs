@@ -249,7 +249,7 @@ fn a_style_without_colors_stays_one() {
 #[test]
 fn colors_by_key() {
     let mut editor = Theme::default_theme().editor;
-    assert_eq!(EditorColors::KEYS.len(), 37);
+    assert_eq!(EditorColors::KEYS.len(), 44);
     assert_eq!(EditorColors::KEYS[0], "text");
     assert!(
         EditorColors::KEYS.contains(&"compare-added")
@@ -257,6 +257,38 @@ fn colors_by_key() {
             && EditorColors::KEYS.contains(&"compare-padding")
             && EditorColors::KEYS.contains(&"spell-error")
     );
+    // A language server's diagnostics (ADR 0065), each severity its own color in both
+    // built-in themes.
+    for key in [
+        "diagnostic-error",
+        "diagnostic-warning",
+        "diagnostic-information",
+        "diagnostic-hint",
+    ] {
+        assert!(EditorColors::KEYS.contains(&key), "{key}");
+    }
+    for key in ["git-added", "git-modified", "git-deleted"] {
+        assert!(EditorColors::KEYS.contains(&key), "{key}");
+    }
+    for theme in [Theme::default_theme(), Theme::builtin(DARK).unwrap()] {
+        let git = [
+            theme.editor.git_added,
+            theme.editor.git_modified,
+            theme.editor.git_deleted,
+        ];
+        for (index, color) in git.iter().enumerate() {
+            assert!(!git[index + 1..].contains(color), "{color:?}");
+        }
+        let colors = [
+            theme.editor.diagnostic_error,
+            theme.editor.diagnostic_warning,
+            theme.editor.diagnostic_information,
+            theme.editor.diagnostic_hint,
+        ];
+        for (index, color) in colors.iter().enumerate() {
+            assert!(!colors[index + 1..].contains(color), "{color:?}");
+        }
+    }
     assert!(EditorColors::KEYS.contains(&"current-line"));
     assert!(UiColors::KEYS.contains(&"error-background"));
     assert_eq!(editor.get("current-line"), Some(editor.current_line));

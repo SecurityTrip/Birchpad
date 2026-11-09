@@ -319,3 +319,73 @@ fn the_plugins_section_sets_the_plugins_own_settings(cx: &mut TestAppContext) {
     let errors = opened().read_with(cx, |preferences, _| preferences.plugin_errors.len());
     assert_eq!(errors, 1);
 }
+
+#[gpui_kit::test]
+fn languages_get_a_server_and_lose_it(cx: &mut TestAppContext) {
+    let (_, cx, dir) = open_preferences(cx);
+    show_section("Language Servers", cx);
+    // Servers are on unless turned off.
+    assert!(settings(cx).lsp.enabled);
+    click_on("preferences-lsp.enabled", MouseButton::Left, cx);
+    assert!(!settings(cx).lsp.enabled);
+    click_on("preferences-lsp.enabled", MouseButton::Left, cx);
+    assert!(settings(cx).lsp.enabled);
+    // By the language's name or id; the command line as typed, trimmed.
+    type_over("server-language", "Rust", cx);
+    type_over(
+        "server-command",
+        "  rust-analyzer --log-file \"a b.log\" ",
+        cx,
+    );
+    click_on("server-set", MouseButton::Left, cx);
+    assert_eq!(
+        settings(cx).lsp.server("rust"),
+        Some("rust-analyzer --log-file \"a b.log\"")
+    );
+    let written = std::fs::read_to_string(dir.path().join("settings.toml")).unwrap();
+    assert!(written.contains("rust-analyzer"), "{written}");
+    assert!(cx.debug_bounds("server-row-0").is_some(), "listed");
+
+    // Refused, and nothing set: plain text, an unknown language, no command line, an
+    // unclosed quote, no language.
+    for (language, command) in [
+        ("text", "server"),
+        ("klingon", "server"),
+        ("python", "   "),
+        ("python", "pylsp \"--x"),
+        ("", "pylsp"),
+    ] {
+        type_over("server-language", language, cx);
+        type_over("server-command", command, cx);
+        click_on("server-set", MouseButton::Left, cx);
+        assert_eq!(
+            settings(cx).lsp.server("python"),
+            None,
+            "{language} {command}"
+        );
+        assert!(
+            opened().read_with(cx, |preferences, _| preferences
+                .errors
+                .contains_key("lsp.servers")),
+            "{language} {command}: the problem is shown"
+        );
+    }
+    assert_eq!(settings(cx).lsp.servers.len(), 1);
+    // Set again: the error goes.
+    type_over("server-language", "python", cx);
+    type_over("server-command", "pylsp", cx);
+    click_on("server-set", MouseButton::Left, cx);
+    assert!(!opened().read_with(cx, |preferences, _| {
+        preferences.errors.contains_key("lsp.servers")
+    }));
+    // Removed, the first row (python, in the order of ids).
+    click_on("server-remove-0", MouseButton::Left, cx);
+    assert_eq!(settings(cx).lsp.server("python"), None);
+    assert_eq!(
+        settings(cx).lsp.server("rust"),
+        Some("rust-analyzer --log-file \"a b.log\"")
+    );
+    click_on("server-remove-0", MouseButton::Left, cx);
+    assert!(settings(cx).lsp.servers.is_empty());
+    assert!(cx.debug_bounds("server-remove-0").is_none(), "no row left");
+}

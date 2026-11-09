@@ -5,14 +5,17 @@ mod appearance;
 mod completion;
 mod editor;
 mod files;
+mod git;
 mod highlighting;
 mod instances;
 mod languages;
 mod links;
+mod lsp;
 mod misc;
 mod print;
 mod searching;
 mod tabs;
+mod terminal;
 mod tools;
 mod updates;
 
@@ -29,10 +32,12 @@ pub use files::{
     BackupOnSave, ChangeDetection, DefaultDirectory, FileSettings, NewDocumentSettings,
     SessionSettings,
 };
+pub use git::GitSettings;
 pub use highlighting::{HighlightingSettings, SmartHighlighting, TokenMatching};
 pub use instances::{DateSettings, InstanceMode, InstanceSettings};
 pub use languages::{LanguageMenuSettings, LanguageSettings, SqlSettings};
 pub use links::{CloudSettings, LinkSettings};
+pub use lsp::LspSettings;
 pub use misc::{CloseToTray, MiscSettings};
 pub use print::{
     DiagramBackground, DiagramLayout, Paper, PreviewSettings, PrintColors, PrintSettings,
@@ -41,6 +46,7 @@ pub use searching::{
     FinderSettings, PaletteSettings, SearchEngine, SearchEngineSettings, SearchingSettings,
 };
 pub use tabs::TabSettings;
+pub use terminal::{MAX_SCROLLBACK, TerminalSettings};
 pub use tools::{CompareSettings, HexSettings, SpellScope, SpellSettings};
 pub use updates::{
     DiagnosticsSettings, NetworkSettings, PluginInstall, PluginSettings, UpdateChannel, UpdateMode,
@@ -85,4 +91,10 @@ pub struct Settings {
     pub misc: MiscSettings,
     pub language_menu: LanguageMenuSettings,
     pub sql: SqlSettings,
+    /// Preferences > Language Servers (ADR 0065).
+    pub lsp: LspSettings,
+    /// Preferences > Git (ADR 0066).
+    pub git: GitSettings,
+    /// Preferences > Terminal (ADR 0067).
+    pub terminal: TerminalSettings,
 }

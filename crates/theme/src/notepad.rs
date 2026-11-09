@@ -154,6 +154,13 @@ fn editor_colors(
         compare_inline: None,
         compare_padding: None,
         spell_error: None,
+        diagnostic_error: None,
+        diagnostic_warning: None,
+        diagnostic_information: None,
+        diagnostic_hint: None,
+        git_added: None,
+        git_modified: None,
+        git_deleted: None,
     }
 }
 

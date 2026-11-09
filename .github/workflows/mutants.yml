@@ -25,7 +25,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        crate: [cli, commands, config, core, i18n, io, plugin, syntax, theme, tools, update, view]
+        crate: [cli, commands, config, core, git, i18n, io, lsp, plugin, syntax, terminal, theme, tools, update, view]
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/linux-deps

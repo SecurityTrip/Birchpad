@@ -64,6 +64,12 @@ gh variable set BIRCHPAD_TRUSTED_KEYS --body "<the public key>"
 The manifest lives at
 `https://github.com/SecurityTrip/Birchpad/releases/download/updates/birchpad-updates.json`. It
 keeps the five newest releases of each channel and expires 30 days after it was signed.
+Birchpad reads it through its Update API, `https://api.birchpad.ru/v1/updates/check`, which
+fetches it from there and serves it byte for byte, and from GitHub when the API fails
+([ADR 0064](../../docs/adr/0064-update-api-and-install-statistics.md)): a manifest uploaded
+here reaches Birchpad through the API after the service's next fetch (an hour at most, by
+default). The service checks the signature with the keys of `BIRCHPAD_TRUSTED_KEYS` when it is
+given them; give it the same keys, before and after replacing a key (section 4).
 
 Nightly builds come from the branch of the next version: after releasing `v0.2.0`, create the
 branch `v0.2.1` (or `v0.3.0`) and raise its workspace version to match its name (the nightly

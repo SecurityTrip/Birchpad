@@ -15,13 +15,17 @@ birchpad-cli.workspace = true
 birchpad-commands.workspace = true
 birchpad-config.workspace = true
 birchpad-core.workspace = true
+birchpad-git.workspace = true
 birchpad-io.workspace = true
+birchpad-lsp.workspace = true
 birchpad-plugin.workspace = true
 birchpad-syntax.workspace = true
+birchpad-terminal.workspace = true
 birchpad-theme.workspace = true
 birchpad-tools.workspace = true
 birchpad-update.workspace = true
 ed25519-dalek = "3"
+serde.workspace = true
 serde_json.workspace = true
 toml.workspace = true
 

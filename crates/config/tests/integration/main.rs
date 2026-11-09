@@ -41,6 +41,9 @@ mod settings_completion_tests;
 #[path = "settings/finding_tests.rs"]
 mod settings_finding_tests;
 
+#[path = "settings/git_tests.rs"]
+mod settings_git_tests;
+
 #[path = "settings/link_tests.rs"]
 mod settings_link_tests;
 
@@ -50,11 +53,20 @@ mod settings_misc_tests;
 #[path = "settings/preview_tests.rs"]
 mod settings_preview_tests;
 
+#[path = "settings/lsp_tests.rs"]
+mod settings_lsp_tests;
+
 #[path = "settings/print_tests.rs"]
 mod settings_print_tests;
 
 #[path = "settings/search_engine_tests.rs"]
 mod settings_search_engine_tests;
+
+#[path = "settings/terminal_tests.rs"]
+mod settings_terminal_tests;
+
+#[path = "settings/updates_tests.rs"]
+mod settings_updates_tests;
 
 #[path = "state/tests.rs"]
 mod state;

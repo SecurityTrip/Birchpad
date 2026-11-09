@@ -404,8 +404,12 @@ fn compares_with_git_head(cx: &mut TestAppContext) {
 fn git_head_says_what_went_wrong() {
     let dir = tempfile::tempdir().unwrap();
     // Not a repository: Git refuses, or cannot be run at all.
-    let error = git_head(dir.path(), "missing.txt").unwrap_err();
+    let error = git_head(&birchpad_git::Git::default(), dir.path(), "missing.txt").unwrap_err();
     assert!(error.to_string().contains("Git"), "{error}");
+    // A program that does not run: said so.
+    let missing = birchpad_git::Git::new("birchpad-no-such-git");
+    let error = git_head(&missing, dir.path(), "missing.txt").unwrap_err();
+    assert!(error.to_string().contains("cannot be run"), "{error}");
 }
 
 #[gpui_kit::test]

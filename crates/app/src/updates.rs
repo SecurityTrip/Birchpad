@@ -23,6 +23,7 @@ use anyhow::{Context as _, Result};
 use birchpad_config::UpdateMode;
 use birchpad_update::install::Installer;
 use birchpad_update::manifest::{self, PLATFORM};
+use birchpad_update::statistics::Statistics;
 use birchpad_update::{
     CheckError, CheckRequest, Checked, HttpTransport, Outcome, Release, Transport, VerifyingKey,
 };
@@ -279,6 +280,42 @@ pub fn now() -> u64 {
         .map_or(0, |elapsed| elapsed.as_secs())
 }
 
+/// Deletes the install id from `state.toml` once statistics are off (ADR 0064), so that turning
+/// them on again makes a new one that nothing ties to it.
+pub fn forget_install_id_when_off(cx: &mut App) {
+    let state = AppState::global(cx);
+    if !state.settings.updates.statistics && state.state.updates.install_id.is_some() {
+        AppState::update_state(cx, |state, _| state.updates.install_id = None);
+    }
+}
+
+/// The install id a check sends: with statistics on, the one in `state.toml`, made and saved at
+/// the first check; with them off, none, and the one there was deleted.
+pub fn install_id(cx: &mut App) -> Option<String> {
+    let statistics = AppState::global(cx).settings.updates.statistics;
+    let mut id = AppState::global(cx).state.updates.install_id.clone();
+    if birchpad_update::statistics::keep_install_id(&mut id, statistics) {
+        let kept = id.clone();
+        AppState::update_state(cx, |state, _| state.updates.install_id = kept);
+    }
+    id
+}
+
+/// What a check tells the Update API (ADR 0064): with `updates.statistics` on, this copy's install
+/// id, version, channel, platform and PlantUML; with it off, nothing, and the install id is
+/// deleted.
+pub fn statistics(cx: &mut App) -> Option<Statistics> {
+    let install_id = install_id(cx)?;
+    let settings = &AppState::global(cx).settings.updates;
+    Some(Statistics {
+        install_id,
+        version: VERSION.to_owned(),
+        channel: settings.channel,
+        platform: birchpad_update::component::platform().map(str::to_owned),
+        plantuml: crate::plantuml::in_use(cx),
+    })
+}
+
 /// Whether this build checks in the background: release builds, and development builds with
 /// `BIRCHPAD_BACKGROUND_UPDATES` set (for trying it out).
 pub fn checks_in_background() -> bool {
@@ -363,6 +400,15 @@ impl Workspace {
             .max(BUILD_TIME.parse().unwrap_or(0));
         cx.global_mut::<Updates>().checking = true;
         let current = Version::parse(VERSION).expect("the version is semver");
+        // Only for the Update API: a mirror (`updates.url`) is told nothing, and no install id
+        // is made for it.
+        let statistics = match birchpad_update::mirror(&settings) {
+            None => statistics(cx),
+            Some(_) => {
+                forget_install_id_when_off(cx);
+                None
+            }
+        };
         let check = cx.background_spawn(async move {
             let request = CheckRequest {
                 settings: &settings,
@@ -371,6 +417,7 @@ impl Workspace {
                 keys: &keys,
                 now: now(),
                 newest_seen,
+                statistics: statistics.as_ref(),
             };
             birchpad_update::check(&request, transport.as_ref())
         });
@@ -412,6 +459,10 @@ impl Workspace {
                 return;
             }
         };
+        // The manifest came from GitHub: why the Update API failed is only logged (ADR 0064).
+        if let Some(error) = &checked.api_error {
+            eprintln!("update check: {error}");
+        }
         AppState::update_state(cx, |state, _| {
             state.updates.last_check = now();
             state.updates.manifest_timestamp =

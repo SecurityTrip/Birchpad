@@ -1,10 +1,13 @@
 //! Checking for Birchpad updates.
 //!
 //! The update server publishes a signed manifest ([`manifest`], ADR 0020) listing recent releases
-//! and their installer packages. [`check`] downloads it, checks its signature against the keys
-//! compiled into Birchpad and its freshness, and looks for a release newer than the running one
-//! on the configured channel. `updates.url` may point to a mirror of the manifest: the signature,
-//! not the server, makes it trusted.
+//! and their installer packages. [`check`] reads it from Birchpad's Update API ([`UPDATE_API`],
+//! ADR 0064), which answers with the same signed manifest and keeps the install statistics
+//! ([`statistics`]), or from GitHub ([`DEFAULT_MANIFEST`]) when the API fails; checks its
+//! signature against the keys compiled into Birchpad and its freshness, wherever it came from;
+//! and looks for a release newer than the running one on the configured channel. `updates.url`
+//! may point to a mirror of the manifest, which is then read alone, without statistics: the
+//! signature, not the server, makes it trusted.
 //!
 //! [`check`] never touches the network when `updates.mode` is `off`.
 
@@ -13,6 +16,7 @@ pub mod component;
 pub mod install;
 mod keys;
 pub mod manifest;
+pub mod statistics;
 
 use std::fs::File;
 use std::io::{Read as _, Write as _};
@@ -31,6 +35,10 @@ pub use manifest::{Manifest, ManifestError, ManifestRelease, Package};
 /// release workflows.
 pub const DEFAULT_MANIFEST: &str =
     "https://github.com/SecurityTrip/Birchpad/releases/download/updates/birchpad-updates.json";
+
+/// Birchpad's Update API (ADR 0064, Update API v1): a `POST` of the install statistics, or of
+/// `{}`, answered with the signed manifest as published on GitHub, byte for byte.
+pub const UPDATE_API: &str = "https://api.birchpad.ru/v1/updates/check";
 
 /// Manifests larger than this are rejected.
 pub const MAX_MANIFEST_SIZE: u64 = 1024 * 1024;
@@ -65,6 +73,8 @@ pub enum Outcome {
 pub struct Checked {
     pub outcome: Outcome,
     pub timestamp: u64,
+    /// Why the Update API failed, when the manifest was read from GitHub instead: only to log.
+    pub api_error: Option<CheckError>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
@@ -89,12 +99,21 @@ pub struct CheckRequest<'a> {
     /// The timestamp of the newest manifest seen before, or the time of this build: older
     /// manifests are refused.
     pub newest_seen: u64,
+    /// What the Update API is told (`updates.statistics`); `None` sends `{}`.
+    pub statistics: Option<&'a statistics::Statistics>,
 }
 
 /// Fetches URLs. The application uses [`HttpTransport`]; tests use fakes.
 pub trait Transport: Send + Sync {
     /// The body of `url`, at most [`MAX_MANIFEST_SIZE`] bytes.
     fn get(&self, url: &str) -> Result<Vec<u8>, String>;
+
+    /// The body of the answer to a `POST` of the JSON `body` to `url`, at most
+    /// [`MAX_MANIFEST_SIZE`] bytes; an answer other than `200 OK` is an error. A transport that
+    /// does not post (the tests' fakes) fails, and checks then read the manifest from GitHub.
+    fn post_json(&self, url: &str, _body: &[u8]) -> Result<Vec<u8>, String> {
+        Err(format!("cannot post to {url}"))
+    }
 
     /// Downloads `url` into `to`, at most `limit` bytes, reporting the bytes received so far.
     fn download(
@@ -138,33 +157,64 @@ pub fn resumes(have: u64, status: u16, content_range: Option<&str>) -> bool {
     have > 0 && status == 206 && start == Some(have)
 }
 
-/// The manifest to read: `updates.url` if set, the official one otherwise.
-pub fn manifest_url(settings: &UpdateSettings) -> &str {
+/// The administrator's mirror of the manifest, `updates.url`, if it is set (and not empty).
+pub fn mirror(settings: &UpdateSettings) -> Option<&str> {
     settings
         .url
         .as_deref()
         .map(str::trim)
         .filter(|url| !url.is_empty())
-        .unwrap_or(DEFAULT_MANIFEST)
 }
 
-/// Looks for a release newer than the running one on the configured channel.
+/// Where checks read the manifest: `updates.url` if set, Birchpad's Update API otherwise (and
+/// GitHub when it fails).
+pub fn manifest_url(settings: &UpdateSettings) -> &str {
+    mirror(settings).unwrap_or(UPDATE_API)
+}
+
+/// Looks for a release newer than the running one on the configured channel: in the manifest
+/// of `updates.url` when it is set; otherwise in the one the Update API answers with, or, when
+/// it fails (no answer, a status other than 200, a manifest that does not verify), in the one
+/// on GitHub, whose error is the check's when it fails too.
 pub fn check(request: &CheckRequest, transport: &dyn Transport) -> Result<Checked, CheckError> {
     if request.settings.mode == UpdateMode::Off {
         return Err(CheckError::Disabled);
     }
-    let url = manifest_url(request.settings);
-    let body = transport
-        .get(url)
-        .map_err(|message| CheckError::Transport {
-            url: url.to_owned(),
-            message,
-        })?;
-    let manifest = manifest::verify(&body, request.keys, request.now, request.newest_seen)
-        .map_err(|error| CheckError::Manifest {
+    if let Some(url) = mirror(request.settings) {
+        let manifest = read(request, url, transport.get(url))?;
+        return Ok(outcome(request, &manifest, None));
+    }
+    let body = statistics::request_body(request.statistics);
+    let api = read(request, UPDATE_API, transport.post_json(UPDATE_API, &body));
+    match api {
+        Ok(manifest) => Ok(outcome(request, &manifest, None)),
+        Err(api_error) => {
+            let manifest = read(request, DEFAULT_MANIFEST, transport.get(DEFAULT_MANIFEST))?;
+            Ok(outcome(request, &manifest, Some(api_error)))
+        }
+    }
+}
+
+/// The manifest `url` answered with, `answer`, once verified as every manifest is.
+fn read(
+    request: &CheckRequest,
+    url: &str,
+    answer: Result<Vec<u8>, String>,
+) -> Result<Manifest, CheckError> {
+    let body = answer.map_err(|message| CheckError::Transport {
+        url: url.to_owned(),
+        message,
+    })?;
+    manifest::verify(&body, request.keys, request.now, request.newest_seen).map_err(|error| {
+        CheckError::Manifest {
             url: url.to_owned(),
             error,
-        })?;
+        }
+    })
+}
+
+/// What `manifest` says to the running version.
+fn outcome(request: &CheckRequest, manifest: &Manifest, api_error: Option<CheckError>) -> Checked {
     let newest = manifest.newest(request.settings.channel);
     let outcome = match newest {
         Some(release) if release.version > *request.current && is_web_page(&release.page) => {
@@ -181,10 +231,11 @@ pub fn check(request: &CheckRequest, transport: &dyn Transport) -> Result<Checke
             newest: newest.map(|release| release.version.clone()),
         },
     };
-    Ok(Checked {
+    Checked {
         outcome,
         timestamp: manifest.timestamp,
-    })
+        api_error,
+    }
 }
 
 /// Only web pages are opened from a manifest.
@@ -392,18 +443,26 @@ impl Transport for HttpTransport {
             .header("Accept", "application/json, application/octet-stream")
             .call()
             .map_err(|error| error.to_string())?;
-        // ureq fails the read after its limit is reached even when the body ends there: allow a
-        // byte more, so that a body of exactly the limit ends normally, and check the size here.
-        let body = response
-            .body_mut()
-            .with_config()
-            .limit(MAX_MANIFEST_SIZE + 1)
-            .read_to_vec()
-            .map_err(|error| self.read_error(&error.into_io()))?;
-        if body.len() as u64 > MAX_MANIFEST_SIZE {
-            return Err(format!("larger than {MAX_MANIFEST_SIZE} bytes"));
+        self.read_manifest(&mut response)
+    }
+
+    fn post_json(&self, url: &str, body: &[u8]) -> Result<Vec<u8>, String> {
+        // Not redirected: the answer is the service's own, or none.
+        let mut response = self
+            .agent
+            .post(url)
+            .config()
+            .max_redirects(0)
+            .build()
+            .header("Content-Type", "application/json")
+            .header("Accept", "application/json")
+            .send(body)
+            .map_err(|error| error.to_string())?;
+        let status = response.status().as_u16();
+        if status != 200 {
+            return Err(format!("{url} answered {status}"));
         }
-        Ok(body)
+        self.read_manifest(&mut response)
     }
 
     fn download(
@@ -471,6 +530,25 @@ impl Transport for HttpTransport {
 }
 
 impl HttpTransport {
+    /// The body of `response`, at most [`MAX_MANIFEST_SIZE`] bytes.
+    fn read_manifest(
+        &self,
+        response: &mut ureq::http::Response<ureq::Body>,
+    ) -> Result<Vec<u8>, String> {
+        // ureq fails the read after its limit is reached even when the body ends there: allow a
+        // byte more, so that a body of exactly the limit ends normally, and check the size here.
+        let body = response
+            .body_mut()
+            .with_config()
+            .limit(MAX_MANIFEST_SIZE + 1)
+            .read_to_vec()
+            .map_err(|error| self.read_error(&error.into_io()))?;
+        if body.len() as u64 > MAX_MANIFEST_SIZE {
+            return Err(format!("larger than {MAX_MANIFEST_SIZE} bytes"));
+        }
+        Ok(body)
+    }
+
     /// Writes the body of `response` to `file`, which holds `received` bytes already, up to
     /// `limit` bytes in all, telling `progress` the bytes there are.
     fn receive(

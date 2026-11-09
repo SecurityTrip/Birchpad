@@ -314,6 +314,23 @@ impl EditorView {
             cx,
         );
         ranges.extend(misspelled.iter().map(|range| (range.clone(), spell)));
+        // A language server's diagnostics, the most serious drawn last, over the others.
+        let diagnostics = (crate::EditorHooks::get(cx).diagnostics)(self.buffer.entity_id(), cx);
+        let mut shown: Vec<_> = diagnostics
+            .iter()
+            .filter(|(range, _)| range.start < visible.end && range.end > visible.start)
+            .collect();
+        shown.sort_by_key(|(_, level)| std::cmp::Reverse(*level));
+        let colors = theme::editor();
+        ranges.extend(shown.into_iter().map(|(range, level)| {
+            let color = match level {
+                crate::DiagnosticLevel::Error => colors.diagnostic_error,
+                crate::DiagnosticLevel::Warning => colors.diagnostic_warning,
+                crate::DiagnosticLevel::Information => colors.diagnostic_information,
+                crate::DiagnosticLevel::Hint => colors.diagnostic_hint,
+            };
+            (range.clone(), Paint::Wavy(theme::paint(color)))
+        }));
         let marks = buffer.marks();
         let mut quads = Vec::new();
         // The blank rows that keep compared documents side by side.

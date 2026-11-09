@@ -49,6 +49,8 @@ pub struct Workspace {
     pub find_bar: Entity<FindBar>,
     pub incremental: Entity<IncrementalBar>,
     pub search_results: Entity<SearchResults>,
+    /// View > Terminal (ADR 0067).
+    pub terminal: Entity<crate::terminal::TerminalPanel>,
     /// The inactive tab the mouse is over, which the Document Map shows (MISC > Document
     /// Peeker).
     pub peeked: Option<gpui_kit::WeakEntity<EditorView>>,
@@ -70,6 +72,8 @@ pub struct Workspace {
     pub modes: crate::window_modes::WindowModes,
     /// The toolbar's commands whose switch is on, shown pressed.
     pub toolbar_checked: Vec<String>,
+    /// Its window, where what happens later (a language server's failure) is told.
+    window: Option<gpui_kit::AnyWindowHandle>,
     _subscriptions: Vec<Subscription>,
 }
 
@@ -93,6 +97,7 @@ impl Workspace {
         let incremental = cx.new(|cx| IncrementalBar::new(window, cx));
         subscriptions.push(cx.subscribe_in(&incremental, window, Self::on_incremental_event));
         let search_results = cx.new(SearchResults::new);
+        let terminal = cx.new(crate::terminal::TerminalPanel::new);
         subscriptions.push(cx.subscribe_in(&search_results, window, Self::on_search_results_event));
         let mut this = Self {
             focus_handle: cx.focus_handle(),
@@ -104,6 +109,7 @@ impl Workspace {
             find_bar,
             incremental,
             search_results,
+            terminal,
             peeked: None,
             title: String::new(),
             title_add: None,
@@ -116,12 +122,15 @@ impl Workspace {
             docks: Docks::default(),
             modes: Default::default(),
             toolbar_checked: Vec::new(),
+            window: Some(window.window_handle()),
             _subscriptions: subscriptions,
         };
         // Back in front: files may have changed meanwhile.
         let activation = cx.observe_window_activation(window, |this, window, cx| {
             if window.is_window_active() {
                 this.check_files(window, cx);
+                // A commit may have been made meanwhile.
+                crate::git::refresh_heads(cx.entity_id(), cx);
             }
         });
         this._subscriptions.push(activation);
@@ -146,11 +155,18 @@ impl Workspace {
                     }
                     if workspace.can_quit_now(cx) {
                         workspace.save_session_for_quit(cx);
+                        crate::language_servers::forget_workspace(cx.entity_id(), cx);
+                        crate::git::forget_workspace(cx.entity_id(), cx);
                         return true;
                     }
                     let ready = workspace.prepare_to_quit(window, cx);
-                    cx.spawn_in(window, async move |_, cx| {
+                    cx.spawn_in(window, async move |this, cx| {
                         if ready.await {
+                            this.update(cx, |_, cx| {
+                                crate::language_servers::forget_workspace(cx.entity_id(), cx);
+                                crate::git::forget_workspace(cx.entity_id(), cx);
+                            })
+                            .ok();
                             cx.update(|window, _| window.remove_window()).ok();
                         }
                     })
@@ -317,11 +333,24 @@ impl Workspace {
         result
     }
 
+    /// Brings the language servers (ADR 0065) and Git (ADR 0066) in step with this window's
+    /// documents.
+    pub fn sync_document_tools(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        crate::language_servers::sync_workspace(self, window.window_handle(), cx);
+        crate::git::sync_workspace(self, window.window_handle(), cx);
+    }
+
     /// Redraws every editor after a view setting (zoom, word wrap, Show Symbol) changed.
     pub fn refresh_views(&mut self, cx: &mut Context<Self>) {
         for view in self.all_views(cx) {
             view.update(cx, |view, cx| view.settings_changed(cx));
         }
+        // Preferences > Language Servers may have changed.
+        if let Some(window) = self.window {
+            crate::language_servers::sync_workspace(self, window, cx);
+            crate::git::sync_workspace(self, window, cx);
+        }
+        cx.refresh_windows();
         // The tab bar's settings.
         for pane in &self.panes {
             pane.update(cx, |_, cx| cx.notify());

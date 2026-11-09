@@ -1,0 +1,33 @@
+[package]
+name = "birchpad-lsp"
+description = "Birchpad's language server client without a window: the protocol, the server process, positions, URIs and the servers' answers as plain values."
+version = "0.8.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[dependencies]
+birchpad-core.workspace = true
+birchpad-i18n.workspace = true
+# The answers to requests, awaited by the window's tasks.
+futures = "0.3"
+# The protocol's types; the version GPUI builds (ADR 0065).
+lsp-types = "0.97"
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+
+[features]
+# A scripted server in the same process, for the tests of the crate and of the application.
+test-support = []
+
+[dev-dependencies]
+# Tests switch the language each in its own thread.
+birchpad-i18n = { workspace = true, features = ["per-thread"] }
+birchpad-lsp = { path = ".", features = ["test-support"] }
+tempfile = "3"
+
+[lints]
+workspace = true

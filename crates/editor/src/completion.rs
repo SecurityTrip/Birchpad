@@ -1,7 +1,8 @@
 //! Notepad++'s auto-completion (ADR 0031): brackets and quotes typed in pairs, a list of the
 //! document's words and the language's API keywords while typing, and a call tip with a
 //! function's parameters after its opening bracket. API files are Notepad++'s, read from the
-//! `autoCompletion` folder next to the settings.
+//! `autoCompletion` folder next to the settings. A language server's entries come first in the
+//! list, filtered as the word goes on (ADR 0065).
 
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -29,8 +30,42 @@ const VISIBLE_ROWS: usize = 10;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Item {
     pub label: String,
-    /// A function's signature, from the API file.
+    /// A function's signature, from the API file or a language server.
     pub detail: Option<String>,
+    /// What taking it inserts, when not its label (a language server's entry).
+    pub insert: Option<String>,
+}
+
+/// An entry a language server offered.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ServerItem {
+    pub label: String,
+    pub detail: Option<String>,
+    /// What taking it inserts in place of the word typed.
+    pub insert: String,
+    /// What the list is filtered by as the word goes on.
+    pub filter: String,
+}
+
+/// A language server's entries for the word that starts at `start`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ServerItems {
+    pub start: usize,
+    pub items: Vec<ServerItem>,
+}
+
+/// Whether a server's entry stays in the list for `typed`: its filter text has the typed
+/// characters in order, ignoring case, the first of them first.
+pub fn server_item_matches(filter: &str, typed: &str) -> bool {
+    let mut filter = filter.chars().flat_map(char::to_lowercase);
+    let mut typed = typed.chars().flat_map(char::to_lowercase);
+    let Some(first) = typed.next() else {
+        return true;
+    };
+    if filter.next() != Some(first) {
+        return false;
+    }
+    typed.all(|wanted| filter.by_ref().any(|c| c == wanted))
 }
 
 /// The completion list, for the word that starts at `start` and ends at the caret.
@@ -212,6 +247,7 @@ pub fn items(
                         .overloads
                         .first()
                         .map(|overload| overload.signature(&keyword.name)),
+                    insert: None,
                 })
                 .collect()
         })
@@ -233,6 +269,7 @@ pub fn items(
             items.push(Item {
                 label: word,
                 detail: None,
+                insert: None,
             });
         }
     }
@@ -329,6 +366,10 @@ impl EditorView {
         } else {
             self.completion = None;
         }
+        // A language server may have entries too, after a word character or one of its own.
+        if settings.words || settings.api {
+            (crate::EditorHooks::get(cx).server_completion)(self, Some(typed), cx);
+        }
         cx.notify();
     }
 
@@ -346,6 +387,69 @@ impl EditorView {
             Sources::for_typed(settings, typed)
         };
         self.complete_from(sources, cx);
+        if asked {
+            (crate::EditorHooks::get(cx).server_completion)(self, None, cx);
+        }
+    }
+
+    /// A language server's entries for the word that starts at `start`, offered while the caret
+    /// is still in it: they come first in the list, and stay as the word goes on.
+    pub fn offer_server_items(
+        &mut self,
+        start: usize,
+        items: Vec<ServerItem>,
+        cx: &mut Context<Self>,
+    ) {
+        let text = self.text(cx).clone();
+        let head = self.selection.primary().head;
+        let large = self.buffer.read(cx).is_large(cx)
+            && !AppState::global(cx).settings.files.large_file_completion;
+        if large || head < start || head > text.len() || word_start(&text, head) != start {
+            return;
+        }
+        self.server_items = Some(ServerItems { start, items });
+        // The server's best entry is selected, whatever was before.
+        self.completion = None;
+        let typed = text.slice(start..head).chars().count();
+        let settings = &AppState::global(cx).settings.completion;
+        let sources = Sources::for_typed(settings, typed);
+        self.complete_from(sources, cx);
+        cx.notify();
+    }
+
+    /// The server's entries for the word at `start..head` that still match it.
+    fn server_entries(&self, text: &birchpad_core::Rope, start: usize, head: usize) -> Vec<Item> {
+        let Some(server) = self
+            .server_items
+            .as_ref()
+            .filter(|items| items.start == start)
+        else {
+            return Vec::new();
+        };
+        let typed = text.slice(start..head).to_string();
+        server
+            .items
+            .iter()
+            .filter(|item| server_item_matches(&item.filter, &typed))
+            .map(|item| Item {
+                label: item.label.clone(),
+                detail: item.detail.clone(),
+                insert: (item.insert != item.label).then(|| item.insert.clone()),
+            })
+            .collect()
+    }
+
+    /// A line of text in the call tip at the caret: a language server's hover, a diagnostic's
+    /// message.
+    pub fn show_tip(&mut self, text: String, cx: &mut Context<Self>) {
+        let head = self.selection.primary().head;
+        self.completion = None;
+        self.call_tip = Some(CallTip {
+            open: head,
+            overloads: vec![text],
+            current: 0,
+        });
+        cx.notify();
     }
 
     /// Edit > Auto-Completion > Word Completion: the document's words alone.
@@ -393,12 +497,19 @@ impl EditorView {
         // Performance > Allow Auto-completion: off for large files.
         let large = self.buffer.read(cx).is_large(cx)
             && !AppState::global(cx).settings.files.large_file_completion;
-        if typed == 0 || !(sources.api || sources.words) || large {
+        if large {
             self.completion = None;
             return;
         }
-        let api = api_file(self.language_id(cx), cx);
-        let items = items(api.as_deref(), &text, start, head, sources);
+        let mut items = self.server_entries(&text, start, head);
+        if typed > 0 && (sources.api || sources.words) {
+            let api = api_file(self.language_id(cx), cx);
+            for item in self::items(api.as_deref(), &text, start, head, sources) {
+                if !items.iter().any(|known| known.label == item.label) {
+                    items.push(item);
+                }
+            }
+        }
         if items.is_empty() {
             self.completion = None;
             return;
@@ -462,6 +573,7 @@ impl EditorView {
                 .map(|label| Item {
                     label,
                     detail: None,
+                    insert: None,
                 })
                 .collect(),
             selected: 0,
@@ -481,7 +593,9 @@ impl EditorView {
         if head < popup.start {
             return;
         }
-        self.replace_range(popup.start..head, &item.label, cx);
+        let text = item.insert.as_deref().unwrap_or(&item.label).to_owned();
+        self.server_items = None;
+        self.replace_range(popup.start..head, &text, cx);
         cx.notify();
     }
 
@@ -493,6 +607,7 @@ impl EditorView {
         if !keeps {
             self.completion = None;
             self.call_tip = None;
+            self.server_items = None;
         }
     }
 
@@ -695,6 +810,7 @@ pub fn register_commands(registry: &mut CommandRegistry) {
     registry.editor("completion.cancel", |this, (), _, cx| {
         this.completion = None;
         this.call_tip = None;
+        this.server_items = None;
         cx.notify();
         Ok(())
     });

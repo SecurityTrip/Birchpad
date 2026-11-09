@@ -146,25 +146,46 @@ impl Workspace {
             )
     }
 
-    /// The documents, and the search results under them when they are shown.
+    /// The documents, and the search results and the terminal under them when they are
+    /// shown, the terminal last.
     fn render_main_area(&self, cx: &App) -> AnyElement {
-        if !self.search_results.read(cx).visible {
+        let results = self.search_results.read(cx).visible;
+        let terminal = self.terminal.read(cx).visible;
+        if !results && !terminal {
             return self.render_panes(cx);
         }
-        v_resizable("results-split")
+        let panel = |id: &'static str, child: AnyElement| {
+            resizable_panel()
+                .size(px(220.))
+                .size_range(px(60.)..px(2000.))
+                .child(
+                    div()
+                        .id(id)
+                        .size_full()
+                        .border_t_1()
+                        .border_color(crate::theme::paint(crate::theme::ui().border))
+                        .child(child),
+                )
+        };
+        let split_id = match (results, terminal) {
+            (true, false) => "results-split",
+            (false, true) => "terminal-split",
+            _ => "results-terminal-split",
+        };
+        v_resizable(split_id)
             .child(resizable_panel().child(self.render_panes(cx)))
-            .child(
-                resizable_panel()
-                    .size(px(220.))
-                    .size_range(px(60.)..px(2000.))
-                    .child(
-                        div()
-                            .size_full()
-                            .border_t_1()
-                            .border_color(crate::theme::paint(crate::theme::ui().border))
-                            .child(self.search_results.clone()),
-                    ),
-            )
+            .when(results, |split| {
+                split.child(panel(
+                    "results-panel",
+                    self.search_results.clone().into_any_element(),
+                ))
+            })
+            .when(terminal, |split| {
+                split.child(panel(
+                    "terminal-panel",
+                    self.terminal.clone().into_any_element(),
+                ))
+            })
             .into_any_element()
     }
 

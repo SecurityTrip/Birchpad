@@ -99,13 +99,15 @@ pub struct Scrollbar {
 }
 
 /// The margins left of the text, as in Notepad++: line numbers, symbols (bookmarks), the change
-/// history, folding. A margin that is turned off is `None`.
+/// history, Git's changes, folding. A margin that is turned off is `None`.
 pub struct Margins {
     /// All margins together.
     pub gutter: Bounds<Pixels>,
     pub line_numbers: Option<Bounds<Pixels>>,
     pub symbols: Option<Bounds<Pixels>>,
     pub changes: Option<Bounds<Pixels>>,
+    /// Git's changes, for a document Git tracks (ADR 0066).
+    pub git: Option<Bounds<Pixels>>,
     pub folding: Option<Bounds<Pixels>>,
 }
 
@@ -118,6 +120,7 @@ impl Margins {
         settings: &ViewSettings,
         metrics: &Metrics,
         line_count: usize,
+        git: bool,
         rtl: Option<Pixels>,
     ) -> Self {
         let mut x = rtl.unwrap_or(bounds.left());
@@ -146,6 +149,7 @@ impl Margins {
             settings.change_history,
             (metrics.line_height * 0.3).round().max(px(4.)),
         );
+        let git = column(git, (metrics.line_height * 0.3).round().max(px(4.)));
         let folding = column(settings.fold_margin, (metrics.line_height * 0.8).round());
         let gutter = match rtl {
             Some(right) => {
@@ -158,6 +162,7 @@ impl Margins {
             line_numbers,
             symbols,
             changes,
+            git,
             folding,
         }
     }
@@ -187,6 +192,8 @@ pub struct Layout {
     pub bookmarks: Vec<Bounds<Pixels>>,
     /// Bars of changed lines in the change history margin.
     pub change_bars: Vec<(Bounds<Pixels>, LineChange)>,
+    /// Bars and marks of the lines that differ from the last commit, in the Git margin.
+    pub git_bars: Vec<(Bounds<Pixels>, crate::GitMark)>,
     /// Fold boxes in the folding margin, and whether each fold is collapsed.
     pub fold_boxes: Vec<(Bounds<Pixels>, bool)>,
     /// Lines with hidden lines below them (View > Hide Lines), with the band across the

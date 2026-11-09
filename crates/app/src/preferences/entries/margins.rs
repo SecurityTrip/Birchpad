@@ -14,6 +14,7 @@ pub(super) const ENTRIES: &[Entry] = &[
         "Change history",
         Kind::Choice(OFF_ON),
     ),
+    entry("Margins", "editor.git-changes", "Git changes", Kind::Bool),
     entry(
         "Margins",
         "editor.edge",

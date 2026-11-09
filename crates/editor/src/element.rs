@@ -136,6 +136,14 @@ impl Element for EditorElement {
                 };
                 window.paint_quad(fill(*bar, theme::paint(color)));
             }
+            for (bar, mark) in &layout.git_bars {
+                let color = match mark {
+                    crate::GitMark::Added => theme::editor().git_added,
+                    crate::GitMark::Modified => theme::editor().git_modified,
+                    crate::GitMark::Deleted => theme::editor().git_deleted,
+                };
+                window.paint_quad(fill(*bar, theme::paint(color)));
+            }
             // Only the tree styles join their fold points with lines.
             let tree = matches!(
                 layout.fold_style,
@@ -180,6 +188,17 @@ impl Element for EditorElement {
                                 size(bounds.size.width, px(1.)),
                             );
                             window.paint_quad(fill(line, color));
+                        }
+                        Paint::Wavy(color) => {
+                            window.paint_underline(
+                                point(bounds.left(), bounds.bottom() - px(3.)),
+                                bounds.size.width,
+                                &gpui_kit::UnderlineStyle {
+                                    color: Some(color.into()),
+                                    thickness: px(1.),
+                                    wavy: true,
+                                },
+                            );
                         }
                     }
                 }

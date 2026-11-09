@@ -179,6 +179,17 @@ palette! {
         compare_padding,
         /// The wavy line under a misspelled word.
         spell_error,
+        /// The wavy lines under a language server's diagnostics (ADR 0065): errors, warnings,
+        /// information and hints.
+        diagnostic_error,
+        diagnostic_warning,
+        diagnostic_information,
+        diagnostic_hint,
+        /// The Git margin (ADR 0066): lines added since the last commit, modified, and where
+        /// lines were deleted.
+        git_added,
+        git_modified,
+        git_deleted,
     }
 }
 
@@ -550,6 +561,13 @@ impl Theme {
                 compare_inline: black,
                 compare_padding: black,
                 spell_error: black,
+                diagnostic_error: black,
+                diagnostic_warning: black,
+                diagnostic_information: black,
+                diagnostic_hint: black,
+                git_added: black,
+                git_modified: black,
+                git_deleted: black,
             },
             ui: UiColors {
                 background: black,

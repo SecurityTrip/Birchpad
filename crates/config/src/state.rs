@@ -144,6 +144,11 @@ pub struct UpdateState {
     /// The newest version announced by a background check, which is announced only once.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub announced: Option<String>,
+    /// The random id of this copy of Birchpad (a UUID, version 4) that update checks with
+    /// statistics on send (ADR 0064), made at the first such check. Deleted when statistics are
+    /// turned off, so that turning them on again makes a new one.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub install_id: Option<String>,
 }
 
 /// How a document with a preview is shown, as IntelliJ IDEA shows Markdown: the text, the text

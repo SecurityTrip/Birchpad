@@ -216,3 +216,25 @@ fn a_search_heading_has_nothing_to_copy(cx: &mut TestAppContext) {
         assert_eq!(results.rows_text().len(), 3);
     });
 }
+
+#[test]
+fn a_list_with_a_heading_of_its_own() {
+    let run = SearchRun::titled(
+        "References of main",
+        vec![file(
+            "a.rs",
+            vec![hit(0, "fn main", 1), hit(3, "main()", 2)],
+        )],
+        1,
+    );
+    let title = run.title();
+    assert!(title.starts_with("References of main ("), "{title}");
+    assert!(!title.contains("Search"), "{title}");
+    assert!(title.contains('3'), "the hits: {title}");
+    // A searched run keeps Notepad++'s heading.
+    let searched = SearchRun::new("main", vec![file("a.rs", vec![hit(0, "main", 1)])], 1);
+    assert!(searched.title().starts_with("Search \"main\""));
+    // Empty, a heading alone.
+    let empty = SearchRun::titled("", Vec::new(), 0);
+    assert!(empty.title().starts_with(" ("), "{}", empty.title());
+}

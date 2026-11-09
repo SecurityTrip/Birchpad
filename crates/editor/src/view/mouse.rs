@@ -259,11 +259,16 @@ impl EditorView {
             return;
         }
         // In the line number margin, clicking and dragging selects whole lines; in the change
-        // history margin too, as in Scintilla's margins that take no clicks of their own.
-        let in_line_numbers = [layout.margins.line_numbers, layout.margins.changes]
-            .into_iter()
-            .flatten()
-            .any(|margin| margin.contains(&event.position));
+        // history and Git margins too, as in Scintilla's margins that take no clicks of their
+        // own.
+        let in_line_numbers = [
+            layout.margins.line_numbers,
+            layout.margins.changes,
+            layout.margins.git,
+        ]
+        .into_iter()
+        .flatten()
+        .any(|margin| margin.contains(&event.position));
         let text = self.text(cx).clone();
         let Some(pos) = self.position_for_point(event.position, cx) else {
             return;

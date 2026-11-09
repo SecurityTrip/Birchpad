@@ -16,12 +16,15 @@ birchpad-config.workspace = true
 birchpad-core.workspace = true
 birchpad-editor.workspace = true
 birchpad-i18n.workspace = true
+birchpad-git.workspace = true
 birchpad-io.workspace = true
+birchpad-lsp.workspace = true
 birchpad-menu-bar.workspace = true
 birchpad-plugin.workspace = true
 birchpad-quick-pick.workspace = true
 birchpad-search-results.workspace = true
 birchpad-syntax.workspace = true
+birchpad-terminal.workspace = true
 birchpad-theme.workspace = true
 birchpad-tools.workspace = true
 birchpad-tray.workspace = true
@@ -50,6 +53,7 @@ e2e = ["birchpad-search-results/test-support"]
 # integration tests (`tests/integration`) turn it on.
 test-support = [
     "birchpad-editor/test-support",
+    "birchpad-lsp/test-support",
     "birchpad-quick-pick/test-support",
     "birchpad-search-results/test-support",
     "birchpad-tray/test-support",

@@ -90,6 +90,7 @@ pub fn parse_field(kind: Kind, text: &str) -> Result<Option<Value>> {
         Kind::Bool
         | Kind::Choice(_)
         | Kind::LanguageTabs
+        | Kind::LanguageServers
         | Kind::ExplorerMenu
         | Kind::PluginSettings => {
             bail!("{}", t!("preferences.this-setting-has-no-text-field"))
@@ -124,6 +125,8 @@ pub fn set(key: &str, value: Option<Value>, cx: &mut App) -> Result<()> {
         eprintln!("settings ({}): {}", diagnostic.layer, diagnostic.message);
     }
     cx.global_mut::<AppState>().set_settings(resolved);
+    // Preferences > Updates > Send install statistics.
+    crate::updates::forget_install_id_when_off(cx);
     crate::i18n::apply(cx);
     // Preferences > Appearance > Interface.
     crate::themes::reapply(cx);

@@ -1069,12 +1069,38 @@ as revision 1 did (105 drawn). With ELK it draws 67. What it showed:
 
 ### Release 0.8.0: development tools
 
-- [ ] 7.5 LSP client: diagnostics, completion, hover, go to definition and references,
+- [x] 7.5 LSP client: diagnostics, completion, hover, go to definition and references,
       rename, formatting; servers configured per language, none bundled
-- [ ] 7.6 Git: changes in the gutter, blame of the line, the diff of a file against its last
-      commit
-- [ ] 7.7 Integrated terminal in a panel
-- [ ] Release 0.8.0: the workspace version (0.8.0, set when its branch opens, so that nightly
+      ([ADR 0065](adr/0065-language-server-client.md)): `lsp.servers.<language>` names a
+      server's command line (Preferences > Language Servers); one server runs per language and
+      root folder (the nearest with `.git`), with the full text after edits; diagnostics are
+      underlined and listed, the server's completions come first in the auto-completion list,
+      and Tools > Language Server shows hover, goes to definitions, lists references in the
+      search results, renames in every file without saving and formats; `birchpad-lsp` holds
+      the protocol without a window, fuzzed as `language_server`
+- [x] 7.6 Git: changes in the gutter, blame of the line, the diff of a file against its last
+      commit ([ADR 0066](adr/0066-git-through-its-command-line.md)): through the `git` program
+      (Preferences > Git), not a library; a margin of its own marks the lines added, modified
+      and deleted since HEAD (Preferences > Margins > Git changes), read again after edits and
+      when the window comes back to the front; Tools > Git blames the caret's line with the
+      document's text as it is, goes to the next and the previous change, and compares with the
+      last commit through Compare to Git HEAD; `birchpad-git` holds it without a window, its
+      blame fuzzed as `git_blame`
+- [x] 7.7 Integrated terminal in a panel ([ADR 0067](adr/0067-integrated-terminal.md)):
+      View > Terminal (``Ctrl+` ``) shows the shell (`terminal.shell`, the system's when empty)
+      under the documents, started in the active document's folder, on `alacritty_terminal`'s
+      pseudo-terminal and emulator; the theme's colors, the shell's keys before the window's
+      shortcuts, pastes, scrollback (`terminal.scrollback`), and Enter to start a new shell
+      once it exited; `birchpad-terminal` holds it without a window, what programs write fuzzed
+      as `terminal_output`. Several terminals in tabs and copying with the mouse are left for
+      later
+- [x] 7.7a Update checks through Birchpad's Update API, with install statistics
+      ([ADR 0064](adr/0064-update-api-and-install-statistics.md)): the signed manifest read from
+      `api.birchpad.ru` and verified as the one from GitHub, which stays the way when the API
+      fails; the request says, unless `updates.statistics = false` or the `UpdateStatistics`
+      policy, a random id of the copy, its version, channel, platform and PlantUML, and the
+      privacy policy says so
+- [x] Release 0.8.0: the workspace version (0.8.0, set when its branch opens, so that nightly
       builds are its pre-releases), `CHANGELOG.md` and this roadmap updated; the
       [release checklist](release-checklist.md) gone through
 

@@ -3,12 +3,14 @@
 //! for this platform (`birchpad_update::component::PLANTUML`), through the transport of updates,
 //! and every PlantUML preview draws with it from then on.
 
-use std::path::PathBuf;
+use std::ffi::OsStr;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use anyhow::{Result, anyhow};
 use birchpad_update::component::{self, ComponentPackage, PLANTUML};
+use birchpad_update::statistics::PlantUml;
 use gpui_kit::{App, AppContext as _, Global};
 
 use crate::app_state::AppState;
@@ -51,6 +53,84 @@ fn package() -> Option<ComponentPackage> {
 pub fn installed(cx: &App) -> Option<PathBuf> {
     let data = AppState::global(cx).paths.user_data.clone()?;
     PLANTUML.installed_or_earlier(&data)
+}
+
+/// Which PlantUML the previews draw with, for the statistics of update checks (ADR 0064).
+pub fn in_use(cx: &App) -> PlantUml {
+    let setting = &AppState::global(cx).settings.preview.plantuml;
+    let base = std::env::current_dir().ok();
+    plantuml_in_use(
+        setting,
+        installed(cx).as_deref(),
+        base.as_deref(),
+        std::env::var_os("PATH").as_deref(),
+    )
+}
+
+/// Which PlantUML a preview draws with, chosen as `preview::plantuml_command` chooses it: with
+/// `setting` (`preview.plantuml`) as it comes (`plantuml`, or empty) and PlantUML installed by
+/// Birchpad in `installed`, that one, of the version its folder names; else the program
+/// `setting` names, a relative path taken from `base` (Birchpad's working folder) and a name
+/// alone looked for on `path`, as running it looks: another PlantUML when it is there, none
+/// when it is not.
+pub fn plantuml_in_use(
+    setting: &str,
+    installed: Option<&Path>,
+    base: Option<&Path>,
+    path: Option<&OsStr>,
+) -> PlantUml {
+    let setting = match setting.trim() {
+        "" => "plantuml",
+        setting => setting,
+    };
+    if let Some(folder) = installed.filter(|_| setting == "plantuml") {
+        return PlantUml::Component {
+            version: installed_version(folder),
+        };
+    }
+    let program = match base {
+        Some(base) => crate::preview::setting_path(setting, base),
+        None => setting.to_owned(),
+    };
+    if program_found(&program, path) {
+        PlantUml::Custom
+    } else {
+        PlantUml::None
+    }
+}
+
+/// The version of the PlantUML installed in `folder`, from its name (`plantuml-1.2026.9-3`, or
+/// that of an earlier installation); this one's when the name says none.
+fn installed_version(folder: &Path) -> String {
+    let prefix = format!("{}-", PLANTUML.name);
+    folder
+        .file_name()
+        .and_then(OsStr::to_str)
+        .and_then(|name| name.strip_prefix(&prefix))
+        .filter(|version| !version.is_empty())
+        .unwrap_or(PLANTUML.version)
+        .to_owned()
+}
+
+/// Whether `program` is there to run: a file at its path when it has a folder, else a file of
+/// its name in one of the folders of `path` (on Windows `.exe` added to a name without an
+/// extension, as starting it adds it).
+fn program_found(program: &str, path: Option<&OsStr>) -> bool {
+    let program = Path::new(program);
+    let has_folder = program.is_absolute() || program.components().count() > 1;
+    if has_folder {
+        return program.is_file();
+    }
+    let name = if cfg!(windows) && program.extension().is_none() {
+        program.with_extension("exe")
+    } else {
+        program.to_path_buf()
+    };
+    path.map(std::env::split_paths)
+        .into_iter()
+        .flatten()
+        .filter(|folder| !folder.as_os_str().is_empty())
+        .any(|folder| folder.join(&name).is_file())
 }
 
 /// Whether the PlantUML Birchpad installed is of an earlier version or revision than the one it

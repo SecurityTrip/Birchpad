@@ -1,0 +1,7 @@
+Content-Length: 194
+
+{"jsonrpc": "2.0", "id": 3, "result": {"contents": {"kind": "markdown", "value": "```rust\nfn main()\n```"}, "range": {"start": {"line": 0, "character": 3}, "end": {"line": 0, "character": 7}}}}Content-Length: 267
+
+{"jsonrpc": "2.0", "id": 4, "result": [{"targetUri": "file:///src/lib.rs", "targetRange": {"start": {"line": 0, "character": 0}, "end": {"line": 3, "character": 1}}, "targetSelectionRange": {"start": {"line": 0, "character": 4}, "end": {"line": 0, "character": 8}}}]}Content-Length: 156
+
+{"jsonrpc": "2.0", "id": 5, "result": [{"uri": "file:///src/main.rs", "range": {"start": {"line": 1, "character": 8}, "end": {"line": 1, "character": 9}}}]}

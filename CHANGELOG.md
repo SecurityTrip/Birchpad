@@ -6,6 +6,82 @@ version's release notes from its section here.
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-11-09
+
+### Added
+
+- A language server client (roadmap 7.5,
+  [ADR 0065](docs/adr/0065-language-server-client.md)): `lsp.servers.<language id>` names the
+  command line of a language's server (Preferences > Language Servers, where `lsp.enabled`
+  turns them all off); none is bundled, and with none configured nothing starts. One server
+  runs per language and root folder (the nearest folder with `.git`, or the file's own) for
+  the documents with a path, a language and less than a large file's size; it gets each
+  document's full text after edits (at most every 150 ms, and before each request) and is told
+  of saves, and it stops with the last of its documents, when its command line changes, or
+  with Birchpad. Its diagnostics are underlined with wavy lines in four new theme colors
+  (`diagnostic-error`, `-warning`, `-information`, `-hint`), move with the edits, and Tools >
+  Language Server goes to the next and previous one (`Alt+F8`, `Alt+Shift+F8`) and lists them
+  in the search results. Its completions come first in the auto-completion list, after a word
+  character, one of its trigger characters, or Function Completion. Show Hover
+  (`Ctrl+Alt+K`), Go to Definition (`Alt+F12`), Find References (`Shift+F12`, in the search
+  results), Rename Symbol (`Alt+F2`: every file changed in one undoable step, none saved, an
+  edit that creates or deletes files refused) and Format Document (`Alt+Shift+F`). A server
+  that cannot start or exits is told once; a request unanswered in ten seconds is reported.
+  The protocol is the new crate `birchpad-lsp`, without a window, fuzzed as `language_server`.
+- Git (roadmap 7.6, [ADR 0066](docs/adr/0066-git-through-its-command-line.md)), through the
+  `git` program (`git.program`, Preferences > Git, where `git.enabled` turns it off): a margin
+  of its own, for files Git tracks, marks the lines added, modified and deleted since HEAD in
+  three new theme colors (`git-added`, `git-modified`, `git-deleted`;
+  Preferences > Margins > Git changes, `editor.git-changes`), compared again 300 ms after
+  edits and when the window comes back to the front, with line breaks aside. Tools > Git >
+  Blame Line shows the caret's line's commit, author, date and summary in the call tip, or
+  that it is not committed yet; Next Change and Previous Change go around the blocks of
+  changes; Compare with Last Commit is Compare to Git HEAD. Git that cannot run is told once.
+  The new crate `birchpad-git` holds it without a window; blame's output is fuzzed as
+  `git_blame`.
+- An integrated terminal (roadmap 7.7, [ADR 0067](docs/adr/0067-integrated-terminal.md)):
+  View > Terminal (``Ctrl+` ``) shows a panel under the documents (under the search results
+  when both show) with a shell started the first time it opens, in the active document's
+  folder: `terminal.shell` (Preferences > Terminal), or the system's (`%COMSPEC%` on Windows,
+  `$SHELL` elsewhere). It draws in the editor's font with the theme's text and background and
+  the 256 colors of xterm, takes the keys before the window's shortcuts (but for switching
+  tabs, ``Ctrl+` `` and Cmd), pastes with `Ctrl+Shift+V` and `Shift+Insert` (bracketed when
+  the program asks), scrolls back through `terminal.scrollback` lines (10 000), and starts a
+  new shell with Enter once the last exited. The new crate `birchpad-terminal` holds the
+  pseudo-terminal and the emulator (`alacritty_terminal`, Apache-2.0) without a window; what
+  programs write to it is fuzzed as `terminal_output`.
+- Update checks through Birchpad's Update API
+  ([ADR 0064](docs/adr/0064-update-api-and-install-statistics.md)): Birchpad posts to
+  `https://api.birchpad.ru/v1/updates/check`, which answers with the signed update manifest as
+  published on GitHub, byte for byte, and verifies it as it verifies the one from GitHub (the
+  same keys, no manifest older than one seen, none expired). When the API fails (no answer, a
+  status other than 200, a manifest that does not verify), the check reads the manifest from
+  GitHub as before, and reports GitHub's error if that fails too; the API's error is only
+  logged. The request says, with statistics on, the copy's install id, version, channel,
+  platform and PlantUML (`component`, `custom` or `none`, and the component's version), and
+  nothing (`{}`) with them off.
+- `updates.statistics` (Preferences > Updates > Send install statistics, on by default) and
+  the `UpdateStatistics` policy (`REG_DWORD`; 0 turns the statistics off, which users cannot
+  override): whether update checks say which copy of Birchpad asks
+  ([ADR 0064](docs/adr/0064-update-api-and-install-statistics.md)).
+- The install id of the statistics: a random UUID (version 4) a copy of Birchpad makes for
+  itself at its first check with statistics on, kept in `state.toml` (`[updates] install-id`)
+  and derived from nothing on the computer. Turning statistics off deletes it; turning them on
+  again makes a new one, which nothing ties to the old.
+
+### Changed
+
+- Plugins > Compare > Compare to Git HEAD runs `git.program`, and says that Git is turned off
+  with `git.enabled = false`.
+- The privacy policy ([PRIVACY.md](PRIVACY.md)) no longer says "no telemetry": it says what
+  update checks send to `api.birchpad.ru` (the install statistics) and why, what the service
+  keeps (one row per copy: the first and the current version, channel, platform, PlantUML, the
+  times of the first and the last check) and what it does not (IP addresses, the
+  `User-Agent`, a history of checks), and how to turn them off (`updates.statistics = false`,
+  the `UpdateStatistics` policy, `updates.mode = "off"`).
+- Help > About names `api.birchpad.ru` as where updates are read from, unless `updates.url`
+  names a mirror.
+
 ## [0.7.7] - 2026-11-05
 
 ### Added
@@ -919,7 +995,8 @@ The first release: a Notepad++-like editor for Windows, Linux and macOS.
   entirely (`updates.mode = "off"`).
 - Nightly builds of `main` on the nightly channel.
 
-[Unreleased]: https://github.com/SecurityTrip/Birchpad/compare/v0.7.7...HEAD
+[Unreleased]: https://github.com/SecurityTrip/Birchpad/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/SecurityTrip/Birchpad/compare/v0.7.7...v0.8.0
 [0.7.7]: https://github.com/SecurityTrip/Birchpad/compare/v0.7.6...v0.7.7
 [0.7.6]: https://github.com/SecurityTrip/Birchpad/compare/v0.7.5...v0.7.6
 [0.7.5]: https://github.com/SecurityTrip/Birchpad/compare/v0.7.3...v0.7.5

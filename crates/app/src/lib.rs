@@ -30,12 +30,14 @@ pub mod file_ops;
 pub mod find;
 pub mod find_in_files;
 pub mod finder;
+pub mod git;
 pub mod help;
 pub mod hex_editor;
 pub mod hex_view;
 pub mod i18n;
 pub mod incremental;
 pub mod json_xml;
+pub mod language_servers;
 pub mod macros;
 pub mod menus;
 pub mod navigation;
@@ -55,6 +57,7 @@ pub mod shortcut_mapper;
 pub mod spell_check;
 pub mod status_bar;
 pub mod style_configurator;
+pub mod terminal;
 pub mod themes;
 pub mod toolbar;
 pub mod tools;
@@ -186,6 +189,8 @@ pub fn run() {
                 birchpad_update::install::detect(),
                 cx,
             );
+            // Statistics turned off by a policy since the last run (ADR 0064).
+            updates::forget_install_id_when_off(cx);
             commands::init(user_keymap.as_deref(), cx);
             cx.on_window_closed(|cx, _| {
                 if cx.windows().is_empty() {
@@ -243,6 +248,8 @@ pub fn run() {
                 quitting
                     .update(cx, |workspace, cx| workspace.save_session_for_quit(cx))
                     .ok();
+                // Language servers are processes of their own: they stop with Birchpad.
+                language_servers::stop_all_now(cx);
                 async {}
             })
             .detach();

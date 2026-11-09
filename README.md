@@ -6,11 +6,12 @@ English · [Русский](README.ru.md)
 
 A fast, extensible, cross-platform text editor in the spirit of Notepad++, written in Rust.
 
-> **Status: alpha (0.7).** A Notepad++-like editor: tabs and split views, encodings, syntax
+> **Status: alpha (0.8).** A Notepad++-like editor: tabs and split views, encodings, syntax
 > highlighting for 50 languages with folding, multi-cursor and column editing, bookmarks,
 > sessions that keep unsaved work, Find in Files, macros, themes, an interface in English,
 > German and Russian, plugins as WebAssembly components and scripts in Rhai, with Compare, JSON and XML
-> tools, a hex view, Markdown and PlantUML previews and spell checking built in. Full parity
+> tools, a hex view, Markdown and PlantUML previews and spell checking built in, and, for code,
+> language servers, Git's changes in the margin and a terminal. Full parity
 > with Notepad++ comes next. Expect rough edges. See the [roadmap](docs/ROADMAP.md) and the
 > [changelog](CHANGELOG.md).
 
@@ -64,7 +65,7 @@ with > Change All.
 To uninstall, use Installed apps in Windows Settings for the installer and the MSI, or delete the
 folder of a portable copy.
 
-Nightly builds of the next version's branch (`v0.7.7` or `v0.8.0` after 0.7.6) are published as
+Nightly builds of the next version's branch (`v0.7.8` or `v0.8.0` after 0.7.7) are published as
 pre-releases; set `updates.channel = "nightly"` to get them as updates.
 
 ## Code signing policy
@@ -78,7 +79,9 @@ built from this repository's source on GitHub-hosted runners.
 
 Privacy policy: Birchpad collects no personal data, and connects to the network only to check
 for and download updates, which can be turned off, and, when you ask, to install PlantUML,
-plugins and dictionaries; see [PRIVACY.md](PRIVACY.md).
+plugins and dictionaries. Update checks send install statistics (a random id of the copy, its
+version, channel, platform and PlantUML) unless `updates.statistics = false`; see
+[PRIVACY.md](PRIVACY.md).
 
 ## Building
 
@@ -131,7 +134,10 @@ with it) and Birchpad keeps its settings and data in a `data` folder next to it.
 policies of the machine still apply.
 
 On its own, Birchpad uses the network only to check for updates: once a day, and when you pick
-Help > Check for Updates. It reads a manifest signed with the project's key and refuses any other; installed
+Help > Check for Updates. It reads a manifest signed with the project's key and refuses any
+other, from Birchpad's update service (`api.birchpad.ru`) or, when that fails, from GitHub; the
+request carries the install statistics, or nothing with `updates.statistics = false`
+([ADR 0064](docs/adr/0064-update-api-and-install-statistics.md)); installed
 copies (the Windows installer) update themselves when Birchpad restarts, other copies show where
 to download the new version. With `updates.mode = "off"` (a setting or an administrator policy)
 Birchpad makes no update requests; `"notify"` announces new versions without downloading them.
@@ -151,6 +157,9 @@ not with `network.online-features = false`. See [ADR 0020](docs/adr/0020-signed-
 | `crates/view` | Layout of a document view in cells: tab stops, word wrap, visual rows, right-to-left text. No UI. |
 | `crates/syntax` | Languages and syntax trees: detection, tree-sitter parsing, highlighting, folding. No UI. |
 | `crates/cli` | Notepad++-compatible command line and the single-instance hand-off. No UI. |
+| `crates/git` | Git through its command line: a file's text in HEAD, a line's blame, the changes of lines. No UI. |
+| `crates/lsp` | Language server client: the protocol, the server process, positions and URIs, the servers' answers as plain values. No UI. |
+| `crates/terminal` | The terminal: a shell on a pseudo-terminal, the emulator, keys as bytes, the screen with its colors (on `alacritty_terminal`). No UI. |
 | `crates/tools` | Built-in tools: JSON and XML formatting, XPath and schemas, hex dumps, comparing texts, spell checking, date formats, HTML export. No UI. |
 | `crates/plugin` | Plugins as WebAssembly components (`wit/birchpad.wit`), Rhai scripts, the plugin manager. No UI. |
 | `crates/update` | Updates: the signed update manifest, channels, versions, installing (Velopack on Windows); the online catalog. No UI. |

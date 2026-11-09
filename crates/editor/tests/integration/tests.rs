@@ -305,3 +305,126 @@ fn typing_into_a_ten_megabyte_line(cx: &mut TestAppContext) {
     }
     assert_eq!(active_text(&workspace, cx).len(), line.len() + 40);
 }
+
+#[gpui_kit::test]
+fn a_language_servers_diagnostics_are_underlined_with_wavy_lines(cx: &mut TestAppContext) {
+    use birchpad_editor::theme::Paint;
+    use birchpad_editor::{DiagnosticLevel, EditorHooks};
+    let (workspace, cx) = open_workspace(cx);
+    cx.update(|_, cx| {
+        cx.set_global(EditorHooks {
+            diagnostics: |_, _| {
+                std::rc::Rc::new(vec![
+                    (0..3, DiagnosticLevel::Warning),
+                    (1..2, DiagnosticLevel::Error),
+                    (4..5, DiagnosticLevel::Hint),
+                    // Past the end of the text: not drawn, and no panic.
+                    (90..99, DiagnosticLevel::Information),
+                ])
+            },
+            ..EditorHooks::default()
+        });
+    });
+    cx.simulate_input("abc de");
+    cx.update(|window, cx| {
+        window.refresh();
+        window.draw(cx).clear(cx);
+    });
+    let view = workspace.read_with(cx, |workspace, cx| workspace.active_view(cx).unwrap());
+    let colors = birchpad_editor::theme::editor();
+    let paint = |color| Paint::Wavy(birchpad_editor::theme::paint(color));
+    let wavy: Vec<Paint> = view.read_with(cx, |view, _| {
+        view.layout
+            .as_ref()
+            .expect("a frame was drawn")
+            .decorations
+            .iter()
+            .map(|(_, paint)| *paint)
+            .filter(|paint| matches!(paint, Paint::Wavy(_)))
+            .collect()
+    });
+    // The most serious last, over the others.
+    assert_eq!(
+        wavy,
+        [
+            paint(colors.diagnostic_hint),
+            paint(colors.diagnostic_warning),
+            paint(colors.diagnostic_error),
+        ]
+    );
+}
+
+#[gpui_kit::test]
+fn the_git_margin_shows_the_lines_changed_since_the_last_commit(cx: &mut TestAppContext) {
+    use birchpad_editor::{EditorHooks, GitMark};
+    let (workspace, cx) = open_workspace(cx);
+    let draw = |cx: &mut VisualTestContext| {
+        cx.update(|window, cx| {
+            window.refresh();
+            window.draw(cx).clear(cx);
+        });
+    };
+    let bars = |workspace: &Entity<Workspace>, cx: &mut VisualTestContext| {
+        let view = workspace.read_with(cx, |workspace, cx| workspace.active_view(cx).unwrap());
+        view.read_with(cx, |view, _| {
+            let layout = view.layout.as_ref().expect("a frame was drawn");
+            (
+                layout.margins.git.is_some(),
+                layout
+                    .git_bars
+                    .iter()
+                    .map(|(bounds, mark)| (*mark, bounds.size.height))
+                    .collect::<Vec<_>>(),
+                layout.metrics.line_height,
+            )
+        })
+    };
+    cx.simulate_input("one\ntwo\nthree\nfour");
+    draw(cx);
+    // Without the application's hook nothing is tracked: no margin.
+    let (margin, found, _) = bars(&workspace, cx);
+    assert!(!margin && found.is_empty());
+    cx.update(|_, cx| {
+        cx.set_global(EditorHooks {
+            git_changes: |_, _| {
+                Some(std::rc::Rc::new(vec![
+                    (0..1, GitMark::Added),
+                    (1..3, GitMark::Modified),
+                    (3..4, GitMark::Deleted),
+                    // Past the last line: nothing, and no panic.
+                    (40..50, GitMark::Added),
+                ]))
+            },
+            ..EditorHooks::default()
+        });
+    });
+    draw(cx);
+    let (margin, found, line_height) = bars(&workspace, cx);
+    assert!(margin);
+    let marks: Vec<GitMark> = found.iter().map(|(mark, _)| *mark).collect();
+    assert_eq!(
+        marks,
+        [
+            GitMark::Added,
+            GitMark::Modified,
+            GitMark::Modified,
+            GitMark::Deleted
+        ]
+    );
+    assert_eq!(found[0].1, line_height, "a bar the row's height");
+    assert!(found[3].1 < line_height, "a deletion is a short mark");
+    // Tracked without changes: the margin, empty.
+    cx.update(|_, cx| {
+        cx.set_global(EditorHooks {
+            git_changes: |_, _| Some(std::rc::Rc::default()),
+            ..EditorHooks::default()
+        });
+    });
+    draw(cx);
+    let (margin, found, _) = bars(&workspace, cx);
+    assert!(margin && found.is_empty());
+    // Preferences > Margins > Git changes off: no margin.
+    cx.update(|_, cx| cx.global_mut::<AppState>().settings.editor.git_changes = false);
+    draw(cx);
+    assert!(!bars(&workspace, cx).0);
+}

@@ -695,6 +695,7 @@ pub fn main_menu() -> Vec<Menu> {
             cmd("panel.document-map"),
             cmd("panel.document-list"),
             cmd("panel.function-list"),
+            cmd("view.terminal"),
             Separator,
             Submenu(Menu::new(
                 "Preview",
@@ -819,6 +820,37 @@ pub fn main_menu() -> Vec<Menu> {
             Separator,
             convert("ascii-to-hex", "ASCII to HEX"),
             convert("hex-to-ascii", "HEX to ASCII"),
+            Separator,
+            Submenu(Menu::new(
+                "Language Server",
+                vec![
+                    cmd("lsp.hover"),
+                    cmd("lsp.definition"),
+                    cmd("lsp.references"),
+                    Separator,
+                    cmd("lsp.rename"),
+                    cmd("lsp.format"),
+                    Separator,
+                    cmd("lsp.next-diagnostic"),
+                    cmd("lsp.previous-diagnostic"),
+                    cmd("lsp.diagnostics"),
+                    Separator,
+                    cmd("lsp.restart"),
+                ],
+            )),
+            Submenu(Menu::new(
+                "Git",
+                vec![
+                    cmd("git.blame"),
+                    cmd("git.next-change"),
+                    cmd("git.previous-change"),
+                    Separator,
+                    MenuItem::Command {
+                        invocation: Invocation::new("compare.with-git"),
+                        label: Some("Compare with Last Commit".to_owned()),
+                    },
+                ],
+            )),
         ],
     );
 
