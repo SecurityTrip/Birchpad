@@ -704,12 +704,14 @@ dependencies = [
  "birchpad-config",
  "birchpad-core",
  "birchpad-io",
+ "birchpad-lsp",
  "birchpad-plugin",
  "birchpad-syntax",
  "birchpad-theme",
  "birchpad-tools",
  "birchpad-update",
  "ed25519-dalek",
+ "serde",
  "serde_json",
  "toml 1.1.6+spec-1.1.0",
 ]
@@ -735,6 +737,21 @@ dependencies = [
  "tempfile",
  "thiserror 2.0.21",
  "windows-sys 0.61.2",
+]
+
+[[package]]
+name = "birchpad-lsp"
+version = "0.8.0"
+dependencies = [
+ "birchpad-core",
+ "birchpad-i18n",
+ "birchpad-lsp",
+ "futures",
+ "lsp-types",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.21",
 ]
 
 [[package]]

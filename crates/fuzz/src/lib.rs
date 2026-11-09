@@ -56,6 +56,7 @@ pub const TARGETS: &[(&str, Check)] = &[
     ("search_query", search_query),
     ("plugin_calls", plugin_calls),
     ("rhai_script", rhai_script),
+    ("language_server", language_server),
 ];
 
 /// Every encoding a file can be opened in.
@@ -992,5 +993,137 @@ pub fn rhai_script(data: &[u8]) -> bool {
             true
         }
         Err(_) => false,
+    }
+}
+
+/// What a language server writes (ADR 0065): messages read one after another until its output
+/// ends; each writes back as the same kind of message, the answers Birchpad reads convert to
+/// ranges within the text, on its characters, and edits that apply.
+pub fn language_server(data: &[u8]) -> bool {
+    use birchpad_core::Rope;
+    use birchpad_lsp::framing::read_message;
+    use birchpad_lsp::message::Message;
+
+    let text = Rope::from_str("fn main() {\r\n    let ё = \"😀\";\n}\rend");
+    let mut reader = std::io::BufReader::new(data);
+    let mut read = 0;
+    loop {
+        match read_message(&mut reader) {
+            Ok(Some(content)) => {
+                read += 1;
+                let Some(message) = Message::from_bytes(&content) else {
+                    continue;
+                };
+                let again = Message::from_bytes(&message.to_bytes())
+                    .expect("a message read writes back as one");
+                assert_eq!(shape(&again), shape(&message));
+                match &message {
+                    Message::Response {
+                        result: Ok(value), ..
+                    } => server_answers(value, &text),
+                    Message::Notification { params, .. } => server_answers(params, &text),
+                    Message::Request { method, params, .. } => {
+                        let _ = birchpad_lsp::client::answer_server_request(method, params);
+                    }
+                    Message::Response { .. } => {}
+                }
+            }
+            Ok(None) => return read > 0,
+            Err(_) => return false,
+        }
+    }
+}
+
+/// What kind of message it is, its id and method.
+fn shape(message: &birchpad_lsp::message::Message) -> String {
+    use birchpad_lsp::message::Message;
+    match message {
+        Message::Request { id, method, .. } => format!("request {id:?} {method}"),
+        Message::Response { id, result } => format!("response {id:?} {}", result.is_ok()),
+        Message::Notification { method, .. } => format!("notification {method}"),
+    }
+}
+
+/// `value` read as each answer Birchpad asks for, and converted against `text`.
+fn server_answers(value: &serde_json::Value, text: &birchpad_core::Rope) {
+    use birchpad_lsp::PositionEncoding;
+    use birchpad_lsp::convert;
+    use birchpad_lsp::lsp_types as lsp;
+    use birchpad_lsp::position::byte_range;
+
+    fn read<T: serde::de::DeserializeOwned>(value: &serde_json::Value) -> Option<T> {
+        serde_json::from_value(value.clone()).ok()
+    }
+    let check_range = |range: lsp::Range| {
+        for encoding in [PositionEncoding::Utf8, PositionEncoding::Utf16] {
+            let bytes = byte_range(text, range, encoding);
+            assert!(bytes.start <= bytes.end && bytes.end <= text.len());
+            assert!(text.is_char_boundary(bytes.start) && text.is_char_boundary(bytes.end));
+        }
+    };
+    let check_edits = |edits: &[lsp::TextEdit]| {
+        for encoding in [PositionEncoding::Utf8, PositionEncoding::Utf16] {
+            if let Ok(edits) = convert::text_edits(text, edits, encoding) {
+                assert!(
+                    edits
+                        .windows(2)
+                        .all(|pair| pair[0].range.end <= pair[1].range.start)
+                );
+                let transaction = birchpad_core::Transaction::from_edits(text, edits)
+                    .expect("converted edits apply");
+                let mut changed = text.clone();
+                transaction.changes().apply(&mut changed);
+            }
+        }
+    };
+    if let Some(response) = read::<lsp::CompletionResponse>(value) {
+        for entry in convert::completions(Some(response)) {
+            if let Some(range) = entry.range {
+                check_range(range);
+            }
+            let _ = convert::matches(&entry.filter, "ma");
+        }
+    }
+    if let Some(hover) = read::<lsp::Hover>(value) {
+        let _ = convert::hover_text(&hover.contents);
+        if let Some(range) = hover.range {
+            check_range(range);
+        }
+    }
+    if let Some(found) = read::<lsp::GotoDefinitionResponse>(value) {
+        for place in convert::definitions(Some(found)) {
+            check_range(place.range);
+        }
+    }
+    if let Some(found) = read::<Vec<lsp::Location>>(value) {
+        for place in convert::references(Some(found)) {
+            check_range(place.range);
+        }
+    }
+    if let Some(edit) = read::<lsp::WorkspaceEdit>(value)
+        && let Ok(files) = convert::workspace_edits(&edit)
+    {
+        for edits in files.values() {
+            check_edits(edits);
+        }
+    }
+    if let Some(edits) = read::<Vec<lsp::TextEdit>>(value) {
+        check_edits(&edits);
+    }
+    if let Some(published) = read::<lsp::PublishDiagnosticsParams>(value) {
+        for diagnostic in &published.diagnostics {
+            check_range(diagnostic.range);
+            let _ = convert::Severity::of(diagnostic.severity);
+            let _ = convert::diagnostic_message(diagnostic);
+        }
+    }
+    if let Some(capabilities) = value
+        .get("capabilities")
+        .and_then(read::<lsp::ServerCapabilities>)
+    {
+        let _ = birchpad_lsp::Abilities::of(&capabilities);
+    }
+    if let Some(snippet) = value.as_str() {
+        let _ = convert::snippet_text(snippet);
     }
 }

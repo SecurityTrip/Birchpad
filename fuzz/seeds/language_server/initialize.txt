@@ -1,0 +1,3 @@
+Content-Length: 363
+
+{"jsonrpc": "2.0", "id": 1, "result": {"capabilities": {"positionEncoding": "utf-8", "textDocumentSync": {"openClose": true, "change": 2, "save": {"includeText": false}}, "completionProvider": {"triggerCharacters": ["."]}, "hoverProvider": true, "definitionProvider": true, "referencesProvider": true, "renameProvider": true, "documentFormattingProvider": true}}}

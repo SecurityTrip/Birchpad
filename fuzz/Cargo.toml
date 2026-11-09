@@ -216,3 +216,10 @@ path = "fuzz_targets/catalog.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "language_server"
+path = "fuzz_targets/language_server.rs"
+test = false
+doc = false
+bench = false

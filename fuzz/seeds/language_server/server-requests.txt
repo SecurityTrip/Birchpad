@@ -1,0 +1,5 @@
+Content-Length: 114
+
+{"jsonrpc": "2.0", "id": "cfg-1", "method": "workspace/configuration", "params": {"items": [{"section": "rust"}]}}Content-Length: 84
+
+{"jsonrpc": "2.0", "id": 9, "method": "workspace/applyEdit", "params": {"edit": {}}}
