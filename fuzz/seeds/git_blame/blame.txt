@@ -1,0 +1,11 @@
+3f961065654fe4ef798e8831abc55de6f2599f96 12 12 1
+author Ada Lovelace
+author-mail <ada@example.com>
+author-time 1762631476
+author-tz +0400
+committer Ada Lovelace
+committer-time 1762631476
+committer-tz +0400
+summary Version 0.8.0
+filename Cargo.toml
+	version = "0.8.0"

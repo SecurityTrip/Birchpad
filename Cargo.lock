@@ -704,6 +704,7 @@ dependencies = [
  "birchpad-commands",
  "birchpad-config",
  "birchpad-core",
+ "birchpad-git",
  "birchpad-io",
  "birchpad-lsp",
  "birchpad-plugin",
@@ -715,6 +716,16 @@ dependencies = [
  "serde",
  "serde_json",
  "toml 1.1.6+spec-1.1.0",
+]
+
+[[package]]
+name = "birchpad-git"
+version = "0.8.0"
+dependencies = [
+ "birchpad-core",
+ "birchpad-i18n",
+ "tempfile",
+ "thiserror 2.0.21",
 ]
 
 [[package]]

@@ -57,6 +57,7 @@ pub const TARGETS: &[(&str, Check)] = &[
     ("plugin_calls", plugin_calls),
     ("rhai_script", rhai_script),
     ("language_server", language_server),
+    ("git_blame", git_blame),
 ];
 
 /// Every encoding a file can be opened in.
@@ -1126,4 +1127,18 @@ fn server_answers(value: &serde_json::Value, text: &birchpad_core::Rope) {
     if let Some(snippet) = value.as_str() {
         let _ = convert::snippet_text(snippet);
     }
+}
+
+/// What `git blame --porcelain` writes (ADR 0066): a line's commit, read when it is one, its id
+/// forty hex digits, its date and description made without a panic whatever its time and zone.
+pub fn git_blame(data: &[u8]) -> bool {
+    let text = String::from_utf8_lossy(data);
+    let Some(blame) = birchpad_git::Blame::parse(&text) else {
+        return false;
+    };
+    assert_eq!(blame.commit.len(), 40);
+    assert!(blame.commit.bytes().all(|byte| byte.is_ascii_hexdigit()));
+    assert!(blame.date().len() >= "1970-01-01".len());
+    let _ = blame.describe();
+    true
 }

@@ -1801,6 +1801,12 @@ core:
     too-complex: "регулярное выражение слишком сложное: {reason}"
   sort:
     not-a-number: "строка {line} не начинается с числа"
+git:
+  blame-unreadable: "вывод git blame не читается"
+  cannot-run: "не удаётся запустить {program}: {reason}"
+  failed: "Git сообщает: {reason}"
+  not-a-file: "{path} — не файл"
+  not-committed: "Ещё не закоммичено"
 syntax:
   not-a-udl: "не файл пользовательского языка: {reason}"
 config:

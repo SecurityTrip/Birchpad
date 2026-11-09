@@ -1789,6 +1789,12 @@ core:
     too-complex: "the regular expression is too complex to match: {reason}"
   sort:
     not-a-number: "line {line} does not start with a number"
+git:
+  blame-unreadable: "Git's blame cannot be read"
+  cannot-run: "cannot run {program}: {reason}"
+  failed: "Git says: {reason}"
+  not-a-file: "{path} is not a file"
+  not-committed: "Not committed yet"
 syntax:
   not-a-udl: "not a user defined language file: {reason}"
 config:

@@ -15,6 +15,7 @@ birchpad-cli.workspace = true
 birchpad-commands.workspace = true
 birchpad-config.workspace = true
 birchpad-core.workspace = true
+birchpad-git.workspace = true
 birchpad-io.workspace = true
 birchpad-lsp.workspace = true
 birchpad-plugin.workspace = true

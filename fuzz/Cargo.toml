@@ -223,3 +223,10 @@ path = "fuzz_targets/language_server.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "git_blame"
+path = "fuzz_targets/git_blame.rs"
+test = false
+doc = false
+bench = false

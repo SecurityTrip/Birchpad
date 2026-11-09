@@ -355,4 +355,5 @@ fuzz_tests!(
     plugin_calls,
     rhai_script,
     language_server,
+    git_blame,
 );
