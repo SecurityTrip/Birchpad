@@ -435,8 +435,11 @@ impl Workspace {
                 }
             }
             BufferEvent::StateChanged | BufferEvent::Reloaded { .. } => {
+                if let BufferEvent::Reloaded { previous: Some(_) } = event {
+                    crate::git::reloaded(buffer, cx);
+                }
                 // Opened, read again, saved, renamed: the language server follows.
-                self.sync_language_servers(window, cx);
+                self.sync_document_tools(window, cx);
                 if let BufferEvent::Reloaded { previous: None } = event
                     && let Some(view) = self.view_of_buffer(buffer, cx)
                 {
@@ -451,11 +454,12 @@ impl Workspace {
             }
             BufferEvent::Edited { transaction, .. } => {
                 crate::language_servers::edited(buffer, transaction, cx);
+                crate::git::edited(buffer, cx);
                 self.map_places(buffer, transaction);
                 self.compare_after_edit(buffer, window, cx);
             }
             // Another language, perhaps: another server.
-            BufferEvent::SyntaxChanged => self.sync_language_servers(window, cx),
+            BufferEvent::SyntaxChanged => self.sync_document_tools(window, cx),
             BufferEvent::MarksChanged | BufferEvent::FollowEnd => {}
         }
     }
@@ -480,7 +484,7 @@ impl Workspace {
             self.refresh_menus(cx);
         }
         if !still_shown {
-            self.sync_language_servers(window, cx);
+            self.sync_document_tools(window, cx);
             let closed = view.clone();
             cx.defer_in(window, move |this, window, cx| {
                 this.plugin_event(birchpad_plugin::EventKind::Closed, &closed, window, cx);

@@ -58,6 +58,9 @@ mod find_in_files_tests;
 #[path = "find_mouse_tests.rs"]
 mod find_mouse_tests;
 
+#[path = "git/tests.rs"]
+mod git;
+
 #[path = "help/tests.rs"]
 mod help;
 

@@ -41,6 +41,9 @@ mod settings_completion_tests;
 #[path = "settings/finding_tests.rs"]
 mod settings_finding_tests;
 
+#[path = "settings/git_tests.rs"]
+mod settings_git_tests;
+
 #[path = "settings/link_tests.rs"]
 mod settings_link_tests;
 

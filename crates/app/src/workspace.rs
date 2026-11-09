@@ -125,6 +125,8 @@ impl Workspace {
         let activation = cx.observe_window_activation(window, |this, window, cx| {
             if window.is_window_active() {
                 this.check_files(window, cx);
+                // A commit may have been made meanwhile.
+                crate::git::refresh_heads(cx.entity_id(), cx);
             }
         });
         this._subscriptions.push(activation);
@@ -150,6 +152,7 @@ impl Workspace {
                     if workspace.can_quit_now(cx) {
                         workspace.save_session_for_quit(cx);
                         crate::language_servers::forget_workspace(cx.entity_id(), cx);
+                        crate::git::forget_workspace(cx.entity_id(), cx);
                         return true;
                     }
                     let ready = workspace.prepare_to_quit(window, cx);
@@ -157,6 +160,7 @@ impl Workspace {
                         if ready.await {
                             this.update(cx, |_, cx| {
                                 crate::language_servers::forget_workspace(cx.entity_id(), cx);
+                                crate::git::forget_workspace(cx.entity_id(), cx);
                             })
                             .ok();
                             cx.update(|window, _| window.remove_window()).ok();
@@ -325,9 +329,11 @@ impl Workspace {
         result
     }
 
-    /// Brings the language servers in step with this window's documents (ADR 0065).
-    pub fn sync_language_servers(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+    /// Brings the language servers (ADR 0065) and Git (ADR 0066) in step with this window's
+    /// documents.
+    pub fn sync_document_tools(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         crate::language_servers::sync_workspace(self, window.window_handle(), cx);
+        crate::git::sync_workspace(self, window.window_handle(), cx);
     }
 
     /// Redraws every editor after a view setting (zoom, word wrap, Show Symbol) changed.
@@ -338,6 +344,7 @@ impl Workspace {
         // Preferences > Language Servers may have changed.
         if let Some(window) = self.window {
             crate::language_servers::sync_workspace(self, window, cx);
+            crate::git::sync_workspace(self, window, cx);
         }
         cx.refresh_windows();
         // The tab bar's settings.

@@ -154,20 +154,18 @@ pub fn marks(
 }
 
 /// The text of the file `name` in the folder `dir` as Git's HEAD has it, as `git show` gives
-/// it.
-pub fn git_head(dir: &Path, name: &str) -> Result<Vec<u8>> {
-    let output = std::process::Command::new("git")
-        .arg("-C")
-        .arg(dir)
-        .arg("show")
-        .arg(format!("HEAD:./{name}"))
-        .output()
-        .map_err(|error| anyhow!("{}", t!("compare.git-cannot-run", reason = error)))?;
-    if !output.status.success() {
-        let reason = String::from_utf8_lossy(&output.stderr).trim().to_owned();
-        bail!("{}", t!("compare.git-has-no-such-file", reason = reason));
+/// it, asked of `git` (Preferences > Git, ADR 0066).
+pub fn git_head(git: &birchpad_git::Git, dir: &Path, name: &str) -> Result<Vec<u8>> {
+    match git.run(dir, &["show", &format!("HEAD:./{name}")], None) {
+        Ok(bytes) => Ok(bytes),
+        Err(birchpad_git::GitError::CannotRun { reason, .. }) => {
+            bail!("{}", t!("compare.git-cannot-run", reason = reason))
+        }
+        Err(birchpad_git::GitError::Failed(reason)) => {
+            bail!("{}", t!("compare.git-has-no-such-file", reason = reason))
+        }
+        Err(error) => Err(anyhow!("{error}")),
     }
-    Ok(output.stdout)
 }
 
 impl Workspace {
@@ -312,7 +310,11 @@ impl Workspace {
                 let (Some(dir), Some(file_name)) = (path.parent(), path.file_name()) else {
                     bail!("{}", t!("compare.save-it-first"));
                 };
-                let bytes = git_head(dir, &file_name.to_string_lossy())?;
+                if !AppState::global(cx).settings.git.enabled {
+                    bail!("{}", t!("git-changes.turned-off"));
+                }
+                let git = crate::git::git(cx);
+                let bytes = git_head(&git, dir, &file_name.to_string_lossy())?;
                 let text = birchpad_io::decode(bytes, format.encoding).text;
                 (
                     t!("compare.git-title", name = name),

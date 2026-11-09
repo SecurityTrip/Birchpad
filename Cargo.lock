@@ -577,6 +577,7 @@ dependencies = [
  "birchpad-config",
  "birchpad-core",
  "birchpad-editor",
+ "birchpad-git",
  "birchpad-i18n",
  "birchpad-io",
  "birchpad-lsp",

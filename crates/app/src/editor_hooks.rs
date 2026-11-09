@@ -1,6 +1,6 @@
 //! The application's part in the editor (`birchpad_editor::EditorHooks`): macro recording,
-//! links opened in the browser, the right-click menu, user defined languages, spelling, and a
-//! language server's diagnostics and completions.
+//! links opened in the browser, the right-click menu, user defined languages, spelling, a
+//! language server's diagnostics and completions, and Git's changes.
 
 use birchpad_editor::{EditorHooks, EditorView};
 use gpui_kit::component::menu::{PopupMenu, PopupMenuItem};
@@ -18,6 +18,7 @@ pub fn install(cx: &mut App) {
         misspelled: crate::spell_check::underlined,
         diagnostics: crate::language_servers::underlined,
         server_completion: crate::language_servers::server_completion,
+        git_changes: crate::git::marks,
     });
 }
 

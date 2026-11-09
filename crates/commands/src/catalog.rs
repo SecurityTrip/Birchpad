@@ -452,6 +452,10 @@ pub const COMMANDS: &[CommandSpec] = &[
     workspace("lsp.previous-diagnostic", "Previous Diagnostic"),
     workspace("lsp.diagnostics", "List Diagnostics"),
     workspace("lsp.restart", "Restart Language Server"),
+    // Tools > Git (ADR 0066): the active document's file
+    workspace("git.blame", "Blame Line"),
+    workspace("git.next-change", "Next Change"),
+    workspace("git.previous-change", "Previous Change"),
     // Run; { "line": <a command line> } or { "name": <a saved one> }; neither asks for it
     workspace("run.run", "Run..."),
     // { "name": "Google Search" }: one of Notepad++'s own Run menu entries

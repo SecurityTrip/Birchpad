@@ -158,6 +158,9 @@ fn editor_colors(
         diagnostic_warning: None,
         diagnostic_information: None,
         diagnostic_hint: None,
+        git_added: None,
+        git_modified: None,
+        git_deleted: None,
     }
 }
 

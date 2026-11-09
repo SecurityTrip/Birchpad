@@ -15,6 +15,9 @@ pub struct EditorSettings {
     pub fold_margin: bool,
     /// Lines changed since the document was opened, as Notepad++'s Change History shows them.
     pub change_history: ChangeHistory,
+    /// Preferences > Margins > Git changes: the lines changed since the last commit, in a
+    /// margin of their own (ADR 0066).
+    pub git_changes: bool,
     /// What Enter does with indentation.
     pub auto_indent: AutoIndent,
     /// View > Show Symbol as Birchpad starts; the menu toggles them (remembered in
@@ -245,6 +248,7 @@ impl Default for EditorSettings {
             bookmark_margin: true,
             fold_margin: true,
             change_history: ChangeHistory::default(),
+            git_changes: true,
             auto_indent: AutoIndent::default(),
             show_whitespace: false,
             show_eol: false,

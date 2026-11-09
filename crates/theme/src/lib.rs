@@ -185,6 +185,11 @@ palette! {
         diagnostic_warning,
         diagnostic_information,
         diagnostic_hint,
+        /// The Git margin (ADR 0066): lines added since the last commit, modified, and where
+        /// lines were deleted.
+        git_added,
+        git_modified,
+        git_deleted,
     }
 }
 
@@ -560,6 +565,9 @@ impl Theme {
                 diagnostic_warning: black,
                 diagnostic_information: black,
                 diagnostic_hint: black,
+                git_added: black,
+                git_modified: black,
+                git_deleted: black,
             },
             ui: UiColors {
                 background: black,

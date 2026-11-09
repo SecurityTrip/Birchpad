@@ -1078,8 +1078,14 @@ as revision 1 did (105 drawn). With ELK it draws 67. What it showed:
       and Tools > Language Server shows hover, goes to definitions, lists references in the
       search results, renames in every file without saving and formats; `birchpad-lsp` holds
       the protocol without a window, fuzzed as `language_server`
-- [ ] 7.6 Git: changes in the gutter, blame of the line, the diff of a file against its last
-      commit
+- [x] 7.6 Git: changes in the gutter, blame of the line, the diff of a file against its last
+      commit ([ADR 0066](adr/0066-git-through-its-command-line.md)): through the `git` program
+      (Preferences > Git), not a library; a margin of its own marks the lines added, modified
+      and deleted since HEAD (Preferences > Margins > Git changes), read again after edits and
+      when the window comes back to the front; Tools > Git blames the caret's line with the
+      document's text as it is, goes to the next and the previous change, and compares with the
+      last commit through Compare to Git HEAD; `birchpad-git` holds it without a window, its
+      blame fuzzed as `git_blame`
 - [ ] 7.7 Integrated terminal in a panel
 - [x] 7.7a Update checks through Birchpad's Update API, with install statistics
       ([ADR 0064](adr/0064-update-api-and-install-statistics.md)): the signed manifest read from

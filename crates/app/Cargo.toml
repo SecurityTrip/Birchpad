@@ -16,6 +16,7 @@ birchpad-config.workspace = true
 birchpad-core.workspace = true
 birchpad-editor.workspace = true
 birchpad-i18n.workspace = true
+birchpad-git.workspace = true
 birchpad-io.workspace = true
 birchpad-lsp.workspace = true
 birchpad-menu-bar.workspace = true

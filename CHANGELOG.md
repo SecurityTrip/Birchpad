@@ -26,6 +26,17 @@ version's release notes from its section here.
   edit that creates or deletes files refused) and Format Document (`Alt+Shift+F`). A server
   that cannot start or exits is told once; a request unanswered in ten seconds is reported.
   The protocol is the new crate `birchpad-lsp`, without a window, fuzzed as `language_server`.
+- Git (roadmap 7.6, [ADR 0066](docs/adr/0066-git-through-its-command-line.md)), through the
+  `git` program (`git.program`, Preferences > Git, where `git.enabled` turns it off): a margin
+  of its own, for files Git tracks, marks the lines added, modified and deleted since HEAD in
+  three new theme colors (`git-added`, `git-modified`, `git-deleted`;
+  Preferences > Margins > Git changes, `editor.git-changes`), compared again 300 ms after
+  edits and when the window comes back to the front, with line breaks aside. Tools > Git >
+  Blame Line shows the caret's line's commit, author, date and summary in the call tip, or
+  that it is not committed yet; Next Change and Previous Change go around the blocks of
+  changes; Compare with Last Commit is Compare to Git HEAD. Git that cannot run is told once.
+  The new crate `birchpad-git` holds it without a window; blame's output is fuzzed as
+  `git_blame`.
 - Update checks through Birchpad's Update API
   ([ADR 0064](docs/adr/0064-update-api-and-install-statistics.md)): Birchpad posts to
   `https://api.birchpad.ru/v1/updates/check`, which answers with the signed update manifest as
@@ -47,6 +58,8 @@ version's release notes from its section here.
 
 ### Changed
 
+- Plugins > Compare > Compare to Git HEAD runs `git.program`, and says that Git is turned off
+  with `git.enabled = false`.
 - The privacy policy ([PRIVACY.md](PRIVACY.md)) no longer says "no telemetry": it says what
   update checks send to `api.birchpad.ru` (the install statistics) and why, what the service
   keeps (one row per copy: the first and the current version, channel, platform, PlantUML, the

@@ -73,6 +73,8 @@ pub struct ViewSettings {
     pub fold_margin: bool,
     /// The change history margin.
     pub change_history: bool,
+    /// The Git margin, for documents Git tracks.
+    pub git_changes: bool,
     /// View > Show Symbol.
     pub show_whitespace: bool,
     pub show_eol: bool,
@@ -119,6 +121,7 @@ impl ViewSettings {
             bookmark_margin: editor.bookmark_margin,
             fold_margin: editor.fold_margin,
             change_history: editor.change_history == birchpad_config::ChangeHistory::Margin,
+            git_changes: editor.git_changes,
             show_whitespace: app.state.show_whitespace.unwrap_or(editor.show_whitespace),
             show_eol: app.state.show_eol.unwrap_or(editor.show_eol),
             indent_guides: app.state.indent_guides.unwrap_or(editor.indent_guides),

@@ -69,7 +69,7 @@ pub fn register_commands(registry: &mut CommandRegistry) {
     registry.workspace("lsp.restart", |this, (), window, cx| {
         let (_, buffer) = active(this, cx)?;
         super::restart(&buffer, cx)?;
-        this.sync_language_servers(window, cx);
+        this.sync_document_tools(window, cx);
         Ok(())
     });
 }

@@ -837,6 +837,19 @@ pub fn main_menu() -> Vec<Menu> {
                     cmd("lsp.restart"),
                 ],
             )),
+            Submenu(Menu::new(
+                "Git",
+                vec![
+                    cmd("git.blame"),
+                    cmd("git.next-change"),
+                    cmd("git.previous-change"),
+                    Separator,
+                    MenuItem::Command {
+                        invocation: Invocation::new("compare.with-git"),
+                        label: Some("Compare with Last Commit".to_owned()),
+                    },
+                ],
+            )),
         ],
     );
 

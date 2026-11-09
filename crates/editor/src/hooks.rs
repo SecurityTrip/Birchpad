@@ -32,6 +32,19 @@ pub enum DiagnosticLevel {
 /// A buffer's diagnostics, shared with the frame that draws them.
 pub type Diagnostics = Rc<Vec<(Range<usize>, DiagnosticLevel)>>;
 
+/// How a line differs from its last commit, in the Git margin.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum GitMark {
+    Added,
+    Modified,
+    /// Lines of the commit were deleted before this one.
+    Deleted,
+}
+
+/// The lines of a buffer that differ from its last commit, by ranges of lines; `None` for a
+/// buffer Git does not track, which has no Git margin.
+pub type GitMarks = Option<Rc<Vec<(Range<usize>, GitMark)>>>;
+
 /// The application's part in the editor.
 #[derive(Clone, Copy)]
 pub struct EditorHooks {
@@ -56,6 +69,8 @@ pub struct EditorHooks {
     /// application may ask a language server for entries, which it hands to
     /// [`EditorView::offer_server_items`].
     pub server_completion: fn(&mut EditorView, Option<&str>, &mut Context<EditorView>),
+    /// The lines of a buffer, by its id, that differ from its last commit (ADR 0066).
+    pub git_changes: fn(EntityId, &App) -> GitMarks,
 }
 
 impl Default for EditorHooks {
@@ -70,6 +85,7 @@ impl Default for EditorHooks {
             misspelled: |_, _, _, _| Rc::default(),
             diagnostics: |_, _| Rc::default(),
             server_completion: |_, _, _| {},
+            git_changes: |_, _| None,
         }
     }
 }

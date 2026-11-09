@@ -136,6 +136,14 @@ impl Element for EditorElement {
                 };
                 window.paint_quad(fill(*bar, theme::paint(color)));
             }
+            for (bar, mark) in &layout.git_bars {
+                let color = match mark {
+                    crate::GitMark::Added => theme::editor().git_added,
+                    crate::GitMark::Modified => theme::editor().git_modified,
+                    crate::GitMark::Deleted => theme::editor().git_deleted,
+                };
+                window.paint_quad(fill(*bar, theme::paint(color)));
+            }
             // Only the tree styles join their fold points with lines.
             let tree = matches!(
                 layout.fold_style,

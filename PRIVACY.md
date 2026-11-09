@@ -46,7 +46,9 @@ The Markdown preview loads no images from the web, and a link in it opens in you
 only when you click it. PlantUML diagrams are drawn by PlantUML on your computer (yours, or the
 one Birchpad installed), not by a server. Language servers (Preferences > Language Servers) are
 programs you configure, which Birchpad starts on your computer and sends the text of your
-documents of their language; Birchpad sends nothing about them anywhere else.
+documents of their language; Birchpad sends nothing about them anywhere else. Git
+(Preferences > Git) is your own `git` program, which Birchpad asks for the last commit of your
+files and the blame of a line; it never fetches, pulls or pushes.
 
 GitHub serves the other files and, like any web server, sees the requests: the address of your
 computer or network and the time. Its

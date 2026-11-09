@@ -53,6 +53,10 @@ diagnostic-error = "#e51400"
 diagnostic-warning = "#bf8803"
 diagnostic-information = "#1a85ff"
 diagnostic-hint = "#6c6c6c"
+# The Git margin: added, modified, and where lines were deleted since the last commit.
+git-added = "#2ea043"
+git-modified = "#1f6feb"
+git-deleted = "#d1242f"
 
 [ui]
 background = "#ffffff"

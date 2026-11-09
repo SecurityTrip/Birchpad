@@ -35,11 +35,17 @@ impl EditorView {
 
         // Right to left: the margins at the right, between the text and the scrollbar.
         let right_edge = bounds.right() - SCROLLBAR;
+        // The Git margin, for a document Git tracks.
+        let git = settings
+            .git_changes
+            .then(|| (crate::EditorHooks::get(cx).git_changes)(self.buffer.entity_id(), cx))
+            .flatten();
         let margins = Margins::new(
             bounds,
             &settings,
             &metrics,
             line_count(&text),
+            git.is_some(),
             self.rtl.then_some(right_edge),
         );
         let mut text_bounds = if self.rtl {
@@ -315,6 +321,7 @@ impl EditorView {
             line_numbers,
             bookmarks: Vec::new(),
             change_bars: Vec::new(),
+            git_bars: Vec::new(),
             fold_boxes: Vec::new(),
             hidden_marks: Vec::new(),
             fold_lines: Vec::new(),
@@ -334,6 +341,7 @@ impl EditorView {
         };
         layout.bookmarks = self.bookmark_symbols(&layout, &text, cx);
         layout.change_bars = self.change_bars(&layout, &text, cx);
+        layout.git_bars = git_bars(&layout, git.as_deref().map_or(&[], Vec::as_slice));
         self.fold_marks(&mut layout, &text);
         self.hidden_marks(&mut layout, &text);
         layout.decorations = self.decoration_bounds(&layout, &text, cx);
@@ -445,4 +453,46 @@ pub(super) fn metrics(settings: &ViewSettings, window: &mut Window) -> Metrics {
         line_height,
         cell,
     }
+}
+
+/// A bar beside each visible row of a line added or modified since the last commit, and a short
+/// one at the top of the first row of a line before which lines were deleted.
+fn git_bars(
+    layout: &Layout,
+    marks: &[(std::ops::Range<usize>, crate::GitMark)],
+) -> Vec<(Bounds<Pixels>, crate::GitMark)> {
+    let Some(margin) = layout.margins.git else {
+        return Vec::new();
+    };
+    if marks.is_empty() {
+        return Vec::new();
+    }
+    let width = (margin.size.width - px(2.)).max(px(1.));
+    let mut bars = Vec::new();
+    let mut previous_line = None;
+    for row in &layout.rows {
+        let line = row.row.line;
+        let first_row = previous_line != Some(line);
+        previous_line = Some(line);
+        // The marks are sorted: the first that ends after the line holds it, if one does.
+        let found = marks
+            .get(marks.partition_point(|(lines, _)| lines.end <= line))
+            .filter(|(lines, _)| lines.contains(&line));
+        let Some((_, mark)) = found else {
+            continue;
+        };
+        let height = match mark {
+            crate::GitMark::Deleted if !first_row => continue,
+            crate::GitMark::Deleted => px(3.).min(layout.metrics.line_height),
+            _ => layout.metrics.line_height,
+        };
+        bars.push((
+            Bounds::new(
+                point(margin.left() + px(1.), row.y),
+                gpui_kit::size(width, height),
+            ),
+            *mark,
+        ));
+    }
+    bars
 }

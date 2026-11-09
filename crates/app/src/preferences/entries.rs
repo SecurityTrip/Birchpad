@@ -11,6 +11,7 @@ mod default_directory;
 mod delimiter;
 mod editing;
 mod files;
+mod git;
 mod go_to_file;
 mod hex_editor;
 mod highlighting;
@@ -41,6 +42,7 @@ const SECTIONS: &[&[Entry]] = &[
     new_document::ENTRIES,
     language::ENTRIES,
     language_servers::ENTRIES,
+    git::ENTRIES,
     default_directory::ENTRIES,
     multi_instance_and_date::ENTRIES,
     cloud_and_link::ENTRIES,

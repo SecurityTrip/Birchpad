@@ -5,6 +5,7 @@ mod appearance;
 mod completion;
 mod editor;
 mod files;
+mod git;
 mod highlighting;
 mod instances;
 mod languages;
@@ -30,6 +31,7 @@ pub use files::{
     BackupOnSave, ChangeDetection, DefaultDirectory, FileSettings, NewDocumentSettings,
     SessionSettings,
 };
+pub use git::GitSettings;
 pub use highlighting::{HighlightingSettings, SmartHighlighting, TokenMatching};
 pub use instances::{DateSettings, InstanceMode, InstanceSettings};
 pub use languages::{LanguageMenuSettings, LanguageSettings, SqlSettings};
@@ -89,4 +91,6 @@ pub struct Settings {
     pub sql: SqlSettings,
     /// Preferences > Language Servers (ADR 0065).
     pub lsp: LspSettings,
+    /// Preferences > Git (ADR 0066).
+    pub git: GitSettings,
 }
