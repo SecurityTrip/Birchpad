@@ -269,7 +269,9 @@ fn a_shell_that_exits_is_started_again_with_enter(cx: &mut TestAppContext) {
     run(&workspace, Invocation::new("view.terminal"), cx);
     let panel = panel(&workspace, cx);
     assert!(wait_for(cx, |cx| !panel.read_with(cx, |panel, _| panel.is_running())));
-    assert!(screen_text(&workspace, cx).contains("from-birchpad"));
+    // The exit can be seen before the last of the output is read.
+    assert!(wait_for(cx, |cx| screen_text(&workspace, cx)
+        .contains("from-birchpad")));
     cx.update(|window, cx| {
         window.refresh();
         window.draw(cx).clear(cx);
