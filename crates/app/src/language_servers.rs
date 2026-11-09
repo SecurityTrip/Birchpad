@@ -481,11 +481,12 @@ fn tell(key: &ServerKey, message: String, cx: &mut App) {
         .get(key)
         .and_then(|server| server.window);
     match window {
-        Some(window) => {
+        // Once the window is no longer being updated: a server may fail while it syncs.
+        Some(window) => cx.defer(move |cx| {
             let _ = cx.update_window(window, |_, window, cx| {
                 crate::workspace::report_warning(message, window, cx);
             });
-        }
+        }),
         None => eprintln!("{message}"),
     }
 }
@@ -605,9 +606,14 @@ fn refresh_doc(id: EntityId, cx: &mut App) {
         );
         return;
     }
+    // Edits wait for their pause (`edited`); a save or a reading from disk is told at once,
+    // the text first.
+    if modified {
+        return;
+    }
     send_changes(id, cx);
     let doc = servers(cx).docs.get_mut(&id).expect("looked up above");
-    if !modified && doc.saved != Some(revision) {
+    if doc.saved != Some(revision) {
         doc.saved = Some(revision);
         if let Some(include_text) = abilities.save {
             let mut params = json!({ "textDocument": { "uri": doc.uri.as_str() } });

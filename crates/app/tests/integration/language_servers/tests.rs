@@ -754,10 +754,14 @@ fn renaming_changes_every_file_without_saving(cx: &mut TestAppContext) {
     )
     .unwrap();
     assert!(wait_for(cx, |_| !take_info().is_empty()));
-    assert_eq!(
-        active_text(&setup.workspace, cx),
-        "fn start() {}\nstart();\n"
-    );
+    let main_text = |cx: &mut VisualTestContext| {
+        setup.workspace.read_with(cx, |workspace, cx| {
+            workspace
+                .view_for_path(&main, cx)
+                .map(|view| view.read(cx).text(cx).to_string())
+        })
+    };
+    assert_eq!(main_text(cx).as_deref(), Some("fn start() {}\nstart();\n"));
     // The other file opened, changed once read, and nothing saved.
     assert!(wait_for(cx, |cx| setup.workspace.read_with(
         cx,
@@ -884,7 +888,11 @@ fn completions_come_after_a_trigger_character(cx: &mut TestAppContext) {
         })
     };
     assert!(wait_for(cx, |cx| labels(cx).is_some()));
-    assert_eq!(labels(cx).unwrap(), ["len", "is_empty", "trigger \".\""]);
+    // The server's first, then the API file's.
+    assert_eq!(
+        labels(cx).unwrap()[..3],
+        ["len", "is_empty", "trigger \".\""]
+    );
     let asked = handle.requests("textDocument/completion");
     assert_eq!(asked.last().unwrap()["context"]["triggerKind"], 2);
     // The text was sent before the request.
@@ -893,7 +901,9 @@ fn completions_come_after_a_trigger_character(cx: &mut TestAppContext) {
     // Typing on filters them without asking again.
     let before = handle.requests("textDocument/completion").len();
     cx.simulate_input("i");
-    assert_eq!(labels(cx).unwrap(), ["is_empty"]);
+    let filtered = labels(cx).unwrap();
+    assert_eq!(filtered[0], "is_empty");
+    assert!(!filtered.contains(&"len".to_owned()), "{filtered:?}");
     wait_for(cx, |_| false);
     assert_eq!(handle.requests("textDocument/completion").len(), before);
     run(&setup.workspace, Invocation::new("completion.accept"), cx).unwrap();
