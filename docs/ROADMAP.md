@@ -1116,9 +1116,17 @@ as revision 1 did (105 drawn). With ELK it draws 67. What it showed:
       dragging, show in the system's file manager; open documents follow their files when they
       are renamed or moved, and the tree follows what changes on disk
       ([ADR 0068](adr/0068-file-operations-in-folder-as-workspace.md))
-- [ ] 7.7c The updated libraries put to use: what gpui-kit 0.8 and the cargo group's releases
+- [x] 7.7c The updated libraries put to use: what gpui-kit 0.8 and the cargo group's releases
       bring looked through, and the code written around what they lacked replaced with their
-      own features where that is simpler or faster, measured where it is about speed
+      own features where that is simpler or faster, measured where it is about speed. Replaced:
+      the update client's own transport that limited each read, by ureq's `timeout_per_read`;
+      the ASCII shortcut before unicode-width, which answers ASCII first itself (the same
+      widths for every code point; as fast on ASCII, 8 % faster on mixed text); the keyboard
+      mapper handed to GPUI's key bindings, which take the platform's now. Kept, as the new
+      releases still lack it: the Linux keyboard mapper (GPUI's is still a placeholder), the
+      clipboard's HTML and RTF and its change notification, the tray icon, and the unpacking of
+      packages (zip's `extract` would make the package's symbolic links and keep every
+      permission bit; Birchpad writes files only, without the bits of setuid and the like)
 - [ ] 7.7d The overloaded crates refactored: `birchpad` (the application, about 38 thousand
       lines) and `birchpad-editor` (about 10 thousand) split along their parts into crates of
       their own, without a window where they can be, so that they build faster and are tested

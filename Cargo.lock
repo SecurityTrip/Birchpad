@@ -1009,7 +1009,7 @@ dependencies = [
 
 [[package]]
 name = "birchpad-update"
-version = "0.8.0"
+version = "0.8.1"
 dependencies = [
  "base64 0.23.1",
  "birchpad-config",
@@ -1031,7 +1031,7 @@ dependencies = [
 
 [[package]]
 name = "birchpad-view"
-version = "0.7.1"
+version = "0.8.1"
 dependencies = [
  "birchpad-core",
  "proptest",

@@ -31,6 +31,10 @@ version's release notes from its section here.
   ([#70](https://github.com/SecurityTrip/Birchpad/pull/70)). Key bindings now take the
   keyboard mapper of the platform GPUI runs on, which GPUI now applies itself; mouse wheel
   events are GPUI's `ScrollEvent`.
+- What the updated libraries bring put to use (roadmap 7.7c): downloads that receive nothing
+  for a minute fail through ureq's own `timeout_per_read` instead of a transport of Birchpad's,
+  and the widths of characters come from unicode-width without a shortcut of Birchpad's before
+  it (the same widths; measured as fast on ASCII and 8 % faster on mixed text).
 
 ## [0.8.0] - 2026-11-09
 
