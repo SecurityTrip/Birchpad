@@ -1104,13 +1104,24 @@ as revision 1 did (105 drawn). With ELK it draws 67. What it showed:
       builds are its pre-releases), `CHANGELOG.md` and this roadmap updated; the
       [release checklist](release-checklist.md) gone through
 
-### Release 0.8.1: dependency updates
+### Release 0.8.1: updates, workspace and refactoring
 
 - [ ] Dependabot's updates: gpui-kit 0.8.1
       ([#64](https://github.com/SecurityTrip/Birchpad/pull/64)) and the cargo group of nine
       ([#70](https://github.com/SecurityTrip/Birchpad/pull/70)): trash, zip, encoding_rs,
       tree-sitter-cmake, tree-sitter-powershell, tree-sitter-scala, uuid, ureq and
       unicode-width
+- [ ] 7.7b Folder as Workspace works with files the way an IDE's project tree does: new file
+      and folder, rename (F2), copy, cut and paste, duplicate, delete to the trash, move by
+      dragging, show in the system's file manager; open documents follow their files when they
+      are renamed or moved, and the tree follows what changes on disk
+- [ ] 7.7c The updated libraries put to use: what gpui-kit 0.8 and the cargo group's releases
+      bring looked through, and the code written around what they lacked replaced with their
+      own features where that is simpler or faster, measured where it is about speed
+- [ ] 7.7d The overloaded crates refactored: `birchpad` (the application, about 38 thousand
+      lines) and `birchpad-editor` (about 10 thousand) split along their parts into crates of
+      their own, without a window where they can be, so that they build faster and are tested
+      apart; an ADR says where the lines run
 - [ ] Release 0.8.1: the workspace version (0.8.1, set when its branch opens, so that nightly
       builds are its pre-releases), `CHANGELOG.md` and this roadmap updated; the
       [release checklist](release-checklist.md) gone through
