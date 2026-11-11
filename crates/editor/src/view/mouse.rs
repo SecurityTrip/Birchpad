@@ -8,7 +8,7 @@ use birchpad_ui::AppState;
 use birchpad_view::{Block, BlockPoint};
 use gpui_kit::{
     App, Context, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, Pixels, Point,
-    ScrollWheelEvent, Window, point, px,
+    ScrollEvent, Window, point, px,
 };
 
 use crate::ZOOM_RANGE;
@@ -20,7 +20,7 @@ impl EditorView {
 
     pub(crate) fn scroll_wheel(
         &mut self,
-        event: &ScrollWheelEvent,
+        event: &ScrollEvent,
         _: &mut Window,
         cx: &mut Context<Self>,
     ) {
@@ -28,7 +28,7 @@ impl EditorView {
             return;
         };
         let line_height = layout.metrics.line_height;
-        if event.modifiers.secondary() {
+        if event.modifiers.secondary(cx) {
             // Ctrl+wheel zooms, as in Notepad++.
             let delta = event.delta.pixel_delta(line_height).y;
             if delta != px(0.) {
@@ -102,7 +102,7 @@ impl EditorView {
         cx: &mut Context<Self>,
     ) -> bool {
         let settings = AppState::global(cx).settings.clone();
-        let secondary = event.modifiers.secondary();
+        let secondary = event.modifiers.secondary(cx);
         let text = self.text(cx).clone();
         if event.click_count == 1 && secondary && self.include_at(&text, pos, cx) {
             self.drag = None;
@@ -281,7 +281,7 @@ impl EditorView {
         };
         if event.modifiers.alt
             && !event.modifiers.shift
-            && !event.modifiers.secondary()
+            && !event.modifiers.secondary(cx)
             && granularity == Granularity::Char
             && let Some(anchor) = self.block_point_for_point(event.position, cx)
         {
@@ -312,7 +312,7 @@ impl EditorView {
         let unit = Self::unit_at(&text, pos, granularity);
         self.selection = if event.modifiers.shift {
             self.with_primary(Range::new(self.selection.primary().anchor, pos))
-        } else if event.modifiers.secondary()
+        } else if event.modifiers.secondary(cx)
             && granularity == Granularity::Char
             && editor_settings.multi_editing
         {
@@ -421,7 +421,7 @@ impl EditorView {
                 // A click in the selection without dragging puts the caret there.
                 self.go_to(to, cx);
             } else {
-                self.drop_selection(to, event.modifiers.secondary(), cx);
+                self.drop_selection(to, event.modifiers.secondary(cx), cx);
             }
         }
         self.drag = None;

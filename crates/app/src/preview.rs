@@ -31,7 +31,7 @@ use gpui_kit::component::{IconName, Selectable as _, Sizable};
 use gpui_kit::{
     AnyElement, App, AppContext as _, ClickEvent, Context, CursorStyle, Entity, Image, ImageFormat,
     ImageSource, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, ObjectFit, Pixels,
-    Point, Resource, ScrollHandle, ScrollWheelEvent, SharedString, SharedUri, Subscription, Task,
+    Point, Resource, ScrollEvent, ScrollHandle, SharedString, SharedUri, Subscription, Task,
     WeakEntity, Window, div, img, point, prelude::*, px,
 };
 
@@ -718,7 +718,7 @@ impl Preview {
     /// does not do it itself. Whether it scrolled.
     fn wheel_across(
         &mut self,
-        event: &ScrollWheelEvent,
+        event: &ScrollEvent,
         window: &Window,
         cx: &mut Context<Self>,
     ) -> bool {
@@ -776,7 +776,7 @@ impl Preview {
     }
 
     /// Ctrl with the mouse wheel over the diagrams: a step of zoom for each notch.
-    fn wheel_zoom(&mut self, event: &ScrollWheelEvent, cx: &mut Context<Self>) {
+    fn wheel_zoom(&mut self, event: &ScrollEvent, cx: &mut Context<Self>) {
         let Content::PlantUml(diagrams) = &mut self.content else {
             return;
         };
@@ -1313,8 +1313,8 @@ impl Preview {
                     this.start_drag(event.position, cx);
                 }),
             )
-            .on_scroll_wheel(cx.listener(|this, event: &ScrollWheelEvent, window, cx| {
-                if event.modifiers.secondary() {
+            .on_scroll(cx.listener(|this, event: &ScrollEvent, window, cx| {
+                if event.modifiers.secondary(cx) {
                     this.wheel_zoom(event, cx);
                     cx.stop_propagation();
                 } else if event.modifiers.shift && this.wheel_across(event, window, cx) {

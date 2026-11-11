@@ -14,8 +14,8 @@ use birchpad_core::motion::{line_count, line_range};
 use birchpad_view::cells_at;
 use gpui_kit::{
     App, Bounds, Context, Entity, FocusHandle, Focusable, Hsla, MouseButton, MouseDownEvent,
-    MouseMoveEvent, Pixels, ScrollWheelEvent, WeakEntity, Window, canvas, div, fill, point,
-    prelude::*, px, rgb, size,
+    MouseMoveEvent, Pixels, ScrollEvent, WeakEntity, Window, canvas, div, fill, point, prelude::*,
+    px, rgb, size,
 };
 
 use super::FollowView;
@@ -235,7 +235,7 @@ impl Render for DocumentMap {
                 MouseButton::Left,
                 cx.listener(|this, _, _, _| this.dragging = false),
             )
-            .on_scroll_wheel(cx.listener(move |_, event: &ScrollWheelEvent, window, cx| {
+            .on_scroll(cx.listener(move |_, event: &ScrollEvent, window, cx| {
                 let line_height = window.line_height();
                 let rows = -f64::from(event.delta.pixel_delta(line_height).y / line_height);
                 view.update(cx, |view, cx| view.scroll_by(rows, px(0.), cx));

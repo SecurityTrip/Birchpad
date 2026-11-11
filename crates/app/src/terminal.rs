@@ -15,7 +15,7 @@ use birchpad_terminal::{Key, Modifiers, Palette, Screen, Session, SessionOptions
 use futures::StreamExt as _;
 use gpui_kit::{
     App, Bounds, Context, FocusHandle, Focusable, Font, Keystroke, MouseButton, Pixels,
-    ScrollWheelEvent, Subscription, Task, TextRun, Window, canvas, div, fill, outline, point,
+    ScrollEvent, Subscription, Task, TextRun, Window, canvas, div, fill, outline, point,
     prelude::*, px, size,
 };
 
@@ -323,7 +323,7 @@ impl TerminalPanel {
         }
     }
 
-    fn scroll(&mut self, event: &ScrollWheelEvent, window: &mut Window, cx: &mut Context<Self>) {
+    fn scroll(&mut self, event: &ScrollEvent, window: &mut Window, cx: &mut Context<Self>) {
         let Some(session) = &self.session else {
             return;
         };
@@ -470,7 +470,7 @@ impl Render for TerminalPanel {
                     window.focus(&this.focus_handle, cx);
                 }),
             )
-            .on_scroll_wheel(cx.listener(Self::scroll))
+            .on_scroll(cx.listener(Self::scroll))
             .child(
                 div().flex_1().min_h(px(0.)).p_1().child(
                     canvas(

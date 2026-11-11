@@ -176,7 +176,7 @@ fn perform(
     if let Some(keys) = &step.keys {
         let platform = birchpad_commands::Platform::current();
         for keystroke in KeymapKeystroke::parse_sequence(keys, platform)? {
-            let keystroke = Keystroke::parse(&keystroke.to_string())
+            let keystroke = Keystroke::parse_with_os(&keystroke.to_string(), cx.platform_info().os)
                 .with_context(|| format!("GPUI does not read {keystroke}"))?;
             window.dispatch_keystroke(keystroke, cx);
         }

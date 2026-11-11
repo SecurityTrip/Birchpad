@@ -1141,7 +1141,7 @@ smetana так же, как ревизия 1 (нарисованы 105). С ELK 
 
 ### Release 0.8.1: обновления, рабочая область и рефакторинг
 
-- [ ] Обновления Dependabot: gpui-kit 0.8.1
+- [x] Обновления Dependabot: gpui-kit 0.8.1
       ([#64](https://github.com/SecurityTrip/Birchpad/pull/64)) и группа cargo из девяти
       ([#70](https://github.com/SecurityTrip/Birchpad/pull/70)): trash, zip, encoding_rs,
       tree-sitter-cmake, tree-sitter-powershell, tree-sitter-scala, uuid, ureq и

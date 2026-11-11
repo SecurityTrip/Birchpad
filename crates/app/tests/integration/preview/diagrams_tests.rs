@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
 use gpui_kit::{
-    Entity, Modifiers, MouseButton, Pixels, Point, ScrollDelta, ScrollWheelEvent, TestAppContext,
+    Entity, Modifiers, MouseButton, Pixels, Point, ScrollDelta, ScrollEvent, TestAppContext,
     VisualTestContext, point, px,
 };
 
@@ -1778,7 +1778,7 @@ fn scrolled(shown: &Entity<Preview>, cx: &mut VisualTestContext) -> (Point<Pixel
 /// The mouse wheel over the diagrams, by `delta` pixels, with `modifiers` held.
 fn wheel(delta: Point<Pixels>, modifiers: Modifiers, cx: &mut VisualTestContext) {
     let area = cx.debug_bounds("plantuml-diagrams").unwrap();
-    cx.simulate_event(ScrollWheelEvent {
+    cx.simulate_event(ScrollEvent {
         position: area.center(),
         delta: ScrollDelta::Pixels(delta),
         modifiers,
@@ -1832,7 +1832,11 @@ A -> B
 
     // Ctrl with the wheel zooms; it does not scroll.
     wheel(point(px(0.), px(-100.)), shift, cx);
-    wheel(point(px(0.), px(120.)), Modifiers::secondary_key(), cx);
+    wheel(
+        point(px(0.), px(120.)),
+        cx.update(|_, cx| Modifiers::secondary_key(cx)),
+        cx,
+    );
     assert_eq!(
         shown.read_with(cx, |preview, _| preview.zoom()),
         Zoom::Percent(110)

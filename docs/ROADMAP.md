@@ -1106,7 +1106,7 @@ as revision 1 did (105 drawn). With ELK it draws 67. What it showed:
 
 ### Release 0.8.1: updates, workspace and refactoring
 
-- [ ] Dependabot's updates: gpui-kit 0.8.1
+- [x] Dependabot's updates: gpui-kit 0.8.1
       ([#64](https://github.com/SecurityTrip/Birchpad/pull/64)) and the cargo group of nine
       ([#70](https://github.com/SecurityTrip/Birchpad/pull/70)): trash, zip, encoding_rs,
       tree-sitter-cmake, tree-sitter-powershell, tree-sitter-scala, uuid, ureq and

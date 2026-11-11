@@ -210,12 +210,14 @@ fn ctrl_click_adds_carets_only_with_multi_editing(cx: &mut TestAppContext) {
     let view = view(&workspace, cx);
     select(&view, 1, 1, cx);
     let point_3 = at(&view, 0, 4., cx);
-    cx.simulate_click(point_3, Modifiers::secondary_key());
+    let ctrl = cx.update(|_, cx| Modifiers::secondary_key(cx));
+    cx.simulate_click(point_3, ctrl);
     assert_eq!(selection(&view, cx).ranges().len(), 2);
     set(cx, |editor| editor.multi_editing = false);
     select(&view, 1, 1, cx);
     let point_4 = at(&view, 0, 4., cx);
-    cx.simulate_click(point_4, Modifiers::secondary_key());
+    let ctrl = cx.update(|_, cx| Modifiers::secondary_key(cx));
+    cx.simulate_click(point_4, ctrl);
     assert_eq!(selection(&view, cx).ranges().len(), 1);
 }
 

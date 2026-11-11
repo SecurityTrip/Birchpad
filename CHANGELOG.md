@@ -6,6 +6,16 @@ version's release notes from its section here.
 
 ## [Unreleased]
 
+### Changed
+
+- The component library gpui-kit 0.8.1
+  ([#64](https://github.com/SecurityTrip/Birchpad/pull/64)), and trash 5.3.0, zip 9.4.1,
+  encoding_rs 0.8.44, tree-sitter-cmake 0.7.6, tree-sitter-powershell 0.26.6,
+  tree-sitter-scala 0.26.6, uuid 1.29.0, ureq 3.5.1 and unicode-width 0.2.3
+  ([#70](https://github.com/SecurityTrip/Birchpad/pull/70)). Key bindings now take the
+  keyboard mapper of the platform GPUI runs on, which GPUI now applies itself; mouse wheel
+  events are GPUI's `ScrollEvent`.
+
 ## [0.8.0] - 2026-11-09
 
 ### Added

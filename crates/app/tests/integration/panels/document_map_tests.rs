@@ -1,6 +1,6 @@
 #![allow(clippy::single_range_in_vec_init, reason = "expected bars written out")]
 
-use gpui_kit::{Modifiers, ScrollDelta, ScrollWheelEvent, TestAppContext, VisualTestContext};
+use gpui_kit::{Modifiers, ScrollDelta, ScrollEvent, TestAppContext, VisualTestContext};
 
 use crate::workspace::open_workspace;
 use birchpad::panels::PanelKind;
@@ -145,7 +145,7 @@ fn the_map_scrolls_the_view(cx: &mut TestAppContext) {
 
     // The wheel scrolls the view.
     let before = first_visible(&workspace, cx);
-    cx.simulate_event(ScrollWheelEvent {
+    cx.simulate_event(ScrollEvent {
         position: map.center(),
         delta: ScrollDelta::Lines(point(0., 3.)),
         ..Default::default()

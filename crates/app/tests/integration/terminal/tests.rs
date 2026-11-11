@@ -12,7 +12,7 @@ use gpui_kit::{Bounds, Entity, Keystroke, TestAppContext, VisualTestContext, poi
 
 use crate::workspace::open_workspace;
 
-fn keystroke(text: &str, typed: Option<&str>) -> Keystroke {
+fn keystroke(text: &'static str, typed: Option<&str>) -> Keystroke {
     let mut keystroke = Keystroke::parse(text).unwrap();
     keystroke.key_char = typed.map(str::to_owned);
     keystroke
