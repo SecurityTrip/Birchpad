@@ -29,6 +29,12 @@ pub(super) const ENTRIES: &[Entry] = &[
     ),
     entry(
         "MISC",
+        "misc.confirm-workspace-delete",
+        "Folder as Workspace: confirm moving to the recycle bin",
+        Kind::Bool,
+    ),
+    entry(
+        "MISC",
         "misc.minimize-to-tray",
         "Minimize to system tray",
         Kind::Bool,

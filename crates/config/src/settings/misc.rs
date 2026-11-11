@@ -16,6 +16,8 @@ pub struct MiscSettings {
     pub confirm_save_all: bool,
     /// Folder as Workspace follows links to folders.
     pub follow_symlinks: bool,
+    /// Folder as Workspace asks before it moves a file or folder to the recycle bin.
+    pub confirm_workspace_delete: bool,
     /// Minimizing the window takes it off the taskbar to an icon in the notification area (the
     /// menu bar on macOS), which brings it back ("Minimize to system tray"). Windows and macOS
     /// only.
@@ -45,6 +47,7 @@ impl Default for MiscSettings {
             detect_encoding: true,
             confirm_save_all: false,
             follow_symlinks: false,
+            confirm_workspace_delete: true,
             minimize_to_tray: false,
             close_to_tray: CloseToTray::default(),
         }

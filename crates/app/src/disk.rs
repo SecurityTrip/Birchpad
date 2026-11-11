@@ -133,6 +133,22 @@ impl Workspace {
         self.disk_state.watched = watched;
     }
 
+    /// Stops watching `folder` and the folders in it, so that it can be renamed, moved or
+    /// deleted: Windows refuses that to a folder something watches. [`Self::sync_watches`]
+    /// watches what is still wanted again.
+    pub fn unwatch_under(&mut self, folder: &Path) {
+        let Some(watcher) = &mut self.disk_state.watcher else {
+            return;
+        };
+        self.disk_state.watched.retain(|dir| {
+            let inside = dir.starts_with(folder);
+            if inside {
+                watcher.unwatch(dir).ok();
+            }
+            !inside
+        });
+    }
+
     /// The folders watched, sorted.
     #[cfg(feature = "test-support")]
     pub fn watched_folders(&self) -> Vec<PathBuf> {

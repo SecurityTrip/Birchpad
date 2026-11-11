@@ -282,3 +282,13 @@ fn minimizing_to_the_tray_is_off_by_default() {
     assert!(check_setting("misc.minimize-to-tray", &toml::Value::Integer(1)).is_err());
     assert!(check_setting("misc.minimize-to-system-tray", &toml::Value::Boolean(true)).is_err());
 }
+
+#[test]
+fn folder_as_workspace_asks_before_the_recycle_bin_by_default() {
+    assert!(Settings::default().misc.confirm_workspace_delete);
+    let off: Settings = toml::from_str("[misc]\nconfirm-workspace-delete = false\n").unwrap();
+    assert!(!off.misc.confirm_workspace_delete);
+    assert!(off.misc.detect_encoding, "the others keep their defaults");
+    let wrong = toml::from_str::<Settings>("[misc]\nconfirm-workspace-delete = \"yes\"\n");
+    assert!(wrong.is_err() || wrong.unwrap().misc.confirm_workspace_delete);
+}

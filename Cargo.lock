@@ -665,7 +665,7 @@ dependencies = [
 
 [[package]]
 name = "birchpad-config"
-version = "0.8.0"
+version = "0.8.1"
 dependencies = [
  "birchpad-core",
  "birchpad-i18n",
@@ -756,7 +756,7 @@ dependencies = [
 
 [[package]]
 name = "birchpad-i18n"
-version = "0.8.0"
+version = "0.8.1"
 dependencies = [
  "anyhow",
  "sys-locale",
@@ -765,7 +765,7 @@ dependencies = [
 
 [[package]]
 name = "birchpad-io"
-version = "0.7.0"
+version = "0.8.1"
 dependencies = [
  "birchpad-core",
  "birchpad-i18n",

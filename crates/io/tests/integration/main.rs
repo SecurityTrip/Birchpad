@@ -22,6 +22,9 @@ mod encode;
 #[path = "encoding/tests.rs"]
 mod encoding;
 
+#[path = "entries/tests.rs"]
+mod entries;
+
 #[path = "file/tests.rs"]
 mod file;
 

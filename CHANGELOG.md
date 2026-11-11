@@ -6,6 +6,22 @@ version's release notes from its section here.
 
 ## [Unreleased]
 
+### Added
+
+- Folder as Workspace works with files as an IDE's project tree does (roadmap 7.7b,
+  [ADR 0068](docs/adr/0068-file-operations-in-folder-as-workspace.md)): its right-click menu has
+  New File... (the file opens), New Folder..., Rename... (`F2`), Duplicate (`Ctrl+D`), Copy
+  (`Ctrl+C`), Cut (`Ctrl+X`), Paste (`Ctrl+V`) and Move to Recycle Bin (`Delete`, asked first
+  unless Preferences > MISC > Folder as Workspace: confirm moving to the recycle bin,
+  `misc.confirm-workspace-delete`, is off), and a file or folder dragged onto a folder moves
+  there. Nothing is overwritten: a name taken is refused, and a copy takes a name of its own
+  (`a copy.txt`, `a copy 2.txt`). Open documents follow their files when they are renamed or
+  moved, unsaved changes and all; the tabs of files moved to the recycle bin close unless they
+  have unsaved changes. An unfolded folder stays unfolded where it went, and the folders the
+  tree changes are read again at once. Top folders are renamed but not moved, duplicated or
+  deleted from the tree. Explorer Here shows the file or folder itself in the file manager. The
+  operations are `birchpad-io`'s, without a window.
+
 ### Changed
 
 - The component library gpui-kit 0.8.1

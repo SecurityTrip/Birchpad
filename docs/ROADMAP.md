@@ -1111,10 +1111,11 @@ as revision 1 did (105 drawn). With ELK it draws 67. What it showed:
       ([#70](https://github.com/SecurityTrip/Birchpad/pull/70)): trash, zip, encoding_rs,
       tree-sitter-cmake, tree-sitter-powershell, tree-sitter-scala, uuid, ureq and
       unicode-width
-- [ ] 7.7b Folder as Workspace works with files the way an IDE's project tree does: new file
+- [x] 7.7b Folder as Workspace works with files the way an IDE's project tree does: new file
       and folder, rename (F2), copy, cut and paste, duplicate, delete to the trash, move by
       dragging, show in the system's file manager; open documents follow their files when they
       are renamed or moved, and the tree follows what changes on disk
+      ([ADR 0068](adr/0068-file-operations-in-folder-as-workspace.md))
 - [ ] 7.7c The updated libraries put to use: what gpui-kit 0.8 and the cargo group's releases
       bring looked through, and the code written around what they lacked replaced with their
       own features where that is simpler or faster, measured where it is about speed

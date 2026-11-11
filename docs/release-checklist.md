@@ -96,6 +96,8 @@ desktops are welcome but not required.
 ## The rest of the desktop
 
 - [ ] Files and a folder dragged from the file manager open as tabs and as Folder as Workspace
+- [ ] Folder as Workspace: a folder with an open file in it renamed, dragged into another folder
+      and moved to the recycle bin, where it can be restored from; the file's tab follows it
 - [ ] Copy and paste to and from other programs, in plain text with Windows and Unix line
       endings; Clipboard History lists what other programs copied
 - [ ] A file changed by another program is reloaded or asked about when the window comes back
