@@ -32,7 +32,6 @@ pub mod find_in_files;
 pub mod finder;
 pub mod git;
 pub mod help;
-pub mod hex_editor;
 pub mod hex_view;
 pub mod i18n;
 pub mod incremental;
@@ -69,6 +68,7 @@ pub mod window_modes;
 pub mod workspace;
 
 pub use birchpad_editor::{self as editor, buffer, theme};
+pub use birchpad_hex_editor as hex_editor;
 pub use birchpad_quick_pick as quick_pick;
 pub use birchpad_search_results as search_results;
 pub use birchpad_tray as tray;

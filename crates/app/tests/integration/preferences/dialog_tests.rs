@@ -75,16 +75,6 @@ fn settings(cx: &mut VisualTestContext) -> Settings {
     cx.update(|_, cx| AppState::global(cx).settings.clone())
 }
 
-#[test]
-fn entries_made_at_run_time() {
-    let made = entry("Toolbar", "toolbar.show", "Show the toolbar", Kind::Bool);
-    assert_eq!(
-        (made.section, made.key, made.label),
-        ("Toolbar", "toolbar.show", "Show the toolbar")
-    );
-    assert!(ENTRIES.iter().any(|known| known.key == made.key));
-}
-
 #[gpui_kit::test]
 fn sections_are_chosen_from_the_list(cx: &mut TestAppContext) {
     let (_, cx, _dir) = open_preferences(cx);

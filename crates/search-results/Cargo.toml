@@ -10,10 +10,11 @@ authors.workspace = true
 
 [dependencies]
 birchpad-config.workspace = true
+birchpad-buffer.workspace = true
 birchpad-core.workspace = true
-birchpad-editor.workspace = true
 birchpad-i18n.workspace = true
 birchpad-ui.workspace = true
+birchpad-widgets.workspace = true
 gpui-kit = "0.8"
 
 [features]

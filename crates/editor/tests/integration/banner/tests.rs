@@ -1,6 +1,9 @@
-use birchpad_editor::banner::{BarColors, Kind, colors};
+use birchpad_editor::banner::{self, BarColors, Kind, colors};
+use birchpad_editor::theme::paint;
 use birchpad_editor::theme::{set, set_interface};
+use birchpad_editor::widgets::{Line, bar};
 use birchpad_theme::{Color, Theme};
+use gpui_kit::{Fill, Styled as _};
 
 const KINDS: [Kind; 3] = [Kind::ReadOnly, Kind::Monitoring, Kind::Decoding];
 
@@ -80,5 +83,18 @@ fn an_interface_tone_over_the_theme_is_followed() {
     assert_eq!(
         colors(Kind::ReadOnly).background,
         Theme::default_theme().ui.surface
+    );
+}
+
+/// The messages above the text are bars too, in their own colors.
+#[test]
+fn a_message_above_the_text_keeps_its_own_colors() {
+    set(Theme::default_theme().clone());
+    let colors = banner::colors(Kind::Monitoring);
+    assert_ne!(colors, BarColors::surface());
+    let mut message = bar(colors, Line::Under);
+    assert_eq!(
+        message.style().background,
+        Some(Fill::from(paint(colors.background)))
     );
 }

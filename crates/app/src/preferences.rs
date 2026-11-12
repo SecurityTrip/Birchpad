@@ -1,18 +1,21 @@
 //! Settings > Preferences..., as in Notepad++: the settings of `settings.toml` by section, each
 //! change written to the file at once (keeping its comments) and applied to the open documents.
-//! Settings an administrator's policy sets are shown but cannot be changed.
+//! Settings an administrator's policy sets are shown but cannot be changed. What the dialog
+//! lists, and how a field's text is read, is `birchpad-preferences`', without a window.
 
-mod entries;
 mod languages;
 mod plugins;
 mod servers;
 mod values;
 
-pub use entries::ENTRIES;
+pub use birchpad_preferences::{
+    ENTRIES, EXPLORER_MENU, Entry, Kind, PLUGIN_SETTINGS, current_value, display, entry,
+    parse_field, sections,
+};
 pub use languages::language_id;
 pub use plugins::plugin_settings;
 pub use servers::server_language;
-pub use values::{available_here, current_value, display, parse_field, sections, set};
+pub use values::{available_here, set};
 
 use std::collections::HashMap;
 
@@ -29,65 +32,6 @@ use crate::app_state::AppState;
 use crate::commands::{CommandRegistry, Register as _};
 use crate::theme::{paint, ui};
 use crate::workspace::Workspace;
-
-/// How a setting is edited.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Kind {
-    Bool,
-    /// A whole number from `min` to `max`.
-    Number {
-        min: i64,
-        max: i64,
-    },
-    /// One of these values, with their labels.
-    Choice(&'static [(&'static str, &'static str)]),
-    /// Text; empty removes the setting.
-    Text,
-    /// Whole numbers separated by commas or spaces.
-    Numbers {
-        min: i64,
-        max: i64,
-    },
-    /// Preferences > Language: tab size and spaces of each language (`languages`).
-    LanguageTabs,
-    /// Preferences > Language Servers: the server of each language (`lsp.servers`).
-    LanguageServers,
-    /// "Edit with Birchpad" in the Windows Explorer's menu of files, for the user: the
-    /// registry's, not a setting.
-    ExplorerMenu,
-    /// Preferences > Plugins: the settings each plugin declares, kept in the plugins folder
-    /// (ADR 0046), not in `settings.toml`.
-    PluginSettings,
-}
-
-/// A setting the dialog shows.
-#[derive(Debug, Clone, Copy)]
-pub struct Entry {
-    pub section: &'static str,
-    /// The dotted key in `settings.toml`.
-    pub key: &'static str,
-    pub label: &'static str,
-    pub kind: Kind,
-}
-
-pub const fn entry(
-    section: &'static str,
-    key: &'static str,
-    label: &'static str,
-    kind: Kind,
-) -> Entry {
-    Entry {
-        section,
-        key,
-        label,
-        kind,
-    }
-}
-
-/// The key of Preferences > Files > Edit with Birchpad, which is no setting.
-pub const EXPLORER_MENU: &str = "explorer-menu";
-/// The key of Preferences > Plugins, whose settings are the plugins' own.
-pub const PLUGIN_SETTINGS: &str = "plugins.settings";
 
 pub fn register_commands(registry: &mut CommandRegistry) {
     registry.workspace("settings.preferences", |_, (), window, cx| {

@@ -600,16 +600,20 @@ dependencies = [
  "birchpad-commands",
  "birchpad-config",
  "birchpad-core",
+ "birchpad-diagrams",
  "birchpad-editor",
  "birchpad-git",
+ "birchpad-hex-editor",
  "birchpad-i18n",
  "birchpad-io",
  "birchpad-lsp",
  "birchpad-menu-bar",
  "birchpad-plugin",
+ "birchpad-preferences",
  "birchpad-print-dialog",
  "birchpad-quick-pick",
  "birchpad-search-results",
+ "birchpad-spell-check",
  "birchpad-syntax",
  "birchpad-terminal",
  "birchpad-theme",
@@ -625,18 +629,30 @@ dependencies = [
  "notify",
  "objc2-app-kit 0.3.2",
  "raw-window-handle",
- "resvg 0.46.0",
  "semver",
  "serde",
  "serde_json",
  "sha2 0.11.1",
- "sys-locale",
  "tempfile",
  "toml 1.1.6+spec-1.1.0",
  "trash",
  "windows-sys 0.61.2",
  "x11rb",
  "zip",
+]
+
+[[package]]
+name = "birchpad-buffer"
+version = "0.8.1"
+dependencies = [
+ "birchpad-config",
+ "birchpad-core",
+ "birchpad-io",
+ "birchpad-syntax",
+ "birchpad-tools",
+ "birchpad-ui",
+ "gpui-kit",
+ "tempfile",
 ]
 
 [[package]]
@@ -698,10 +714,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "birchpad-diagrams"
+version = "0.8.1"
+dependencies = [
+ "anyhow",
+ "birchpad-config",
+ "birchpad-diagrams",
+ "birchpad-i18n",
+ "birchpad-syntax",
+ "resvg 0.46.0",
+ "tempfile",
+]
+
+[[package]]
 name = "birchpad-editor"
 version = "0.8.1"
 dependencies = [
  "anyhow",
+ "birchpad-buffer",
  "birchpad-cli",
  "birchpad-commands",
  "birchpad-config",
@@ -714,6 +744,7 @@ dependencies = [
  "birchpad-tools",
  "birchpad-ui",
  "birchpad-view",
+ "birchpad-widgets",
  "gpui-kit",
  "serde",
  "serde_json",
@@ -752,6 +783,21 @@ dependencies = [
  "birchpad-i18n",
  "tempfile",
  "thiserror 2.0.21",
+]
+
+[[package]]
+name = "birchpad-hex-editor"
+version = "0.8.1"
+dependencies = [
+ "anyhow",
+ "birchpad-core",
+ "birchpad-editor",
+ "birchpad-i18n",
+ "birchpad-io",
+ "birchpad-tools",
+ "birchpad-ui",
+ "birchpad-widgets",
+ "gpui-kit",
 ]
 
 [[package]]
@@ -818,6 +864,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "birchpad-preferences"
+version = "0.8.1"
+dependencies = [
+ "anyhow",
+ "birchpad-config",
+ "birchpad-i18n",
+ "toml 1.1.6+spec-1.1.0",
+]
+
+[[package]]
 name = "birchpad-print-dialog"
 version = "0.7.5"
 dependencies = [
@@ -832,8 +888,8 @@ name = "birchpad-quick-pick"
 version = "0.8.1"
 dependencies = [
  "birchpad-core",
- "birchpad-editor",
  "birchpad-quick-pick",
+ "birchpad-widgets",
  "gpui-kit",
 ]
 
@@ -858,13 +914,31 @@ dependencies = [
 name = "birchpad-search-results"
 version = "0.8.1"
 dependencies = [
+ "birchpad-buffer",
+ "birchpad-config",
+ "birchpad-core",
+ "birchpad-i18n",
+ "birchpad-search-results",
+ "birchpad-ui",
+ "birchpad-widgets",
+ "gpui-kit",
+]
+
+[[package]]
+name = "birchpad-spell-check"
+version = "0.8.1"
+dependencies = [
+ "anyhow",
+ "birchpad-buffer",
+ "birchpad-commands",
  "birchpad-config",
  "birchpad-core",
  "birchpad-editor",
  "birchpad-i18n",
- "birchpad-search-results",
+ "birchpad-tools",
  "birchpad-ui",
  "gpui-kit",
+ "sys-locale",
 ]
 
 [[package]]
@@ -1037,6 +1111,15 @@ dependencies = [
  "proptest",
  "unicode-bidi",
  "unicode-width",
+]
+
+[[package]]
+name = "birchpad-widgets"
+version = "0.8.1"
+dependencies = [
+ "birchpad-syntax",
+ "birchpad-theme",
+ "gpui-kit",
 ]
 
 [[package]]

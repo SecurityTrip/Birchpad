@@ -14,15 +14,19 @@ birchpad-cli.workspace = true
 birchpad-commands.workspace = true
 birchpad-config.workspace = true
 birchpad-core.workspace = true
+birchpad-diagrams.workspace = true
 birchpad-editor.workspace = true
+birchpad-hex-editor.workspace = true
 birchpad-i18n.workspace = true
 birchpad-git.workspace = true
 birchpad-io.workspace = true
 birchpad-lsp.workspace = true
 birchpad-menu-bar.workspace = true
 birchpad-plugin.workspace = true
+birchpad-preferences.workspace = true
 birchpad-quick-pick.workspace = true
 birchpad-search-results.workspace = true
+birchpad-spell-check.workspace = true
 birchpad-syntax.workspace = true
 birchpad-terminal.workspace = true
 birchpad-theme.workspace = true
@@ -35,12 +39,9 @@ chrono = { version = "0.4", default-features = false, features = ["clock", "std"
 futures = "0.3"
 gpui-kit = "0.8"
 raw-window-handle = "0.6"
-# PlantUML diagrams exported as PNG: the SVG renderer GPUI draws them with.
-resvg = "0.46"
 semver = "1"
 serde.workspace = true
 serde_json.workspace = true
-sys-locale = "0.3"
 notify = "8"
 toml.workspace = true
 trash = "5"
@@ -52,6 +53,7 @@ e2e = ["birchpad-search-results/test-support"]
 # What the tests drive and read of the application, and the system calls they fake: the
 # integration tests (`tests/integration`) turn it on.
 test-support = [
+    "birchpad-diagrams/test-support",
     "birchpad-editor/test-support",
     "birchpad-lsp/test-support",
     "birchpad-quick-pick/test-support",

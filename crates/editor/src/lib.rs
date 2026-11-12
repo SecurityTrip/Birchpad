@@ -1,5 +1,6 @@
-//! Birchpad's editor: a document ([`buffer::Buffer`]) and the editor view, one view of a buffer,
-//! with its own selection, scroll position and layout; the active theme ([`theme`]).
+//! Birchpad's editor: the editor view, one view of a document ([`buffer::Buffer`], of
+//! `birchpad-buffer`), with its own selection, scroll position and layout, drawn in the active
+//! theme ([`theme`], of `birchpad-widgets`).
 //!
 //! Several views may show the same buffer (split view, "Clone to Other View"); each maps its
 //! selection through the changes the others make. Layout in cells (tab stops, word wrap, rows)
@@ -18,8 +19,12 @@ pub use view::{
 };
 
 pub mod banner;
-pub mod buffer;
 mod hooks;
+
+/// The document a view shows: `birchpad-buffer`'s, under the name it had here.
+pub use birchpad_buffer as buffer;
+/// The active theme and what parts of the window draw alike: `birchpad-widgets`'.
+pub use birchpad_widgets::{self as widgets, MONOSPACE, theme};
 
 pub mod column_editor;
 pub mod completion;
@@ -32,20 +37,9 @@ pub mod operations;
 pub mod smart_highlight;
 pub mod symbols;
 pub mod syntax_selection;
-pub mod theme;
-pub mod widgets;
 
 pub use hooks::{
     ActiveFindOptions, DiagnosticLevel, Diagnostics, EditorHooks, GitMark, GitMarks, Ranges,
-};
-
-/// The platform's monospaced font: the editor's when the theme names none.
-pub const MONOSPACE: &str = if cfg!(windows) {
-    "Consolas"
-} else if cfg!(target_os = "macos") {
-    "Menlo"
-} else {
-    "DejaVu Sans Mono"
 };
 
 /// How many colors a tab can be given (Notepad++'s five).

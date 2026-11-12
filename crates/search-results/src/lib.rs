@@ -27,10 +27,10 @@ use gpui_kit::{
     px, uniform_list,
 };
 
+use birchpad_buffer::Buffer;
 use birchpad_config::SearchResultsState;
-use birchpad_editor::buffer::Buffer;
-use birchpad_editor::widgets::{BarColors, Line, bar};
 use birchpad_ui::AppState;
+use birchpad_widgets::{BarColors, Line, bar};
 
 const ROW_HEIGHT: f32 = 20.;
 
@@ -643,8 +643,8 @@ impl SearchResults {
             .flex_row()
             .items_center()
             .when(selected, |row| {
-                row.bg(birchpad_editor::theme::paint(
-                    birchpad_editor::theme::ui().selected,
+                row.bg(birchpad_widgets::theme::paint(
+                    birchpad_widgets::theme::ui().selected,
                 ))
             })
             // A right click selects the row its menu works on.
@@ -674,9 +674,9 @@ impl SearchResults {
                 let run = &self.runs[r];
                 base.pl_1()
                     .bg(if selected {
-                        birchpad_editor::theme::paint(birchpad_editor::theme::ui().selected)
+                        birchpad_widgets::theme::paint(birchpad_widgets::theme::ui().selected)
                     } else {
-                        birchpad_editor::theme::paint(birchpad_editor::theme::ui().heading)
+                        birchpad_widgets::theme::paint(birchpad_widgets::theme::ui().heading)
                     })
                     .font_weight(FontWeight::SEMIBOLD)
                     .child(format!("{}{}", fold(run.collapsed), run.title()))
@@ -686,8 +686,8 @@ impl SearchResults {
             Row::File(r, f) => {
                 let file = &self.runs[r].files[f];
                 base.pl(px(16.))
-                    .text_color(birchpad_editor::theme::paint(
-                        birchpad_editor::theme::ui().line_number,
+                    .text_color(birchpad_widgets::theme::paint(
+                        birchpad_widgets::theme::ui().line_number,
                     ))
                     .child(format!(
                         "{}{} ({})",
@@ -704,8 +704,8 @@ impl SearchResults {
                 let text = format!("{prefix}{}", hit.text);
                 let highlight = HighlightStyle {
                     background_color: Some(
-                        birchpad_editor::theme::paint(
-                            birchpad_editor::theme::ui().match_background,
+                        birchpad_widgets::theme::paint(
+                            birchpad_widgets::theme::ui().match_background,
                         )
                         .into(),
                     ),
@@ -723,7 +723,7 @@ impl SearchResults {
                     })
                     .collect();
                 base.pl(px(36.))
-                    .font_family(birchpad_editor::MONOSPACE)
+                    .font_family(birchpad_widgets::MONOSPACE)
                     .child(StyledText::new(text).with_highlights(highlights))
                     .context_menu(menu)
                     .into_any_element()
@@ -786,8 +786,8 @@ impl Render for SearchResults {
             .size_full()
             .flex()
             .flex_col()
-            .bg(birchpad_editor::theme::paint(
-                birchpad_editor::theme::ui().background,
+            .bg(birchpad_widgets::theme::paint(
+                birchpad_widgets::theme::ui().background,
             ))
             .child(header)
             .child(list)

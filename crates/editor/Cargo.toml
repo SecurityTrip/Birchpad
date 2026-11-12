@@ -1,6 +1,6 @@
 [package]
 name = "birchpad-editor"
-description = "Birchpad's editor view: a document (the buffer), its text drawn and edited in GPUI, the active theme."
+description = "Birchpad's editor view: a document's text drawn and edited in GPUI."
 version = "0.8.1"
 edition.workspace = true
 rust-version.workspace = true
@@ -11,6 +11,7 @@ authors.workspace = true
 [dependencies]
 anyhow.workspace = true
 birchpad-cli.workspace = true
+birchpad-buffer.workspace = true
 birchpad-commands.workspace = true
 birchpad-config.workspace = true
 birchpad-core.workspace = true
@@ -21,6 +22,7 @@ birchpad-theme.workspace = true
 birchpad-tools.workspace = true
 birchpad-ui.workspace = true
 birchpad-view.workspace = true
+birchpad-widgets.workspace = true
 gpui-kit = "0.8"
 serde.workspace = true
 serde_json.workspace = true
