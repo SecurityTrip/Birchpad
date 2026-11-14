@@ -519,11 +519,11 @@ fn renamed_files_and_folders_take_their_documents_along(cx: &mut TestAppContext)
     cx.run_until_parked();
     assert_eq!(
         panel.read_with(cx, |panel, _| panel.roots()),
-        [renamed.clone()]
+        std::slice::from_ref(&renamed)
     );
     assert_eq!(
         cx.update(|_, cx| AppState::global(cx).state.panels.folders.clone()),
-        [renamed.clone()]
+        std::slice::from_ref(&renamed)
     );
     assert_eq!(rows(&panel, cx)[0], "-renamed-root");
     assert_eq!(
