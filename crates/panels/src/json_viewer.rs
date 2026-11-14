@@ -6,6 +6,7 @@
 
 use std::collections::HashSet;
 use std::ops::Range;
+use std::rc::Rc;
 
 use anyhow::{Result, anyhow};
 use birchpad_core::RevisionId;
@@ -15,12 +16,14 @@ use gpui_kit::component::button::{Button, ButtonVariants as _};
 use gpui_kit::component::input::{Input, InputEvent, InputState};
 use gpui_kit::{
     App, AppContext as _, ClipboardItem, Context, Entity, EntityId, FocusHandle, Focusable,
-    Subscription, UniformListScrollHandle, WeakEntity, Window, div, prelude::*, px, uniform_list,
+    Subscription, UniformListScrollHandle, Window, div, prelude::*, px, uniform_list,
 };
 
-use crate::editor::EditorView;
-use crate::editor::widgets::ListRow as _;
-use crate::workspace::{Workspace, report_error};
+use birchpad_editor::EditorView;
+use birchpad_ui::report_error;
+use birchpad_widgets::ListRow as _;
+
+use crate::Host;
 
 const ROW_HEIGHT: f32 = 22.;
 const INDENT: f32 = 14.;
@@ -117,14 +120,14 @@ pub fn parse(view: &Entity<EditorView>, cached: Option<Parsed>, cx: &App) -> Par
 }
 
 pub struct JsonViewer {
-    workspace: WeakEntity<Workspace>,
+    host: Rc<dyn Host>,
     pub path: Entity<InputState>,
     pub parsed: Option<Parsed>,
     /// Folded values, by their paths.
     pub collapsed: HashSet<String>,
     /// The value chosen, by its path.
     pub selected: Option<String>,
-    follow: super::FollowView,
+    follow: crate::FollowView,
     scroll: UniformListScrollHandle,
     focus_handle: FocusHandle,
     _subscriptions: Vec<Subscription>,
@@ -137,11 +140,7 @@ impl Focusable for JsonViewer {
 }
 
 impl JsonViewer {
-    pub fn new(
-        workspace: WeakEntity<Workspace>,
-        window: &mut Window,
-        cx: &mut Context<Self>,
-    ) -> Self {
+    pub fn new(host: Rc<dyn Host>, window: &mut Window, cx: &mut Context<Self>) -> Self {
         let path =
             cx.new(|cx| InputState::new(window, cx).placeholder(t!("panels.json-viewer.path")));
         let enter = cx.subscribe_in(
@@ -158,12 +157,12 @@ impl JsonViewer {
             },
         );
         Self {
-            workspace,
+            host,
             path,
             parsed: None,
             collapsed: HashSet::new(),
             selected: None,
-            follow: super::FollowView::default(),
+            follow: crate::FollowView::default(),
             scroll: UniformListScrollHandle::new(),
             focus_handle: cx.focus_handle(),
             _subscriptions: vec![enter],
@@ -171,9 +170,7 @@ impl JsonViewer {
     }
 
     fn active_view(&self, cx: &App) -> Option<Entity<EditorView>> {
-        self.workspace
-            .upgrade()
-            .and_then(|workspace| workspace.read(cx).active_view(cx))
+        self.host.active_view(cx)
     }
 
     /// Reads the active document again if it changed.
@@ -428,7 +425,9 @@ impl Render for JsonViewer {
         let message = |text: String| {
             div()
                 .p_2()
-                .text_color(crate::theme::paint(crate::theme::ui().muted))
+                .text_color(birchpad_widgets::theme::paint(
+                    birchpad_widgets::theme::ui().muted,
+                ))
                 .child(text)
                 .into_any_element()
         };

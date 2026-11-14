@@ -44,7 +44,6 @@ pub mod online;
 pub mod palette;
 pub mod pane;
 pub mod panels;
-pub mod path_dialog;
 pub mod plantuml;
 pub mod preferences;
 pub mod preview;
@@ -72,6 +71,7 @@ pub use birchpad_hex_editor as hex_editor;
 pub use birchpad_quick_pick as quick_pick;
 pub use birchpad_search_results as search_results;
 pub use birchpad_tray as tray;
+pub use birchpad_ui::path_dialog;
 
 use std::fmt::Write as _;
 

@@ -1,10 +1,12 @@
 //! What the parts of Birchpad's window share, so that each (the editor, the dialogs, the
 //! workspace) needs only this and not the application: the command registry and the keymap, the
-//! application's settings and state, dialog buttons and messages to the user.
+//! application's settings and state, dialog buttons, messages to the user and the dialogs that
+//! choose files ([`path_dialog`]).
 
 mod app_state;
 mod commands;
 mod keymap;
+pub mod path_dialog;
 mod report;
 
 pub use app_state::{AppState, SessionPaths};

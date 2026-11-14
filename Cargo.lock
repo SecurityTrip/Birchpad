@@ -602,12 +602,15 @@ dependencies = [
  "birchpad-core",
  "birchpad-diagrams",
  "birchpad-editor",
+ "birchpad-find-bar",
  "birchpad-git",
  "birchpad-hex-editor",
  "birchpad-i18n",
  "birchpad-io",
+ "birchpad-language-servers",
  "birchpad-lsp",
  "birchpad-menu-bar",
+ "birchpad-panels",
  "birchpad-plugin",
  "birchpad-preferences",
  "birchpad-print-dialog",
@@ -616,6 +619,7 @@ dependencies = [
  "birchpad-spell-check",
  "birchpad-syntax",
  "birchpad-terminal",
+ "birchpad-terminal-panel",
  "birchpad-theme",
  "birchpad-tools",
  "birchpad-tray",
@@ -752,6 +756,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "birchpad-find-bar"
+version = "0.8.1"
+dependencies = [
+ "birchpad-core",
+ "birchpad-editor",
+ "birchpad-i18n",
+ "birchpad-ui",
+ "birchpad-widgets",
+ "gpui-kit",
+]
+
+[[package]]
 name = "birchpad-fuzz"
 version = "0.8.1"
 dependencies = [
@@ -824,6 +840,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "birchpad-language-servers"
+version = "0.8.1"
+dependencies = [
+ "anyhow",
+ "birchpad-buffer",
+ "birchpad-core",
+ "birchpad-editor",
+ "birchpad-i18n",
+ "birchpad-lsp",
+ "birchpad-ui",
+ "futures",
+ "gpui-kit",
+ "serde_json",
+]
+
+[[package]]
 name = "birchpad-lsp"
 version = "0.8.0"
 dependencies = [
@@ -842,6 +874,24 @@ dependencies = [
 name = "birchpad-menu-bar"
 version = "0.8.1"
 dependencies = [
+ "gpui-kit",
+]
+
+[[package]]
+name = "birchpad-panels"
+version = "0.8.1"
+dependencies = [
+ "anyhow",
+ "birchpad-core",
+ "birchpad-editor",
+ "birchpad-i18n",
+ "birchpad-io",
+ "birchpad-panels",
+ "birchpad-syntax",
+ "birchpad-tools",
+ "birchpad-ui",
+ "birchpad-view",
+ "birchpad-widgets",
  "gpui-kit",
 ]
 
@@ -1017,6 +1067,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "birchpad-terminal-panel"
+version = "0.8.1"
+dependencies = [
+ "anyhow",
+ "birchpad-editor",
+ "birchpad-i18n",
+ "birchpad-lsp",
+ "birchpad-terminal",
+ "birchpad-terminal-panel",
+ "birchpad-ui",
+ "birchpad-widgets",
+ "futures",
+ "gpui-kit",
+]
+
+[[package]]
 name = "birchpad-theme"
 version = "0.8.0"
 dependencies = [
@@ -1076,6 +1142,7 @@ dependencies = [
  "birchpad-core",
  "birchpad-i18n",
  "birchpad-io",
+ "futures",
  "gpui-kit",
  "serde",
  "serde_json",

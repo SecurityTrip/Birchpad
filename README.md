@@ -164,14 +164,24 @@ not with `network.online-features = false`. See [ADR 0020](docs/adr/0020-signed-
 | `crates/plugin` | Plugins as WebAssembly components (`wit/birchpad.wit`), Rhai scripts, the plugin manager. No UI. |
 | `crates/update` | Updates: the signed update manifest, channels, versions, installing (Velopack on Windows); the online catalog. No UI. |
 | `crates/release-tool` | `birchpad-release`: signing keys and the update manifest, for the release workflows. |
-| `crates/ui` | What the window's parts share: the command registry, the settings and state of the application, dialog buttons, messages to the user. |
-| `crates/editor` | The editor: the buffer, the editor view drawn and edited in GPUI, the active theme. |
+| `crates/diagrams` | PlantUML diagrams for the preview: PlantUML run and kept running, its mistakes by line, the files it includes, SVG drawn as pixels. No UI. |
+| `crates/preferences` | What Preferences lists: the settings by section, how each is edited, their values as text. No UI. |
+| `crates/ui` | What the window's parts share: the command registry, the settings and state of the application, dialog buttons, messages to the user, the dialogs that choose files. |
+| `crates/widgets` | What the window's parts draw alike: the active theme, bars, the rows of lists, the text of errors. |
+| `crates/buffer` | The buffer: one open document, its file, its syntax and its marks, shared by the views that show it. No window. |
+| `crates/editor` | The editor: the editor view, a document's text drawn and edited in GPUI. |
 | `crates/menu-bar` | The menu bar drawn in the window on Windows and Linux, with Windows' keyboard access. |
 | `crates/quick-pick` | The list to pick from by typing that the command palette and Go to File show. |
 | `crates/search-results` | The search results panel of Find All and Find in Files. |
+| `crates/find-bar` | The find panel: its tabs, fields, search modes and options. |
+| `crates/hex-editor` | The hex editor: a document's bytes shown and edited in place of its text. |
+| `crates/language-servers` | Language servers kept in step with the open documents, their diagnostics and completions. |
+| `crates/panels` | The side panels of the documents: Document List, Function List, Document Map, the JSON viewer, Clipboard History, the Character Panel. |
+| `crates/spell-check` | The spell checker: misspelled words underlined, suggestions, the user's own words. |
+| `crates/terminal-panel` | The terminal panel: the shell drawn under the documents, its keys and colors. |
 | `crates/tray` | Minimizing to the system tray, with each platform's own calls (Windows, macOS). |
 | `crates/print-dialog` | Printing through Windows' print dialog and GDI. |
-| `crates/app` | The desktop application: the workspace, panes, panels, dialogs and menus. See ADRs 0041 and 0058 for the layout. |
+| `crates/app` | The desktop application: the workspace, panes, the preview, the panels of the window's files and plugins, dialogs and menus. See ADRs 0041, 0058 and 0069 for the layout. |
 | `packaging/` | Release packaging: per-machine MSI, macOS app bundle, portable-mode marker, update signing setup, the online catalog. |
 | `docs/` | Roadmap, architecture decision records, and [writing plugins and scripts](docs/plugins.md). |
 

@@ -35,6 +35,15 @@ version's release notes from its section here.
   for a minute fail through ureq's own `timeout_per_read` instead of a transport of Birchpad's,
   and the widths of characters come from unicode-width without a shortcut of Birchpad's before
   it (the same widths; measured as fast on ASCII and 8 % faster on mixed text).
+- The application and the editor split along their parts (roadmap 7.7d,
+  [ADR 0069](docs/adr/0069-the-application-and-the-editor-split-along-their-parts.md)), with
+  nothing changed for the user. Ten crates more: `birchpad-buffer` and `birchpad-widgets` out
+  of the editor; `birchpad-diagrams` and `birchpad-preferences`, which need no window, and
+  `birchpad-hex-editor`, `birchpad-spell-check`, `birchpad-language-servers`,
+  `birchpad-terminal-panel`, `birchpad-panels` and `birchpad-find-bar` out of the application;
+  the dialogs that choose files are `birchpad-ui`'s. The application went from 38 559 lines to
+  28 965, the editor from 10 038 to 8 513; the tests that need no window moved with their
+  code and run without the application's test binary.
 
 ## [0.8.0] - 2026-11-09
 

@@ -1,0 +1,33 @@
+[package]
+name = "birchpad-terminal-panel"
+description = "Birchpad's terminal panel: the user's shell drawn in a panel under the documents, its keys and its colors."
+version = "0.8.1"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+birchpad-editor.workspace = true
+birchpad-i18n.workspace = true
+# The shell's command line is split as a language server's is.
+birchpad-lsp.workspace = true
+birchpad-terminal.workspace = true
+birchpad-ui.workspace = true
+birchpad-widgets.workspace = true
+futures = "0.3"
+gpui-kit = "0.8"
+
+[features]
+# The sessions a panel started, for the tests to read.
+test-support = []
+
+[dev-dependencies]
+birchpad-terminal-panel = { path = ".", features = ["test-support"] }
+birchpad-widgets.workspace = true
+gpui-kit = { version = "0.8", features = ["test-support"] }
+
+[lints]
+workspace = true

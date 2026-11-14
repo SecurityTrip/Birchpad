@@ -1,10 +1,19 @@
 # cargo-mutants (the Mutants workflow, CONTRIBUTING.md, Tests): the crates without a window. The
 # window's crates are left out: their tests drive a test window and take minutes per mutant.
+# So is the buffer, an entity of GPUI's most of whose tests are the editor's, in a window.
 exclude_globs = [
     "crates/app/**",
     "crates/editor/**",
     "crates/ui/**",
     "crates/menu-bar/**",
+    "crates/buffer/**",
+    "crates/widgets/**",
+    "crates/find-bar/**",
+    "crates/hex-editor/**",
+    "crates/language-servers/**",
+    "crates/panels/**",
+    "crates/spell-check/**",
+    "crates/terminal-panel/**",
     "crates/quick-pick/**",
     "crates/search-results/**",
     "crates/print-dialog/**",

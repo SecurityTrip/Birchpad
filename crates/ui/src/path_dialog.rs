@@ -150,10 +150,8 @@ pub fn open_text_dialog(
             .child(Input::new(&input).id("path"))
             .footer(
                 DialogFooter::new()
-                    .child(crate::workspace::dialog_close("common.cancel"))
-                    .child(crate::workspace::dialog_action(
-                        Button::new("ok").label(title),
-                    )),
+                    .child(crate::dialog_close("common.cancel"))
+                    .child(crate::dialog_action(Button::new("ok").label(title))),
             )
             .on_ok(move |_, _, cx| {
                 let value = input.read(cx).value().trim().to_owned();

@@ -5,13 +5,14 @@
 //! documents of the second view, in split view, with `(2)`.
 
 use gpui_kit::{
-    App, Context, Entity, FocusHandle, Focusable, FontWeight, MouseButton, SharedString,
-    WeakEntity, Window, div, prelude::*, px,
+    App, Context, Entity, FocusHandle, Focusable, FontWeight, MouseButton, SharedString, Window,
+    div, prelude::*, px,
 };
+use std::rc::Rc;
 
-use crate::editor::EditorView;
-use crate::editor::widgets::ListRow as _;
-use crate::workspace::Workspace;
+use crate::Host;
+use birchpad_editor::EditorView;
+use birchpad_widgets::ListRow as _;
 
 /// The columns.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -45,7 +46,7 @@ impl Entry {
 }
 
 pub struct DocumentList {
-    workspace: WeakEntity<Workspace>,
+    host: Rc<dyn Host>,
     /// The column sorted by, and whether in reverse; none for the order of the tabs.
     pub sort: Option<(Column, bool)>,
     focus_handle: FocusHandle,
@@ -58,9 +59,9 @@ impl Focusable for DocumentList {
 }
 
 impl DocumentList {
-    pub fn new(workspace: WeakEntity<Workspace>, _: &mut Window, cx: &mut Context<Self>) -> Self {
+    pub fn new(host: Rc<dyn Host>, _: &mut Window, cx: &mut Context<Self>) -> Self {
         Self {
-            workspace,
+            host,
             sort: None,
             focus_handle: cx.focus_handle(),
         }
@@ -68,16 +69,12 @@ impl DocumentList {
 
     /// The rows, in the order shown.
     pub fn entries(&self, cx: &App) -> Vec<Entry> {
-        let Some(workspace) = self.workspace.upgrade() else {
-            return Vec::new();
-        };
-        let workspace = workspace.read(cx);
-        let active = workspace.active_view(cx);
-        let split = workspace.is_split(cx);
-        let mut entries: Vec<Entry> = workspace
-            .all_views(cx)
+        let active = self.host.active_view(cx);
+        let mut entries: Vec<Entry> = self
+            .host
+            .views(cx)
             .into_iter()
-            .map(|view| {
+            .map(|(view, second_view)| {
                 let buffer = view.read(cx).buffer.read(cx);
                 Entry {
                     name: buffer.display_name(),
@@ -86,7 +83,7 @@ impl DocumentList {
                         .map(|path| path.display().to_string())
                         .unwrap_or_default(),
                     modified: buffer.is_modified(),
-                    second_view: split && workspace.pane_of(&view, cx) == Some(1),
+                    second_view,
                     active: active.as_ref() == Some(&view),
                     view,
                 }
@@ -136,8 +133,8 @@ impl DocumentList {
             .cursor_pointer()
             .child(format!(
                 "{}{arrow}",
-                crate::i18n::get_or(
-                    &format!("panels.document-list.{}", crate::i18n::slug(label)),
+                birchpad_i18n::get_or(
+                    &format!("panels.document-list.{}", birchpad_i18n::slug(label)),
                     label
                 )
             ))
@@ -149,10 +146,10 @@ impl Render for DocumentList {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let entries = self.entries(cx);
         let rows = entries.into_iter().enumerate().map(|(index, entry)| {
-            let workspace = self.workspace.clone();
+            let host = self.host.clone();
             let shown = entry.view.clone();
             let closed = entry.view.clone();
-            let closing = self.workspace.clone();
+            let closing = self.host.clone();
             let name: SharedString = entry.label().into();
             div()
                 .id(("document-list-row", index))
@@ -171,7 +168,9 @@ impl Render for DocumentList {
                         .px_2()
                         .overflow_hidden()
                         .when(entry.modified, |name| {
-                            name.text_color(crate::theme::paint(crate::theme::ui().modified))
+                            name.text_color(birchpad_widgets::theme::paint(
+                                birchpad_widgets::theme::ui().modified,
+                            ))
                         })
                         .child(name),
                 )
@@ -180,26 +179,18 @@ impl Render for DocumentList {
                         .flex_1()
                         .px_2()
                         .overflow_hidden()
-                        .text_color(crate::theme::paint(crate::theme::ui().muted))
+                        .text_color(birchpad_widgets::theme::paint(
+                            birchpad_widgets::theme::ui().muted,
+                        ))
                         .child(entry.path.clone()),
                 )
                 .on_click(move |_, window, cx| {
-                    workspace
-                        .update(cx, |workspace, cx| {
-                            workspace.activate_view(&shown, window, cx);
-                            let focus = shown.read(cx).focus_handle.clone();
-                            window.focus(&focus, cx);
-                        })
-                        .ok();
+                    host.activate(&shown, window, cx);
+                    let focus = shown.read(cx).focus_handle.clone();
+                    window.focus(&focus, cx);
                 })
                 .on_mouse_up(MouseButton::Middle, move |_, window, cx| {
-                    closing
-                        .update(cx, |workspace, cx| {
-                            workspace
-                                .close_with_confirmation(vec![closed.clone()], window, cx)
-                                .detach();
-                        })
-                        .ok();
+                    closing.close(&closed, window, cx);
                 })
         });
         div()
@@ -216,7 +207,9 @@ impl Render for DocumentList {
                     .h(px(24.))
                     .items_center()
                     .border_b_1()
-                    .border_color(crate::theme::paint(crate::theme::ui().border))
+                    .border_color(birchpad_widgets::theme::paint(
+                        birchpad_widgets::theme::ui().border,
+                    ))
                     .child(self.heading(Column::Name, "Name", cx))
                     .child(self.heading(Column::Path, "Path", cx)),
             )

@@ -8,20 +8,21 @@
 //! scrolls the view.
 
 use std::ops::Range;
+use std::rc::Rc;
 
 use birchpad_core::Rope;
 use birchpad_core::motion::{line_count, line_range};
 use birchpad_view::cells_at;
 use gpui_kit::{
     App, Bounds, Context, Entity, FocusHandle, Focusable, Hsla, MouseButton, MouseDownEvent,
-    MouseMoveEvent, Pixels, ScrollEvent, WeakEntity, Window, canvas, div, fill, point, prelude::*,
-    px, rgb, size,
+    MouseMoveEvent, Pixels, ScrollEvent, Window, canvas, div, fill, point, prelude::*, px, rgb,
+    size,
 };
 
-use super::FollowView;
-use crate::editor::EditorView;
-use crate::editor::theme;
-use crate::workspace::Workspace;
+use crate::FollowView;
+use crate::Host;
+use birchpad_editor::EditorView;
+use birchpad_editor::theme;
 
 /// Height of a line on the map.
 pub const LINE_HEIGHT: f32 = 3.;
@@ -94,7 +95,7 @@ struct MapPaint {
 }
 
 pub struct DocumentMap {
-    workspace: WeakEntity<Workspace>,
+    host: Rc<dyn Host>,
     follow: FollowView,
     /// Where the map was drawn, and the first line it showed.
     pub drawn: Option<(Bounds<Pixels>, usize)>,
@@ -109,9 +110,9 @@ impl Focusable for DocumentMap {
 }
 
 impl DocumentMap {
-    pub fn new(workspace: WeakEntity<Workspace>, _: &mut Window, cx: &mut Context<Self>) -> Self {
+    pub fn new(host: Rc<dyn Host>, _: &mut Window, cx: &mut Context<Self>) -> Self {
         Self {
-            workspace,
+            host,
             follow: FollowView::default(),
             drawn: None,
             dragging: false,
@@ -121,13 +122,7 @@ impl DocumentMap {
 
     /// The active view, or the tab the document peeker shows here.
     fn active_view(&self, cx: &App) -> Option<Entity<EditorView>> {
-        let workspace = self.workspace.upgrade()?;
-        let workspace = workspace.read(cx);
-        workspace
-            .peeked
-            .as_ref()
-            .and_then(gpui_kit::WeakEntity::upgrade)
-            .or_else(|| workspace.active_view(cx))
+        self.host.peeked(cx).or_else(|| self.host.active_view(cx))
     }
 
     /// The map of `view` for a panel `height` high.
@@ -204,7 +199,9 @@ impl Render for DocumentMap {
         let Some(view) = view else {
             return div()
                 .p_2()
-                .text_color(crate::theme::paint(crate::theme::ui().muted))
+                .text_color(birchpad_widgets::theme::paint(
+                    birchpad_widgets::theme::ui().muted,
+                ))
                 .child(t!("panels.document-map.no-document"))
                 .into_any_element();
         };

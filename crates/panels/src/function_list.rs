@@ -9,6 +9,7 @@
 
 use std::collections::HashSet;
 use std::ops::Range;
+use std::rc::Rc;
 
 use birchpad_syntax::{Symbol, SymbolKind};
 use gpui_kit::component::button::{Button, ButtonVariants as _};
@@ -16,12 +17,12 @@ use gpui_kit::component::input::{Input, InputEvent, InputState};
 use gpui_kit::component::{Selectable as _, Sizable};
 use gpui_kit::{
     App, AppContext as _, Context, Entity, EntityId, FocusHandle, Focusable, Subscription,
-    UniformListScrollHandle, WeakEntity, Window, div, prelude::*, px, rgb, uniform_list,
+    UniformListScrollHandle, Window, div, prelude::*, px, rgb, uniform_list,
 };
 
-use crate::editor::EditorView;
-use crate::editor::widgets::ListRow as _;
-use crate::workspace::Workspace;
+use crate::Host;
+use birchpad_editor::EditorView;
+use birchpad_widgets::ListRow as _;
 
 const ROW_HEIGHT: f32 = 22.;
 const INDENT: f32 = 14.;
@@ -160,13 +161,13 @@ struct Outline {
 }
 
 pub struct FunctionList {
-    workspace: WeakEntity<Workspace>,
+    host: Rc<dyn Host>,
     filter: Entity<InputState>,
     pub sorted: bool,
     /// Folded symbols, by their paths.
     collapsed: HashSet<String>,
     outline: Option<Outline>,
-    follow: super::FollowView,
+    follow: crate::FollowView,
     scroll: UniformListScrollHandle,
     focus_handle: FocusHandle,
     _subscriptions: Vec<Subscription>,
@@ -191,11 +192,7 @@ pub enum Contents {
 }
 
 impl FunctionList {
-    pub fn new(
-        workspace: WeakEntity<Workspace>,
-        window: &mut Window,
-        cx: &mut Context<Self>,
-    ) -> Self {
+    pub fn new(host: Rc<dyn Host>, window: &mut Window, cx: &mut Context<Self>) -> Self {
         let filter = cx.new(|cx| InputState::new(window, cx).placeholder(t!("common.search")));
         let changes = cx.subscribe(&filter, |_, _, event: &InputEvent, cx| {
             if let InputEvent::Change = event {
@@ -203,12 +200,12 @@ impl FunctionList {
             }
         });
         Self {
-            workspace,
+            host,
             filter,
             sorted: false,
             collapsed: HashSet::new(),
             outline: None,
-            follow: super::FollowView::default(),
+            follow: crate::FollowView::default(),
             scroll: UniformListScrollHandle::new(),
             focus_handle: cx.focus_handle(),
             _subscriptions: vec![changes],
@@ -224,11 +221,7 @@ impl FunctionList {
 
     /// The outline of the active document, read again if its tree changed.
     pub fn contents(&mut self, cx: &App) -> Contents {
-        let Some(view) = self
-            .workspace
-            .upgrade()
-            .and_then(|workspace| workspace.read(cx).active_view(cx))
-        else {
+        let Some(view) = self.host.active_view(cx) else {
             return Contents::Message(t!("panels.function-list.no-document"));
         };
         let buffer = view.read(cx).buffer.read(cx);
@@ -293,12 +286,7 @@ impl FunctionList {
         let Some(name) = self.symbol(index).map(|symbol| symbol.name_range.clone()) else {
             return;
         };
-        let Some(workspace) = self.workspace.upgrade() else {
-            return;
-        };
-        workspace.update(cx, |workspace, cx| {
-            workspace.activate_view(view, window, cx);
-        });
+        self.host.activate(view, window, cx);
         view.update(cx, |view, cx| {
             let len = view.text(cx).len();
             view.select_range(name.start.min(len)..name.end.min(len), cx);
@@ -366,10 +354,7 @@ impl FunctionList {
 
 impl Render for FunctionList {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let active = self
-            .workspace
-            .upgrade()
-            .and_then(|workspace| workspace.read(cx).active_view(cx));
+        let active = self.host.active_view(cx);
         self.follow.follow(active.as_ref(), cx);
         let toolbar = div()
             .flex()
@@ -398,7 +383,9 @@ impl Render for FunctionList {
         let body = match self.contents(cx) {
             Contents::Message(message) => div()
                 .p_2()
-                .text_color(crate::theme::paint(crate::theme::ui().muted))
+                .text_color(birchpad_widgets::theme::paint(
+                    birchpad_widgets::theme::ui().muted,
+                ))
                 .child(message)
                 .into_any_element(),
             Contents::Tree {

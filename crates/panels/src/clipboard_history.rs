@@ -9,15 +9,16 @@
 
 use std::collections::VecDeque;
 use std::ops::Range;
+use std::rc::Rc;
 use std::time::Duration;
 
 use gpui_kit::{
     App, ClickEvent, Context, FocusHandle, Focusable, KeyDownEvent, ScrollStrategy, Task,
-    UniformListScrollHandle, WeakEntity, Window, div, prelude::*, px, uniform_list,
+    UniformListScrollHandle, Window, div, prelude::*, px, uniform_list,
 };
 
-use crate::editor::widgets::ListRow as _;
-use crate::workspace::Workspace;
+use crate::Host;
+use birchpad_widgets::ListRow as _;
 
 /// Texts kept.
 pub const LIMIT: usize = 30;
@@ -61,7 +62,7 @@ pub fn preview(text: &str) -> String {
 }
 
 pub struct ClipboardHistory {
-    workspace: WeakEntity<Workspace>,
+    host: Rc<dyn Host>,
     pub entries: VecDeque<String>,
     pub selected: Option<usize>,
     scroll: UniformListScrollHandle,
@@ -76,7 +77,7 @@ impl Focusable for ClipboardHistory {
 }
 
 impl ClipboardHistory {
-    pub fn new(workspace: WeakEntity<Workspace>, _: &mut Window, cx: &mut Context<Self>) -> Self {
+    pub fn new(host: Rc<dyn Host>, _: &mut Window, cx: &mut Context<Self>) -> Self {
         let poll = cx.spawn(async move |this, cx| {
             loop {
                 if this.update(cx, |this, cx| this.read_clipboard(cx)).is_err() {
@@ -86,7 +87,7 @@ impl ClipboardHistory {
             }
         });
         Self {
-            workspace,
+            host,
             entries: VecDeque::new(),
             selected: None,
             scroll: UniformListScrollHandle::new(),
@@ -114,9 +115,7 @@ impl ClipboardHistory {
         let Some(text) = self.entries.get(index).cloned() else {
             return;
         };
-        self.workspace
-            .update(cx, |workspace, cx| workspace.insert_text(&text, window, cx))
-            .ok();
+        self.host.insert_text(&text, window, cx);
     }
 
     fn on_key_down(&mut self, event: &KeyDownEvent, window: &mut Window, cx: &mut Context<Self>) {
@@ -154,7 +153,9 @@ impl Render for ClipboardHistory {
         let body = if self.entries.is_empty() {
             div()
                 .p_2()
-                .text_color(crate::theme::paint(crate::theme::ui().muted))
+                .text_color(birchpad_widgets::theme::paint(
+                    birchpad_widgets::theme::ui().muted,
+                ))
                 .child(t!("panels.clipboard-history.copied-texts-show-here"))
                 .into_any_element()
         } else {
@@ -188,13 +189,15 @@ impl Render for ClipboardHistory {
                                     div()
                                         .flex_1()
                                         .overflow_hidden()
-                                        .font_family(crate::MONOSPACE)
+                                        .font_family(birchpad_widgets::MONOSPACE)
                                         .child(text.clone()),
                                 )
                                 .child(
                                     div()
                                         .flex_none()
-                                        .text_color(crate::theme::paint(crate::theme::ui().faint))
+                                        .text_color(birchpad_widgets::theme::paint(
+                                            birchpad_widgets::theme::ui().faint,
+                                        ))
                                         .child(length.to_string()),
                                 )
                                 .on_click(cx.listener(

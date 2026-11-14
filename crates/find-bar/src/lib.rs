@@ -1,4 +1,8 @@
-//! The find panel: its tabs, fields, search modes and options.
+//! The find panel: its tabs, fields, search modes and options ([`FindBar`]). It searches
+//! nothing itself: what the user asks for is an event ([`FindBarEvent`]) the window answers.
+
+#[macro_use]
+extern crate birchpad_i18n;
 
 use std::path::Path;
 use std::sync::Arc;
@@ -16,9 +20,7 @@ use gpui_kit::{
     Window, div, prelude::*, px, rgb,
 };
 
-use crate::app_state::AppState;
-
-use super::{FindOptions, FindTab, FolderSearch};
+use birchpad_ui::AppState;
 
 pub enum FindBarEvent {
     Find(Direction),
@@ -247,11 +249,7 @@ impl FindBar {
         cx.notify();
     }
 
-    pub(super) fn set_options(
-        &mut self,
-        change: impl FnOnce(&mut FindOptions),
-        cx: &mut Context<Self>,
-    ) {
+    pub fn set_options(&mut self, change: impl FnOnce(&mut FindOptions), cx: &mut Context<Self>) {
         change(&mut self.options);
         // Smart highlighting may follow the case and whole-word options.
         cx.set_global(birchpad_editor::ActiveFindOptions {
@@ -447,7 +445,9 @@ impl Render for FindBar {
                     .id("find-input")
                     .w(px(360.))
                     .small()
-                    .when(monospaced, |input| input.font_family(crate::MONOSPACE)),
+                    .when(monospaced, |input| {
+                        input.font_family(birchpad_widgets::MONOSPACE)
+                    }),
             )
             .children(actions);
         let row = || div().flex().flex_row().items_center().gap_2();
@@ -459,7 +459,9 @@ impl Render for FindBar {
                         .id("replace-input")
                         .w(px(360.))
                         .small()
-                        .when(monospaced, |input| input.font_family(crate::MONOSPACE)),
+                        .when(monospaced, |input| {
+                            input.font_family(birchpad_widgets::MONOSPACE)
+                        }),
                 )
                 .when(tab == FindTab::Replace, |row| {
                     row.child(button("replace", "Replace", || FindBarEvent::Replace))
@@ -655,8 +657,12 @@ impl Render for FindBar {
             .px_3()
             .pb_2()
             .border_t_1()
-            .border_color(crate::theme::paint(crate::theme::ui().border))
-            .bg(crate::theme::paint(crate::theme::ui().surface))
+            .border_color(birchpad_widgets::theme::paint(
+                birchpad_widgets::theme::ui().border,
+            ))
+            .bg(birchpad_widgets::theme::paint(
+                birchpad_widgets::theme::ui().surface,
+            ))
             .text_size(px(13.))
             .child(tabs)
             .child(find_row)
@@ -665,5 +671,72 @@ impl Render for FindBar {
             .child(options_row)
             .child(mode_row)
             .children(status)
+    }
+}
+
+/// The tabs of the find panel.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FindTab {
+    Find,
+    Replace,
+    FindInFiles,
+    /// The files of the project panels.
+    FindInProjects,
+    Mark,
+}
+
+impl FindTab {
+    const ALL: [Self; 5] = [
+        Self::Find,
+        Self::Replace,
+        Self::FindInFiles,
+        Self::FindInProjects,
+        Self::Mark,
+    ];
+}
+
+/// The folder options of the Find in Files tab.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct FolderSearch {
+    /// In all sub-folders.
+    pub subfolders: bool,
+    /// In hidden folders.
+    pub hidden: bool,
+    /// Follow current doc.: the folder of the active document.
+    pub follow_current_document: bool,
+}
+
+/// Options of the find panel, as in Notepad++'s Find dialog.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct FindOptions {
+    pub match_case: bool,
+    pub whole_word: bool,
+    pub wrap_around: bool,
+    pub backward: bool,
+    /// Count, Replace All and Mark All work in the selection.
+    pub in_selection: bool,
+    pub mode: SearchMode,
+    /// Regular expressions: `.` matches line breaks.
+    pub dot_matches_newline: bool,
+    /// Mark All also bookmarks the lines of its matches.
+    pub bookmark_line: bool,
+    /// Mark All first clears the marks of earlier searches.
+    pub purge: bool,
+}
+
+impl Default for FindOptions {
+    fn default() -> Self {
+        Self {
+            match_case: false,
+            whole_word: false,
+            // Notepad++'s default.
+            wrap_around: true,
+            backward: false,
+            in_selection: false,
+            mode: SearchMode::Normal,
+            dot_matches_newline: false,
+            bookmark_line: false,
+            purge: false,
+        }
     }
 }

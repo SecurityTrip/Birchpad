@@ -1127,10 +1127,24 @@ as revision 1 did (105 drawn). With ELK it draws 67. What it showed:
       clipboard's HTML and RTF and its change notification, the tray icon, and the unpacking of
       packages (zip's `extract` would make the package's symbolic links and keep every
       permission bit; Birchpad writes files only, without the bits of setuid and the like)
-- [ ] 7.7d The overloaded crates refactored: `birchpad` (the application, about 38 thousand
+- [x] 7.7d The overloaded crates refactored: `birchpad` (the application, about 38 thousand
       lines) and `birchpad-editor` (about 10 thousand) split along their parts into crates of
       their own, without a window where they can be, so that they build faster and are tested
       apart; an ADR says where the lines run
+      ([ADR 0069](adr/0069-the-application-and-the-editor-split-along-their-parts.md)). Out of
+      the editor: `birchpad-buffer` (the document, no window) and `birchpad-widgets` (the theme
+      and what the window's parts draw alike), so that the search results and the list to pick
+      from no longer wait for the editor. Out of the application, without a window:
+      `birchpad-diagrams` (PlantUML run, its mistakes, SVG as pixels) and `birchpad-preferences`
+      (the settings Preferences lists), both with their tests and in the Mutants workflow. Out
+      of the application, parts of the window: `birchpad-hex-editor`, `birchpad-spell-check`,
+      `birchpad-language-servers`, `birchpad-terminal-panel`, `birchpad-panels` (six side
+      panels behind the trait `Host`) and `birchpad-find-bar`; the dialogs that choose files
+      went to `birchpad-ui`. The application is 28 965 lines (was 38 559), the editor 8 513
+      (was 10 038). Not split, and why: what is written as methods of `Workspace` and of
+      `EditorView` stays with those types (Rust keeps a type's own methods in its crate);
+      taking it apart means the `Workspace` in a crate under its features, which changes how
+      every command reaches the window and is left for a release of its own
 - [ ] Release 0.8.1: the workspace version (0.8.1, set when its branch opens, so that nightly
       builds are its pre-releases), `CHANGELOG.md` and this roadmap updated; the
       [release checklist](release-checklist.md) gone through

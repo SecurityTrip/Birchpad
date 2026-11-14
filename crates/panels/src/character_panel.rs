@@ -7,16 +7,17 @@
 //! row's value, hex or character inserts the character; on an HTML column, that entity.
 
 use std::ops::Range;
+use std::rc::Rc;
 
 use birchpad_core::Encoding;
 use gpui_kit::{
     App, ClickEvent, Context, FocusHandle, Focusable, FontWeight, SharedString,
-    UniformListScrollHandle, WeakEntity, Window, div, prelude::*, px, uniform_list,
+    UniformListScrollHandle, Window, div, prelude::*, px, uniform_list,
 };
 
-use crate::app_state::AppState;
-use crate::editor::widgets::ListRow as _;
-use crate::workspace::Workspace;
+use crate::Host;
+use birchpad_ui::AppState;
+use birchpad_widgets::ListRow as _;
 
 const ROW_HEIGHT: f32 = 22.;
 
@@ -150,7 +151,7 @@ const COLUMNS: [(&str, f32); 6] = [
 ];
 
 pub struct CharacterPanel {
-    workspace: WeakEntity<Workspace>,
+    host: Rc<dyn Host>,
     /// The rows, and the encoding they are of.
     rows: Option<(Encoding, Vec<CharRow>)>,
     pub selected: Option<u8>,
@@ -165,9 +166,9 @@ impl Focusable for CharacterPanel {
 }
 
 impl CharacterPanel {
-    pub fn new(workspace: WeakEntity<Workspace>, _: &mut Window, cx: &mut Context<Self>) -> Self {
+    pub fn new(host: Rc<dyn Host>, _: &mut Window, cx: &mut Context<Self>) -> Self {
         Self {
-            workspace,
+            host,
             rows: None,
             selected: None,
             scroll: UniformListScrollHandle::new(),
@@ -177,10 +178,10 @@ impl CharacterPanel {
 
     /// The legacy encoding of the active document, or the ANSI code page.
     pub fn encoding(&self, cx: &App) -> Encoding {
-        let active = self.workspace.upgrade().and_then(|workspace| {
-            let view = workspace.read(cx).active_view(cx)?;
-            Some(view.read(cx).buffer.read(cx).doc().format().encoding)
-        });
+        let active = self
+            .host
+            .active_view(cx)
+            .map(|view| view.read(cx).buffer.read(cx).doc().format().encoding);
         match active {
             Some(encoding @ Encoding::Legacy(_)) => encoding,
             _ => AppState::global(cx).ansi,
@@ -218,9 +219,7 @@ impl CharacterPanel {
             _ => row.html_hex(),
         };
         if let Some(text) = text {
-            self.workspace
-                .update(cx, |workspace, cx| workspace.insert_text(&text, window, cx))
-                .ok();
+            self.host.insert_text(&text, window, cx);
         }
     }
 }
@@ -248,7 +247,9 @@ impl Render for CharacterPanel {
             .h(px(24.))
             .items_center()
             .border_b_1()
-            .border_color(crate::theme::paint(crate::theme::ui().border))
+            .border_color(birchpad_widgets::theme::paint(
+                birchpad_widgets::theme::ui().border,
+            ))
             .font_weight(FontWeight::SEMIBOLD)
             .children(COLUMNS.iter().map(|(heading, width)| {
                 div()

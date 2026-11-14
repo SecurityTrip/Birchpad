@@ -18,12 +18,15 @@ birchpad-config = { path = "crates/config", version = "0.8.1" }
 birchpad-core = { path = "crates/core", version = "0.7.6" }
 birchpad-diagrams = { path = "crates/diagrams", version = "0.8.1" }
 birchpad-editor = { path = "crates/editor", version = "0.8.1" }
+birchpad-find-bar = { path = "crates/find-bar", version = "0.8.1" }
 birchpad-hex-editor = { path = "crates/hex-editor", version = "0.8.1" }
 birchpad-i18n = { path = "crates/i18n", version = "0.8.1" }
 birchpad-git = { path = "crates/git", version = "0.8.0" }
 birchpad-io = { path = "crates/io", version = "0.8.1" }
+birchpad-language-servers = { path = "crates/language-servers", version = "0.8.1" }
 birchpad-lsp = { path = "crates/lsp", version = "0.8.0" }
 birchpad-menu-bar = { path = "crates/menu-bar", version = "0.8.1" }
+birchpad-panels = { path = "crates/panels", version = "0.8.1" }
 birchpad-plugin = { path = "crates/plugin", version = "0.7.6" }
 birchpad-preferences = { path = "crates/preferences", version = "0.8.1" }
 birchpad-print-dialog = { path = "crates/print-dialog", version = "0.7.5" }
@@ -32,6 +35,7 @@ birchpad-search-results = { path = "crates/search-results", version = "0.8.1" }
 birchpad-spell-check = { path = "crates/spell-check", version = "0.8.1" }
 birchpad-syntax = { path = "crates/syntax", version = "0.7.7" }
 birchpad-terminal = { path = "crates/terminal", version = "0.8.0" }
+birchpad-terminal-panel = { path = "crates/terminal-panel", version = "0.8.1" }
 birchpad-theme = { path = "crates/theme", version = "0.8.0" }
 birchpad-tools = { path = "crates/tools", version = "0.7.6" }
 birchpad-tray = { path = "crates/tray", version = "0.7.5" }
