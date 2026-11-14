@@ -10,7 +10,8 @@ use toml::Value;
 
 use crate::app_state::AppState;
 
-use super::values::{parse_field, set};
+use super::parse_field;
+use super::values::set;
 use super::{Kind, Preferences, label};
 
 impl Preferences {

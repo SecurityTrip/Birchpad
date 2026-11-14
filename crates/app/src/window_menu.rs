@@ -380,7 +380,7 @@ impl Render for WindowsDialog {
                         .on_click(move |event: &ClickEvent, window, cx| {
                             let modifiers = event.modifiers();
                             this.update(cx, |this, cx| {
-                                this.click(index, modifiers.secondary(), modifiers.shift, cx);
+                                this.click(index, modifiers.secondary(cx), modifiers.shift, cx);
                                 if event.click_count() == 2 {
                                     this.activate(window, cx);
                                 }

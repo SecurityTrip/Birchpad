@@ -4,7 +4,8 @@
 use birchpad_commands::Invocation;
 use gpui_kit::{
     ClipboardItem, Entity, EntityInputHandler as _, Modifiers, MouseButton, Pixels, Point,
-    ScrollDelta, ScrollWheelEvent, TestAppContext, TouchPhase, VisualTestContext, point, px,
+    ScrollDelta, ScrollEvent, ScrollSource, TestAppContext, TouchPhase, VisualTestContext, point,
+    px,
 };
 
 use crate::test_support::{Workspace, active_text, open_workspace};
@@ -51,11 +52,12 @@ fn scroll(view: &Entity<EditorView>, cx: &mut VisualTestContext) -> (f64, Pixels
 }
 
 fn wheel(at: Point<Pixels>, lines: Point<f32>, modifiers: Modifiers, cx: &mut VisualTestContext) {
-    cx.simulate_event(ScrollWheelEvent {
+    cx.simulate_event(ScrollEvent {
         position: at,
         delta: ScrollDelta::Lines(lines),
         modifiers,
         touch_phase: TouchPhase::Moved,
+        source: ScrollSource::Pointer,
     });
     cx.run_until_parked();
 }
@@ -105,7 +107,7 @@ fn ctrl_wheel_zooms_within_its_range(cx: &mut TestAppContext) {
     set_text(&view, "text", cx);
     let center = read(&view, cx, |_, layout| layout.text_bounds.center());
     let zoom = |cx: &mut VisualTestContext| cx.update(|_, cx| AppState::global(cx).state.zoom);
-    let ctrl = Modifiers::secondary_key();
+    let ctrl = cx.update(|_, cx| Modifiers::secondary_key(cx));
     wheel(center, point(0., 1.), ctrl, cx);
     assert_eq!(zoom(cx), 1);
     wheel(center, point(0., -1.), ctrl, cx);

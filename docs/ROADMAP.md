@@ -1104,6 +1104,53 @@ as revision 1 did (105 drawn). With ELK it draws 67. What it showed:
       builds are its pre-releases), `CHANGELOG.md` and this roadmap updated; the
       [release checklist](release-checklist.md) gone through
 
+### Release 0.8.1: updates, workspace and refactoring
+
+- [x] Dependabot's updates: gpui-kit 0.8.1
+      ([#64](https://github.com/SecurityTrip/Birchpad/pull/64)) and the cargo group of nine
+      ([#70](https://github.com/SecurityTrip/Birchpad/pull/70)): trash, zip, encoding_rs,
+      tree-sitter-cmake, tree-sitter-powershell, tree-sitter-scala, uuid, ureq and
+      unicode-width; then the group of thirteen that took its place
+      ([#73](https://github.com/SecurityTrip/Birchpad/pull/73)), which adds smallvec, notify,
+      interprocess and tree-sitter, and newer zip, tree-sitter-scala and uuid
+- [x] 7.7b Folder as Workspace works with files the way an IDE's project tree does: new file
+      and folder, rename (F2), copy, cut and paste, duplicate, delete to the trash, move by
+      dragging, show in the system's file manager; open documents follow their files when they
+      are renamed or moved, and the tree follows what changes on disk
+      ([ADR 0068](adr/0068-file-operations-in-folder-as-workspace.md))
+- [x] 7.7c The updated libraries put to use: what gpui-kit 0.8 and the cargo group's releases
+      bring looked through, and the code written around what they lacked replaced with their
+      own features where that is simpler or faster, measured where it is about speed. Replaced:
+      the update client's own transport that limited each read, by ureq's `timeout_per_read`;
+      the ASCII shortcut before unicode-width, which answers ASCII first itself (the same
+      widths for every code point; as fast on ASCII, 8 % faster on mixed text); the keyboard
+      mapper handed to GPUI's key bindings, which take the platform's now. Kept, as the new
+      releases still lack it: the Linux keyboard mapper (GPUI's is still a placeholder), the
+      clipboard's HTML and RTF and its change notification, the tray icon, and the unpacking of
+      packages (zip's `extract` would make the package's symbolic links and keep every
+      permission bit; Birchpad writes files only, without the bits of setuid and the like)
+- [x] 7.7d The overloaded crates refactored: `birchpad` (the application, about 38 thousand
+      lines) and `birchpad-editor` (about 10 thousand) split along their parts into crates of
+      their own, without a window where they can be, so that they build faster and are tested
+      apart; an ADR says where the lines run
+      ([ADR 0069](adr/0069-the-application-and-the-editor-split-along-their-parts.md)). Out of
+      the editor: `birchpad-buffer` (the document, no window) and `birchpad-widgets` (the theme
+      and what the window's parts draw alike), so that the search results and the list to pick
+      from no longer wait for the editor. Out of the application, without a window:
+      `birchpad-diagrams` (PlantUML run, its mistakes, SVG as pixels) and `birchpad-preferences`
+      (the settings Preferences lists), both with their tests and in the Mutants workflow. Out
+      of the application, parts of the window: `birchpad-hex-editor`, `birchpad-spell-check`,
+      `birchpad-language-servers`, `birchpad-terminal-panel`, `birchpad-panels` (six side
+      panels behind the trait `Host`) and `birchpad-find-bar`; the dialogs that choose files
+      went to `birchpad-ui`. The application is 28 965 lines (was 38 559), the editor 8 513
+      (was 10 038). Not split, and why: what is written as methods of `Workspace` and of
+      `EditorView` stays with those types (Rust keeps a type's own methods in its crate);
+      taking it apart means the `Workspace` in a crate under its features, which changes how
+      every command reaches the window and is left for a release of its own
+- [x] Release 0.8.1: the workspace version (0.8.1, set when its branch opens, so that nightly
+      builds are its pre-releases), `CHANGELOG.md` and this roadmap updated; the
+      [release checklist](release-checklist.md) gone through
+
 ### Release 0.9.0: large and remote files, other ways to edit
 
 - [ ] 7.8 Multi-gigabyte files through memory mapping, read and searched without loading them

@@ -32,7 +32,6 @@ pub mod find_in_files;
 pub mod finder;
 pub mod git;
 pub mod help;
-pub mod hex_editor;
 pub mod hex_view;
 pub mod i18n;
 pub mod incremental;
@@ -45,7 +44,6 @@ pub mod online;
 pub mod palette;
 pub mod pane;
 pub mod panels;
-pub mod path_dialog;
 pub mod plantuml;
 pub mod preferences;
 pub mod preview;
@@ -69,9 +67,11 @@ pub mod window_modes;
 pub mod workspace;
 
 pub use birchpad_editor::{self as editor, buffer, theme};
+pub use birchpad_hex_editor as hex_editor;
 pub use birchpad_quick_pick as quick_pick;
 pub use birchpad_search_results as search_results;
 pub use birchpad_tray as tray;
+pub use birchpad_ui::path_dialog;
 
 use std::fmt::Write as _;
 

@@ -24,7 +24,7 @@ dictionaries when you ask:
   which is sent nothing. With the `updates.url` setting (an administrator's copy of the
   manifest) Birchpad downloads it from there alone, and sends no statistics. Each of these
   requests also says which version of Birchpad asks and on which operating system (the
-  `User-Agent` header, such as `Birchpad/0.8.0 (windows)`), and nothing about your files.
+  `User-Agent` header, such as `Birchpad/0.8.1 (windows)`), and nothing about your files.
 - **Downloading updates**: with `updates.mode = "auto"` (the default), a copy installed with the
   per-user Windows installer downloads the package of a newer version, from the address the
   manifest lists (GitHub's release downloads).
@@ -62,7 +62,7 @@ With `updates.statistics = true` (the default), an update check tells `api.birch
 | Field | What it is | Why |
 |---|---|---|
 | `installId` | A random id (a UUID, version 4) | To count copies of Birchpad, not checks |
-| `version` | The version of Birchpad, such as `0.8.0` | To know which versions are in use, and when an old one can stop being tested |
+| `version` | The version of Birchpad, such as `0.8.1` | To know which versions are in use, and when an old one can stop being tested |
 | `channel` | `stable`, `beta` or `nightly` (`updates.channel`) | To know who gets which builds |
 | `platform` | `windows-x64`, `windows-arm64`, `linux-x64`, `macos-arm64` or `macos-x64` | To know which builds are needed |
 | `plantuml` | Which PlantUML the previews draw with: `component` (the one Birchpad installed), `custom` (another one) or `none` | To know whether PlantUML updates reach those who use it |

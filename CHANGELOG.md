@@ -6,6 +6,49 @@ version's release notes from its section here.
 
 ## [Unreleased]
 
+## [0.8.1] - 2026-11-15
+
+### Added
+
+- Folder as Workspace works with files as an IDE's project tree does (roadmap 7.7b,
+  [ADR 0068](docs/adr/0068-file-operations-in-folder-as-workspace.md)): its right-click menu has
+  New File... (the file opens), New Folder..., Rename... (`F2`), Duplicate (`Ctrl+D`), Copy
+  (`Ctrl+C`), Cut (`Ctrl+X`), Paste (`Ctrl+V`) and Move to Recycle Bin (`Delete`, asked first
+  unless Preferences > MISC > Folder as Workspace: confirm moving to the recycle bin,
+  `misc.confirm-workspace-delete`, is off), and a file or folder dragged onto a folder moves
+  there. Nothing is overwritten: a name taken is refused, and a copy takes a name of its own
+  (`a copy.txt`, `a copy 2.txt`). Open documents follow their files when they are renamed or
+  moved, unsaved changes and all; the tabs of files moved to the recycle bin close unless they
+  have unsaved changes. An unfolded folder stays unfolded where it went, and the folders the
+  tree changes are read again at once. Top folders are renamed but not moved, duplicated or
+  deleted from the tree. Explorer Here shows the file or folder itself in the file manager. The
+  operations are `birchpad-io`'s, without a window.
+
+### Changed
+
+- The component library gpui-kit 0.8.1
+  ([#64](https://github.com/SecurityTrip/Birchpad/pull/64)), and trash 5.3.0, zip 9.5.0,
+  encoding_rs 0.8.44, tree-sitter 0.27.2, tree-sitter-cmake 0.7.6, tree-sitter-powershell
+  0.26.6, tree-sitter-scala 0.26.9, uuid 1.29.2, ureq 3.5.1, unicode-width 0.2.3, smallvec
+  1.16.5, notify 8.2.2 and interprocess 2.4.8
+  ([#70](https://github.com/SecurityTrip/Birchpad/pull/70),
+  [#73](https://github.com/SecurityTrip/Birchpad/pull/73)). Key bindings now take the
+  keyboard mapper of the platform GPUI runs on, which GPUI now applies itself; mouse wheel
+  events are GPUI's `ScrollEvent`.
+- What the updated libraries bring put to use (roadmap 7.7c): downloads that receive nothing
+  for a minute fail through ureq's own `timeout_per_read` instead of a transport of Birchpad's,
+  and the widths of characters come from unicode-width without a shortcut of Birchpad's before
+  it (the same widths; measured as fast on ASCII and 8 % faster on mixed text).
+- The application and the editor split along their parts (roadmap 7.7d,
+  [ADR 0069](docs/adr/0069-the-application-and-the-editor-split-along-their-parts.md)), with
+  nothing changed for the user. Ten crates more: `birchpad-buffer` and `birchpad-widgets` out
+  of the editor; `birchpad-diagrams` and `birchpad-preferences`, which need no window, and
+  `birchpad-hex-editor`, `birchpad-spell-check`, `birchpad-language-servers`,
+  `birchpad-terminal-panel`, `birchpad-panels` and `birchpad-find-bar` out of the application;
+  the dialogs that choose files are `birchpad-ui`'s. The application went from 38 559 lines to
+  28 965, the editor from 10 038 to 8 513; the tests that need no window moved with their
+  code and run without the application's test binary.
+
 ## [0.8.0] - 2026-11-09
 
 ### Added
@@ -995,7 +1038,8 @@ The first release: a Notepad++-like editor for Windows, Linux and macOS.
   entirely (`updates.mode = "off"`).
 - Nightly builds of `main` on the nightly channel.
 
-[Unreleased]: https://github.com/SecurityTrip/Birchpad/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/SecurityTrip/Birchpad/compare/v0.8.1...HEAD
+[0.8.1]: https://github.com/SecurityTrip/Birchpad/compare/v0.8.0...v0.8.1
 [0.8.0]: https://github.com/SecurityTrip/Birchpad/compare/v0.7.7...v0.8.0
 [0.7.7]: https://github.com/SecurityTrip/Birchpad/compare/v0.7.6...v0.7.7
 [0.7.6]: https://github.com/SecurityTrip/Birchpad/compare/v0.7.5...v0.7.6

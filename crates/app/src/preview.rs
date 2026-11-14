@@ -12,8 +12,6 @@
 //! when the user asks (`plantuml.rs`).
 
 mod diagrams;
-mod includes;
-pub mod server;
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -31,7 +29,7 @@ use gpui_kit::component::{IconName, Selectable as _, Sizable};
 use gpui_kit::{
     AnyElement, App, AppContext as _, ClickEvent, Context, CursorStyle, Entity, Image, ImageFormat,
     ImageSource, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, ObjectFit, Pixels,
-    Point, Resource, ScrollHandle, ScrollWheelEvent, SharedString, SharedUri, Subscription, Task,
+    Point, Resource, ScrollEvent, ScrollHandle, SharedString, SharedUri, Subscription, Task,
     WeakEntity, Window, div, img, point, prelude::*, px,
 };
 
@@ -43,20 +41,8 @@ use crate::editor::widgets::{BarColors, Line, bar, error_text};
 use crate::theme::{paint, ui};
 use crate::workspace::Workspace;
 
-#[cfg(feature = "test-support")]
-pub use diagrams::DOT;
-pub use diagrams::{
-    DIAGRAM_END, DOT_POLL, Drawn, ElkAttempt, GRAPHVIZ_DOT_VARIABLE, GRAPHVIZ_DOWNLOAD,
-    INCLUDE_PATH_VARIABLE, Included, Layout, MAX_PNG_SIDE, MAX_ZOOMED_PIXELS, Mistake, NotDrawn,
-    PLANTUML_DELAY, PLANTUML_MAIN, Stop, StopOnDrop, ZOOM_COMMANDS, ZOOM_STEPS, Zoom, ZoomChange,
-    active_diagrams, background, crash_pictures, diagram_starts, dragged_offset,
-    draws_again_with_elk, elk_attempt, export_name, find_dot, find_include, fit_page_scale,
-    fit_width_scale, folded_pictures, include_path, lacks_elk, line_offset, mistake_trace,
-    mistakes, normalized, pictured_line, place_in_includes, plantuml_command, raster_factor,
-    redraws_for, relative_to, run_plantuml, setting_path, sized_svg, split_diagrams, svg_size,
-    svg_to_pixels, svg_to_png, system_dot, waits_for_graphviz, watched_folders,
-};
-pub use includes::{IncludeLink, Includes, MOST_INCLUDED_FILES, Preprocessor, walk_includes};
+pub use birchpad_diagrams::*;
+pub use diagrams::{active_diagrams, background};
 
 /// What a document's preview shows.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -65,9 +51,6 @@ pub enum PreviewKind {
     /// Diagrams drawn by PlantUML, installed apart from Birchpad.
     PlantUml,
 }
-
-/// PlantUML's files: `.puml` and the other extensions its tools know.
-pub(crate) const PLANTUML_EXTENSIONS: [&str; 5] = ["puml", "plantuml", "pu", "iuml", "wsd"];
 
 /// The preview `buffer` has: from its language, or for PlantUML from its file's extension too
 /// (a `.puml` shown as another language still has its diagrams).
@@ -718,7 +701,7 @@ impl Preview {
     /// does not do it itself. Whether it scrolled.
     fn wheel_across(
         &mut self,
-        event: &ScrollWheelEvent,
+        event: &ScrollEvent,
         window: &Window,
         cx: &mut Context<Self>,
     ) -> bool {
@@ -776,7 +759,7 @@ impl Preview {
     }
 
     /// Ctrl with the mouse wheel over the diagrams: a step of zoom for each notch.
-    fn wheel_zoom(&mut self, event: &ScrollWheelEvent, cx: &mut Context<Self>) {
+    fn wheel_zoom(&mut self, event: &ScrollEvent, cx: &mut Context<Self>) {
         let Content::PlantUml(diagrams) = &mut self.content else {
             return;
         };
@@ -1313,8 +1296,8 @@ impl Preview {
                     this.start_drag(event.position, cx);
                 }),
             )
-            .on_scroll_wheel(cx.listener(|this, event: &ScrollWheelEvent, window, cx| {
-                if event.modifiers.secondary() {
+            .on_scroll(cx.listener(|this, event: &ScrollEvent, window, cx| {
+                if event.modifiers.secondary(cx) {
                     this.wheel_zoom(event, cx);
                     cx.stop_propagation();
                 } else if event.modifiers.shift && this.wheel_across(event, window, cx) {

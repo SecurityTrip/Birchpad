@@ -597,7 +597,7 @@ impl Render for Pane {
                 }),
             )
             .on_drop(cx.listener(move |this, tab: &DraggedTab, window, cx| {
-                let clone = window.modifiers().secondary();
+                let clone = window.modifiers().secondary(cx);
                 let view = tab.view.clone();
                 match this.split_zone.take() {
                     Some(orientation) => cx.emit(PaneEvent::Split {

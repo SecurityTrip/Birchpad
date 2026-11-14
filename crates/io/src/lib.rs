@@ -15,6 +15,7 @@ mod detect;
 mod disk;
 mod encode;
 mod encoding;
+mod entries;
 mod file;
 mod folder;
 pub mod search_files;
@@ -26,6 +27,10 @@ pub use disk::{DiskStamp, HEAD_LEN, Head, decode_appended, read_from, stamp};
 pub use encode::{Unencodable, check_encodable, encode, encode_document, is_ebcdic};
 pub use encoding::{
     CHARACTER_SETS, display_name, encoding_name, from_code_page, parse_encoding, system_ansi,
+};
+pub use entries::{
+    EntryError, check_name, copy_into, create_file, create_folder, duplicate, free_name, move_into,
+    relocated, rename,
 };
 pub use file::{
     FileInfo, LoadOptions, LoadedFile, MAX_FILE_SIZE, ReadError, Recovery, SaveError, decode_file,

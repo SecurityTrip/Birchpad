@@ -380,3 +380,48 @@ fn monitored_files_are_checked_every_second(cx: &mut TestAppContext) {
     cx.run_until_parked();
     assert_eq!(active_text(&workspace, cx), "first\nsecond\n");
 }
+
+#[gpui_kit::test]
+fn folders_about_to_change_are_let_go_of(cx: &mut TestAppContext) {
+    let dir = tempfile::tempdir().unwrap();
+    let (one, sub, other) = (
+        dir.path().join("one"),
+        dir.path().join("one").join("sub"),
+        dir.path().join("one-more"),
+    );
+    for folder in [&sub, &other] {
+        fs::create_dir_all(folder).unwrap();
+    }
+    for file in [one.join("a.txt"), sub.join("b.txt"), other.join("c.txt")] {
+        fs::write(&file, "x").unwrap();
+    }
+    let (workspace, cx) = open_workspace(cx);
+    // The watcher's own thread wakes the window's.
+    cx.executor().allow_parking();
+    start_watching(&workspace, cx);
+    for file in [one.join("a.txt"), sub.join("b.txt"), other.join("c.txt")] {
+        open(&workspace, &file, cx);
+    }
+    let names = |cx: &mut VisualTestContext| {
+        let mut names: Vec<String> = watched(&workspace, cx)
+            .iter()
+            .map(|folder| folder.file_name().unwrap().to_string_lossy().into_owned())
+            .collect();
+        names.sort();
+        names
+    };
+    assert_eq!(names(cx), ["one", "one-more", "sub"]);
+
+    // `one` and what is in it; not `one-more`, whose name only starts the same.
+    workspace.update(cx, |workspace, _| workspace.unwatch_under(&one));
+    assert_eq!(names(cx), ["one-more"]);
+    // A folder nothing watches, and one again: nothing changes.
+    workspace.update(cx, |workspace, _| {
+        workspace.unwatch_under(&dir.path().join("elsewhere"));
+        workspace.unwatch_under(&one);
+    });
+    assert_eq!(names(cx), ["one-more"]);
+    // Watched again once asked for.
+    workspace.update(cx, |workspace, cx| workspace.sync_watches(cx));
+    assert_eq!(names(cx), ["one", "one-more", "sub"]);
+}
