@@ -102,7 +102,7 @@ fn command_bindings_are_replaced_and_the_others_kept(cx: &mut TestAppContext) {
         keymap.add_layer(
             Layer::User,
             "[[binding]]
-keys = \"f7\"
+keys = \"f9\"
 command = \"mark.clear\"
 args = { style = 2 }
 ",
@@ -111,7 +111,7 @@ args = { style = 2 }
         replace_command_bindings(bindings, cx);
     });
     let (all_after, ours_after, after) = keys(cx);
-    assert_eq!(after, [&["2"], symbol, &["f7"]].concat(), "the new binding");
+    assert_eq!(after, [&["2"], symbol, &["f9"]].concat(), "the new binding");
     assert_eq!(
         (all_after, ours_after),
         (all + 1, ours + 1),
