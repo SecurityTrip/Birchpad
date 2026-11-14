@@ -1145,7 +1145,9 @@ smetana так же, как ревизия 1 (нарисованы 105). С ELK 
       ([#64](https://github.com/SecurityTrip/Birchpad/pull/64)) и группа cargo из девяти
       ([#70](https://github.com/SecurityTrip/Birchpad/pull/70)): trash, zip, encoding_rs,
       tree-sitter-cmake, tree-sitter-powershell, tree-sitter-scala, uuid, ureq и
-      unicode-width
+      unicode-width; затем сменившая её группа из тринадцати
+      ([#73](https://github.com/SecurityTrip/Birchpad/pull/73)), которая добавляет smallvec,
+      notify, interprocess и tree-sitter и более новые zip, tree-sitter-scala и uuid
 - [x] 7.7b Folder as Workspace работает с файлами, как дерево проекта в IDE: новый файл и
       папка, переименование (F2), копирование, вырезание и вставка, дублирование, удаление в
       корзину, перемещение перетаскиванием, показ в файловом менеджере системы; открытые

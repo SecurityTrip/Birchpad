@@ -1110,7 +1110,9 @@ as revision 1 did (105 drawn). With ELK it draws 67. What it showed:
       ([#64](https://github.com/SecurityTrip/Birchpad/pull/64)) and the cargo group of nine
       ([#70](https://github.com/SecurityTrip/Birchpad/pull/70)): trash, zip, encoding_rs,
       tree-sitter-cmake, tree-sitter-powershell, tree-sitter-scala, uuid, ureq and
-      unicode-width
+      unicode-width; then the group of thirteen that took its place
+      ([#73](https://github.com/SecurityTrip/Birchpad/pull/73)), which adds smallvec, notify,
+      interprocess and tree-sitter, and newer zip, tree-sitter-scala and uuid
 - [x] 7.7b Folder as Workspace works with files the way an IDE's project tree does: new file
       and folder, rename (F2), copy, cut and paste, duplicate, delete to the trash, move by
       dragging, show in the system's file manager; open documents follow their files when they
