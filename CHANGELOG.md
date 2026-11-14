@@ -6,6 +6,8 @@ version's release notes from its section here.
 
 ## [Unreleased]
 
+## [0.8.1] - 2026-11-15
+
 ### Added
 
 - Folder as Workspace works with files as an IDE's project tree does (roadmap 7.7b,
@@ -1034,7 +1036,8 @@ The first release: a Notepad++-like editor for Windows, Linux and macOS.
   entirely (`updates.mode = "off"`).
 - Nightly builds of `main` on the nightly channel.
 
-[Unreleased]: https://github.com/SecurityTrip/Birchpad/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/SecurityTrip/Birchpad/compare/v0.8.1...HEAD
+[0.8.1]: https://github.com/SecurityTrip/Birchpad/compare/v0.8.0...v0.8.1
 [0.8.0]: https://github.com/SecurityTrip/Birchpad/compare/v0.7.7...v0.8.0
 [0.7.7]: https://github.com/SecurityTrip/Birchpad/compare/v0.7.6...v0.7.7
 [0.7.6]: https://github.com/SecurityTrip/Birchpad/compare/v0.7.5...v0.7.6

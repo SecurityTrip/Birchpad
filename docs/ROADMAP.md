@@ -1145,7 +1145,7 @@ as revision 1 did (105 drawn). With ELK it draws 67. What it showed:
       `EditorView` stays with those types (Rust keeps a type's own methods in its crate);
       taking it apart means the `Workspace` in a crate under its features, which changes how
       every command reaches the window and is left for a release of its own
-- [ ] Release 0.8.1: the workspace version (0.8.1, set when its branch opens, so that nightly
+- [x] Release 0.8.1: the workspace version (0.8.1, set when its branch opens, so that nightly
       builds are its pre-releases), `CHANGELOG.md` and this roadmap updated; the
       [release checklist](release-checklist.md) gone through
 
