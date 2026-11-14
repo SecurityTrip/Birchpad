@@ -101,15 +101,12 @@ fn documents_are_named_by_their_file_their_title_or_their_number(cx: &mut TestAp
         assert_eq!(buffer.language_key(), "rust", "by the file's extension");
         assert_eq!(buffer.disk(), None, "a file that is not there has no stamp");
     });
-    assert_eq!(
-        seen.borrow()
-            .iter()
-            .filter(|event| **event == "state")
-            .count(),
-        4,
-        "each change of the name is told: {:?}",
-        seen.borrow()
-    );
+    // Each of the four changes of the name is told, and the language that came with the file.
+    let seen = seen.borrow();
+    let count = |name: &str| seen.iter().filter(|event| **event == name).count();
+    assert!(count("state") >= 4, "{seen:?}");
+    assert_eq!(count("syntax"), 1, "{seen:?}");
+    assert_eq!(count("edited") + count("reloaded"), 0, "{seen:?}");
 }
 
 #[gpui_kit::test]
@@ -328,11 +325,29 @@ fn files_are_read_in_the_background(cx: &mut TestAppContext) {
         Some(ReadOnly::Requested)
     );
 
-    // A file that is not there: said, and the buffer stays empty.
-    let missing = cx.new(|cx| Buffer::open(dir.path().join("missing.txt"), options, false, cx));
+    // A file that is not there yet is an empty document with that path, made when it is saved.
+    let path = dir.path().join("missing.txt");
+    let missing = cx.new(|cx| Buffer::open(path.clone(), options, false, cx));
     let seen = events(&missing, cx);
     cx.run_until_parked();
     assert_eq!(text(&missing, cx), "");
+    missing.read_with(cx, |buffer, _| {
+        assert_eq!(buffer.path(), Some(path.as_path()));
+        assert_eq!(buffer.read_only(), None);
+        assert_eq!(buffer.disk(), None);
+    });
+    assert!(
+        !seen.borrow().contains(&"load-failed"),
+        "{:?}",
+        seen.borrow()
+    );
+    assert!(!path.exists(), "nothing is written by opening");
+
+    // What cannot be read (a folder) is said, and the buffer stays empty.
+    let folder = cx.new(|cx| Buffer::open(dir.path().to_owned(), options, false, cx));
+    let seen = events(&folder, cx);
+    cx.run_until_parked();
+    assert_eq!(text(&folder, cx), "");
     assert!(
         seen.borrow().contains(&"load-failed"),
         "{:?}",
