@@ -61,7 +61,14 @@ pub fn create_file(folder: &Path, name: &str) -> Result<PathBuf, EntryError> {
         .write(true)
         .create_new(true)
         .open(&path)
-        .map_err(EntryError::io(&path))?;
+        .map_err(|source| {
+            // Windows answers "access denied", not "already exists", when a folder has the name.
+            if path.is_dir() {
+                EntryError::AlreadyExists(path.clone())
+            } else {
+                EntryError::io(&path)(source)
+            }
+        })?;
     Ok(path)
 }
 
