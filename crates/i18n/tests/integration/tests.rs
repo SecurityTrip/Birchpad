@@ -43,7 +43,8 @@ fn languages_resolve() {
     assert_eq!(resolve("RU", None), "ru");
     assert_eq!(resolve("auto", Some("ru-RU")), "ru");
     assert_eq!(resolve("Auto", Some("ru_RU.UTF-8")), "ru");
-    assert_eq!(resolve("auto", Some("fr-FR")), "en");
+    assert_eq!(resolve("auto", Some("fr-FR")), "fr");
+    assert_eq!(resolve("auto", Some("ja-JP")), "en", "no Japanese locale");
     assert_eq!(resolve("auto", None), "en");
     assert_eq!(resolve("", None), "en");
     assert_eq!(resolve("klingon", Some("ru")), "en");
@@ -60,6 +61,30 @@ fn german_is_an_interface_language() {
     assert_eq!(plural("plural.files", 1), "1 Datei");
     assert_eq!(plural("plural.files", 0), "0 Dateien");
     assert_eq!(plural("plural.files", 2), "2 Dateien");
+    set_language("en");
+}
+
+#[test]
+fn french_is_an_interface_language() {
+    let _language = choosing_language();
+    assert_eq!(resolve("fr", None), "fr");
+    assert_eq!(resolve("FR", None), "fr");
+    assert_eq!(resolve("auto", Some("fr_CA.UTF-8")), "fr");
+    assert_eq!(resolve("auto", Some("fr-BE")), "fr");
+    assert!(LANGUAGES.contains(&("fr", "Français")));
+    set_language("fr");
+    assert_eq!(get("menu.file"), "Fichier");
+    assert_eq!(get("common.cancel"), "Annuler");
+    // 0 and 1 are singular in French, 2 and more plural.
+    assert_eq!(plural("plural.files", 0), "0 fichier");
+    assert_eq!(plural("plural.files", 1), "1 fichier");
+    assert_eq!(plural("plural.files", 2), "2 fichiers");
+    assert_eq!(plural("plural.files", 1000), "1000 fichiers");
+    // An argument is filled in as in English.
+    assert_eq!(
+        get_with("file-commands.already-exists", &[("path", &"a.txt")]),
+        "a.txt existe déjà"
+    );
     set_language("en");
 }
 

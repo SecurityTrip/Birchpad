@@ -16,6 +16,8 @@ version's release notes from its section here.
   at its right. The button beside Close docks it under the documents again, as before, and
   floats it back; the choice is kept as Preferences > Searching > The find panel floats over the
   documents (`searching.find-panel-floats`, on by default).
+- The interface in French, beside English, German and Russian: Preferences > Appearance >
+  Interface language > Français, or Automatic on a French system (`-Lfr` for one run).
 
 - Folder as Workspace works with files as an IDE's project tree does (roadmap 7.7b,
   [ADR 0068](docs/adr/0068-file-operations-in-folder-as-workspace.md)): its right-click menu has

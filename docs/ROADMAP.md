@@ -1153,6 +1153,9 @@ as revision 1 did (105 drawn). With ELK it draws 67. What it showed:
       button beside Close or by Preferences > Searching (`searching.find-panel-floats`). It
       floats over the documents' area of the window, not in a window of its own: its fields,
       focus and keys are the main window's, which answers every search it asks for
+- [x] The interface in French: `fr.yaml` beside English, German and Russian, every key
+      translated for Birchpad, French in Preferences > Appearance > Interface language and
+      chosen from a French system, with French plurals (0 and 1 singular)
 - [x] Release 0.8.1: the workspace version (0.8.1, set when its branch opens, so that nightly
       builds are its pre-releases), `CHANGELOG.md` and this roadmap updated; the
       [release checklist](release-checklist.md) gone through
@@ -1164,8 +1167,6 @@ as revision 1 did (105 drawn). With ELK it draws 67. What it showed:
 - [ ] 7.9 CSV and JSON viewers: a table and a tree beside the text, which follow its edits
 - [ ] 7.10 Remote editing over SSH and SFTP: files and folders opened and saved on a server
 - [ ] 7.11 Vim mode
-- [ ] The interface in French: `fr.yaml` beside English, German and Russian, every key
-      translated for Birchpad, and French in the list of languages
 - [ ] Release 0.9.0: the workspace version (0.9.0, set when its branch opens, so that nightly
       builds are its pre-releases), `CHANGELOG.md` and this roadmap updated; the
       [release checklist](release-checklist.md) gone through
