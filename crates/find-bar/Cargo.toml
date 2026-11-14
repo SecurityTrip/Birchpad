@@ -23,5 +23,8 @@ test-support = []
 # The same, for the application's end-to-end tests.
 e2e = []
 
+[dev-dependencies]
+gpui-kit = { version = "0.8", features = ["test-support"] }
+
 [lints]
 workspace = true

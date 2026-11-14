@@ -1147,6 +1147,12 @@ as revision 1 did (105 drawn). With ELK it draws 67. What it showed:
       `EditorView` stays with those types (Rust keeps a type's own methods in its crate);
       taking it apart means the `Workspace` in a crate under its features, which changes how
       every command reaches the window and is left for a release of its own
+- [x] The find panel floats over the documents, as Notepad++'s Find dialog does
+      ([#71](https://github.com/SecurityTrip/Birchpad/issues/71)): moved by its title within
+      the window, its buttons in a column at the right, docked under the documents again by a
+      button beside Close or by Preferences > Searching (`searching.find-panel-floats`). It
+      floats over the documents' area of the window, not in a window of its own: its fields,
+      focus and keys are the main window's, which answers every search it asks for
 - [x] Release 0.8.1: the workspace version (0.8.1, set when its branch opens, so that nightly
       builds are its pre-releases), `CHANGELOG.md` and this roadmap updated; the
       [release checklist](release-checklist.md) gone through
@@ -1158,6 +1164,8 @@ as revision 1 did (105 drawn). With ELK it draws 67. What it showed:
 - [ ] 7.9 CSV and JSON viewers: a table and a tree beside the text, which follow its edits
 - [ ] 7.10 Remote editing over SSH and SFTP: files and folders opened and saved on a server
 - [ ] 7.11 Vim mode
+- [ ] The interface in French: `fr.yaml` beside English, German and Russian, every key
+      translated for Birchpad, and French in the list of languages
 - [ ] Release 0.9.0: the workspace version (0.9.0, set when its branch opens, so that nightly
       builds are its pre-releases), `CHANGELOG.md` and this roadmap updated; the
       [release checklist](release-checklist.md) gone through

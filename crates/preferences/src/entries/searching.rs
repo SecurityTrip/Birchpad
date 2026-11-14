@@ -38,6 +38,12 @@ pub(super) const ENTRIES: &[Entry] = &[
     ),
     entry(
         "Searching",
+        "searching.find-panel-floats",
+        "The find panel floats over the documents",
+        Kind::Bool,
+    ),
+    entry(
+        "Searching",
         "searching.confirm-replace-all-documents",
         "Confirm Replace All in All Opened Documents",
         Kind::Bool,

@@ -11,7 +11,9 @@ mod mark;
 mod replace;
 mod search;
 
-pub use birchpad_find_bar::{FindBar, FindBarEvent, FindOptions, FindTab, FolderSearch};
+pub use birchpad_find_bar::{
+    DraggedFindPanel, FindBar, FindBarEvent, FindOptions, FindTab, FloatingPlace, FolderSearch,
+};
 
 use birchpad_core::search::{Direction, Query, SearchMode, Searcher};
 use gpui_kit::{App, Context, Entity, Window};
@@ -284,8 +286,21 @@ impl Workspace {
             FindBarEvent::StopFiles => self.find_bar.update(cx, |bar, cx| bar.stop_files(cx)),
             FindBarEvent::BrowseFolder => self.browse_folder(window, cx),
             FindBarEvent::TabChanged => self.follow_current_document(window, cx),
+            FindBarEvent::ToggleFloating => self.toggle_find_floating(cx),
             FindBarEvent::Close => self.close_find(window, cx),
         }
+    }
+
+    /// Docks the floating find panel, or floats the docked one, and keeps that in the settings
+    /// (Preferences > Searching).
+    pub fn toggle_find_floating(&mut self, cx: &mut Context<Self>) {
+        let floats = FindBar::floats(cx);
+        let value = toml::Value::Boolean(!floats);
+        if let Err(error) = crate::preferences::set("searching.find-panel-floats", Some(value), cx)
+        {
+            self.report(Some(error.to_string()), true, cx);
+        }
+        cx.notify();
     }
 
     pub fn report(&mut self, message: Option<String>, failed: bool, cx: &mut Context<Self>) {

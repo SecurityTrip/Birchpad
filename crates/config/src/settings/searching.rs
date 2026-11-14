@@ -18,6 +18,9 @@ pub struct SearchingSettings {
     pub monospaced: bool,
     /// The find panel stays open after a search that lists its results.
     pub stay_open: bool,
+    /// The find panel floats over the documents, where it is dragged, as Notepad++'s Find
+    /// dialog does; off, it is docked under them.
+    pub find_panel_floats: bool,
     /// Replace All in All Opened Documents asks first.
     pub confirm_replace_all_documents: bool,
     /// Replace stays on what it replaced instead of going to the next match.
@@ -38,6 +41,7 @@ impl Default for SearchingSettings {
             fill_from_word: true,
             monospaced: false,
             stay_open: true,
+            find_panel_floats: true,
             confirm_replace_all_documents: true,
             replace_stays: false,
             one_entry_per_line: true,

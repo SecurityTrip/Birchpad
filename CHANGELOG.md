@@ -10,6 +10,13 @@ version's release notes from its section here.
 
 ### Added
 
+- The find panel floats over the documents, as Notepad++'s Find dialog does
+  ([#71](https://github.com/SecurityTrip/Birchpad/issues/71)). It opens in their top right
+  corner and is moved by its title, never quite out of the window; its buttons are in a column
+  at its right. The button beside Close docks it under the documents again, as before, and
+  floats it back; the choice is kept as Preferences > Searching > The find panel floats over the
+  documents (`searching.find-panel-floats`, on by default).
+
 - Folder as Workspace works with files as an IDE's project tree does (roadmap 7.7b,
   [ADR 0068](docs/adr/0068-file-operations-in-folder-as-workspace.md)): its right-click menu has
   New File... (the file opens), New Folder..., Rename... (`F2`), Duplicate (`Ctrl+D`), Copy
