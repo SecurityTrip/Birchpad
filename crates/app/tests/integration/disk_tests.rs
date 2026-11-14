@@ -396,6 +396,8 @@ fn folders_about_to_change_are_let_go_of(cx: &mut TestAppContext) {
         fs::write(&file, "x").unwrap();
     }
     let (workspace, cx) = open_workspace(cx);
+    // The watcher's own thread wakes the window's.
+    cx.executor().allow_parking();
     start_watching(&workspace, cx);
     for file in [one.join("a.txt"), sub.join("b.txt"), other.join("c.txt")] {
         open(&workspace, &file, cx);
