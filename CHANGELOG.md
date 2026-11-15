@@ -59,6 +59,11 @@ version's release notes from its section here.
   28 965, the editor from 10 038 to 8 513; the tests that need no window moved with their
   code and run without the application's test binary.
 
+### Fixed
+
+- The find panel's buttons, options and field names follow the interface language; they were in
+  English whatever the language.
+
 ## [0.8.0] - 2026-11-09
 
 ### Added

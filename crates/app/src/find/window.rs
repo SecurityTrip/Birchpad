@@ -19,7 +19,7 @@ use crate::find::FindBar;
 use crate::workspace::Workspace;
 
 /// The size the window opens at: the panel with its buttons in a column at the right.
-const SIZE: (f32, f32) = (760., 300.);
+const SIZE: (f32, f32) = (810., 370.);
 
 /// The root of the find panel's window.
 pub struct FindWindow {

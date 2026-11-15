@@ -10,7 +10,7 @@ pub struct AppearanceSettings {
     /// file in the `themes` folder next to the settings, without its extension. Settings > Theme
     /// chooses another (remembered in `state.toml`).
     pub theme: String,
-    /// The interface's language: `en`, `de`, `ru`, or `auto` for the system's.
+    /// The interface's language: `en`, `de`, `fr`, `ru`, or `auto` for the system's.
     pub language: String,
     /// A Notepad++ translation (`localization/german.xml` of a Notepad++ folder) whose menu
     /// names and command titles come before the language's own; empty for none.

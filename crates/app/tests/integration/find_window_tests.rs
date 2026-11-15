@@ -216,7 +216,7 @@ fn without_a_settings_file_the_panel_says_why_it_stays_docked(cx: &mut TestAppCo
 fn the_window_opens_near_the_top_right_corner_of_the_main_one() {
     let main = Bounds::new(point(px(100.), px(50.)), size(px(1200.), px(800.)));
     let at = placement(main);
-    assert_eq!(at.size, size(px(760.), px(300.)));
+    assert_eq!(at.size, size(px(810.), px(370.)));
     assert_eq!(
         at.right(),
         main.right() - px(32.),
@@ -231,6 +231,6 @@ fn the_window_opens_near_the_top_right_corner_of_the_main_one() {
     let narrow = Bounds::new(point(px(100.), px(50.)), size(px(500.), px(400.)));
     assert_eq!(placement(narrow).left(), narrow.left());
     // Exactly as wide as the panel and its margin: at the left edge.
-    let fits = Bounds::new(point(px(0.), px(0.)), size(px(792.), px(400.)));
+    let fits = Bounds::new(point(px(0.), px(0.)), size(px(842.), px(400.)));
     assert_eq!(placement(fits).left(), px(0.));
 }
