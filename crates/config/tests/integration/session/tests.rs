@@ -143,11 +143,10 @@ fn a_damaged_session_falls_back_to_the_previous_one() {
     remove(&path);
     assert_eq!(Session::load(&path), Some(first));
     // A temporary file left by an interrupted write is never read.
-    fs::write(
-        path.with_extension("toml.tmp"),
+    write(
+        &path.with_extension("toml.tmp"),
         "version = 1\nactive-view = 1",
-    )
-    .unwrap();
+    );
     remove(&previous(&path));
     assert_eq!(Session::load(&path), None);
     // Cleaning up may meet a scanner too; the temporary folder can stay.
