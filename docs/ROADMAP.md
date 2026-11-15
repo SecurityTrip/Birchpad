@@ -1160,6 +1160,23 @@ as revision 1 did (105 drawn). With ELK it draws 67. What it showed:
       builds are its pre-releases), `CHANGELOG.md` and this roadmap updated; the
       [release checklist](release-checklist.md) gone through
 
+### Release 0.8.2: winget and translations
+
+- [ ] Birchpad in winget ([#72](https://github.com/SecurityTrip/Birchpad/issues/72)): a
+      manifest in `microsoft/winget-pkgs` for each stable release, so that
+      `winget install Birchpad` installs it and `winget upgrade` updates it; the release
+      workflow prepares the manifest for the new version
+- [ ] Every translation checked to be complete: a test compares each locale's keys with
+      `en.yaml` and fails on a missing, extra or untranslated key (one equal to English where
+      it should not be) and on placeholders that differ; what is still in English or missing
+      in German, Russian and French translated
+- [ ] The interface in Spanish: `es.yaml` beside the others, every key translated, Spanish in
+      Preferences > Appearance > Interface language and chosen from a Spanish system, with
+      Spanish plurals
+- [ ] Release 0.8.2: the workspace version (0.8.2, set when its branch opens, so that nightly
+      builds are its pre-releases), `CHANGELOG.md` and this roadmap updated; the
+      [release checklist](release-checklist.md) gone through
+
 ### Release 0.9.0: large and remote files, other ways to edit
 
 - [ ] 7.8 Multi-gigabyte files through memory mapping, read and searched without loading them
