@@ -41,3 +41,15 @@ tray = 97
 ui = 94
 update = 93
 view = 98
+# The crates of ADR 0069 took their code, and the tests that need no window, out of app and
+# editor (0.8.1); their floors are low until the coverage job has measured them.
+buffer = 70
+diagrams = 70
+find-bar = 70
+hex-editor = 70
+language-servers = 70
+panels = 70
+preferences = 70
+spell-check = 70
+terminal-panel = 70
+widgets = 70

@@ -207,8 +207,10 @@ fn the_interface_language_for_this_run() {
     assert_eq!(for_this_run("ru"), "ru");
     assert_eq!(for_this_run("de-AT"), "de");
     assert_eq!(for_this_run("RU"), "ru");
+    assert_eq!(for_this_run("fr"), "fr");
+    assert_eq!(for_this_run("fr-CA"), "fr");
     // A translation Birchpad does not have: English, as Notepad++ does.
-    assert_eq!(for_this_run("fr"), "en");
+    assert_eq!(for_this_run("ja"), "en");
     assert_eq!(for_this_run("-"), "en");
 }
 

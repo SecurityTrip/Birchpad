@@ -571,7 +571,7 @@ impl Render for EditorView {
                     .on_mouse_move(cx.listener(Self::mouse_move))
                     .on_mouse_up(MouseButton::Left, cx.listener(Self::mouse_up))
                     .on_mouse_up_out(MouseButton::Left, cx.listener(Self::mouse_up))
-                    .on_scroll_wheel(cx.listener(Self::scroll_wheel))
+                    .on_scroll(cx.listener(Self::scroll_wheel))
                     .child(EditorElement::new(cx.entity()))
                     .children(self.render_completion(cx))
                     .children(loading.map(crate::banner::loading))

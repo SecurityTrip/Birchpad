@@ -7,16 +7,10 @@
 //! and close each panel, with a check mark on those open. The open panels are remembered in
 //! `state.toml` and come back on the next start.
 
-pub mod character_panel;
-pub mod clipboard_history;
-pub mod document_list;
-pub mod document_map;
 pub mod folder_workspace;
 // Open Containing Folder > Terminal; tests only note it (`file_commands::Shell`).
 #[cfg_attr(feature = "test-support", allow(unused_imports))]
 pub use folder_workspace::open_terminal;
-pub mod function_list;
-pub mod json_viewer;
 pub mod plugin_panel;
 pub mod project;
 
@@ -35,13 +29,12 @@ use crate::commands::{CommandRegistry, Register as _};
 use crate::editor::widgets::{BarColors, Line, bar};
 use crate::workspace::Workspace;
 
-pub use character_panel::CharacterPanel;
-pub use clipboard_history::ClipboardHistory;
-pub use document_list::DocumentList;
-pub use document_map::DocumentMap;
+pub use birchpad_panels::{
+    CharacterPanel, ClipboardHistory, DocumentList, DocumentMap, FollowView, FunctionList,
+    JsonViewer, character_panel, clipboard_history, document_list, document_map, function_list,
+    json_viewer,
+};
 pub use folder_workspace::FolderWorkspace;
-pub use function_list::FunctionList;
-pub use json_viewer::JsonViewer;
 pub use plugin_panel::PluginPanel;
 pub use project::ProjectPanel;
 
@@ -328,21 +321,21 @@ impl Workspace {
         cx: &mut Context<Self>,
     ) -> AnyView {
         let workspace = cx.entity().downgrade();
+        let host: std::rc::Rc<dyn birchpad_panels::Host> =
+            std::rc::Rc::new(WindowHost(workspace.clone()));
         match kind {
-            PanelKind::DocumentList => cx.new(|cx| DocumentList::new(workspace, window, cx)).into(),
-            PanelKind::FunctionList => cx.new(|cx| FunctionList::new(workspace, window, cx)).into(),
-            PanelKind::DocumentMap => cx.new(|cx| DocumentMap::new(workspace, window, cx)).into(),
+            PanelKind::DocumentList => cx.new(|cx| DocumentList::new(host, window, cx)).into(),
+            PanelKind::FunctionList => cx.new(|cx| FunctionList::new(host, window, cx)).into(),
+            PanelKind::DocumentMap => cx.new(|cx| DocumentMap::new(host, window, cx)).into(),
             PanelKind::FolderWorkspace => cx
                 .new(|cx| FolderWorkspace::new(workspace, window, cx))
                 .into(),
-            PanelKind::ClipboardHistory => cx
-                .new(|cx| ClipboardHistory::new(workspace, window, cx))
-                .into(),
-            PanelKind::CharacterPanel => cx
-                .new(|cx| CharacterPanel::new(workspace, window, cx))
-                .into(),
+            PanelKind::ClipboardHistory => {
+                cx.new(|cx| ClipboardHistory::new(host, window, cx)).into()
+            }
+            PanelKind::CharacterPanel => cx.new(|cx| CharacterPanel::new(host, window, cx)).into(),
             PanelKind::PluginPanel => cx.new(|cx| PluginPanel::new(workspace, window, cx)).into(),
-            PanelKind::JsonViewer => cx.new(|cx| JsonViewer::new(workspace, window, cx)).into(),
+            PanelKind::JsonViewer => cx.new(|cx| JsonViewer::new(host, window, cx)).into(),
             PanelKind::Project(panel) => cx
                 .new(|cx| ProjectPanel::new(panel, workspace, window, cx))
                 .into(),
@@ -482,28 +475,6 @@ impl Workspace {
     }
 }
 
-/// Redraws a panel whenever the active document's view changes: its caret, its scroll, its
-/// text. Panels call [`FollowView::follow`] with the active view each time they draw.
-#[derive(Default)]
-pub struct FollowView {
-    followed: Option<(gpui_kit::EntityId, gpui_kit::Subscription)>,
-}
-
-impl FollowView {
-    pub fn follow<T: 'static>(
-        &mut self,
-        view: Option<&gpui_kit::Entity<crate::editor::EditorView>>,
-        cx: &mut Context<T>,
-    ) {
-        let id = view.map(|view| view.entity_id());
-        if self.followed.as_ref().map(|(followed, _)| *followed) == id {
-            return;
-        }
-        self.followed =
-            view.map(|view| (view.entity_id(), cx.observe(view, |_, _, cx| cx.notify())));
-    }
-}
-
 /// Whether a panel's menu item shows a check mark.
 pub fn is_checked(docks: &Docks, invocation: &Invocation) -> Option<bool> {
     PanelKind::of_invocation(invocation).map(|kind| docks.is_open(kind))
@@ -514,4 +485,73 @@ pub fn is_checked(docks: &Docks, invocation: &Invocation) -> Option<bool> {
 fn remembers_panels(cx: &gpui_kit::App) -> bool {
     let app = AppState::global(cx);
     !app.no_session || app.settings.instances.nosession_panels
+}
+
+/// The window as the panels of `birchpad-panels` see it.
+struct WindowHost(gpui_kit::WeakEntity<Workspace>);
+
+impl birchpad_panels::Host for WindowHost {
+    fn active_view(
+        &self,
+        cx: &gpui_kit::App,
+    ) -> Option<gpui_kit::Entity<crate::editor::EditorView>> {
+        self.0.upgrade()?.read(cx).active_view(cx)
+    }
+
+    fn peeked(&self, cx: &gpui_kit::App) -> Option<gpui_kit::Entity<crate::editor::EditorView>> {
+        self.0.upgrade()?.read(cx).peeked.as_ref()?.upgrade()
+    }
+
+    fn views(
+        &self,
+        cx: &gpui_kit::App,
+    ) -> Vec<(gpui_kit::Entity<crate::editor::EditorView>, bool)> {
+        let Some(workspace) = self.0.upgrade() else {
+            return Vec::new();
+        };
+        let workspace = workspace.read(cx);
+        let split = workspace.is_split(cx);
+        workspace
+            .all_views(cx)
+            .into_iter()
+            .map(|view| {
+                let second = split && workspace.pane_of(&view, cx) == Some(1);
+                (view, second)
+            })
+            .collect()
+    }
+
+    fn activate(
+        &self,
+        view: &gpui_kit::Entity<crate::editor::EditorView>,
+        window: &mut Window,
+        cx: &mut gpui_kit::App,
+    ) {
+        self.0
+            .update(cx, |workspace, cx| {
+                workspace.activate_view(view, window, cx)
+            })
+            .ok();
+    }
+
+    fn close(
+        &self,
+        view: &gpui_kit::Entity<crate::editor::EditorView>,
+        window: &mut Window,
+        cx: &mut gpui_kit::App,
+    ) {
+        self.0
+            .update(cx, |workspace, cx| {
+                workspace
+                    .close_with_confirmation(vec![view.clone()], window, cx)
+                    .detach();
+            })
+            .ok();
+    }
+
+    fn insert_text(&self, text: &str, window: &mut Window, cx: &mut gpui_kit::App) {
+        self.0
+            .update(cx, |workspace, cx| workspace.insert_text(text, window, cx))
+            .ok();
+    }
 }

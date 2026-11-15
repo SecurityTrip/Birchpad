@@ -324,8 +324,6 @@ impl HttpTransport {
     /// arrives for `stall`. Creating it does not touch the network.
     pub fn build(user_agent: &str, proxy: Option<ureq::Proxy>, stall: Duration) -> Self {
         use ureq::tls::{RootCerts, TlsConfig, TlsProvider};
-        use ureq::unversioned::resolver::DefaultResolver;
-        use ureq::unversioned::transport::{Connector as _, DefaultConnector};
 
         let crypto = Arc::new(rustls::crypto::ring::default_provider());
         let tls = TlsConfig::builder()
@@ -339,10 +337,10 @@ impl HttpTransport {
             .proxy(proxy)
             .timeout_connect(Some(TIMEOUT))
             .timeout_recv_response(Some(TIMEOUT))
+            .timeout_per_read(Some(stall))
             .user_agent(user_agent)
             .build();
-        let connector = DefaultConnector::new().chain(stall::Connector(stall));
-        let agent = ureq::Agent::with_parts(config, connector, DefaultResolver::default());
+        let agent = ureq::Agent::new_with_config(config);
         Self { agent, stall }
     }
 
@@ -357,80 +355,6 @@ impl HttpTransport {
             birchpad_i18n::t!("update.stalled", seconds = self.stall.as_secs())
         } else {
             error.to_string()
-        }
-    }
-}
-
-mod stall {
-    //! Reads that wait at most a given time for the next bytes, whatever the timeouts ureq
-    //! would allow them: a stalled body fails without a limit on the body as a whole.
-
-    use std::time::Duration;
-
-    use ureq::Timeout;
-    use ureq::unversioned::transport::{self, Buffers, ConnectionDetails, NextTimeout, Transport};
-
-    #[derive(Debug)]
-    pub(super) struct Connector(pub(super) Duration);
-
-    impl transport::Connector<Box<dyn Transport>> for Connector {
-        type Out = Stalling;
-
-        fn connect(
-            &self,
-            _: &ConnectionDetails,
-            chained: Option<Box<dyn Transport>>,
-        ) -> Result<Option<Self::Out>, ureq::Error> {
-            Ok(chained.map(|inner| Stalling {
-                inner,
-                stall: self.0,
-            }))
-        }
-    }
-
-    #[derive(Debug)]
-    pub(super) struct Stalling {
-        inner: Box<dyn Transport>,
-        stall: Duration,
-    }
-
-    impl Transport for Stalling {
-        fn buffers(&mut self) -> &mut dyn Buffers {
-            self.inner.buffers()
-        }
-
-        fn transmit_output(
-            &mut self,
-            amount: usize,
-            timeout: NextTimeout,
-        ) -> Result<(), ureq::Error> {
-            self.inner.transmit_output(amount, timeout)
-        }
-
-        fn await_input(&mut self, timeout: NextTimeout) -> Result<bool, ureq::Error> {
-            // The rest of the timeout as it was: ureq 3.5 adds per-read and per-write limits.
-            #[allow(
-                clippy::needless_update,
-                reason = "nothing is left to copy before ureq 3.5"
-            )]
-            let timeout = if *timeout.after > self.stall {
-                NextTimeout {
-                    after: self.stall.into(),
-                    reason: Timeout::RecvBody,
-                    ..timeout
-                }
-            } else {
-                timeout
-            };
-            self.inner.await_input(timeout)
-        }
-
-        fn is_open(&mut self) -> bool {
-            self.inner.is_open()
-        }
-
-        fn is_tls(&self) -> bool {
-            self.inner.is_tls()
         }
     }
 }

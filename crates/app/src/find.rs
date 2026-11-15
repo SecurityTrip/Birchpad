@@ -1,18 +1,22 @@
 //! Find, Replace, Find in Files, Mark and Go To.
 //!
-//! The find panel sits at the bottom of the window, above the status bar, with Notepad++'s Find,
-//! Replace, Find in Files, Find in Projects and Mark tabs, search modes and options. It is a panel rather than a dialog, and like
-//! Notepad++'s modeless dialog it leaves the document editable while it is open. F3 and
+//! The find panel floats in a window of its own, as Notepad++'s modeless Find dialog does, or sits
+//! at the bottom of the window, above the status bar (Preferences > Searching, [`window`]), with
+//! Notepad++'s Find, Replace, Find in Files, Find in Projects and Mark tabs, search modes and
+//! options. Either way it leaves the document editable while it is open. F3 and
 //! Shift+F3 repeat the last search even when the panel is closed. Searching goes through
 //! `birchpad_core::search`.
 
-mod bar;
 mod go_to;
 mod mark;
 mod replace;
 mod search;
+pub mod window;
 
-pub use bar::{FindBar, FindBarEvent};
+pub use birchpad_find_bar::{
+    FindBar, FindBarContents, FindBarEvent, FindOptions, FindTab, FolderSearch,
+};
+pub use window::{FindWindow, is_find_window};
 
 use birchpad_core::search::{Direction, Query, SearchMode, Searcher};
 use gpui_kit::{App, Context, Entity, Window};
@@ -164,73 +168,6 @@ fn mode_name(mode: SearchMode) -> &'static str {
     }
 }
 
-/// The tabs of the find panel.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum FindTab {
-    Find,
-    Replace,
-    FindInFiles,
-    /// The files of the project panels.
-    FindInProjects,
-    Mark,
-}
-
-impl FindTab {
-    const ALL: [Self; 5] = [
-        Self::Find,
-        Self::Replace,
-        Self::FindInFiles,
-        Self::FindInProjects,
-        Self::Mark,
-    ];
-}
-
-/// The folder options of the Find in Files tab.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct FolderSearch {
-    /// In all sub-folders.
-    pub subfolders: bool,
-    /// In hidden folders.
-    pub hidden: bool,
-    /// Follow current doc.: the folder of the active document.
-    pub follow_current_document: bool,
-}
-
-/// Options of the find panel, as in Notepad++'s Find dialog.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct FindOptions {
-    pub match_case: bool,
-    pub whole_word: bool,
-    pub wrap_around: bool,
-    pub backward: bool,
-    /// Count, Replace All and Mark All work in the selection.
-    pub in_selection: bool,
-    pub mode: SearchMode,
-    /// Regular expressions: `.` matches line breaks.
-    pub dot_matches_newline: bool,
-    /// Mark All also bookmarks the lines of its matches.
-    pub bookmark_line: bool,
-    /// Mark All first clears the marks of earlier searches.
-    pub purge: bool,
-}
-
-impl Default for FindOptions {
-    fn default() -> Self {
-        Self {
-            match_case: false,
-            whole_word: false,
-            // Notepad++'s default.
-            wrap_around: true,
-            backward: false,
-            in_selection: false,
-            mode: SearchMode::Normal,
-            dot_matches_newline: false,
-            bookmark_line: false,
-            purge: false,
-        }
-    }
-}
-
 /// Where Count, Replace All and Mark All look: the selection with In selection, else the
 /// whole text.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -268,8 +205,20 @@ impl Workspace {
                 find_field_fill(&text, view.text(cx), range.head, &searching)
             })
             .unwrap_or((None, None));
-        self.find_bar
-            .update(cx, |bar, cx| bar.show(tab, text, in_selection, window, cx));
+        if FindBar::floats(cx)
+            && let Some(handle) = self.find_window(window, cx)
+        {
+            let bar = self.find_bar.clone();
+            handle
+                .update(cx, |_, find, cx| {
+                    find.activate_window();
+                    bar.update(cx, |bar, cx| bar.show(tab, text, in_selection, find, cx));
+                })
+                .ok();
+        } else {
+            self.find_bar
+                .update(cx, |bar, cx| bar.show(tab, text, in_selection, window, cx));
+        }
         self.follow_current_document(window, cx);
         cx.notify();
     }
@@ -310,10 +259,12 @@ impl Workspace {
     }
 
     pub fn close_find(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.close_find_window(cx);
         self.find_bar.update(cx, |bar, cx| {
             bar.visible = false;
             cx.notify();
         });
+        window.activate_window();
         if let Some(view) = self.active_view(cx) {
             let focus = view.read(cx).focus_handle.clone();
             window.focus(&focus, cx);
@@ -352,6 +303,7 @@ impl Workspace {
             FindBarEvent::StopFiles => self.find_bar.update(cx, |bar, cx| bar.stop_files(cx)),
             FindBarEvent::BrowseFolder => self.browse_folder(window, cx),
             FindBarEvent::TabChanged => self.follow_current_document(window, cx),
+            FindBarEvent::ToggleFloating => self.toggle_find_floating(window, cx),
             FindBarEvent::Close => self.close_find(window, cx),
         }
     }

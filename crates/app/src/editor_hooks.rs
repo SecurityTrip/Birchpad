@@ -6,14 +6,16 @@ use birchpad_editor::{EditorHooks, EditorView};
 use gpui_kit::component::menu::{PopupMenu, PopupMenuItem};
 use gpui_kit::{App, Context, WeakEntity, Window};
 
-/// Gives the editor the application's hooks.
+/// Gives the editor the application's hooks, and the buffers the user defined languages.
 pub fn install(cx: &mut App) {
+    cx.set_global(birchpad_editor::buffer::UserLanguages(
+        crate::user_languages::for_file,
+    ));
     cx.set_global(EditorHooks {
         ran: crate::macros::record,
         typed: crate::macros::record_typing,
         open_link,
         context_menu,
-        user_language_for_file: crate::user_languages::for_file,
         user_language_style: crate::user_languages::style_of,
         misspelled: crate::spell_check::underlined,
         diagnostics: crate::language_servers::underlined,

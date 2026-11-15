@@ -1,0 +1,18 @@
+[package]
+name = "birchpad-preferences"
+description = "What Birchpad's Preferences lists: the settings by section, how each is edited, and their values as text. No UI."
+version = "0.8.1"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+birchpad-config.workspace = true
+birchpad-i18n.workspace = true
+toml.workspace = true
+
+[lints]
+workspace = true

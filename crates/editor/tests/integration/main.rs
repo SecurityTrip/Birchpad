@@ -7,9 +7,6 @@ mod banner;
 #[path = "bidi_tests.rs"]
 mod bidi_tests;
 
-#[path = "buffer/tests.rs"]
-mod buffer;
-
 #[path = "capture_coverage_tests.rs"]
 mod capture_coverage_tests;
 
@@ -66,9 +63,3 @@ mod test_support;
 
 #[path = "tests.rs"]
 mod lib_tests;
-
-#[path = "theme/tests.rs"]
-mod theme;
-
-#[path = "widgets/tests.rs"]
-mod widgets;

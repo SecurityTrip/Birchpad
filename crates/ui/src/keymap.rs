@@ -4,15 +4,15 @@
 use std::rc::Rc;
 
 use birchpad_commands::{Keymap, Layer, Platform};
-use gpui_kit::{App, KeyBinding, KeyBindingContextPredicate, PlatformKeyboardMapper};
+use gpui_kit::{App, KeyBinding, KeyBindingContextPredicate};
 
 use crate::RunCommand;
 
 /// Builds the keymap (the defaults plus the user's `keymap.toml`, if any) and binds its keys.
 pub fn bind_keymap(user_keymap: Option<&str>, cx: &mut App) -> Keymap {
     let keymap = build_keymap(user_keymap);
-    let mapper = cx.keyboard_mapper().clone();
-    cx.bind_keys(key_bindings(&keymap, mapper.as_ref(), shifted_symbols()));
+    let bindings = key_bindings(&keymap, shifted_symbols(), cx);
+    cx.bind_keys(bindings);
     cx.set_global(ActiveKeymap(keymap.clone()));
     // Shift with a digit types a different character on each layout (Shift+2 is `@` on a US
     // layout and `"` on a Russian one), so the bindings are rebuilt for the new layout.
@@ -42,12 +42,7 @@ fn build_keymap(user_keymap: Option<&str>) -> Keymap {
 
 /// Binds the keys of the active keymap again.
 fn rebind(cx: &mut App) {
-    let mapper = cx.keyboard_mapper().clone();
-    let bindings = key_bindings(
-        &cx.global::<ActiveKeymap>().0,
-        mapper.as_ref(),
-        shifted_symbols(),
-    );
+    let bindings = key_bindings(&cx.global::<ActiveKeymap>().0, shifted_symbols(), cx);
     replace_command_bindings(bindings, cx);
 }
 
@@ -78,17 +73,13 @@ pub fn replace_command_bindings(bindings: Vec<KeyBinding>, cx: &mut App) {
 
 /// Turns the effective bindings of a keymap into GPUI key bindings.
 ///
-/// Keys go through the platform's keyboard mapper: Windows reports Shift with a digit or
+/// Keys go through the keyboard mapper of `cx`'s platform: Windows reports Shift with a digit or
 /// punctuation key as the character it types on the current layout (Alt+Shift+0 arrives as
 /// `alt-)` on a US or Russian layout), so `alt-shift-0` in a keymap has to become that too.
 /// Linux reports such keys the same way but GPUI has no mapper there: with `shifted_symbols`,
 /// those bindings get a second binding spelled the way Linux reports them (on a US layout).
 /// It comes first, so menus keep showing the binding as written.
-pub fn key_bindings(
-    keymap: &Keymap,
-    mapper: &dyn PlatformKeyboardMapper,
-    shifted_symbols: bool,
-) -> Vec<KeyBinding> {
+pub fn key_bindings(keymap: &Keymap, shifted_symbols: bool, cx: &App) -> Vec<KeyBinding> {
     keymap
         .bindings()
         .iter()
@@ -120,7 +111,7 @@ pub fn key_bindings(
                 context,
                 false,
                 None,
-                mapper,
+                cx,
             )
             .inspect_err(|error| eprintln!("keymap: {keys}: {error}"))
             .ok()

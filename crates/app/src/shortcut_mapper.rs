@@ -422,7 +422,7 @@ impl ShortcutMapper {
         self.pressed = None;
         self.error = None;
         self.capture = Some(cx.intercept_keystrokes(move |event, _, cx| {
-            let keystroke = event.keystroke.unparse();
+            let keystroke = event.keystroke.unparse(cx.platform_info().os);
             if this
                 .update(cx, |this, cx| this.pressed_keys(&keystroke, cx))
                 .is_ok()

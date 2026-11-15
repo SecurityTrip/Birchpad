@@ -38,6 +38,15 @@ pub fn recent_key(invocation: &Invocation) -> String {
     serde_json::to_string(invocation).unwrap_or_else(|_| invocation.command.clone())
 }
 
+/// GPUI's name for the system Birchpad runs on, for the spelling of `secondary-`.
+fn host_os() -> gpui_kit::OperatingSystem {
+    match Platform::current() {
+        Platform::MacOs => gpui_kit::OperatingSystem::Mac,
+        Platform::Windows => gpui_kit::OperatingSystem::Windows,
+        Platform::Linux => gpui_kit::OperatingSystem::Linux,
+    }
+}
+
 /// The shortcut of `invocation` in `keymap` as the menus show it (`Ctrl+Shift+A`): the last
 /// binding of this platform, as menus take the last one.
 pub fn shortcut(keymap: &Keymap, invocation: &Invocation) -> String {
@@ -57,7 +66,7 @@ pub fn shortcut(keymap: &Keymap, invocation: &Invocation) -> String {
                 .iter()
                 .map(|keys| {
                     let text = keys.to_string();
-                    gpui_kit::Keystroke::parse(&text)
+                    gpui_kit::Keystroke::parse_with_os(&text, host_os())
                         .map_or(text, |keystroke| Kbd::format(&keystroke))
                 })
                 .collect::<Vec<_>>()

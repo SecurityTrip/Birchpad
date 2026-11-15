@@ -10,11 +10,9 @@ use unicode_width::UnicodeWidthChar;
 
 /// Width of `ch` in cells, for any character but a tab: 2 for East Asian wide characters and
 /// emoji, 0 for combining marks, 1 otherwise (including control characters, drawn as a picture).
+/// unicode-width answers ASCII first itself, and has no width for control characters.
 pub fn char_cells(ch: char) -> usize {
-    if (' '..'\u{7F}').contains(&ch) {
-        // Printable ASCII, by far the most common case.
-        1
-    } else if ch.is_control() || matches!(ch, '\u{2028}' | '\u{2029}') {
+    if matches!(ch, '\u{2028}' | '\u{2029}') {
         1
     } else {
         ch.width().unwrap_or(1)

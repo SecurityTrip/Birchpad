@@ -49,6 +49,9 @@ pub(crate) fn open_workspace(
         // it on (`birchpad::editor::completion::tests`).
         settings.settings.completion.auto_close.clear();
         settings.settings.completion.words = false;
+        // The find panel docked, where the tests type into it; its own window has tests of its
+        // own (`find_window_tests`).
+        settings.settings.searching.find_panel_floats = false;
         cx.set_global(AppState::new(
             settings,
             birchpad_config::ConfigPaths::default(),

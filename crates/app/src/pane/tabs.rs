@@ -305,7 +305,7 @@ impl Pane {
                         cx.emit(PaneEvent::Dropped {
                             view: tab.view.clone(),
                             index,
-                            clone: window.modifiers().secondary(),
+                            clone: window.modifiers().secondary(cx),
                         });
                     }))
             });
@@ -348,7 +348,7 @@ impl Pane {
                         cx.emit(PaneEvent::Dropped {
                             view: tab.view.clone(),
                             index: end,
-                            clone: window.modifiers().secondary(),
+                            clone: window.modifiers().secondary(cx),
                         });
                     }))
             });

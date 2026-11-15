@@ -26,6 +26,19 @@ fn widths() {
     assert_eq!(char_cells('😀'), 2);
     assert_eq!(char_cells('\u{301}'), 0, "combining acute accent");
     assert_eq!(char_cells('\0'), 1);
+    // Control characters at the edges of their ranges are drawn as pictures, one cell each,
+    // as are the line and paragraph separators; the characters just past them have widths.
+    for ch in [
+        '\u{1F}', '\u{7F}', '\u{80}', '\u{9F}', '\u{2028}', '\u{2029}',
+    ] {
+        assert_eq!(char_cells(ch), 1, "{ch:?}");
+    }
+    assert_eq!(char_cells(' '), 1);
+    assert_eq!(char_cells('~'), 1);
+    assert_eq!(char_cells('\u{A0}'), 1, "no-break space");
+    assert_eq!(char_cells('\u{200B}'), 0, "zero width space");
+    assert_eq!(char_cells('\u{FF21}'), 2, "fullwidth A");
+    assert_eq!(char_cells('\u{10FFFF}'), 1, "the last code point");
     assert_eq!(tab_advance(0, 4), 4);
     assert_eq!(tab_advance(5, 4), 3);
     assert_eq!(tab_advance(8, 4), 4);

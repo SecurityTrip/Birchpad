@@ -1,0 +1,20 @@
+[package]
+name = "birchpad-widgets"
+description = "What the parts of Birchpad's window draw alike: the active theme, bars, the rows of lists and the text of errors."
+version = "0.8.1"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[dependencies]
+birchpad-syntax.workspace = true
+birchpad-theme.workspace = true
+gpui-kit = "0.8"
+
+[dev-dependencies]
+gpui-kit = { version = "0.8", features = ["test-support"] }
+
+[lints]
+workspace = true

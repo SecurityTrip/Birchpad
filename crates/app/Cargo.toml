@@ -14,16 +14,24 @@ birchpad-cli.workspace = true
 birchpad-commands.workspace = true
 birchpad-config.workspace = true
 birchpad-core.workspace = true
+birchpad-diagrams.workspace = true
 birchpad-editor.workspace = true
+birchpad-find-bar.workspace = true
+birchpad-hex-editor.workspace = true
 birchpad-i18n.workspace = true
 birchpad-git.workspace = true
 birchpad-io.workspace = true
+birchpad-language-servers.workspace = true
 birchpad-lsp.workspace = true
 birchpad-menu-bar.workspace = true
+birchpad-panels.workspace = true
 birchpad-plugin.workspace = true
+birchpad-preferences.workspace = true
 birchpad-quick-pick.workspace = true
 birchpad-search-results.workspace = true
+birchpad-spell-check.workspace = true
 birchpad-syntax.workspace = true
+birchpad-terminal-panel.workspace = true
 birchpad-terminal.workspace = true
 birchpad-theme.workspace = true
 birchpad-tools.workspace = true
@@ -33,14 +41,11 @@ birchpad-update = { workspace = true, features = ["installer"] }
 birchpad-view.workspace = true
 chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
 futures = "0.3"
-gpui-kit = "0.7"
+gpui-kit = "0.8"
 raw-window-handle = "0.6"
-# PlantUML diagrams exported as PNG: the SVG renderer GPUI draws them with.
-resvg = "0.46"
 semver = "1"
 serde.workspace = true
 serde_json.workspace = true
-sys-locale = "0.3"
 notify = "8"
 toml.workspace = true
 trash = "5"
@@ -48,14 +53,18 @@ trash = "5"
 [features]
 # Runs the script named by BIRCHPAD_E2E_SCRIPT once started, for the end-to-end tests
 # (`cargo test -p birchpad --features e2e --test e2e`). Release builds leave it out.
-e2e = ["birchpad-search-results/test-support"]
+e2e = ["birchpad-find-bar/e2e", "birchpad-search-results/test-support"]
 # What the tests drive and read of the application, and the system calls they fake: the
 # integration tests (`tests/integration`) turn it on.
 test-support = [
+    "birchpad-diagrams/test-support",
     "birchpad-editor/test-support",
+    "birchpad-find-bar/test-support",
     "birchpad-lsp/test-support",
+    "birchpad-panels/test-support",
     "birchpad-quick-pick/test-support",
     "birchpad-search-results/test-support",
+    "birchpad-terminal-panel/test-support",
     "birchpad-tray/test-support",
     "birchpad-ui/test-support",
 ]
@@ -70,9 +79,7 @@ birchpad-editor = { workspace = true, features = ["test-support"] }
 birchpad-ui = { workspace = true, features = ["test-support"] }
 # Tests switch the language each in its own thread.
 birchpad-i18n = { workspace = true, features = ["per-thread"] }
-gpui-kit = { version = "0.7", features = ["test-support"] }
-# The map type of GPUI's keyboard mapper trait, for a test mapper.
-rustc-hash = "2"
+gpui-kit = { version = "0.8", features = ["test-support"] }
 # The SHA-256 of an update package served in a test.
 sha2 = "0.11"
 tempfile = "3"

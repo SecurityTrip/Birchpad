@@ -212,11 +212,15 @@ fn open_in_browser(browser: &str, path: &Path) -> Result<()> {
     })
 }
 
-/// Moves `path` to the system's recycle bin (in tests, deletes it).
-fn trash(path: &Path) -> Result<()> {
+/// Moves the file or folder `path` to the system's recycle bin (in tests, deletes it).
+pub fn trash(path: &Path) -> Result<()> {
     #[cfg(feature = "test-support")]
     {
-        std::fs::remove_file(path)?;
+        if path.is_dir() {
+            std::fs::remove_dir_all(path)?;
+        } else {
+            std::fs::remove_file(path)?;
+        }
         Ok(())
     }
     #[cfg(not(feature = "test-support"))]
@@ -426,6 +430,51 @@ impl Workspace {
         Ok(())
     }
 
+    /// The documents of the file or folder `from`, and of what was in it, follow it to `to`,
+    /// where Folder as Workspace renamed or moved it; their unsaved changes stay.
+    pub fn follow_moved(&mut self, from: &Path, to: &Path, cx: &mut Context<Self>) {
+        let mut buffers: Vec<Entity<Buffer>> = Vec::new();
+        for view in self.all_views(cx) {
+            let buffer = view.read(cx).buffer.clone();
+            if !buffers.contains(&buffer) {
+                buffers.push(buffer);
+            }
+        }
+        let mut moved = false;
+        for buffer in buffers {
+            let Some(path) = buffer.read(cx).path().map(Path::to_owned) else {
+                continue;
+            };
+            if let Some(new) = birchpad_io::relocated(&path, from, to)
+                && new != path
+            {
+                buffer.update(cx, |buffer, cx| buffer.renamed(new, cx));
+                AppState::remove_recent(&path, cx);
+                moved = true;
+            }
+        }
+        if moved {
+            self.sync_watches(cx);
+            self.refresh_menus(cx);
+        }
+    }
+
+    /// Closes the tabs of the documents of `removed`, a file or folder Folder as Workspace moved
+    /// to the recycle bin, and of what was in it; a document with unsaved changes stays open.
+    pub fn close_removed(&mut self, removed: &Path, window: &mut Window, cx: &mut Context<Self>) {
+        for view in self.all_views(cx) {
+            let buffer = view.read(cx).buffer.read(cx);
+            let Some(path) = buffer.path().map(Path::to_owned) else {
+                continue;
+            };
+            if path.starts_with(removed) && !buffer.is_modified() {
+                self.close_view(&view, window, cx);
+                AppState::remove_recent(&path, cx);
+            }
+        }
+        self.refresh_menus(cx);
+    }
+
     /// File > Move to Recycle Bin: after asking, the file goes to the recycle bin and its tabs
     /// close.
     pub fn move_to_recycle_bin(
@@ -498,19 +547,39 @@ fn open_rename(
     cx: &mut App,
 ) {
     let current = view.read(cx).buffer.read(cx).display_name();
+    ask_name(
+        t!("file-commands.rename"),
+        t!("file-commands.rename"),
+        current,
+        move |name, _, cx| {
+            workspace
+                .update(cx, |workspace, cx| workspace.rename(&view, name, cx))
+                .unwrap_or(Ok(()))
+        },
+        window,
+        cx,
+    );
+}
+
+/// A dialog that asks for a name, starting from `current`: `accept` takes it when OK is
+/// pressed, and the dialog stays open with the error under the field if it refuses it.
+pub fn ask_name(
+    title: String,
+    ok: String,
+    current: String,
+    accept: impl Fn(&str, &mut Window, &mut App) -> Result<()> + 'static,
+    window: &mut Window,
+    cx: &mut App,
+) {
     let input = cx.new(|cx| InputState::new(window, cx).default_value(current));
     let error = cx.new(|_| None::<String>);
     let focus = input.clone();
+    let accept = std::rc::Rc::new(accept);
     window.open_dialog(cx, move |dialog, _, _| {
-        let (input, error, workspace, view) = (
-            input.clone(),
-            error.clone(),
-            workspace.clone(),
-            view.clone(),
-        );
+        let (input, error, accept) = (input.clone(), error.clone(), accept.clone());
         let shown = error.clone();
         dialog
-            .title(t!("file-commands.rename"))
+            .title(title.clone())
             .w(px(420.))
             .child(
                 div()
@@ -524,15 +593,12 @@ fn open_rename(
                 DialogFooter::new()
                     .child(crate::workspace::dialog_close("common.cancel"))
                     .child(crate::workspace::dialog_action(
-                        Button::new("rename-ok").label(t!("file-commands.rename")),
+                        Button::new("rename-ok").label(ok.clone()),
                     )),
             )
-            .on_ok(move |_, _, cx| {
+            .on_ok(move |_, window, cx| {
                 let name = input.read(cx).value().to_string();
-                let result = workspace
-                    .update(cx, |workspace, cx| workspace.rename(&view, &name, cx))
-                    .unwrap_or(Ok(()));
-                match result {
+                match accept(&name, window, cx) {
                     Ok(()) => true,
                     Err(problem) => {
                         error.update(cx, |error, cx| {

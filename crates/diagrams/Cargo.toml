@@ -1,0 +1,29 @@
+[package]
+name = "birchpad-diagrams"
+description = "PlantUML diagrams for Birchpad's preview: PlantUML run and kept running, its mistakes by line, the files it includes, SVG drawn as pixels. No UI."
+version = "0.8.1"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+birchpad-config.workspace = true
+birchpad-i18n.workspace = true
+birchpad-syntax.workspace = true
+# PlantUML diagrams exported as PNG: the SVG renderer GPUI draws them with.
+resvg = "0.46"
+
+[features]
+# `DOT`: the Graphviz the tests say the system has.
+test-support = []
+
+[dev-dependencies]
+birchpad-diagrams = { path = ".", features = ["test-support"] }
+birchpad-i18n = { workspace = true, features = ["per-thread"] }
+tempfile = "3"
+
+[lints]
+workspace = true

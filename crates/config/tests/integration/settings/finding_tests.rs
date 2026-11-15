@@ -25,6 +25,29 @@ fn the_palette_s_recent_commands_stay_within_their_limit() {
 }
 
 #[test]
+fn the_find_panel_floats_unless_docked() {
+    assert!(
+        SearchingSettings::default().find_panel_floats,
+        "as in Notepad++"
+    );
+    let settings: Settings = toml::from_str("[searching]\nfind-panel-floats = false\n").unwrap();
+    assert!(!settings.searching.find_panel_floats);
+    assert!(
+        settings.searching.stay_open,
+        "the others keep their defaults"
+    );
+    check_setting("searching.find-panel-floats", &toml::Value::Boolean(false)).unwrap();
+    assert!(check_setting("searching.find-panel-floats", &toml::Value::Integer(0)).is_err());
+    assert!(
+        check_setting(
+            "searching.find-panel-floats",
+            &toml::Value::String("yes".into())
+        )
+        .is_err()
+    );
+}
+
+#[test]
 fn go_to_file_leaves_out_version_control_and_build_folders_by_default() {
     let finder = FinderSettings::default();
     assert_eq!(finder.filters, r"!+\.git !+\node_modules !+\target");
@@ -281,4 +304,14 @@ fn minimizing_to_the_tray_is_off_by_default() {
     check_setting("misc.minimize-to-tray", &toml::Value::Boolean(false)).unwrap();
     assert!(check_setting("misc.minimize-to-tray", &toml::Value::Integer(1)).is_err());
     assert!(check_setting("misc.minimize-to-system-tray", &toml::Value::Boolean(true)).is_err());
+}
+
+#[test]
+fn folder_as_workspace_asks_before_the_recycle_bin_by_default() {
+    assert!(Settings::default().misc.confirm_workspace_delete);
+    let off: Settings = toml::from_str("[misc]\nconfirm-workspace-delete = false\n").unwrap();
+    assert!(!off.misc.confirm_workspace_delete);
+    assert!(off.misc.detect_encoding, "the others keep their defaults");
+    let wrong = toml::from_str::<Settings>("[misc]\nconfirm-workspace-delete = \"yes\"\n");
+    assert!(wrong.is_err() || wrong.unwrap().misc.confirm_workspace_delete);
 }

@@ -32,7 +32,6 @@ pub mod find_in_files;
 pub mod finder;
 pub mod git;
 pub mod help;
-pub mod hex_editor;
 pub mod hex_view;
 pub mod i18n;
 pub mod incremental;
@@ -45,7 +44,6 @@ pub mod online;
 pub mod palette;
 pub mod pane;
 pub mod panels;
-pub mod path_dialog;
 pub mod plantuml;
 pub mod preferences;
 pub mod preview;
@@ -69,9 +67,11 @@ pub mod window_modes;
 pub mod workspace;
 
 pub use birchpad_editor::{self as editor, buffer, theme};
+pub use birchpad_hex_editor as hex_editor;
 pub use birchpad_quick_pick as quick_pick;
 pub use birchpad_search_results as search_results;
 pub use birchpad_tray as tray;
+pub use birchpad_ui::path_dialog;
 
 use std::fmt::Write as _;
 
@@ -85,7 +85,7 @@ use crate::app_state::AppState;
 use crate::workspace::Workspace;
 
 /// The application's id: the macOS bundle identifier, and the Linux desktop file's name.
-const APP_ID: &str = "io.github.securitytrip.birchpad";
+pub(crate) const APP_ID: &str = "io.github.securitytrip.birchpad";
 
 pub use birchpad_editor::MONOSPACE;
 
@@ -193,7 +193,11 @@ pub fn run() {
             updates::forget_install_id_when_off(cx);
             commands::init(user_keymap.as_deref(), cx);
             cx.on_window_closed(|cx, _| {
-                if cx.windows().is_empty() {
+                let windows = cx.windows();
+                if windows
+                    .iter()
+                    .all(|window| find::is_find_window(*window, cx))
+                {
                     cx.quit();
                 }
             })

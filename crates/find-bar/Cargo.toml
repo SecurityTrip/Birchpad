@@ -1,0 +1,27 @@
+[package]
+name = "birchpad-find-bar"
+description = "Birchpad's find panel: its tabs, fields, search modes and options."
+version = "0.8.1"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[dependencies]
+birchpad-core.workspace = true
+# The options smart highlighting follows.
+birchpad-editor.workspace = true
+birchpad-i18n.workspace = true
+birchpad-ui.workspace = true
+birchpad-widgets.workspace = true
+gpui-kit = "0.8"
+
+[features]
+# What the tests set and read of the panel.
+test-support = []
+# The same, for the application's end-to-end tests.
+e2e = []
+
+[lints]
+workspace = true

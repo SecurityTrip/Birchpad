@@ -1,7 +1,7 @@
 [package]
 name = "birchpad-quick-pick"
 description = "Birchpad's list to pick from by typing, which the command palette and Go to File show."
-version = "0.7.5"
+version = "0.8.1"
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
@@ -10,8 +10,8 @@ authors.workspace = true
 
 [dependencies]
 birchpad-core.workspace = true
-birchpad-editor.workspace = true
-gpui-kit = "0.7"
+birchpad-widgets.workspace = true
+gpui-kit = "0.8"
 
 [features]
 # The list last opened, for the tests of the application to drive.
@@ -19,7 +19,7 @@ test-support = []
 
 [dev-dependencies]
 birchpad-quick-pick = { path = ".", features = ["test-support"] }
-gpui-kit = { version = "0.7", features = ["test-support"] }
+gpui-kit = { version = "0.8", features = ["test-support"] }
 
 [lints]
 workspace = true

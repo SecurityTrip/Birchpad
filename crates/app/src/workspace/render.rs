@@ -9,6 +9,7 @@ use gpui_kit::{
 };
 
 use crate::app_state::AppState;
+use crate::find::FindBar;
 use crate::status_bar::StatusInfo;
 
 use super::{Workspace, folder_files};
@@ -23,6 +24,8 @@ impl Render for Workspace {
         let appearance = &AppState::global(cx).settings.appearance;
         let (show_menu_bar, show_status_bar) = (appearance.menu_bar, appearance.status_bar);
         // Hidden, the menu bar still shows while one of its menus is open (Alt, F10).
+        let find_shown = self.find_bar.read(cx).visible;
+        let find_floats = FindBar::floats(cx);
         let menu_bar_shown = show_menu_bar
             || self
                 .menu_bar
@@ -113,7 +116,8 @@ impl Render for Workspace {
                         this.child(self.render_leave_button(cx))
                     })
             })
-            .when(self.find_bar.read(cx).visible, |this| {
+            // Floating, the panel is in a window of its own.
+            .when(find_shown && !find_floats, |this| {
                 this.child(self.find_bar.clone())
             })
             .when(self.incremental.read(cx).visible, |this| {

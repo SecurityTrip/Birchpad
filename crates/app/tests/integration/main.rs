@@ -58,6 +58,9 @@ mod find_in_files_tests;
 #[path = "find_mouse_tests.rs"]
 mod find_mouse_tests;
 
+#[path = "find_window_tests.rs"]
+mod find_window_tests;
+
 #[path = "git/tests.rs"]
 mod git;
 
@@ -154,9 +157,6 @@ mod preview_diagrams;
 
 #[path = "preview/includes_tests.rs"]
 mod preview_includes;
-
-#[path = "preview/server_tests.rs"]
-mod preview_server;
 
 #[path = "print/tests.rs"]
 mod print;

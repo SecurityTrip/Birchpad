@@ -57,8 +57,6 @@ pub struct EditorHooks {
     /// The right-click menu of an editor.
     pub context_menu:
         fn(PopupMenu, &WeakEntity<EditorView>, &mut Window, &mut Context<PopupMenu>) -> PopupMenu,
-    /// The user defined language of a file, by its name.
-    pub user_language_for_file: fn(&str, &App) -> Option<Rc<UserLanguage>>,
     /// How a kind of text of a user defined language looks.
     pub user_language_style: fn(&UserLanguage, UdlKind) -> Option<TextStyle>,
     /// The misspelled words in `range` of a buffer (the view's id keys a cache).
@@ -80,7 +78,6 @@ impl Default for EditorHooks {
             typed: |_, _| {},
             open_link: |_, _| {},
             context_menu: |menu, _, _, _| menu,
-            user_language_for_file: |_, _| None,
             user_language_style: |_, _| None,
             misspelled: |_, _, _, _| Rc::default(),
             diagnostics: |_, _| Rc::default(),
