@@ -1147,12 +1147,12 @@ as revision 1 did (105 drawn). With ELK it draws 67. What it showed:
       `EditorView` stays with those types (Rust keeps a type's own methods in its crate);
       taking it apart means the `Workspace` in a crate under its features, which changes how
       every command reaches the window and is left for a release of its own
-- [x] The find panel floats over the documents, as Notepad++'s Find dialog does
-      ([#71](https://github.com/SecurityTrip/Birchpad/issues/71)): moved by its title within
-      the window, its buttons in a column at the right, docked under the documents again by a
-      button beside Close or by Preferences > Searching (`searching.find-panel-floats`). It
-      floats over the documents' area of the window, not in a window of its own: its fields,
-      focus and keys are the main window's, which answers every search it asks for
+- [x] The find panel in a window of its own, as Notepad++'s Find dialog is
+      ([#71](https://github.com/SecurityTrip/Birchpad/issues/71),
+      [ADR 0070](adr/0070-the-floating-find-panel.md)): it floats over the main window and can
+      be put anywhere, its buttons in a column at the right; a button beside Close docks it
+      under the documents again and floats it back, as Preferences > Searching does
+      (`searching.find-panel-floats`). Its keys run the main window's commands
 - [x] The interface in French: `fr.yaml` beside English, German and Russian, every key
       translated for Birchpad, French in Preferences > Appearance > Interface language and
       chosen from a French system, with French plurals (0 and 1 singular)

@@ -1,8 +1,9 @@
 //! Find, Replace, Find in Files, Mark and Go To.
 //!
-//! The find panel sits at the bottom of the window, above the status bar, with Notepad++'s Find,
-//! Replace, Find in Files, Find in Projects and Mark tabs, search modes and options. It is a panel rather than a dialog, and like
-//! Notepad++'s modeless dialog it leaves the document editable while it is open. F3 and
+//! The find panel floats in a window of its own, as Notepad++'s modeless Find dialog does, or sits
+//! at the bottom of the window, above the status bar (Preferences > Searching, [`window`]), with
+//! Notepad++'s Find, Replace, Find in Files, Find in Projects and Mark tabs, search modes and
+//! options. Either way it leaves the document editable while it is open. F3 and
 //! Shift+F3 repeat the last search even when the panel is closed. Searching goes through
 //! `birchpad_core::search`.
 
@@ -10,10 +11,12 @@ mod go_to;
 mod mark;
 mod replace;
 mod search;
+pub mod window;
 
 pub use birchpad_find_bar::{
-    DraggedFindPanel, FindBar, FindBarEvent, FindOptions, FindTab, FloatingPlace, FolderSearch,
+    FindBar, FindBarContents, FindBarEvent, FindOptions, FindTab, FolderSearch,
 };
+pub use window::{FindWindow, is_find_window};
 
 use birchpad_core::search::{Direction, Query, SearchMode, Searcher};
 use gpui_kit::{App, Context, Entity, Window};
@@ -202,8 +205,20 @@ impl Workspace {
                 find_field_fill(&text, view.text(cx), range.head, &searching)
             })
             .unwrap_or((None, None));
-        self.find_bar
-            .update(cx, |bar, cx| bar.show(tab, text, in_selection, window, cx));
+        if FindBar::floats(cx)
+            && let Some(handle) = self.find_window(window, cx)
+        {
+            let bar = self.find_bar.clone();
+            handle
+                .update(cx, |_, find, cx| {
+                    find.activate_window();
+                    bar.update(cx, |bar, cx| bar.show(tab, text, in_selection, find, cx));
+                })
+                .ok();
+        } else {
+            self.find_bar
+                .update(cx, |bar, cx| bar.show(tab, text, in_selection, window, cx));
+        }
         self.follow_current_document(window, cx);
         cx.notify();
     }
@@ -244,10 +259,12 @@ impl Workspace {
     }
 
     pub fn close_find(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.close_find_window(cx);
         self.find_bar.update(cx, |bar, cx| {
             bar.visible = false;
             cx.notify();
         });
+        window.activate_window();
         if let Some(view) = self.active_view(cx) {
             let focus = view.read(cx).focus_handle.clone();
             window.focus(&focus, cx);
@@ -286,21 +303,9 @@ impl Workspace {
             FindBarEvent::StopFiles => self.find_bar.update(cx, |bar, cx| bar.stop_files(cx)),
             FindBarEvent::BrowseFolder => self.browse_folder(window, cx),
             FindBarEvent::TabChanged => self.follow_current_document(window, cx),
-            FindBarEvent::ToggleFloating => self.toggle_find_floating(cx),
+            FindBarEvent::ToggleFloating => self.toggle_find_floating(window, cx),
             FindBarEvent::Close => self.close_find(window, cx),
         }
-    }
-
-    /// Docks the floating find panel, or floats the docked one, and keeps that in the settings
-    /// (Preferences > Searching).
-    pub fn toggle_find_floating(&mut self, cx: &mut Context<Self>) {
-        let floats = FindBar::floats(cx);
-        let value = toml::Value::Boolean(!floats);
-        if let Err(error) = crate::preferences::set("searching.find-panel-floats", Some(value), cx)
-        {
-            self.report(Some(error.to_string()), true, cx);
-        }
-        cx.notify();
     }
 
     pub fn report(&mut self, message: Option<String>, failed: bool, cx: &mut Context<Self>) {

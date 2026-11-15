@@ -39,7 +39,7 @@ pub(super) const ENTRIES: &[Entry] = &[
     entry(
         "Searching",
         "searching.find-panel-floats",
-        "The find panel floats over the documents",
+        "The find panel in a window of its own",
         Kind::Bool,
     ),
     entry(

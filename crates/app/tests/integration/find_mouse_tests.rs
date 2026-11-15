@@ -4,12 +4,9 @@
 use std::fs;
 use std::time::Duration;
 
-use gpui_kit::{
-    Entity, Modifiers, MouseButton, Pixels, Point, TestAppContext, VisualTestContext, point, px,
-};
+use gpui_kit::{Entity, MouseButton, TestAppContext, VisualTestContext};
 
 use crate::workspace::{active_text, click_on, document_start, open_workspace, secondary};
-use birchpad::app_state::AppState;
 use birchpad::find::*;
 use birchpad::workspace::Workspace;
 use birchpad_core::search::SearchMode;
@@ -301,127 +298,4 @@ fn the_go_to_dialog_goes_on_a_click_and_cancel_leaves_the_caret(cx: &mut TestApp
     click("dialog-action", cx);
     closed(cx);
     assert_eq!(selection(&workspace, cx), (8, 8));
-}
-
-/// The settings written to a file of the test's own, so that the panel's button can change them.
-fn with_settings_file(cx: &mut VisualTestContext) -> tempfile::TempDir {
-    let dir = tempfile::tempdir().unwrap();
-    let path = dir.path().join("settings.toml");
-    fs::write(&path, "").unwrap();
-    cx.update(|_, cx| cx.global_mut::<AppState>().paths.user_settings = Some(path));
-    dir
-}
-
-fn place(workspace: &Entity<Workspace>, cx: &mut VisualTestContext) -> FloatingPlace {
-    bar(workspace, |bar| bar.place, cx)
-}
-
-/// Drags the floating panel's title by `by`, in two moves as a hand does.
-fn drag_title(by: Point<Pixels>, cx: &mut VisualTestContext) {
-    let from = cx.debug_bounds("find-panel-title").unwrap().center();
-    let half = point(by.x / 2., by.y / 2.);
-    cx.simulate_mouse_down(from, MouseButton::Left, Modifiers::none());
-    cx.simulate_mouse_move(from + half, MouseButton::Left, Modifiers::none());
-    cx.simulate_mouse_move(from + by, MouseButton::Left, Modifiers::none());
-    cx.simulate_mouse_up(from + by, MouseButton::Left, Modifiers::none());
-    cx.run_until_parked();
-}
-
-#[gpui_kit::test]
-fn the_find_panel_floats_and_is_moved_by_its_title(cx: &mut TestAppContext) {
-    let (workspace, cx) = open_workspace(cx);
-    find_in("cat Cat category\ncat", "cat", cx);
-
-    // Floating, as in Notepad++: over the documents, in their top right corner, with a title.
-    assert!(cx.update(|_, cx| FindBar::floats(cx)));
-    assert!(drawn("find-panel-title", cx));
-    assert_eq!(place(&workspace, cx), FloatingPlace::default());
-    let panel = cx.debug_bounds("find-bar").unwrap();
-    let documents = cx.debug_bounds("pane-content-0").unwrap();
-    assert!(panel.top() < documents.bottom() && panel.right() <= documents.right());
-
-    // Dragged by its title, it follows the mouse; its buttons still work where it went.
-    let title = cx.debug_bounds("find-panel-title").unwrap();
-    drag_title(point(px(-200.), px(80.)), cx);
-    assert_eq!(place(&workspace, cx), {
-        let start = FloatingPlace::default();
-        FloatingPlace {
-            right: start.right + px(200.),
-            top: start.top + px(80.),
-        }
-    });
-    let moved = cx.debug_bounds("find-panel-title").unwrap();
-    assert_eq!(moved.origin, title.origin + point(px(-200.), px(80.)));
-    click("find-next", cx);
-    assert_eq!(selection(&workspace, cx), (0, 3));
-    click("count", cx);
-    assert_eq!(
-        status(&workspace, cx).as_deref(),
-        Some("Count: 4 matches in entire file")
-    );
-
-    // Dragged out of the window, it stays in the corner it went towards.
-    drag_title(point(px(5000.), px(-5000.)), cx);
-    let corner = place(&workspace, cx);
-    assert_eq!((corner.right, corner.top), (px(0.), px(0.)));
-    assert!(drawn("find-panel-title", cx));
-
-    // Clicking the title without moving the mouse leaves the panel where it is.
-    click("find-panel-title", cx);
-    assert_eq!(place(&workspace, cx), corner);
-    // Closed and opened again: where it was put.
-    click("close-find", cx);
-    assert!(!drawn("find-panel-title", cx));
-    search_for("cat", cx);
-    assert_eq!(place(&workspace, cx), corner);
-}
-
-#[gpui_kit::test]
-fn the_find_panel_s_button_docks_and_floats_it(cx: &mut TestAppContext) {
-    let (workspace, cx) = open_workspace(cx);
-    let dir = with_settings_file(cx);
-    find_in("cat Cat category\ncat", "cat", cx);
-    let floats = |cx: &mut VisualTestContext| cx.update(|_, cx| FindBar::floats(cx));
-
-    // Docked: under the documents, without a title, and kept in the settings.
-    click("float-find", cx);
-    assert!(!floats(cx));
-    assert!(!drawn("find-panel-title", cx));
-    let panel = cx.debug_bounds("find-bar").unwrap();
-    let documents = cx.debug_bounds("pane-content-0").unwrap();
-    assert!(panel.top() >= documents.bottom(), "{panel:?} {documents:?}");
-    let settings = fs::read_to_string(dir.path().join("settings.toml")).unwrap();
-    assert!(settings.contains("find-panel-floats = false"), "{settings}");
-    click("find-next", cx);
-    assert_eq!(selection(&workspace, cx), (0, 3));
-
-    // And floating again, where it was.
-    click("float-find", cx);
-    assert!(floats(cx));
-    assert!(drawn("find-panel-title", cx));
-    assert_eq!(place(&workspace, cx), FloatingPlace::default());
-    let settings = fs::read_to_string(dir.path().join("settings.toml")).unwrap();
-    assert!(settings.contains("find-panel-floats = true"), "{settings}");
-}
-
-#[gpui_kit::test]
-fn without_a_settings_file_the_find_panel_says_why_it_stays(cx: &mut TestAppContext) {
-    let (workspace, cx) = open_workspace(cx);
-    cx.update(|_, cx| {
-        let paths = &mut cx.global_mut::<AppState>().paths;
-        paths.user_settings = None;
-    });
-    find_in("cat", "cat", cx);
-    click("float-find", cx);
-    assert!(cx.update(|_, cx| FindBar::floats(cx)), "nothing changed");
-    assert!(drawn("find-panel-title", cx));
-    assert!(
-        bar(
-            &workspace,
-            |bar| bar.status.as_ref().is_some_and(|(_, failed)| *failed),
-            cx
-        ),
-        "{:?}",
-        status(&workspace, cx)
-    );
 }

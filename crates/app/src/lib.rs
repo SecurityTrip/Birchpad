@@ -85,7 +85,7 @@ use crate::app_state::AppState;
 use crate::workspace::Workspace;
 
 /// The application's id: the macOS bundle identifier, and the Linux desktop file's name.
-const APP_ID: &str = "io.github.securitytrip.birchpad";
+pub(crate) const APP_ID: &str = "io.github.securitytrip.birchpad";
 
 pub use birchpad_editor::MONOSPACE;
 
@@ -193,7 +193,11 @@ pub fn run() {
             updates::forget_install_id_when_off(cx);
             commands::init(user_keymap.as_deref(), cx);
             cx.on_window_closed(|cx, _| {
-                if cx.windows().is_empty() {
+                let windows = cx.windows();
+                if windows
+                    .iter()
+                    .all(|window| find::is_find_window(*window, cx))
+                {
                     cx.quit();
                 }
             })

@@ -10,12 +10,13 @@ version's release notes from its section here.
 
 ### Added
 
-- The find panel floats over the documents, as Notepad++'s Find dialog does
-  ([#71](https://github.com/SecurityTrip/Birchpad/issues/71)). It opens in their top right
-  corner and is moved by its title, never quite out of the window; its buttons are in a column
-  at its right. The button beside Close docks it under the documents again, as before, and
-  floats it back; the choice is kept as Preferences > Searching > The find panel floats over the
-  documents (`searching.find-panel-floats`, on by default).
+- The find panel in a window of its own, as Notepad++'s Find dialog is
+  ([#71](https://github.com/SecurityTrip/Birchpad/issues/71)). It opens over the main window,
+  near its top right corner, stays above it and can be put anywhere, on another monitor too; its
+  buttons are in a column at its right, and its keys (F3, Escape, Ctrl+S) run the main window's
+  commands. The button beside Close docks it under the documents again, as before, and floats it
+  back; the choice is kept as Preferences > Searching > The find panel in a window of its own
+  (`searching.find-panel-floats`, on by default).
 - The interface in French, beside English, German and Russian: Preferences > Appearance >
   Interface language > Français, or Automatic on a French system (`-Lfr` for one run).
 

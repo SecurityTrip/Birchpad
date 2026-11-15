@@ -4,12 +4,12 @@ use birchpad_config::SplitOrientation;
 use gpui_kit::component::button::{Button, ButtonVariants as _};
 use gpui_kit::component::{IconName, Sizable as _, h_resizable, resizable_panel, v_resizable};
 use gpui_kit::{
-    AnyElement, App, Context, DragMoveEvent, ExternalPaths, ModifiersChangedEvent, Window, div,
-    prelude::*, px, relative,
+    AnyElement, App, Context, ExternalPaths, ModifiersChangedEvent, Window, div, prelude::*, px,
+    relative,
 };
 
 use crate::app_state::AppState;
-use crate::find::{DraggedFindPanel, FindBar};
+use crate::find::FindBar;
 use crate::status_bar::StatusInfo;
 
 use super::{Workspace, folder_files};
@@ -115,17 +115,8 @@ impl Render for Workspace {
                     .when(self.modes.text_only(), |this| {
                         this.child(self.render_leave_button(cx))
                     })
-                    // The floating find panel, over the documents' area and moved within it.
-                    .when(find_shown && find_floats, |this| {
-                        this.child(self.find_bar.clone()).on_drag_move(cx.listener(
-                            |this, event: &DragMoveEvent<DraggedFindPanel>, _, cx| {
-                                let (mouse, area) = (event.event.position, event.bounds.size);
-                                this.find_bar
-                                    .update(cx, |bar, cx| bar.drag_to(mouse, area, cx));
-                            },
-                        ))
-                    })
             })
+            // Floating, the panel is in a window of its own.
             .when(find_shown && !find_floats, |this| {
                 this.child(self.find_bar.clone())
             })

@@ -47,6 +47,10 @@ pub struct Workspace {
     sync_horizontal: bool,
     menu_bar: Option<Entity<MenuBar>>,
     pub find_bar: Entity<FindBar>,
+    /// The panel's events; made again when the panel moves to or from its window.
+    pub(crate) find_events: Subscription,
+    /// The find panel's window, when it floats in one (ADR 0070).
+    pub(crate) find_window_handle: Option<gpui_kit::AnyWindowHandle>,
     pub incremental: Entity<IncrementalBar>,
     pub search_results: Entity<SearchResults>,
     /// View > Terminal (ADR 0067).
@@ -93,7 +97,7 @@ impl Workspace {
             .map(|pane| cx.subscribe_in(pane, window, Self::on_pane_event))
             .collect();
         let find_bar = cx.new(|cx| FindBar::new(window, cx));
-        subscriptions.push(cx.subscribe_in(&find_bar, window, Self::on_find_bar_event));
+        let find_events = cx.subscribe_in(&find_bar, window, Self::on_find_bar_event);
         let incremental = cx.new(|cx| IncrementalBar::new(window, cx));
         subscriptions.push(cx.subscribe_in(&incremental, window, Self::on_incremental_event));
         let search_results = cx.new(SearchResults::new);
@@ -107,6 +111,8 @@ impl Workspace {
             sync_horizontal: false,
             menu_bar: None,
             find_bar,
+            find_events,
+            find_window_handle: None,
             incremental,
             search_results,
             terminal,

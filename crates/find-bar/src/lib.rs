@@ -1,9 +1,10 @@
 //! The find panel: its tabs, fields, search modes and options ([`FindBar`]). It searches
 //! nothing itself: what the user asks for is an event ([`FindBarEvent`]) the window answers.
 //!
-//! The panel is docked under the documents or floats over them, as Preferences > Searching say
-//! (`searching.find-panel-floats`). Floating, it is moved by its title, and the window keeps it
-//! where it was put ([`FloatingPlace`]).
+//! The panel is docked under the documents, or floats in a window of its own, as Preferences >
+//! Searching say (`searching.find-panel-floats`). Its fields belong to the window they were made
+//! in, so the panel is made again in the window it goes to, with what it held
+//! ([`FindBarContents`]).
 
 #[macro_use]
 extern crate birchpad_i18n;
@@ -20,9 +21,8 @@ use gpui_kit::component::radio::{Radio, RadioGroup};
 use gpui_kit::component::tab::{Tab, TabBar};
 use gpui_kit::component::{Disableable as _, IconName, Sizable};
 use gpui_kit::{
-    AnyElement, App, AppContext as _, Context, CursorStyle, EmptyView, Entity, EventEmitter,
-    FocusHandle, Focusable, MouseButton, MouseDownEvent, Pixels, Point, Size, Subscription, Window,
-    div, prelude::*, px, rgb,
+    App, AppContext as _, Context, Entity, EventEmitter, FocusHandle, Focusable, Subscription,
+    Window, div, prelude::*, px, rgb,
 };
 
 use birchpad_ui::AppState;
@@ -51,52 +51,27 @@ pub enum FindBarEvent {
     BrowseFolder,
     /// Another tab was chosen.
     TabChanged,
-    /// The button that docks a floating panel, or floats a docked one.
+    /// The button that docks the panel's window under the documents, or floats the docked panel
+    /// in a window of its own.
     ToggleFloating,
     Close,
 }
 
-/// What is dragged while the floating panel is moved by its title. The window follows it with
-/// [`FindBar::drag_to`].
-pub struct DraggedFindPanel;
-
-/// Where the floating panel is: how far its right edge is from the right of the documents'
-/// area, and its top from the area's top. From the right, so that it stays in the corner it was
-/// put in when the window is made wider.
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct FloatingPlace {
-    pub right: Pixels,
-    pub top: Pixels,
-}
-
-impl FloatingPlace {
-    /// How much of the panel stays in the area, across and down, however far it is dragged:
-    /// enough of its title to take it back.
-    pub const KEPT: Size<Pixels> = Size {
-        width: px(120.),
-        height: px(24.),
-    };
-
-    /// Moved as the mouse went from `from` to `to`, kept where [`Self::KEPT`] of it stays in an
-    /// area of `area`.
-    pub fn moved(self, from: Point<Pixels>, to: Point<Pixels>, area: Size<Pixels>) -> Self {
-        let right = self.right - (to.x - from.x);
-        let top = self.top + (to.y - from.y);
-        Self {
-            right: right.min(area.width - Self::KEPT.width).max(px(0.)),
-            top: top.min(area.height - Self::KEPT.height).max(px(0.)),
-        }
-    }
-}
-
-impl Default for FloatingPlace {
-    /// The top right corner, a little in, as the find widgets of editors open.
-    fn default() -> Self {
-        Self {
-            right: px(16.),
-            top: px(8.),
-        }
-    }
+/// What a panel holds, to make it again in another window: the fields' texts, the tab, the
+/// options and the state of the last search.
+#[derive(Clone)]
+pub struct FindBarContents {
+    pub visible: bool,
+    pub tab: FindTab,
+    pub find: String,
+    pub replace: String,
+    pub filters: String,
+    pub directory: String,
+    pub options: FindOptions,
+    pub folder: FolderSearch,
+    pub project_panels: [bool; 3],
+    pub files_running: Option<Arc<AtomicBool>>,
+    pub status: Option<(String, bool)>,
 }
 
 pub struct FindBar {
@@ -114,10 +89,6 @@ pub struct FindBar {
     pub files_running: Option<Arc<AtomicBool>>,
     /// A message from the last search, and whether it is a failure.
     pub status: Option<(String, bool)>,
-    /// Where the panel is when it floats.
-    pub place: FloatingPlace,
-    /// While the panel is moved: where the mouse was pressed, and where the panel was then.
-    drag: Option<(Point<Pixels>, FloatingPlace)>,
     focus_handle: FocusHandle,
     _subscriptions: Vec<Subscription>,
 }
@@ -210,8 +181,6 @@ impl FindBar {
             project_panels: [true; 3],
             files_running: None,
             status: None,
-            place: FloatingPlace::default(),
-            drag: None,
             focus_handle: cx.focus_handle(),
             _subscriptions: subscriptions,
         }
@@ -251,26 +220,61 @@ impl FindBar {
         self.status.as_ref().map(|(message, _)| message.clone())
     }
 
-    /// Whether the panel floats over the documents (Preferences > Searching).
+    /// Whether the panel floats in a window of its own (Preferences > Searching).
     pub fn floats(cx: &App) -> bool {
         cx.try_global::<AppState>()
             .is_some_and(|app| app.settings.searching.find_panel_floats)
     }
 
-    /// The mouse pressed on the title of the floating panel, at `mouse`.
-    pub fn start_drag(&mut self, mouse: Point<Pixels>) {
-        self.drag = Some((mouse, self.place));
+    /// What the panel holds, for [`Self::with_contents`] in another window.
+    pub fn contents(&self, cx: &App) -> FindBarContents {
+        FindBarContents {
+            visible: self.visible,
+            tab: self.tab,
+            find: self.find_input.read(cx).value().to_string(),
+            replace: self.replacement(cx),
+            filters: self.filters(cx),
+            directory: self.directory(cx),
+            options: self.options,
+            folder: self.folder,
+            project_panels: self.project_panels,
+            files_running: self.files_running.clone(),
+            status: self.status.clone(),
+        }
     }
 
-    /// The panel's title dragged to `mouse`, over the documents' area of `area`.
-    pub fn drag_to(&mut self, mouse: Point<Pixels>, area: Size<Pixels>, cx: &mut Context<Self>) {
-        if let Some((from, place)) = self.drag {
-            let moved = place.moved(from, mouse, area);
-            if moved != self.place {
-                self.place = moved;
-                cx.notify();
-            }
+    /// A panel in `window` holding what another held.
+    pub fn with_contents(
+        contents: FindBarContents,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Self {
+        let mut bar = Self::new(window, cx);
+        let fields = [
+            (&bar.find_input, contents.find),
+            (&bar.replace_input, contents.replace),
+            (&bar.filters_input, contents.filters),
+            (&bar.directory_input, contents.directory),
+        ];
+        for (input, text) in fields {
+            input.update(cx, |input, cx| input.set_value(text, window, cx));
         }
+        bar.visible = contents.visible;
+        bar.tab = contents.tab;
+        bar.options = contents.options;
+        bar.folder = contents.folder;
+        bar.project_panels = contents.project_panels;
+        bar.files_running = contents.files_running;
+        bar.status = contents.status;
+        bar
+    }
+
+    /// Puts the keyboard in the find field, its text selected.
+    pub fn focus_find_field(&self, window: &mut Window, cx: &mut App) {
+        self.find_input.update(cx, |input, cx| {
+            input.focus(window, cx);
+            input.select_all(window, cx);
+        });
     }
 
     /// Stops Find in Files or Replace in Files, if one runs.
@@ -775,25 +779,9 @@ impl Render for FindBar {
                 .gap_1()
                 .w(px(230.))
                 .children(column.into_iter().map(|button| button.w_full()));
-            let title = match tab {
-                FindTab::Find => t!("find.find"),
-                FindTab::Replace => t!("find.replace"),
-                FindTab::FindInFiles => t!("find.find-in-files"),
-                FindTab::FindInProjects => t!("find.find-in-projects"),
-                FindTab::Mark => t!("find.mark"),
-            };
             return self
                 .frame(cx)
-                .absolute()
-                .top(self.place.top)
-                .right(self.place.right)
-                // Over the documents: what is under it gets no clicks.
-                .occlude()
-                .border_1()
-                .rounded_md()
-                .shadow_lg()
-                .pt_1()
-                .child(self.title_bar(title, cx))
+                .size_full()
                 .child(tabs)
                 .child(div().flex().flex_row().gap_3().child(fields).child(buttons))
                 .children(status)
@@ -813,7 +801,8 @@ impl Render for FindBar {
 }
 
 impl FindBar {
-    /// What the docked and the floating panel share: its focus, its colors and its text.
+    /// What the docked panel and the panel in its own window share: its focus, its colors and
+    /// its text.
     fn frame(&self, _: &App) -> gpui_kit::Stateful<gpui_kit::Div> {
         div()
             .id("find-bar")
@@ -833,27 +822,6 @@ impl FindBar {
                 birchpad_widgets::theme::ui().surface,
             ))
             .text_size(px(13.))
-    }
-
-    /// The title of the floating panel, which moves it.
-    fn title_bar(&self, title: String, cx: &mut Context<Self>) -> AnyElement {
-        div()
-            .id("find-panel-title")
-            .debug_selector(|| "find-panel-title".into())
-            .h(px(20.))
-            .flex()
-            .items_center()
-            .cursor(CursorStyle::OpenHand)
-            .text_color(birchpad_widgets::theme::paint(
-                birchpad_widgets::theme::ui().muted,
-            ))
-            .child(title)
-            .on_mouse_down(
-                MouseButton::Left,
-                cx.listener(|this, event: &MouseDownEvent, _, _| this.start_drag(event.position)),
-            )
-            .on_drag(DraggedFindPanel, |_, _, _, cx| cx.new(|_| EmptyView))
-            .into_any_element()
     }
 }
 

@@ -98,9 +98,10 @@ desktops are welcome but not required.
 - [ ] Files and a folder dragged from the file manager open as tabs and as Folder as Workspace
 - [ ] Folder as Workspace: a folder with an open file in it renamed, dragged into another folder
       and moved to the recycle bin, where it can be restored from; the file's tab follows it
-- [ ] The find panel floats in the top right corner, is dragged by its title (not out of the
-      window), docks under the documents by its button and floats again; Enter and Escape work
-      in it either way
+- [ ] The find panel opens in a window of its own over the main one, stays above it when the
+      main window is clicked, can be moved onto another monitor, docks under the documents by
+      its button and floats again; Enter, F3 and Escape work in it either way; closing the main
+      window closes it too
 - [ ] Copy and paste to and from other programs, in plain text with Windows and Unix line
       endings; Clipboard History lists what other programs copied
 - [ ] A file changed by another program is reloaded or asked about when the window comes back
