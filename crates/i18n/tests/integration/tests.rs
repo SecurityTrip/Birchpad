@@ -1,4 +1,4 @@
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::sync::{Mutex, MutexGuard, PoisonError};
 
 use birchpad_i18n::*;
@@ -16,24 +16,99 @@ fn locale(code: &str) -> Locale {
     parse_locale(text).unwrap_or_else(|error| panic!("{code}: {error}"))
 }
 
-/// The names of the `{name}` arguments of a text.
-fn arguments(text: &str) -> BTreeSet<String> {
-    let mut names = BTreeSet::new();
+/// The names and multiplicities of the `{name}` arguments of a text.
+fn arguments(text: &str) -> BTreeMap<&str, usize> {
+    let mut names = BTreeMap::new();
     let mut rest = text;
     while let Some(open) = rest.find('{') {
         let after = &rest[open + 1..];
         let Some(close) = after.find('}') else { break };
-        names.insert(after[..close].to_owned());
+        *names.entry(&after[..close]).or_default() += 1;
         rest = &after[close + 1..];
     }
     names
 }
 
-fn texts(value: &Value) -> Vec<&String> {
-    match value {
-        Value::Text(text) => vec![text],
-        Value::Plural(forms) => forms.values().collect(),
+fn check_text(
+    key: &str,
+    source: &str,
+    text: &str,
+    equal_to_english: bool,
+    shared: &mut BTreeSet<&str>,
+    problems: &mut Vec<String>,
+) {
+    if arguments(source) != arguments(text) {
+        problems.push(format!("{key}: placeholders differ from English"));
     }
+    if text.trim().is_empty() {
+        problems.push(format!("{key}: empty text"));
+    }
+    if equal_to_english && !shared.remove(key) {
+        problems.push(format!("{key}: untranslated"));
+    }
+}
+
+fn translation_problems(
+    english: &Locale,
+    translation: &Locale,
+    plural_forms: &[&str],
+    mut shared: BTreeSet<&str>,
+) -> Vec<String> {
+    let mut problems = Vec::new();
+    for (key, source) in &english.values {
+        let Some(translated) = translation.values.get(key) else {
+            problems.push(format!("{key}: missing key"));
+            continue;
+        };
+        match (source, translated) {
+            (Value::Text(source), Value::Text(text)) => {
+                check_text(
+                    key,
+                    source,
+                    text,
+                    source == text,
+                    &mut shared,
+                    &mut problems,
+                );
+            }
+            (Value::Plural(source), Value::Plural(forms)) => {
+                for form in plural_forms {
+                    let form_key = format!("{key}.{form}");
+                    if let Some(text) = forms.get(*form) {
+                        let reference = source.get(*form).unwrap_or(&source["other"]);
+                        check_text(
+                            &form_key,
+                            reference,
+                            text,
+                            source.values().any(|english| english == text),
+                            &mut shared,
+                            &mut problems,
+                        );
+                    } else {
+                        problems.push(format!("{form_key}: missing plural form"));
+                    }
+                }
+                for form in forms.keys() {
+                    if !plural_forms.contains(&form.as_str()) {
+                        problems.push(format!("{key}.{form}: unexpected plural form"));
+                    }
+                }
+            }
+            _ => problems.push(format!("{key}: text/plural type differs from English")),
+        }
+    }
+    for key in translation.values.keys() {
+        if !english.values.contains_key(key) {
+            problems.push(format!("{key}: extra key"));
+        }
+    }
+    problems.extend(
+        shared
+            .into_iter()
+            .map(|key| format!("{key}: unused exception")),
+    );
+    problems.sort();
+    problems
 }
 
 #[test]
@@ -246,28 +321,71 @@ fn makes_keys_from_texts() {
 }
 
 #[test]
-fn every_language_has_every_key_with_its_arguments() {
-    let _language = choosing_language();
+fn every_translation_has_exactly_the_english_keys_and_matching_placeholders() {
     let english = locale("en");
-    for (code, _) in LOCALES {
-        let translation = locale(code);
-        for (key, value) in &english.values {
-            let translated = translation
-                .values
-                .get(key)
-                .unwrap_or_else(|| panic!("{code}: {key} is not translated"));
-            let wanted: BTreeSet<String> = texts(value).iter().flat_map(|t| arguments(t)).collect();
-            for text in texts(translated) {
-                assert_eq!(arguments(text), wanted, "{code}: {key} = {text}");
+    let exceptions: Vec<_> = include_str!("shared-with-english.txt")
+        .lines()
+        .filter(|line| !line.is_empty() && !line.starts_with('#'))
+        .map(|line| {
+            let (key, codes) = line.split_once(' ').unwrap();
+            for code in codes.split_whitespace() {
+                assert_ne!(code, "en", "{key}: English needs no exception");
+                assert!(
+                    LOCALES.iter().any(|(known, _)| *known == code),
+                    "{key}: {code}"
+                );
             }
-        }
-        for key in translation.values.keys() {
-            assert!(
-                english.values.contains_key(key),
-                "{code}: {key} is not in en.yaml"
-            );
-        }
+            (key, codes)
+        })
+        .collect();
+    let mut all_problems = Vec::new();
+    for &(code, _) in LOCALES.iter().filter(|(code, _)| *code != "en") {
+        let translation = locale(code);
+        let shared = exceptions
+            .iter()
+            .filter(|(_, codes)| codes.split_whitespace().any(|entry| entry == code))
+            .map(|(key, _)| *key)
+            .collect();
+        let forms: &[_] = if code == "ru" {
+            &["one", "few", "many"]
+        } else {
+            &["one", "other"]
+        };
+        all_problems.extend(
+            translation_problems(&english, &translation, forms, shared)
+                .into_iter()
+                .map(|problem| format!("{code}: {problem}")),
+        );
     }
+    assert!(all_problems.is_empty(), "{all_problems:#?}");
+}
+
+#[test]
+fn translation_check_reports_missing_extra_english_and_broken_placeholders() {
+    let english = parse_locale(
+        "a: 'Open {path} ({path})'\nb: Open\nc: OK\nd: Save\ne: {one: '{count} file', other: '{count} files'}",
+    ).unwrap();
+    let translation = parse_locale(
+        "a: 'Öffne {path}'\nb: Open\nc: OK\ne: {one: '{count} Datei', many: '{count} Dateien'}\nextra: Mehr",
+    ).unwrap();
+    assert_eq!(
+        translation_problems(
+            &english,
+            &translation,
+            &["one", "other"],
+            BTreeSet::from(["c"])
+        ),
+        [
+            "a: placeholders differ from English",
+            "b: untranslated",
+            "d: missing key",
+            "e.many: unexpected plural form",
+            "e.other: missing plural form",
+            "extra: extra key",
+        ],
+    );
+    let empty = Locale::default();
+    assert!(translation_problems(&empty, &empty, &[], BTreeSet::new()).is_empty());
 }
 
 /// Every `t!("key")` of the code of every crate has its text in en.yaml.

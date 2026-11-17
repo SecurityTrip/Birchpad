@@ -1166,7 +1166,7 @@ as revision 1 did (105 drawn). With ELK it draws 67. What it showed:
       ([ADR 0071](adr/0071-winget-through-the-windows-msi.md)).
       The public listing ([#72](https://github.com/SecurityTrip/Birchpad/issues/72)) awaits
       publication of the draft and acceptance by `microsoft/winget-pkgs`.
-- [ ] Every translation checked to be complete: a test compares each locale's keys with
+- [x] Every translation checked to be complete: a test compares each locale's keys with
       `en.yaml` and fails on a missing, extra or untranslated key (one equal to English where
       it should not be) and on placeholders that differ; what is still in English or missing
       in German, Russian and French translated

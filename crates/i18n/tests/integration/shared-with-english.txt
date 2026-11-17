@@ -1,0 +1,82 @@
+# Deliberately identical names, symbols, and words. Each line lists the key and locales.
+command.spell.suggestions fr
+command.view.terminal de fr
+common.in de
+common.ok de fr
+compare.git-title de fr ru
+diagrams.zoom-fit-page fr
+find-in-files.replaced de
+find.normal de fr
+find.replaced-in de
+help.about-build de
+help.about-version de fr
+help.portable fr
+hex-editor.hex-column de fr
+hex-editor.insert fr
+hex-editor.text-column de
+lsp.information de fr
+macros.name de
+menu.chrome de fr ru
+menu.edge de fr ru
+menu.firefox de fr ru
+menu.git de fr ru
+menu.macintosh-cr de fr ru
+menu.macro fr
+menu.md5 de fr ru
+menu.plugins de
+menu.safari de fr ru
+menu.scripts fr
+menu.sha-1 de fr ru
+menu.sha-256 de fr ru
+menu.sha-512 de fr ru
+menu.tab de
+menu.terminal de fr
+menu.unix-lf de fr ru
+menu.windows-cr-lf de fr ru
+menu.zoom de fr
+panels.document-list.name de
+plural.documents.one fr
+plural.documents.other fr
+preferences.a3 de fr ru
+preferences.a4 de fr ru
+preferences.a5 de fr ru
+preferences.beta de
+preferences.block de
+preferences.cyan de fr
+preferences.elk de fr ru
+preferences.git de fr ru
+preferences.graphviz de fr ru
+preferences.instances fr
+preferences.macintosh-cr de fr ru
+preferences.olive fr
+preferences.plugins de
+preferences.simple fr
+preferences.simple-bak fr
+preferences.stable fr
+preferences.terminal de fr
+preferences.unix-lf de fr ru
+preferences.vertical fr
+preferences.windows-cr-lf de fr ru
+preferences.wysiwyg de fr
+preview.plantuml-show-details de
+shortcut-mapper.filter de
+shortcut-mapper.macros fr
+status-bar.eol-cr de fr ru
+status-bar.eol-crlf de fr ru
+status-bar.eol-lf de fr ru
+status-bar.eol-nel de fr ru
+status-bar.insert fr
+style-configurator.interface fr
+tools.date-time.month-11 de
+tools.date-time.month-4 de
+tools.date-time.month-8 de
+tools.date-time.month-9 de
+updates.megabytes de
+user-languages.define.extensions fr
+user-languages.define.name de
+user-languages.define.numbers-extras1 fr
+user-languages.define.numbers-extras2 fr
+user-languages.define.numbers-suffix1 de
+user-languages.define.numbers-suffix2 de
+window-menu.name de
+window-menu.type fr

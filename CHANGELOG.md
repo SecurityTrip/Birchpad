@@ -11,6 +11,11 @@ version's release notes from its section here.
 - Stable release builds prepare a WinGet submission from the final Windows x64 MSI
   ([#72](https://github.com/SecurityTrip/Birchpad/issues/72)).
 
+### Fixed
+
+- Translated remaining English labels in the German, French and Russian interfaces. Tests
+  check all translations for missing or extra keys, English text, plural forms and placeholders.
+
 ## [0.8.1] - 2026-11-15
 
 ### Added

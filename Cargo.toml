@@ -20,7 +20,7 @@ birchpad-diagrams = { path = "crates/diagrams", version = "0.8.1" }
 birchpad-editor = { path = "crates/editor", version = "0.8.1" }
 birchpad-find-bar = { path = "crates/find-bar", version = "0.8.1" }
 birchpad-hex-editor = { path = "crates/hex-editor", version = "0.8.1" }
-birchpad-i18n = { path = "crates/i18n", version = "0.8.1" }
+birchpad-i18n = { path = "crates/i18n", version = "0.8.2" }
 birchpad-git = { path = "crates/git", version = "0.8.0" }
 birchpad-io = { path = "crates/io", version = "0.8.1" }
 birchpad-language-servers = { path = "crates/language-servers", version = "0.8.1" }
