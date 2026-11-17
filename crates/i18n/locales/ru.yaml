@@ -716,7 +716,7 @@ help:
 hex-editor:
   byte-order-mark: "метка порядка байтов не текст, её нельзя править"
   find-placeholder: "Найти: 4A 6F или \"текст\""
-  hex-column: "Шестн."
+  hex-column: "HEX"
   insert: "ВСТ"
   not-found: "{pattern} в байтах нет"
   not-in-hex: "документ не показан в HEX: сначала выберите «Показать в HEX»"

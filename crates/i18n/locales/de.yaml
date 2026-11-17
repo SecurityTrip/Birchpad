@@ -715,7 +715,7 @@ help:
 hex-editor:
   byte-order-mark: "die Bytereihenfolge-Markierung ist kein bearbeitbarer Text"
   find-placeholder: "Suchen: 4A 6F oder \"Text\""
-  hex-column: "Hex"
+  hex-column: "HEX"
   insert: "EINF"
   not-found: "{pattern} kommt in den Bytes nicht vor"
   not-in-hex: "das Dokument wird nicht in HEX angezeigt: Verwenden Sie zuerst „In HEX anzeigen“"

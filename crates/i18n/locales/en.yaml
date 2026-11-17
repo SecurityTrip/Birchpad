@@ -717,7 +717,7 @@ help:
 hex-editor:
   byte-order-mark: "the byte order mark is not text to edit"
   find-placeholder: "Find: 4A 6F or \"text\""
-  hex-column: "Hex"
+  hex-column: "HEX"
   insert: "INS"
   not-found: "{pattern} is not in the bytes"
   not-in-hex: "the document is not shown in HEX: use View in HEX first"

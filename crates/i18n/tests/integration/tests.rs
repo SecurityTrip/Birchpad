@@ -164,6 +164,40 @@ fn french_is_an_interface_language() {
 }
 
 #[test]
+fn spanish_follows_the_system_and_uses_its_cardinal_forms() {
+    let _language = choosing_language();
+    assert_eq!(resolve("es", None), "es");
+    assert_eq!(resolve("auto", Some("es_MX.UTF-8")), "es");
+    assert_eq!(resolve("auto", Some("es-419")), "es");
+    assert_eq!(resolve("espanol", Some("es")), "en");
+    set_language("es");
+    assert_eq!(get("menu.file"), "Archivo");
+    assert_eq!(get("no.such.key"), "no.such.key");
+    for (count, expected) in [
+        (0, "0 archivos"),
+        (1, "1 archivo"),
+        (2, "2 archivos"),
+        (999_999, "999999 archivos"),
+        (1_000_000, "1000000 de archivos"),
+        (1_000_001, "1000001 archivos"),
+        (2_000_000, "2000000 de archivos"),
+    ] {
+        assert_eq!(plural("plural.files", count), expected);
+    }
+    set_language("en");
+}
+
+#[test]
+fn hex_column_uses_the_same_label_in_every_language() {
+    for &(code, _) in LOCALES {
+        assert_eq!(
+            locale(code).values["hex-editor.hex-column"],
+            Value::Text("HEX".into())
+        );
+    }
+}
+
+#[test]
 fn a_notepad_translation_comes_first() {
     let _language = choosing_language();
     set_language("ru");
@@ -346,10 +380,10 @@ fn every_translation_has_exactly_the_english_keys_and_matching_placeholders() {
             .filter(|(_, codes)| codes.split_whitespace().any(|entry| entry == code))
             .map(|(key, _)| *key)
             .collect();
-        let forms: &[_] = if code == "ru" {
-            &["one", "few", "many"]
-        } else {
-            &["one", "other"]
+        let forms: &[_] = match code {
+            "ru" => &["one", "few", "many"],
+            "es" => &["one", "many", "other"],
+            _ => &["one", "other"],
         };
         all_problems.extend(
             translation_problems(&english, &translation, forms, shared)

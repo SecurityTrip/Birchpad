@@ -1170,7 +1170,7 @@ as revision 1 did (105 drawn). With ELK it draws 67. What it showed:
       `en.yaml` and fails on a missing, extra or untranslated key (one equal to English where
       it should not be) and on placeholders that differ; what is still in English or missing
       in German, Russian and French translated
-- [ ] The interface in Spanish: `es.yaml` beside the others, every key translated, Spanish in
+- [x] The interface in Spanish: `es.yaml` beside the others, every key translated, Spanish in
       Preferences > Appearance > Interface language and chosen from a Spanish system, with
       Spanish plurals
 - [ ] A disk image for macOS: `birchpad-<version>-macos.dmg` in place of the ZIP, built with

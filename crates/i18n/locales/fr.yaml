@@ -717,7 +717,7 @@ help:
 hex-editor:
   byte-order-mark: "l'indicateur d'ordre des octets n'est pas du texte à modifier"
   find-placeholder: "Rechercher : 4A 6F ou \"texte\""
-  hex-column: "Hex"
+  hex-column: "HEX"
   insert: "INS"
   not-found: "{pattern} n'est pas dans les octets"
   not-in-hex: "le document n'est pas affiché en HEX : utilisez d'abord Afficher en HEX"
