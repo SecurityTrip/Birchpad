@@ -32,8 +32,9 @@ desktops are welcome but not required.
       Settings > Apps
 - [ ] Portable ZIPs: unpacked anywhere, Birchpad keeps everything in its `data` folder (Help >
       About says portable) and runs beside an installed copy
-- [ ] macOS: the app opens (ad-hoc signed: Open from the context menu the first time), has its
-      icon in the Dock, and quitting from the Dock keeps the session
+- [ ] macOS disk image: Finder shows Birchpad.app and the Applications shortcut. Drag the app
+      to Applications and eject the image. The app opens (use Privacy & Security > Open Anyway
+      if prompted), has its icon in the Dock, and quitting from the Dock keeps the session
 - [ ] Linux: the binary starts from the ZIP on X11 and on Wayland; with the desktop file
       installed, the launcher shows the icon
 - [ ] Opening a file from Explorer, Finder or the file manager while Birchpad runs opens it in

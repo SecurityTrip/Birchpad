@@ -1173,12 +1173,12 @@ as revision 1 did (105 drawn). With ELK it draws 67. What it showed:
 - [x] The interface in Spanish: `es.yaml` beside the others, every key translated, Spanish in
       Preferences > Appearance > Interface language and chosen from a Spanish system, with
       Spanish plurals
-- [ ] A disk image for macOS: `birchpad-<version>-macos.dmg` in place of the ZIP, built with
+- [x] A disk image for macOS: `birchpad-<version>-macos.dmg` in place of the ZIP, built with
       `hdiutil` in the release workflow, its window showing Birchpad.app beside a link to
       Applications to drag it onto; the README, the online catalog and the
       [release checklist](release-checklist.md) follow. Until Developer ID signing and
-      notarization, the app inside stays ad-hoc signed and is opened once with Control-click >
-      Open
+      notarization, the app inside stays ad-hoc signed. On newer macOS use Privacy & Security >
+      Open Anyway if Finder cannot open the app the first time
 - [ ] An installer package for macOS that updates itself: `birchpad-<version>-macos.pkg` made by
       Velopack (`vpk pack` on macOS), as on Windows, with its update package in the signed
       manifest, so that a copy installed from it updates from the manifest as the Windows one

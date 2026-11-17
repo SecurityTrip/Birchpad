@@ -42,7 +42,7 @@ Downloads are on the [releases page](https://github.com/SecurityTrip/Birchpad/re
 | `birchpad-<version>-windows-x64-setup.exe`, `…-windows-arm64-setup.exe` | Windows, installed for the current user without administrator rights; updates itself |
 | `birchpad-<version>-windows-x64.msi` | Windows, installed per machine by administrators, who also update it |
 | `birchpad-<version>-windows-x64.zip`, `…-windows-arm64.zip` | Windows, portable: unzip and run |
-| `birchpad-<version>-macos.zip` | macOS 10.15.7 or later, Apple silicon and Intel (`Birchpad.app`) |
+| `birchpad-<version>-macos.dmg` | macOS 10.15.7 or later, Apple silicon and Intel. Open the image and drag Birchpad.app to Applications. |
 | `birchpad-<version>-linux-x64.zip` | Linux x64, portable |
 
 On Linux, to see Birchpad in the applications menu, put `birchpad` on your `PATH` and copy
@@ -50,8 +50,9 @@ On Linux, to see Birchpad in the applications menu, put `birchpad` on your `PATH
 `io.github.securitytrip.birchpad.png` to `~/.local/share/icons/hicolor/512x512/apps/`.
 
 Windows releases are not signed yet (see the [code signing policy](#code-signing-policy)), so
-Windows SmartScreen asks before the first start ("More info", "Run anyway"). macOS
-needs Birchpad.app opened once with Control-click > Open until the app is notarized. Each release
+Windows SmartScreen asks before the first start ("More info", "Run anyway"). Until the app is
+notarized, macOS may block the first launch. On newer macOS, use [Open Anyway in Privacy &
+Security](https://support.apple.com/en-us/102445) after trying to open the app. Each release
 lists SHA-256 checksums and carries GitHub build provenance (`gh attestation verify <file>
 --repo SecurityTrip/Birchpad`).
 

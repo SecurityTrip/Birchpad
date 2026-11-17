@@ -12,6 +12,7 @@ version's release notes from its section here.
   ([#72](https://github.com/SecurityTrip/Birchpad/issues/72)).
 - The interface in Spanish. Choose Español in Preferences > Appearance > Interface
   language, use Automatic on a Spanish system, or start Birchpad with `-Les`.
+- The macOS download is now a disk image. Open it and drag Birchpad.app to Applications.
 
 ### Fixed
 

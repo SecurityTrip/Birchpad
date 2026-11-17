@@ -189,19 +189,17 @@ jobs:
         shell: bash
         run: |
           name="birchpad-$VERSION-${{ matrix.name }}"
-          app="dist/$name/Birchpad.app"
+          app="macos/Birchpad.app"
+          mkdir -p dist
           mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
           cp packaging/icons/Birchpad.icns "$app/Contents/Resources/"
           lipo -create -output "$app/Contents/MacOS/birchpad" \
             target/aarch64-apple-darwin/release/birchpad \
             target/x86_64-apple-darwin/release/birchpad
           sed "s/@VERSION@/$VERSION/g" packaging/macos/Info.plist > "$app/Contents/Info.plist"
-          cp LICENSE-MIT LICENSE-APACHE README.md "dist/$name/"
-          # Ad-hoc signature only. Developer ID signing and notarization (ADR 0005) replace it.
-          codesign --force --deep --sign - "$app"
+          cp LICENSE-MIT LICENSE-APACHE README.md "$app/Contents/Resources/"
+          bash packaging/macos/package-dmg.sh "$app" "dist/$name.dmg"
           echo "::notice::Developer ID signing and notarization are not set up yet; Birchpad.app is ad-hoc signed."
-          ditto -c -k --keepParent "dist/$name" "dist/$name.zip"
-          rm -r "dist/$name"
 
       - name: Keep the packages (Linux, macOS)
         if: runner.os != 'Windows'
