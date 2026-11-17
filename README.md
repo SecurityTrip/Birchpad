@@ -43,6 +43,7 @@ Downloads are on the [releases page](https://github.com/SecurityTrip/Birchpad/re
 | `birchpad-<version>-windows-x64.msi` | Windows, installed per machine by administrators, who also update it |
 | `birchpad-<version>-windows-x64.zip`, `…-windows-arm64.zip` | Windows, portable: unzip and run |
 | `birchpad-<version>-macos.dmg` | macOS 10.15.7 or later, Apple silicon and Intel. Open the image and drag Birchpad.app to Applications. |
+| `birchpad-<version>-macos.pkg` | macOS on Apple silicon and Intel, with automatic updates. The installer is not signed with Developer ID yet. |
 | `birchpad-<version>-linux-x64.zip` | Linux x64, portable |
 
 On Linux, to see Birchpad in the applications menu, put `birchpad` on your `PATH` and copy
@@ -163,7 +164,7 @@ not with `network.online-features = false`. See [ADR 0020](docs/adr/0020-signed-
 | `crates/terminal` | The terminal: a shell on a pseudo-terminal, the emulator, keys as bytes, the screen with its colors (on `alacritty_terminal`). No UI. |
 | `crates/tools` | Built-in tools: JSON and XML formatting, XPath and schemas, hex dumps, comparing texts, spell checking, date formats, HTML export. No UI. |
 | `crates/plugin` | Plugins as WebAssembly components (`wit/birchpad.wit`), Rhai scripts, the plugin manager. No UI. |
-| `crates/update` | Updates: the signed update manifest, channels, versions, installing (Velopack on Windows); the online catalog. No UI. |
+| `crates/update` | Updates: the signed update manifest, channels, versions, installing (Velopack on Windows and macOS); the online catalog. No UI. |
 | `crates/release-tool` | `birchpad-release`: signing keys and the update manifest, for the release workflows. |
 | `crates/diagrams` | PlantUML diagrams for the preview: PlantUML run and kept running, its mistakes by line, the files it includes, SVG drawn as pixels. No UI. |
 | `crates/preferences` | What Preferences lists: the settings by section, how each is edited, their values as text. No UI. |

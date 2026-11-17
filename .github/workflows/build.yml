@@ -1,7 +1,7 @@
 name: Build
 
-# The build of a release, shared by the release and nightly workflows: portable ZIPs for every
-# platform, the per-user installer and update package for Windows (Velopack), the per-machine MSI
+# The build of a release, shared by the release and nightly workflows: portable ZIPs for Windows
+# and Linux, a disk image for macOS, installers and update packages (Velopack), the per-machine MSI
 # when asked, and the SBOM. See docs/adr/0009-releases-portable-mode-and-update-check.md,
 # docs/adr/0020-signed-updates-and-nightly-builds.md and
 # docs/adr/0021-authenticode-signing-with-signpath.md.
@@ -64,8 +64,6 @@ permissions:
 
 env:
   CARGO_TERM_COLOR: always
-  # Must match the velopack crate of crates/update/Cargo.toml.
-  VELOPACK_VERSION: "1.3.39-g8d2844f"
   VERSION: ${{ inputs.version }}
   # The SignPath project and its signing policy (packaging/windows/signing).
   SIGNPATH_PROJECT: birchpad
@@ -187,6 +185,8 @@ jobs:
       - name: Package (macOS)
         if: runner.os == 'macOS'
         shell: bash
+        env:
+          CHANNEL: ${{ inputs.channel }}
         run: |
           name="birchpad-$VERSION-${{ matrix.name }}"
           app="macos/Birchpad.app"
@@ -196,9 +196,17 @@ jobs:
           lipo -create -output "$app/Contents/MacOS/birchpad" \
             target/aarch64-apple-darwin/release/birchpad \
             target/x86_64-apple-darwin/release/birchpad
-          sed "s/@VERSION@/$VERSION/g" packaging/macos/Info.plist > "$app/Contents/Info.plist"
+          # Apple bundle versions are numeric. Velopack and the application retain the full
+          # version, including the prerelease suffix when present.
+          sed "s/@VERSION@/${VERSION%%-*}/g" packaging/macos/Info.plist > "$app/Contents/Info.plist"
           cp LICENSE-MIT LICENSE-APACHE README.md "$app/Contents/Resources/"
+          # Sign the binary after lipo. The DMG signs its own copy of the whole bundle;
+          # Velopack adds files to the original, which has no bundle signature to invalidate.
+          codesign --force --sign - "$app/Contents/MacOS/birchpad"
           bash packaging/macos/package-dmg.sh "$app" "dist/$name.dmg"
+          dotnet tool install --tool-path "$RUNNER_TEMP/velopack" vpk --version "$(cat packaging/velopack-version)"
+          export PATH="$RUNNER_TEMP/velopack:$PATH"
+          bash packaging/macos/package-pkg.sh "$app" "$VERSION" "$CHANNEL" dist
           echo "::notice::Developer ID signing and notarization are not set up yet; Birchpad.app is ad-hoc signed."
 
       - name: Keep the packages (Linux, macOS)
@@ -277,7 +285,7 @@ jobs:
       - name: Portable ZIPs, installers and update packages
         shell: bash
         run: |
-          dotnet tool install --global vpk --version "$VELOPACK_VERSION"
+          dotnet tool install --global vpk --version "$(cat packaging/velopack-version)"
           export PATH="$PATH:$USERPROFILE/.dotnet/tools"
           mkdir -p dist installers
           for platform in windows-x64 windows-arm64; do

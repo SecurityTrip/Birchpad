@@ -1179,7 +1179,7 @@ as revision 1 did (105 drawn). With ELK it draws 67. What it showed:
       [release checklist](release-checklist.md) follow. Until Developer ID signing and
       notarization, the app inside stays ad-hoc signed. On newer macOS use Privacy & Security >
       Open Anyway if Finder cannot open the app the first time
-- [ ] An installer package for macOS that updates itself: `birchpad-<version>-macos.pkg` made by
+- [x] An installer package for macOS that updates itself: `birchpad-<version>-macos.pkg` made by
       Velopack (`vpk pack` on macOS), as on Windows, with its update package in the signed
       manifest, so that a copy installed from it updates from the manifest as the Windows one
       does ([ADR 0020](adr/0020-signed-updates-and-nightly-builds.md)); the disk image stays for

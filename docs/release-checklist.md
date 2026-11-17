@@ -35,6 +35,10 @@ desktops are welcome but not required.
 - [ ] macOS disk image: Finder shows Birchpad.app and the Applications shortcut. Drag the app
       to Applications and eject the image. The app opens (use Privacy & Security > Open Anyway
       if prompted), has its icon in the Dock, and quitting from the Dock keeps the session
+- [ ] macOS PKG: install it and start the app. With a newer signed update available, choose
+      Automatic under Preferences > Updates and wait for the download. Restart and verify
+      the installed version and that the session was restored. A copy from the disk image
+      offers the download page.
 - [ ] Linux: the binary starts from the ZIP on X11 and on Wayland; with the desktop file
       installed, the launcher shows the icon
 - [ ] Opening a file from Explorer, Finder or the file manager while Birchpad runs opens it in

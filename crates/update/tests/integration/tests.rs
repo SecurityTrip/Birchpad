@@ -53,8 +53,8 @@ fn package(version: &str) -> Package {
     }
 }
 
-fn signed(versions: &[&str]) -> Vec<u8> {
-    let manifest = Manifest {
+fn release_manifest(versions: &[&str]) -> Manifest {
+    Manifest {
         schema: SCHEMA,
         product: PRODUCT.into(),
         timestamp: NOW,
@@ -67,8 +67,11 @@ fn signed(versions: &[&str]) -> Vec<u8> {
                 packages: vec![package(version)],
             })
             .collect(),
-    };
-    serde_json::to_vec(&manifest::sign(&manifest, &[key()])).unwrap()
+    }
+}
+
+fn signed(versions: &[&str]) -> Vec<u8> {
+    serde_json::to_vec(&manifest::sign(&release_manifest(versions), &[key()])).unwrap()
 }
 
 fn settings(mode: UpdateMode, channel: UpdateChannel) -> UpdateSettings {
@@ -150,6 +153,42 @@ fn finds_newer_releases_on_the_channel_with_their_package() {
         Outcome::Available(release) if release.version == version("0.3.0-nightly.20261005.7")
     ));
     assert_eq!(*fake.requests.lock().unwrap(), [DEFAULT_MANIFEST; 5]);
+}
+
+#[test]
+fn the_universal_macos_package_is_selected_only_for_macos() {
+    if cfg!(target_os = "macos") {
+        assert_eq!(manifest::PLATFORM, Some("macos"));
+    }
+    let mut manifest = release_manifest(&["0.8.2"]);
+    let file = "birchpad-0.8.2-macos-full.nupkg";
+    let macos = Package {
+        platform: "macos".into(),
+        file: file.into(),
+        url: format!("https://example.com/{file}"),
+        ..package("0.8.2")
+    };
+    manifest.releases[0].packages.push(macos.clone());
+    let fake = Fake::new(Ok(
+        serde_json::to_vec(&manifest::sign(&manifest, &[key()])).unwrap()
+    ));
+    let stable = settings(UpdateMode::Auto, UpdateChannel::Stable);
+    for (platform, expected) in [
+        (Some("macos"), Some(macos)),
+        (Some("windows-x64"), Some(package("0.8.2"))),
+        (Some("macos-arm64"), None),
+        (None, None),
+    ] {
+        let Outcome::Available(release) = run(&stable, "0.8.1", platform, &fake).unwrap().outcome
+        else {
+            panic!("the release should be offered");
+        };
+        assert_eq!(release.package, expected);
+    }
+    assert!(matches!(
+        run(&stable, "0.8.2", Some("macos"), &fake).unwrap().outcome,
+        Outcome::UpToDate { .. }
+    ));
 }
 
 #[test]

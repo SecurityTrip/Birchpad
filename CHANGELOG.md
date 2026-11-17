@@ -13,6 +13,8 @@ version's release notes from its section here.
 - The interface in Spanish. Choose Español in Preferences > Appearance > Interface
   language, use Automatic on a Spanish system, or start Birchpad with `-Les`.
 - The macOS download is now a disk image. Open it and drag Birchpad.app to Applications.
+- A separate macOS PKG installer for Apple silicon and Intel enables automatic updates
+  from the signed manifest. Choose the disk image for a copy you update manually.
 
 ### Fixed
 

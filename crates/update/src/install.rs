@@ -1,6 +1,5 @@
-//! Installing updates of a per-user installation (ADR 0020): Velopack's, on Windows, with the
-//! `installer` feature. Other copies (portable, the MSI, macOS, Linux, development builds) have
-//! no installer; Birchpad announces their updates with the download page.
+//! Installing updates with Velopack on Windows and macOS (ADR 0020). Birchpad announces updates
+//! with the download page for copies without Velopack, including the macOS disk image.
 
 use std::sync::Arc;
 
@@ -28,13 +27,13 @@ pub trait Installer: Send + Sync {
     fn restart(&self) -> Result<(), String>;
 }
 
-/// The installer of this copy, if it was installed per user and can update itself.
+/// The installer of this copy, if it can update itself.
 pub fn detect() -> Option<Arc<dyn Installer>> {
-    #[cfg(all(windows, feature = "installer"))]
+    #[cfg(all(any(windows, target_os = "macos"), feature = "installer"))]
     {
         velopack_installer::detect()
     }
-    #[cfg(not(all(windows, feature = "installer")))]
+    #[cfg(not(all(any(windows, target_os = "macos"), feature = "installer")))]
     {
         None
     }
@@ -51,9 +50,11 @@ pub fn run_hooks(installed: fn(), updated: fn(), uninstalling: fn()) {
         .on_after_update_fast_callback(move |_| updated())
         .on_before_uninstall_fast_callback(move |_| uninstalling())
         .run();
+    #[cfg(all(target_os = "macos", feature = "installer"))]
+    velopack::VelopackApp::build().run();
     #[cfg(not(all(windows, feature = "installer")))]
     let _ = (installed, updated, uninstalling);
 }
 
-#[cfg(all(windows, feature = "installer"))]
+#[cfg(all(any(windows, target_os = "macos"), feature = "installer"))]
 pub mod velopack_installer;
