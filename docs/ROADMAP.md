@@ -1162,10 +1162,10 @@ as revision 1 did (105 drawn). With ELK it draws 67. What it showed:
 
 ### Release 0.8.2: winget, macOS installers and translations
 
-- [ ] Birchpad in winget ([#72](https://github.com/SecurityTrip/Birchpad/issues/72)): a
-      manifest in `microsoft/winget-pkgs` for each stable release, so that
-      `winget install Birchpad` installs it and `winget upgrade` updates it; the release
-      workflow prepares the manifest for the new version
+- [x] The release workflow prepares the winget manifest for each stable release
+      ([ADR 0071](adr/0071-winget-through-the-windows-msi.md)).
+      The public listing ([#72](https://github.com/SecurityTrip/Birchpad/issues/72)) awaits
+      publication of the draft and acceptance by `microsoft/winget-pkgs`.
 - [ ] Every translation checked to be complete: a test compares each locale's keys with
       `en.yaml` and fails on a missing, extra or untranslated key (one equal to English where
       it should not be) and on placeholders that differ; what is still in English or missing

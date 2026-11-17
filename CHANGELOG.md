@@ -6,6 +6,11 @@ version's release notes from its section here.
 
 ## [Unreleased]
 
+### Added
+
+- Stable release builds prepare a WinGet submission from the final Windows x64 MSI
+  ([#72](https://github.com/SecurityTrip/Birchpad/issues/72)).
+
 ## [0.8.1] - 2026-11-15
 
 ### Added

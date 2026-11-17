@@ -41,6 +41,11 @@ desktops are welcome but not required.
 
 ## Updates
 
+- [ ] After publishing the stable release, download `winget-manifests` from its Release workflow.
+      Run `winget validate --manifest <version-directory>` and submit that directory under
+      `manifests/s/SecurityTrip/Birchpad/` to `microsoft/winget-pkgs`. Once accepted, check
+      `winget install --id SecurityTrip.Birchpad --exact` and, when an older MSI version is
+      installed, `winget upgrade --id SecurityTrip.Birchpad --exact`.
 - [ ] Help > Check for Updates finds the previous release up to date and offers the new one
       once it is published (stable and nightly channels)
 - [ ] After publishing, the release is in the signed update manifest (`update-manifest.yml`),

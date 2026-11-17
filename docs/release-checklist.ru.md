@@ -42,6 +42,12 @@ Silicon, Linux (Ubuntu или Debian, под X11 и под Wayland). Windows н�
 
 ## Обновления
 
+- [ ] После публикации стабильного выпуска скачать `winget-manifests` из его процесса Release.
+      Выполнить `winget validate --manifest <папка-версии>` и отправить эту папку в
+      `manifests/s/SecurityTrip/Birchpad/` в `microsoft/winget-pkgs`. После принятия проверить
+      `winget install --id SecurityTrip.Birchpad --exact` и, при установленной старой версии
+      MSI, `winget upgrade --id SecurityTrip.Birchpad --exact`.
+
 - [ ] Help > Check for Updates считает прошлый выпуск актуальным и предлагает новый, как только
       он опубликован (каналы stable и nightly)
 - [ ] После публикации выпуск есть в подписанном манифесте обновлений (`update-manifest.yml`),

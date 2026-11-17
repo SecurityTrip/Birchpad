@@ -56,7 +56,7 @@ jobs:
         run: >
           xvfb-run -a cargo llvm-cov nextest --workspace --features birchpad/e2e --locked
           --profile ci --lcov --output-path lcov.info
-      - name: Test the floor check
+      - name: Test the Python tools
         run: python3 -m unittest discover -s .github -p "*_test.py"
       - name: Report
         run: |
