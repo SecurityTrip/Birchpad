@@ -592,7 +592,7 @@ checksum = "ac07cdecf99051d9a5238b80f35af32cdeba5b336e55d957b318b50137e18da5"
 
 [[package]]
 name = "birchpad"
-version = "0.8.1"
+version = "0.8.2"
 dependencies = [
  "anyhow",
  "birchpad",
@@ -769,7 +769,7 @@ dependencies = [
 
 [[package]]
 name = "birchpad-fuzz"
-version = "0.8.1"
+version = "0.8.2"
 dependencies = [
  "base64 0.23.1",
  "birchpad-cli",
@@ -945,7 +945,7 @@ dependencies = [
 
 [[package]]
 name = "birchpad-release-tool"
-version = "0.8.1"
+version = "0.8.2"
 dependencies = [
  "anyhow",
  "birchpad-update",
