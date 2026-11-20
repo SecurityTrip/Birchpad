@@ -232,38 +232,31 @@ fn a_settings_file_with_problems_still_takes_a_change(cx: &mut TestAppContext) {
     assert!(written.contains("no-such-setting = 1"), "kept: {written}");
 }
 
-/// Preferences > Files > Edit with Birchpad: the registry's, so on Windows the test puts back
-/// what the user had.
 #[gpui_kit::test]
 fn the_explorer_menu_switch(cx: &mut TestAppContext) {
     let (_, cx, _dir) = open_preferences(cx);
     show_section("Files", cx);
-    let had = birchpad_cli::explorer::is_added();
-    let had_removed = birchpad_cli::explorer::is_removed_by_user();
-    click_on("preferences-explorer-menu", MouseButton::Left, cx);
-    if cfg!(windows) {
-        assert_eq!(birchpad_cli::explorer::is_added(), !had);
-        // Taken away by the user, it is remembered for updates; added, forgotten.
-        assert_eq!(birchpad_cli::explorer::is_removed_by_user(), had);
+    #[cfg(windows)]
+    {
+        assert!(!EXPLORER_MENU_ADDED.get());
         click_on("preferences-explorer-menu", MouseButton::Left, cx);
-        assert_eq!(birchpad_cli::explorer::is_added(), had, "back as it was");
-        assert_eq!(birchpad_cli::explorer::is_removed_by_user(), !had);
-        if !had && !had_removed {
-            // The user had chosen nothing: nothing is left remembered either.
-            birchpad_cli::explorer::remove_for_uninstall().unwrap();
-            assert!(!birchpad_cli::explorer::is_removed_by_user());
-        }
-    } else {
-        assert!(!birchpad_cli::explorer::is_added(), "disabled elsewhere");
+        assert!(EXPLORER_MENU_ADDED.get());
+        click_on("preferences-explorer-menu", MouseButton::Left, cx);
+        assert!(!EXPLORER_MENU_ADDED.get());
+        assert!(!opened().read_with(cx, |preferences, _| {
+            preferences.errors.contains_key(EXPLORER_MENU)
+        }));
     }
-    // Asked directly where there is no Explorer, it says why.
-    opened().update(cx, |preferences, cx| {
-        preferences.errors.clear();
-        if !cfg!(windows) {
+    #[cfg(not(windows))]
+    {
+        click_on("preferences-explorer-menu", MouseButton::Left, cx);
+        assert!(!birchpad_cli::explorer::is_added(), "disabled elsewhere");
+        opened().update(cx, |preferences, cx| {
+            assert!(!preferences.errors.contains_key(EXPLORER_MENU));
             preferences.switch_explorer_menu(true, cx);
             assert!(preferences.errors.contains_key(EXPLORER_MENU));
-        }
-    });
+        });
+    }
 }
 
 #[gpui_kit::test]

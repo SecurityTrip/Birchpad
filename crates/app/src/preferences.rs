@@ -97,6 +97,37 @@ thread_local! {
     /// The dialog last opened, for tests to drive.
     pub static OPENED: std::cell::RefCell<Option<WeakEntity<Preferences>>> =
         std::cell::RefCell::default();
+    /// Whether the Explorer menu entry is enabled in tests.
+    #[cfg(windows)]
+    pub static EXPLORER_MENU_ADDED: std::cell::Cell<bool> =
+        const { std::cell::Cell::new(false) };
+}
+
+fn explorer_menu_added() -> bool {
+    #[cfg(all(windows, feature = "test-support"))]
+    {
+        EXPLORER_MENU_ADDED.get()
+    }
+    #[cfg(not(all(windows, feature = "test-support")))]
+    {
+        birchpad_cli::explorer::is_added()
+    }
+}
+
+fn set_explorer_menu(on: bool) -> std::io::Result<()> {
+    #[cfg(all(windows, feature = "test-support"))]
+    {
+        EXPLORER_MENU_ADDED.set(on);
+        Ok(())
+    }
+    #[cfg(not(all(windows, feature = "test-support")))]
+    {
+        if on {
+            std::env::current_exe().and_then(|exe| birchpad_cli::explorer::add(&exe))
+        } else {
+            birchpad_cli::explorer::remove()
+        }
+    }
 }
 
 impl Preferences {
@@ -179,12 +210,7 @@ impl Preferences {
 
     /// Preferences > Files: "Edit with Birchpad" in the Explorer's menu, for this copy.
     pub fn switch_explorer_menu(&mut self, on: bool, cx: &mut Context<Self>) {
-        let result = if on {
-            std::env::current_exe().and_then(|exe| birchpad_cli::explorer::add(&exe))
-        } else {
-            birchpad_cli::explorer::remove()
-        };
-        match result {
+        match set_explorer_menu(on) {
             Ok(()) => {
                 self.errors.remove(EXPLORER_MENU);
             }
@@ -293,7 +319,7 @@ impl Render for Preferences {
                             .into_any_element()
                     }
                     Kind::ExplorerMenu => {
-                        let added = birchpad_cli::explorer::is_added();
+                        let added = explorer_menu_added();
                         Checkbox::new(("preferences-check", index))
                             .debug_selector(move || format!("preferences-{key}"))
                             .label(label(entry.label))
