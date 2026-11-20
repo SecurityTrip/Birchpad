@@ -1131,7 +1131,7 @@ impl FolderWorkspace {
                 .item(
                     PopupMenuItem::new("Terminal Here").on_click(move |_, window, cx| {
                         if let Err(error) = open_terminal(&terminal) {
-                            crate::workspace::report_error(&error, window, cx);
+                            report_error(&error, window, cx);
                         }
                     }),
                 );
@@ -1238,7 +1238,7 @@ impl FolderWorkspace {
 }
 
 /// Opens the system's terminal in `folder`.
-pub fn open_terminal(folder: &Path) -> anyhow::Result<()> {
+pub fn open_terminal(folder: &Path) -> Result<()> {
     use std::process::Command;
     let started = if cfg!(target_os = "windows") {
         Command::new("cmd")

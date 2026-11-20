@@ -203,7 +203,7 @@ fn change_history_of_a_large_file() {
     edited.insert(original.len() / 2, "x");
     let started = Instant::now();
     let lines = history.lines(&edited);
-    birchpad_core::timing::within(
+    timing::within(
         "change history, one edit in 10 MB",
         started.elapsed(),
         std::time::Duration::from_millis(500),
@@ -215,7 +215,7 @@ fn change_history_of_a_large_file() {
     edited.insert(edited.len(), "x");
     let started = Instant::now();
     let lines = history.lines(&edited);
-    birchpad_core::timing::within(
+    timing::within(
         "change history, edits at both ends of 10 MB",
         started.elapsed(),
         std::time::Duration::from_secs(5),

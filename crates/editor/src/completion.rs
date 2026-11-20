@@ -802,7 +802,7 @@ pub fn register_commands(registry: &mut CommandRegistry) {
         this.completion = None;
         match args.key.as_deref() {
             Some("enter") => this.newline(cx),
-            _ => this.insert("\t", crate::LastEdit::Typing, cx),
+            _ => this.insert("\t", LastEdit::Typing, cx),
         }
         cx.notify();
         Ok(())

@@ -125,9 +125,7 @@ fn large_files_are_not_smart_highlighted(cx: &mut TestAppContext) {
     let (workspace, cx) = open_workspace(cx);
     let text = "word other word\n".repeat(10);
     let view = view(&workspace, cx);
-    view.update(cx, |view, cx| {
-        view.insert(&text, birchpad_editor::LastEdit::None, cx)
-    });
+    view.update(cx, |view, cx| view.insert(&text, LastEdit::None, cx));
     select(&workspace, 0..4, cx);
     assert_eq!(highlights(&workspace, cx).len(), 20);
     settings(cx, |s| s.files.large_file_limit_mb = 0);
@@ -140,9 +138,7 @@ fn selections_up_to_the_longest_token_are_highlighted(cx: &mut TestAppContext) {
     settings(cx, |s| s.highlighting.smart.whole_word = false);
     let token = "y".repeat(MAX_TOKEN + 1);
     let view = view(&workspace, cx);
-    view.update(cx, |view, cx| {
-        view.insert(&token, birchpad_editor::LastEdit::None, cx)
-    });
+    view.update(cx, |view, cx| view.insert(&token, LastEdit::None, cx));
     let query = |range: ByteRange<usize>, cx: &mut VisualTestContext| {
         view.update(cx, |view, cx| {
             view.selection = Selection::single(Range::new(range.start, range.end));
@@ -168,9 +164,7 @@ fn a_search_is_reused_while_it_covers_the_shown_text(cx: &mut TestAppContext) {
 "
     .repeat(20_000);
     let view = view(&workspace, cx);
-    view.update(cx, |view, cx| {
-        view.insert(&text, birchpad_editor::LastEdit::None, cx)
-    });
+    view.update(cx, |view, cx| view.insert(&text, LastEdit::None, cx));
     select(&workspace, 0..4, cx);
     let rope = view.read_with(cx, |view, cx| view.text(cx).clone());
     let finish = |shown: &[ByteRange<usize>], cx: &mut VisualTestContext| {
@@ -192,7 +186,7 @@ fn a_search_is_reused_while_it_covers_the_shown_text(cx: &mut TestAppContext) {
     // An edit is a new revision: searched again, around the shown text only.
     view.update(cx, |view, cx| {
         view.selection = Selection::single(Range::new(rope.len(), rope.len()));
-        view.insert("word", birchpad_editor::LastEdit::None, cx);
+        view.insert("word", LastEdit::None, cx);
         view.selection = Selection::single(Range::new(0, 4));
     });
     let rope = view.read_with(cx, |view, cx| view.text(cx).clone());
@@ -249,9 +243,7 @@ fn smart_highlighting_cost(cx: &mut TestAppContext) {
     let line = "let value = compute(value, other_value) + value * 2; // value again value\n";
     let text = line.repeat(10_000);
     let view = view(&workspace, cx);
-    view.update(cx, |view, cx| {
-        view.insert(&text, birchpad_editor::LastEdit::None, cx)
-    });
+    view.update(cx, |view, cx| view.insert(&text, LastEdit::None, cx));
     // Scroll to the middle and select a word that occurs six times per line.
     let middle = text.len() / 2;
     let start = middle - middle % line.len() + 4;

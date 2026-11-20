@@ -272,7 +272,7 @@ fn the_macros_and_run_tabs(cx: &mut TestAppContext) {
         birchpad::run_menu::save("Shell", "cmd", cx).unwrap();
     });
     mapper.update(cx, |this, cx| this.select_tab(MapperTab::Macros, cx));
-    let twice = Invocation::with_args("macro.run", serde_json::json!({ "name": "Twice" }));
+    let twice = Invocation::with_args("macro.run", json!({ "name": "Twice" }));
     select(&mapper, &twice, cx);
     mapper.update(cx, |this, cx| {
         this.start_capture(cx);
@@ -295,7 +295,7 @@ fn the_macros_and_run_tabs(cx: &mut TestAppContext) {
         this.rows.iter().map(|row| row.name.clone()).collect()
     });
     assert!(names.contains(&"Shell".to_owned()), "{names:?}");
-    let shell = Invocation::with_args("run.run", serde_json::json!({ "name": "Shell" }));
+    let shell = Invocation::with_args("run.run", json!({ "name": "Shell" }));
     select(&mapper, &shell, cx);
     mapper.update(cx, |this, cx| this.delete_selected(cx));
     let left = cx.update(|_, cx| {

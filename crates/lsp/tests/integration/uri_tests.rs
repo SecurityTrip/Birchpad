@@ -1,5 +1,6 @@
 use std::path::{Path, PathBuf};
 
+use birchpad_lsp::lsp_types::Uri;
 use birchpad_lsp::uri::*;
 
 #[cfg(windows)]
@@ -106,6 +107,6 @@ fn queries_and_fragments_are_not_part_of_the_path() {
     };
     let expected = if cfg!(windows) { r"C:\a.rs" } else { "/a.rs" };
     assert_eq!(file_path_text(uri), Some(PathBuf::from(expected)));
-    let parsed: birchpad_lsp::lsp_types::Uri = uri.parse().unwrap();
+    let parsed: Uri = uri.parse().unwrap();
     assert_eq!(file_path(&parsed), Some(PathBuf::from(expected)));
 }

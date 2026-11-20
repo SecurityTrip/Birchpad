@@ -91,10 +91,8 @@ fn close(
 }
 
 #[gpui_kit::test]
+#[cfg(any(windows, target_os = "macos"))]
 fn the_first_close_asks_and_the_answer_is_kept(cx: &mut TestAppContext) {
-    if !tray::SUPPORTED {
-        return;
-    }
     let (workspace, cx) = open_workspace(cx);
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("settings.toml");
@@ -110,17 +108,15 @@ fn the_first_close_asks_and_the_answer_is_kept(cx: &mut TestAppContext) {
             .contains("close-to-tray = \"tray\"")
     );
     // Asked once: the next close goes to the tray without a question.
-    tray::IN_TRAY.with(|in_tray| in_tray.set(false));
+    tray::IN_TRAY.set(false);
     assert!(!close(&workspace, cx));
     assert!(!cx.has_pending_prompt());
     assert!(tray::IN_TRAY.with(std::cell::Cell::get));
 }
 
 #[gpui_kit::test]
+#[cfg(any(windows, target_os = "macos"))]
 fn cancelling_the_question_changes_nothing(cx: &mut TestAppContext) {
-    if !tray::SUPPORTED {
-        return;
-    }
     let (workspace, cx) = open_workspace(cx);
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("settings.toml");

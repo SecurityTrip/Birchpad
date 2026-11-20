@@ -181,7 +181,7 @@ pub fn active_html(workspace: &Workspace, print: bool, cx: &App) -> Result<(Stri
     let buffer = view.read(cx).buffer.read(cx);
     let text = buffer.doc().text().clone();
     let title = buffer.display_name();
-    let mut spans: Vec<(Range<usize>, birchpad_theme::Style)> = Vec::new();
+    let mut spans: Vec<(Range<usize>, Style)> = Vec::new();
     if let Some(syntax) = buffer.syntax() {
         let language = Some(syntax.language().id);
         for (range, highlight) in syntax.all_highlights(&text, 0..text.len()) {

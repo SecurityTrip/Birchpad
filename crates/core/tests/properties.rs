@@ -434,7 +434,7 @@ proptest! {
         // at line ends.
         for range in selection.map(transaction.changes()).clip_virtual(&result).iter() {
             if range.head_virtual > 0 {
-                let line = birchpad_core::motion::line_of(&result, range.head);
+                let line = line_of(&result, range.head);
                 prop_assert_eq!(birchpad_core::motion::line_range(&result, line).end, range.head);
             }
         }

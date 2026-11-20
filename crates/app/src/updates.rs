@@ -237,7 +237,7 @@ impl Updates {
     }
 
     /// Updates go through the proxy `setting` names from now on (Help > Set Updater Proxy...).
-    pub fn use_proxy(setting: &str, cx: &mut App) -> anyhow::Result<()> {
+    pub fn use_proxy(setting: &str, cx: &mut App) -> Result<()> {
         let user_agent = format!("Birchpad/{VERSION} ({})", std::env::consts::OS);
         let transport = HttpTransport::with_proxy(&user_agent, setting)
             .map_err(|error| anyhow::anyhow!(error))?;

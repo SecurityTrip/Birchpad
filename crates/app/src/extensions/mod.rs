@@ -74,9 +74,9 @@ pub fn nested<T>(call: impl FnOnce() -> Result<T>) -> Result<T> {
             )
         );
     }
-    DEPTH.with(|cell| cell.set(depth + 1));
+    DEPTH.set(depth + 1);
     let result = call();
-    DEPTH.with(|cell| cell.set(depth));
+    DEPTH.set(depth);
     result
 }
 

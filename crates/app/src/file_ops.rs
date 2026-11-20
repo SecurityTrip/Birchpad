@@ -73,7 +73,7 @@ pub fn register_commands(registry: &mut CommandRegistry) {
         let answers = [t!("file-ops.save-all"), t!("common.cancel")];
         let answers: Vec<&str> = answers.iter().map(String::as_str).collect();
         let answer = window.prompt(
-            gpui_kit::PromptLevel::Info,
+            PromptLevel::Info,
             &t!("file-ops.save-every-changed-document"),
             None,
             &answers,

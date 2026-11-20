@@ -36,13 +36,13 @@ fn always_on_top_and_full_screen(cx: &mut TestAppContext) {
     let (workspace, cx) = open_workspace(cx);
     command(&workspace, "view.always-on-top", cx).unwrap();
     assert!(modes(&workspace, cx).always_on_top);
-    assert!(ON_TOP.with(|top| top.get()));
+    assert!(ON_TOP.get());
     assert_eq!(
         is_checked("view.always-on-top", modes(&workspace, cx)),
         Some(true)
     );
     command(&workspace, "view.always-on-top", cx).unwrap();
-    assert!(!ON_TOP.with(|top| top.get()));
+    assert!(!ON_TOP.get());
 
     cx.simulate_keystrokes("f11");
     assert!(modes(&workspace, cx).full_screen);
@@ -177,14 +177,13 @@ fn a_new_instance_gets_its_own_window_without_the_session() {
 fn always_on_top_refuses_what_is_not_a_window_of_the_platform() {
     use raw_window_handle::{RawWindowHandle, WebWindowHandle};
     let web = RawWindowHandle::Web(WebWindowHandle::new(1));
-    assert!(birchpad::window_modes::native::set_always_on_top(web, true).is_err());
-    assert!(birchpad::window_modes::native::set_always_on_top(web, false).is_err());
+    assert!(native::set_always_on_top(web, true).is_err());
+    assert!(native::set_always_on_top(web, false).is_err());
     #[cfg(windows)]
     {
         use raw_window_handle::Win32WindowHandle;
         let gone = Win32WindowHandle::new(std::num::NonZeroIsize::new(1).unwrap());
-        let error =
-            birchpad::window_modes::native::set_always_on_top(RawWindowHandle::Win32(gone), true);
+        let error = native::set_always_on_top(RawWindowHandle::Win32(gone), true);
         assert!(error.is_err(), "no window has that handle");
     }
 }

@@ -368,7 +368,7 @@ fn the_default_styles_font() {
         r#"<NotepadPlus><GlobalStyles><WidgetStyle name="Default Style" fgColor="000000" bgColor="FFFFFF" fontName=" " fontSize="0" /></GlobalStyles></NotepadPlus>"#,
     )
     .unwrap();
-    assert_eq!(plain.font, birchpad_theme::ThemeFont::default());
+    assert_eq!(plain.font, ThemeFont::default());
 }
 
 #[test]

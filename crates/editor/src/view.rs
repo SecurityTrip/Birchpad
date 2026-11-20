@@ -169,12 +169,7 @@ pub struct EditorView {
     pub(crate) expansions: Option<(Vec<Selection>, Selection)>,
     /// Highlight Matching Tags of the last frame: for which text, caret and comments setting,
     /// and the tags found.
-    pub(crate) tag_match: Option<(
-        birchpad_core::RevisionId,
-        usize,
-        bool,
-        Option<birchpad_core::ops::TagPair>,
-    )>,
+    pub(crate) tag_match: Option<(RevisionId, usize, bool, Option<birchpad_core::ops::TagPair>)>,
     /// Begin/End Select: where the first invocation put the start, and in which mode.
     pub(crate) begin_select: Option<multi::BeginSelect>,
     /// The scroll position of the last frame, to report scrolling.

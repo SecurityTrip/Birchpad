@@ -447,7 +447,7 @@ impl Render for JsonViewer {
                 ))
             }
             Some(Parsed { tree: Ok(tree), .. }) => {
-                let rows = std::rc::Rc::new(rows(tree, &self.collapsed));
+                let rows = Rc::new(rows(tree, &self.collapsed));
                 let list_rows = rows.clone();
                 uniform_list(
                     "json-viewer-rows",

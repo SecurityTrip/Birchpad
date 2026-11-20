@@ -215,13 +215,13 @@ fn the_interface_language_for_this_run() {
 }
 
 #[gpui_kit::test]
-fn full_read_only_keeps_every_document_read_only(cx: &mut gpui_kit::TestAppContext) {
+fn full_read_only_keeps_every_document_read_only(cx: &mut TestAppContext) {
     use birchpad::app_state::AppState;
     use birchpad_commands::Invocation;
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("a.txt");
     std::fs::write(&path, "text").unwrap();
-    let (workspace, cx) = crate::workspace::open_workspace(cx);
+    let (workspace, cx) = open_workspace(cx);
     cx.update(|_, cx| {
         let app = cx.global_mut::<AppState>();
         app.full_read_only = true;
@@ -239,7 +239,7 @@ fn full_read_only_keeps_every_document_read_only(cx: &mut gpui_kit::TestAppConte
             .all(|view| view.read(cx).buffer.read(cx).requested_read_only())
     });
     assert!(read_only);
-    let run = |id: &str, cx: &mut gpui_kit::VisualTestContext| {
+    let run = |id: &str, cx: &mut VisualTestContext| {
         workspace.update_in(cx, |workspace, window, cx| {
             workspace.dispatch(&Invocation::new(id), window, cx)
         })

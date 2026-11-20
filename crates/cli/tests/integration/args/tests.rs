@@ -103,7 +103,7 @@ fn round_trips_through_json() {
 
 #[test]
 fn every_listed_option_is_understood() {
-    let cwd = std::path::Path::new("/work");
+    let cwd = Path::new("/work");
     let mut seen = std::collections::HashSet::new();
     for option in OPTIONS {
         assert!(seen.insert(option.syntax), "{} twice", option.syntax);
@@ -128,7 +128,7 @@ fn every_listed_option_is_understood() {
             !written.contains('<'),
             "{written} has its placeholder filled in"
         );
-        let parsed = CommandLine::parse([std::ffi::OsString::from(written.clone())], cwd);
+        let parsed = CommandLine::parse([OsString::from(written.clone())], cwd);
         assert!(
             parsed.warnings.is_empty(),
             "{written}: {:?}",

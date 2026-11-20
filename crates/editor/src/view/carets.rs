@@ -119,15 +119,11 @@ impl EditorView {
     pub(crate) fn place_caret(&mut self, target: CaretTarget, cx: &mut Context<Self>) {
         let text = self.text(cx).clone();
         let pos = match target {
-            CaretTarget::Position(offset) => birchpad_core::motion::go_to_position(
-                &text,
-                birchpad_core::motion::GoToTarget::Offset(offset),
-            ),
+            CaretTarget::Position(offset) => {
+                motion::go_to_position(&text, motion::GoToTarget::Offset(offset))
+            }
             CaretTarget::LineColumn { line, column } => {
-                let start = birchpad_core::motion::go_to_position(
-                    &text,
-                    birchpad_core::motion::GoToTarget::Line(line),
-                );
+                let start = motion::go_to_position(&text, motion::GoToTarget::Line(line));
                 let line_range = line_range(&text, line_of(&text, start));
                 let grid = self.display.config().grid();
                 birchpad_view::pos_at_column(&text, line_range, 0, column - 1, grid).0

@@ -207,7 +207,7 @@ fn ctrl_r_reloads_from_disk(cx: &mut TestAppContext) {
     assert_eq!(active_text(&workspace, cx), "two");
     // One binding: Ctrl+Shift+R (macro recording) and Ctrl+Alt+R (case) are other commands.
     let keymap = cx.update(|_, cx| cx.global::<birchpad::commands::ActiveKeymap>().0.clone());
-    let reload = birchpad_commands::Invocation::new("file.reload");
+    let reload = Invocation::new("file.reload");
     let keys: Vec<String> = keymap
         .bindings_for(&reload)
         .map(|binding| binding.keys_string())

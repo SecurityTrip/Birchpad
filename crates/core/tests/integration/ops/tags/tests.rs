@@ -52,7 +52,7 @@ fn a_tag_beyond_reach_is_left_alone() {
 }
 
 fn names(text: &str, caret: usize, in_comments: bool) -> Option<(String, String)> {
-    let rope = ropey::Rope::from_str(text);
+    let rope = Rope::from_str(text);
     let pair = matching_tag(&rope, caret, in_comments)?;
     Some((
         text[pair.open.range.clone()].to_owned(),
@@ -66,7 +66,7 @@ fn a_tag_finds_its_partner_across_nested_ones() {
     let pair = |caret| names(text, caret, false);
     // In the outer opening tag, and in its closing tag.
     assert_eq!(pair(2), Some(("<div>".into(), "</div>".into())));
-    let rope = ropey::Rope::from_str(text);
+    let rope = Rope::from_str(text);
     let outer = matching_tag(&rope, 2, false).unwrap();
     assert_eq!(outer.close.range.end, text.len());
     assert_eq!(outer.open.name, 1..4);
@@ -80,7 +80,7 @@ fn a_tag_finds_its_partner_across_nested_ones() {
 #[test]
 fn attributes_and_self_closed_tags() {
     let text = "<a href=\"x\"><br/></a>";
-    let rope = ropey::Rope::from_str(text);
+    let rope = Rope::from_str(text);
     let pair = matching_tag(&rope, 3, false).unwrap();
     assert_eq!(&text[pair.open.range], "<a href=\"x\">");
     assert_eq!(&text[pair.open.name], "a");
@@ -95,7 +95,7 @@ fn attributes_and_self_closed_tags() {
 fn comments_count_only_when_asked() {
     let text = "<b><!-- <b> --></b>";
     // The tag in the comment is not counted: the outer <b> closes at the end.
-    let rope = ropey::Rope::from_str(text);
+    let rope = Rope::from_str(text);
     let pair = matching_tag(&rope, 1, false).unwrap();
     assert_eq!(pair.close.range.end, text.len());
     // With comments, the inner one is open and takes the closing tag.

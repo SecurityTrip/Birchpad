@@ -32,7 +32,6 @@ birchpad-search-results.workspace = true
 birchpad-spell-check.workspace = true
 birchpad-syntax.workspace = true
 birchpad-terminal-panel.workspace = true
-birchpad-terminal.workspace = true
 birchpad-theme.workspace = true
 birchpad-tools.workspace = true
 birchpad-tray.workspace = true

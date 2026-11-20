@@ -199,9 +199,7 @@ impl Render for DocumentMap {
         let Some(view) = view else {
             return div()
                 .p_2()
-                .text_color(birchpad_widgets::theme::paint(
-                    birchpad_widgets::theme::ui().muted,
-                ))
+                .text_color(theme::paint(theme::ui().muted))
                 .child(t!("panels.document-map.no-document"))
                 .into_any_element();
         };

@@ -160,8 +160,7 @@ fn the_dialog(cx: &mut TestAppContext) {
 #[gpui_kit::test]
 fn notepad_plus_plus_built_in_commands(cx: &mut TestAppContext) {
     let (workspace, cx, _dir) = setup(cx);
-    let builtin =
-        |name: &str| Invocation::with_args("run.builtin", serde_json::json!({ "name": name }));
+    let builtin = |name: &str| Invocation::with_args("run.builtin", json!({ "name": name }));
     cx.simulate_input("rust");
     run(&workspace, builtin("Wikipedia Search"), cx).unwrap();
     let error = run(&workspace, builtin("Launch in Netscape"), cx).unwrap_err();

@@ -11,7 +11,35 @@ version: "1.0"
 
 #Specify inspection profile for code analysis
 profile:
-  name: qodana.starter
+  base:
+    name: qodana.starter
+  inspections:
+    # These fixtures are opened as text or built as a separate Cargo workspace.
+    - inspection: RsDetachedFile
+      ignore:
+        - crates/syntax/tests/samples/sample.rs
+        - crates/plugin/tests/fixtures/probe/src/lib.rs
+    - inspection: PyClassHasNoInitInspection
+      ignore:
+        - crates/syntax/tests/samples/sample.py
+    # unittest calls setUp by name.
+    - inspection: PyPep8NamingInspection
+      ignore:
+        - .github/winget_manifest_test.py
+    # Range uses matching from_virtual and to_virtual accessors in its public API.
+    - inspection: RsSelfConvention
+      ignore:
+        - crates/core/src/selection.rs
+    # rustc checks the Copy types, macro expansion and lifetime elision in these tests.
+    - inspection: RsBorrowChecker
+      ignore:
+        - crates/editor/tests/integration/banner/tests.rs
+    - inspection: RsTypeCheck
+      ignore:
+        - crates/commands/tests/integration/keystroke/properties.rs
+    - inspection: RsWrongLifetimeParametersNumber
+      ignore:
+        - crates/app/tests/integration/language_servers/tests.rs
 
 #Enable inspections
 #include:
@@ -47,4 +75,4 @@ profile:
 #    failOnUnknown: false
 
 #Specify Qodana linter for analysis (Applied in CI/CD pipeline)
-linter: jetbrains/qodana-<linter>:2026.2
+linter: jetbrains/qodana-rust:2026.2-eap

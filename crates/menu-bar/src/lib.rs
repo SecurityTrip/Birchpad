@@ -88,7 +88,7 @@ thread_local! {
 
 /// Draws the menu bar with `colors` from its next frame on (on this thread, where the UI runs).
 pub fn set_colors(colors: Colors) {
-    COLORS.with(|cell| cell.set(colors));
+    COLORS.set(colors);
 }
 
 fn colors() -> Colors {
@@ -399,7 +399,7 @@ impl MenuBar {
     }
 
     /// The items of the open menu at `level` of `path`.
-    fn level_items<'a>(&'a self, menu: usize, path: &[Option<usize>], level: usize) -> &'a [Item] {
+    fn level_items(&self, menu: usize, path: &[Option<usize>], level: usize) -> &[Item] {
         let mut items = self.titles[menu].items.as_slice();
         for selected in &path[..level] {
             match selected.map(|index| &items[index].kind) {
@@ -883,8 +883,8 @@ use Select::{First, Last};
 impl Select {
     fn index(self, items: &[Item]) -> Option<usize> {
         match self {
-            Select::First | Select::Next => step(items, None, 1),
-            Select::Last | Select::Previous => step(items, None, -1),
+            Self::First | Self::Next => step(items, None, 1),
+            Self::Last | Self::Previous => step(items, None, -1),
         }
     }
 }

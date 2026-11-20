@@ -31,7 +31,7 @@ fn source(listed: &[u8], served: &'static [u8]) -> SignedSource {
             file: file.to_owned(),
             url: format!("https://example.org/{file}"),
             size: listed.len() as u64,
-            sha256: birchpad_update::hex(&Sha256::digest(listed)),
+            sha256: hex(&Sha256::digest(listed)),
             sha1: "unused".to_owned(),
         },
         transport: Arc::new(Serve(served)),

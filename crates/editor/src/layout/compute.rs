@@ -178,7 +178,7 @@ impl EditorView {
                 let x = match wrap_width {
                     // Rows after the first of a line start under its indentation (Line Wrap).
                     Some(width) if row.index_in_line > 0 => {
-                        let line = birchpad_core::motion::line_range(&text, row.line);
+                        let line = line_range(&text, row.line);
                         let indent = birchpad_view::wrap_indent(
                             text.slice(line),
                             width,

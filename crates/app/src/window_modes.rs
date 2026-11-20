@@ -186,7 +186,7 @@ fn set_always_on_top(window: &Window, on: bool) -> Result<()> {
     #[cfg(feature = "test-support")]
     {
         let _ = window;
-        ON_TOP.with(|top| top.set(on));
+        ON_TOP.set(on);
         Ok(())
     }
     #[cfg(not(feature = "test-support"))]

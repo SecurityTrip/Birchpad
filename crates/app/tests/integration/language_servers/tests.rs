@@ -738,7 +738,7 @@ fn renaming_changes_every_file_without_saving(cx: &mut TestAppContext) {
     view.update(cx, |view, cx| view.go_to(4, cx));
     // Without a name, a dialog asks, with the word at the caret.
     run(&setup.workspace, Invocation::new("lsp.rename"), cx).unwrap();
-    let dialog = birchpad::language_servers::commands::RENAME_OPENED
+    let dialog = commands::RENAME_OPENED
         .with(|opened| opened.borrow().as_ref().and_then(|dialog| dialog.upgrade()))
         .expect("the dialog opened");
     assert_eq!(

@@ -323,8 +323,7 @@ impl EditorView {
         }
         let header = self.display.visible_line(line);
         if forward {
-            let after = (header + 1..birchpad_core::motion::line_count(text))
-                .find(|&line| !self.display.is_hidden(line));
+            let after = (header + 1..line_count(text)).find(|&line| !self.display.is_hidden(line));
             match after {
                 Some(line) => line_range(text, line).start,
                 None => line_range(text, header).end,

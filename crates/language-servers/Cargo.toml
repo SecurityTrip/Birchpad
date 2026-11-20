@@ -10,7 +10,6 @@ authors.workspace = true
 
 [dependencies]
 anyhow.workspace = true
-birchpad-buffer.workspace = true
 birchpad-core.workspace = true
 birchpad-editor.workspace = true
 birchpad-i18n.workspace = true

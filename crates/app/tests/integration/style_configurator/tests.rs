@@ -191,16 +191,13 @@ fn edits_show_at_once_and_cancel_reverts(cx: &mut TestAppContext) {
     let caret = index_of(Group::Editor, "caret");
     configurator.update_in(cx, |this, window, cx| this.select_item(caret, window, cx));
     type_color(&configurator, "#ff0000", cx);
-    assert_eq!(birchpad::theme::editor().caret, Color::rgb(0xff0000));
+    assert_eq!(theme::editor().caret, Color::rgb(0xff0000));
     // A bad color says so and changes nothing.
     type_color(&configurator, "#ff00", cx);
     assert!(configurator.read_with(cx, |this, _| this.error.is_some()));
-    assert_eq!(birchpad::theme::editor().caret, Color::rgb(0xff0000));
+    assert_eq!(theme::editor().caret, Color::rgb(0xff0000));
     configurator.update(cx, |this, cx| this.revert(cx));
-    assert_eq!(
-        birchpad::theme::editor().caret,
-        Theme::default_theme().editor.caret
-    );
+    assert_eq!(theme::editor().caret, Theme::default_theme().editor.caret);
 }
 
 #[gpui_kit::test]
@@ -217,7 +214,7 @@ fn checkboxes_and_languages(cx: &mut TestAppContext) {
         this.select_item(keyword, window, cx);
         this.toggle(|fields| fields.italic = !fields.italic, cx);
     });
-    let theme = birchpad::theme::current();
+    let theme = theme::current();
     assert!(theme.languages["python"]["keyword"].italic);
     // Other languages keep their style.
     assert!(!theme.syntax_style(Some("rust"), "keyword").unwrap().italic);
@@ -235,7 +232,7 @@ fn switching_and_saving_themes(cx: &mut TestAppContext) {
         // The fields show the new theme's colors.
         assert_eq!(this.fields.color, "#d4d4d4");
     });
-    assert!(birchpad::theme::current().dark);
+    assert!(theme::current().dark);
     let caret = index_of(Group::Editor, "caret");
     configurator.update_in(cx, |this, window, cx| this.select_item(caret, window, cx));
     type_color(&configurator, "#00ff00", cx);
@@ -246,7 +243,7 @@ fn switching_and_saving_themes(cx: &mut TestAppContext) {
     // A field with an error keeps the dialog open.
     type_color(&configurator, "nope", cx);
     assert!(!configurator.update(cx, |this, cx| this.save(cx)));
-    birchpad::theme::set(Theme::default_theme().clone());
+    theme::set(Theme::default_theme().clone());
 }
 
 #[gpui_kit::test]
@@ -271,7 +268,7 @@ fn the_command_opens_the_dialog(cx: &mut TestAppContext) {
 
 #[test]
 fn font_sizes_as_typed() {
-    birchpad::i18n::set_language("en");
+    i18n::set_language("en");
     assert_eq!(parse_font_size("").unwrap(), None);
     assert_eq!(parse_font_size(" 16 ").unwrap(), Some(16.));
     assert_eq!(parse_font_size("4").unwrap(), Some(4.));

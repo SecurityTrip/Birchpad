@@ -237,7 +237,7 @@ impl Element for EditorElement {
                     window.paint_quad(fill(*mark, theme::paint(theme::editor().whitespace)));
                 }
                 for row in &layout.rows {
-                    let origin = gpui_kit::point(row.x, row.y);
+                    let origin = point(row.x, row.y);
                     row.shaped
                         .paint(origin, line_height, TextAlign::Left, None, window, cx)
                         .ok();
@@ -297,8 +297,7 @@ impl Element for EditorElement {
         {
             window.paint_quad(fill(bar.track, theme::paint(theme::ui().surface)));
             window.paint_quad(
-                fill(bar.thumb, theme::paint(theme::editor().scrollbar_thumb))
-                    .corner_radii(gpui_kit::px(4.)),
+                fill(bar.thumb, theme::paint(theme::editor().scrollbar_thumb)).corner_radii(px(4.)),
             );
             // Over the thumb, so that the differences in view show too.
             for (bounds, color) in &bar.markers {

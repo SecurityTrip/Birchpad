@@ -74,7 +74,7 @@ fn crlf_is_one_step() {
 #[test]
 fn extra_word_characters_join_words_until_cleared() {
     use birchpad_core::motion::*;
-    let text = ropey::Rope::from_str("a§b c");
+    let text = Rope::from_str("a§b c");
     assert_eq!(word_at(&text, 0), 0..1);
     set_extra_word_chars("§ ");
     assert!(is_extra_word_char('§'));

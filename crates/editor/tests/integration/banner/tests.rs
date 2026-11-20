@@ -1,4 +1,4 @@
-use birchpad_editor::banner::{self, BarColors, Kind, colors};
+use birchpad_editor::banner::{BarColors, Kind, colors};
 use birchpad_editor::theme::paint;
 use birchpad_editor::theme::{set, set_interface};
 use birchpad_editor::widgets::{Line, bar};
@@ -90,7 +90,7 @@ fn an_interface_tone_over_the_theme_is_followed() {
 #[test]
 fn a_message_above_the_text_keeps_its_own_colors() {
     set(Theme::default_theme().clone());
-    let colors = banner::colors(Kind::Monitoring);
+    let colors = colors(Kind::Monitoring);
     assert_ne!(colors, BarColors::surface());
     let mut message = bar(colors, Line::Under);
     assert_eq!(

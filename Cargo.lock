@@ -633,7 +633,6 @@ dependencies = [
  "birchpad-search-results",
  "birchpad-spell-check",
  "birchpad-syntax",
- "birchpad-terminal",
  "birchpad-terminal-panel",
  "birchpad-theme",
  "birchpad-tools",
@@ -859,7 +858,6 @@ name = "birchpad-language-servers"
 version = "0.8.1"
 dependencies = [
  "anyhow",
- "birchpad-buffer",
  "birchpad-core",
  "birchpad-editor",
  "birchpad-i18n",

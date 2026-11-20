@@ -353,8 +353,7 @@ fn column_editor_numbers_a_thousand_lines_in_one_step(cx: &mut TestAppContext) {
     let view = view(&workspace, cx);
     // The dialog's fields, filled and confirmed.
     cx.update(|window, cx| {
-        let editor = cx
-            .new(|cx| birchpad_editor::column_editor::ColumnEditor::new(view.clone(), window, cx));
+        let editor = cx.new(|cx| column_editor::ColumnEditor::new(view.clone(), window, cx));
         editor.update(cx, |editor, cx| {
             editor.fill_numbers("1", "1", "", window, cx);
             editor.insert(cx).unwrap();

@@ -149,7 +149,7 @@ fn needs_two_documents(cx: &mut TestAppContext) {
 fn marks_whole_lines_on_each_side() {
     let old = Rope::from("a\nb\nc");
     let new = Rope::from("a\nc\nd");
-    let differences = birchpad_tools::compare::compare("a\nb\nc", "a\nc\nd", Options::default());
+    let differences = compare::compare("a\nb\nc", "a\nc\nd", Options::default());
     let [old_marks, new_marks] = marks(&old, &new, &differences);
     assert_eq!(old_marks, [(2..4, Change::Removed)]);
     assert_eq!(new_marks, [(4..5, Change::Added)]);

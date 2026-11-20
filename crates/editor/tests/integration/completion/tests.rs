@@ -14,8 +14,7 @@ use birchpad_ui::AppState;
 fn open_workspace(cx: &mut TestAppContext) -> (Entity<Workspace>, &mut VisualTestContext) {
     let (workspace, cx) = crate::test_support::open_workspace(cx);
     cx.update(|_, cx| {
-        cx.global_mut::<AppState>().settings.completion =
-            birchpad_config::CompletionSettings::default();
+        cx.global_mut::<AppState>().settings.completion = CompletionSettings::default();
     });
     (workspace, cx)
 }
