@@ -32,8 +32,13 @@ desktops are welcome but not required.
       Settings > Apps
 - [ ] Portable ZIPs: unpacked anywhere, Birchpad keeps everything in its `data` folder (Help >
       About says portable) and runs beside an installed copy
-- [ ] macOS: the app opens (ad-hoc signed: Open from the context menu the first time), has its
-      icon in the Dock, and quitting from the Dock keeps the session
+- [ ] macOS disk image: Finder shows Birchpad.app and the Applications shortcut. Drag the app
+      to Applications and eject the image. The app opens (use Privacy & Security > Open Anyway
+      if prompted), has its icon in the Dock, and quitting from the Dock keeps the session
+- [ ] macOS PKG: install it and start the app. With a newer signed update available, choose
+      Automatic under Preferences > Updates and wait for the download. Restart and verify
+      the installed version and that the session was restored. A copy from the disk image
+      offers the download page.
 - [ ] Linux: the binary starts from the ZIP on X11 and on Wayland; with the desktop file
       installed, the launcher shows the icon
 - [ ] Opening a file from Explorer, Finder or the file manager while Birchpad runs opens it in
@@ -41,6 +46,11 @@ desktops are welcome but not required.
 
 ## Updates
 
+- [ ] After publishing the stable release, download `winget-manifests` from its Release workflow.
+      Run `winget validate --manifest <version-directory>` and submit that directory under
+      `manifests/s/SecurityTrip/Birchpad/` to `microsoft/winget-pkgs`. Once accepted, check
+      `winget install --id SecurityTrip.Birchpad --exact` and, when an older MSI version is
+      installed, `winget upgrade --id SecurityTrip.Birchpad --exact`.
 - [ ] Help > Check for Updates finds the previous release up to date and offers the new one
       once it is published (stable and nightly channels)
 - [ ] After publishing, the release is in the signed update manifest (`update-manifest.yml`),

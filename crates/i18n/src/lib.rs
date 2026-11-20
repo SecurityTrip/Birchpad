@@ -23,6 +23,7 @@ use yaml_rust2::{Yaml, YamlLoader};
 pub const LANGUAGES: &[(&str, &str)] = &[
     ("en", "English"),
     ("de", "Deutsch"),
+    ("es", "Español"),
     ("fr", "Français"),
     ("ru", "Русский"),
 ];
@@ -31,6 +32,7 @@ pub const LANGUAGES: &[(&str, &str)] = &[
 pub const LOCALES: &[(&str, &str)] = &[
     ("en", include_str!("../locales/en.yaml")),
     ("de", include_str!("../locales/de.yaml")),
+    ("es", include_str!("../locales/es.yaml")),
     ("fr", include_str!("../locales/fr.yaml")),
     ("ru", include_str!("../locales/ru.yaml")),
 ];
@@ -341,6 +343,8 @@ fn plural_form(code: &str, count: usize) -> &'static str {
         }
         // French: 0 and 1 are singular ("0 fichier").
         "fr" if count <= 1 => "one",
+        // Spanish: whole nonzero millions use "de" before the noun ("1000000 de archivos").
+        "es" if count != 0 && count.is_multiple_of(1_000_000) => "many",
         _ if count == 1 => "one",
         _ => "other",
     }

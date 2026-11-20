@@ -48,11 +48,17 @@ was signed. Phase 2 adds the nightly channel, background checks and automatic up
   (not trusted, bad signature, expired, older than one seen, newer format). Background checks
   only log it.
 
-### Installing: Velopack, for per-user installs on Windows
+### Installing with Velopack on Windows and macOS
 
 - Release workflows run `vpk pack` (the version matching the `velopack` crate) for Windows x64
   and ARM64: `birchpad-<v>-windows-<arch>-setup.exe` installs into `%LocalAppData%` without
   elevation, `…-full.nupkg` is the update package. Deltas are not produced yet.
+- Since 0.8.2, `vpk pack` on macOS makes a universal `birchpad-<v>-macos.pkg` and a matching
+  `birchpad-<v>-macos-full.nupkg`. Both architectures select the same `macos` entry in the
+  signed manifest. The packager lets Velopack choose its default macOS runtime for the
+  universal bundle. Velopack locates its updater and version metadata in the installed
+  bundle. The separate drag-to-Applications disk image omits those files. The PKG has no
+  Developer ID Installer signature or notarization yet.
 - Birchpad runs Velopack's startup hooks first thing (installing, uninstalling, and applying an
   update downloaded during the previous run). It detects a Velopack installation; only then does
   it update itself. Portable copies, the MSI and development builds announce updates with their
@@ -109,7 +115,6 @@ was signed. Phase 2 adds the nightly channel, background checks and automatic up
   against a local manifest signed with a throwaway key.
 - Velopack brings its own HTTP stack (`ureq` with Mozilla's root certificates, licensed
   CDLA-Permissive-2.0), unused by Birchpad's own requests.
-- macOS and Linux have no installer that updates itself yet; they announce updates with their
-  download page.
+- Linux and copies installed from the macOS disk image announce updates with their download page.
 - An expired manifest stops all updates until it is signed again: the weekly signing must keep
   working (the nightly workflow fails visibly otherwise).

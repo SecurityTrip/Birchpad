@@ -40,8 +40,9 @@ interface.
   arguments, every `t!` key of the code of every crate is in `en.yaml`, every command, menu label and panel has
   its text.
 - **`appearance.language`:** `auto` (the default) follows the system's language
-  (`sys-locale`), `en`, `de` and `ru` choose one; Preferences > Appearance changes it at once.
-  German (`de.yaml`, since 0.4.0) is translated for Birchpad, as Russian is.
+  (`sys-locale`); `en`, `de`, `es`, `fr` and `ru` choose one. Preferences > Appearance
+  changes it at once. Spanish (since 0.8.2) uses the CLDR integer categories: `one` for 1,
+  `many` for nonzero multiples of a million, and `other` for the rest.
 - **Notepad++'s translations are read, not bundled.** Its `nativeLang` files (`localization/
   german.xml` in a Notepad++ folder) are under the GPL, so Birchpad ships none; a user who has
   Notepad++ can point `appearance.native-lang` at one. Its main menu names (by `menuId`) and

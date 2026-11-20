@@ -11,6 +11,7 @@ pub(super) const ENTRIES: &[Entry] = &[
             ("auto", "Automatic (system)"),
             ("en", "English"),
             ("de", "Deutsch"),
+            ("es", "Español"),
             ("fr", "Français"),
             ("ru", "Русский"),
         ]),

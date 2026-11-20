@@ -10,7 +10,7 @@ mod catalog;
 #[path = "component/tests.rs"]
 mod component;
 
-#[cfg(all(windows, feature = "installer"))]
+#[cfg(all(any(windows, target_os = "macos"), feature = "installer"))]
 #[path = "install/velopack_installer/tests.rs"]
 mod install_velopack_installer;
 

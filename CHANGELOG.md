@@ -6,6 +6,32 @@ version's release notes from its section here.
 
 ## [Unreleased]
 
+## [0.8.2] - 2026-11-20
+
+### Added
+
+- Stable release builds prepare a WinGet submission from the final Windows x64 MSI
+  ([#72](https://github.com/SecurityTrip/Birchpad/issues/72)).
+- The interface in Spanish. Choose Español in Preferences > Appearance > Interface
+  language, use Automatic on a Spanish system, or start Birchpad with `-Les`.
+- The macOS download is now a disk image. Open it and drag Birchpad.app to Applications.
+- A separate macOS PKG installer for Apple silicon and Intel enables automatic updates
+  from the signed manifest. Choose the disk image for a copy you update manually.
+
+### Fixed
+
+- Translated remaining English labels in the German, French and Russian interfaces. Tests
+  check all translations for missing or extra keys, English text, plural forms and placeholders.
+- The hex editor uses the `HEX` column label in every interface language.
+- The macOS packager finds the .NET runtime when the runner installs it through Homebrew.
+- Switched to the maintained Jiff library for dates and local time while keeping
+  existing date patterns and backup filenames.
+
+### Security
+
+- Updated the WebAssembly plugin runtime to Wasmtime 50.0.3, which includes the
+  [security fixes in 50.0.2](https://github.com/bytecodealliance/wasmtime/releases/tag/v50.0.2).
+
 ## [0.8.1] - 2026-11-15
 
 ### Added
@@ -1053,7 +1079,8 @@ The first release: a Notepad++-like editor for Windows, Linux and macOS.
   entirely (`updates.mode = "off"`).
 - Nightly builds of `main` on the nightly channel.
 
-[Unreleased]: https://github.com/SecurityTrip/Birchpad/compare/v0.8.1...HEAD
+[Unreleased]: https://github.com/SecurityTrip/Birchpad/compare/v0.8.2...HEAD
+[0.8.2]: https://github.com/SecurityTrip/Birchpad/compare/v0.8.1...v0.8.2
 [0.8.1]: https://github.com/SecurityTrip/Birchpad/compare/v0.8.0...v0.8.1
 [0.8.0]: https://github.com/SecurityTrip/Birchpad/compare/v0.7.7...v0.8.0
 [0.7.7]: https://github.com/SecurityTrip/Birchpad/compare/v0.7.6...v0.7.7

@@ -26,7 +26,7 @@ stable, `-beta.N`/`-rc.N` is beta, any other pre-release is nightly. The workflo
 |---|---|
 | `birchpad-<v>-windows-x64.zip`, `-windows-arm64.zip` | portable (contain the portable marker) |
 | `birchpad-<v>-linux-x64.zip` | portable; built on Ubuntu 22.04 so it runs on older glibc |
-| `birchpad-<v>-macos.zip` | `Birchpad.app`, universal binary (arm64 + x86_64), ad-hoc signed |
+| `birchpad-<v>-macos.dmg` | `Birchpad.app`, universal binary (arm64 + x86_64), ad-hoc signed, beside a link to Applications (since 0.8.2) |
 | `birchpad-<v>-windows-x64.msi` | stable versions only: MSI versions are numeric (ADR 0005) |
 | `birchpad-<v>-sbom.cdx.json` | CycloneDX SBOM of the whole dependency graph (`cargo-cyclonedx`) |
 | `birchpad-<v>-SHA256SUMS.txt` | checksums of everything above |
@@ -50,7 +50,7 @@ the executable. The name ends in `.txt` so that creating it in Explorer with hid
 works, and its content explains what it does. Machine defaults and administrator policies are
 still read from the system: a portable copy cannot escape the policies of the machine it runs
 on. The single-instance address includes a hash of the data directory, so a portable copy and
-an installed one run side by side. The macOS ZIP contains a regular app bundle without the
+an installed one run side by side. The macOS disk image contains a regular app bundle without the
 marker, because data written inside a signed bundle breaks its signature.
 
 **Update check.** Phase 1 checks only when the user picks Help > Check for Updates, whatever

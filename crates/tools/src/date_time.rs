@@ -6,7 +6,7 @@
 //! The names of months and weekdays are in the interface's language.
 
 use birchpad_i18n::t;
-use chrono::{Datelike, NaiveDateTime, Timelike};
+use jiff::civil::DateTime;
 
 /// The short format: time and date in numbers (date first with `reverse`).
 pub fn short(reverse: bool) -> String {
@@ -30,11 +30,11 @@ pub fn long(reverse: bool) -> String {
 
 /// The name of month `month` (1 to 12) or weekday `weekday` (0 Monday to 6 Sunday), from the
 /// interface's language.
-fn month_name(month: u32) -> String {
+fn month_name(month: i8) -> String {
     t!(&format!("tools.date-time.month-{month}"))
 }
 
-fn weekday_name(weekday: u32) -> String {
+fn weekday_name(weekday: i8) -> String {
     t!(&format!("tools.date-time.weekday-{weekday}"))
 }
 
@@ -44,7 +44,7 @@ fn abbreviated(name: String) -> String {
 }
 
 /// `time` written in `pattern`.
-pub fn format(pattern: &str, time: &NaiveDateTime) -> String {
+pub fn format(pattern: &str, time: &DateTime) -> String {
     let chars: Vec<char> = pattern.chars().collect();
     let mut out = String::new();
     let mut at = 0;
@@ -79,9 +79,9 @@ pub fn format(pattern: &str, time: &NaiveDateTime) -> String {
             ('d', 1) => Some(time.day().to_string()),
             ('d', 2) => Some(format!("{:02}", time.day())),
             ('d', 3) => Some(abbreviated(weekday_name(
-                time.weekday().num_days_from_monday(),
+                time.weekday().to_monday_zero_offset(),
             ))),
-            ('d', _) => Some(weekday_name(time.weekday().num_days_from_monday())),
+            ('d', _) => Some(weekday_name(time.weekday().to_monday_zero_offset())),
             ('H', 1) => Some(time.hour().to_string()),
             ('H', _) => Some(format!("{:02}", time.hour())),
             ('h', 1) => Some(hour12.to_string()),

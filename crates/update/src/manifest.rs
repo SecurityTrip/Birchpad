@@ -6,7 +6,7 @@
 //! manifest that is not signed by one of them is refused, whoever serves it.
 //!
 //! The manifest lists recent releases, each with its page and its installer packages (Velopack,
-//! per-user installs on Windows) with their sizes and SHA-256 hashes. Signing the hashes signs
+//! installs on Windows and macOS) with their sizes and SHA-256 hashes. Signing the hashes signs
 //! the packages.
 //!
 //! Against an update server that serves old but validly signed manifests:
@@ -79,7 +79,7 @@ pub struct ManifestRelease {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct Package {
-    /// `windows-x64` or `windows-arm64`.
+    /// `windows-x64`, `windows-arm64` or `macos` (both architectures).
     pub platform: String,
     pub file: String,
     pub url: String,
@@ -95,6 +95,8 @@ pub const PLATFORM: Option<&str> = if cfg!(all(windows, target_arch = "x86_64"))
     Some("windows-x64")
 } else if cfg!(all(windows, target_arch = "aarch64")) {
     Some("windows-arm64")
+} else if cfg!(target_os = "macos") {
+    Some("macos")
 } else {
     None
 };

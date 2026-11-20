@@ -78,9 +78,23 @@ fn the_summary_of_a_document() {
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("a.txt");
     fs::write(&path, "x").unwrap();
+    let epoch = std::time::SystemTime::UNIX_EPOCH;
+    fs::File::options()
+        .write(true)
+        .open(&path)
+        .unwrap()
+        .set_modified(epoch)
+        .unwrap();
     let selected = [count_text(&"ab".into()), count_text(&"c\nd".into())];
     let rows = summary_rows(Some(&path), "a.txt", counts, &selected);
-    assert!(rows.iter().any(|(label, _)| label == "Modified"));
+    let (_, modified) = rows.iter().find(|(label, _)| label == "Modified").unwrap();
+    assert_eq!(
+        jiff::civil::DateTime::strptime("%Y-%m-%d %H:%M:%S", modified).unwrap(),
+        jiff::Zoned::try_from(epoch).unwrap().datetime()
+    );
+    let absent = path.with_file_name("absent.txt");
+    let absent_rows = summary_rows(Some(&absent), "absent.txt", counts, &[]);
+    assert!(!absent_rows.iter().any(|(label, _)| label == "Modified"));
     let (_, last) = rows.last().unwrap();
     assert_eq!(last, "4 characters (5 bytes) in 3 lines, 2 selections");
 }

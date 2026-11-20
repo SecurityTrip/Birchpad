@@ -9,7 +9,7 @@ A fast, extensible, cross-platform text editor in the spirit of Notepad++, writt
 > **Status: alpha (0.8).** A Notepad++-like editor: tabs and split views, encodings, syntax
 > highlighting for 50 languages with folding, multi-cursor and column editing, bookmarks,
 > sessions that keep unsaved work, Find in Files, macros, themes, an interface in English,
-> German, French and Russian, plugins as WebAssembly components and scripts in Rhai, with Compare, JSON and XML
+> German, Spanish, French and Russian, plugins as WebAssembly components and scripts in Rhai, with Compare, JSON and XML
 > tools, a hex view, Markdown and PlantUML previews and spell checking built in, and, for code,
 > language servers, Git's changes in the margin and a terminal. Full parity
 > with Notepad++ comes next. Expect rough edges. See the [roadmap](docs/ROADMAP.md) and the
@@ -42,7 +42,8 @@ Downloads are on the [releases page](https://github.com/SecurityTrip/Birchpad/re
 | `birchpad-<version>-windows-x64-setup.exe`, `…-windows-arm64-setup.exe` | Windows, installed for the current user without administrator rights; updates itself |
 | `birchpad-<version>-windows-x64.msi` | Windows, installed per machine by administrators, who also update it |
 | `birchpad-<version>-windows-x64.zip`, `…-windows-arm64.zip` | Windows, portable: unzip and run |
-| `birchpad-<version>-macos.zip` | macOS 10.15.7 or later, Apple silicon and Intel (`Birchpad.app`) |
+| `birchpad-<version>-macos.dmg` | macOS 10.15.7 or later, Apple silicon and Intel. Open the image and drag Birchpad.app to Applications. |
+| `birchpad-<version>-macos.pkg` | macOS on Apple silicon and Intel, with automatic updates. The installer is not signed with Developer ID yet. |
 | `birchpad-<version>-linux-x64.zip` | Linux x64, portable |
 
 On Linux, to see Birchpad in the applications menu, put `birchpad` on your `PATH` and copy
@@ -50,8 +51,9 @@ On Linux, to see Birchpad in the applications menu, put `birchpad` on your `PATH
 `io.github.securitytrip.birchpad.png` to `~/.local/share/icons/hicolor/512x512/apps/`.
 
 Windows releases are not signed yet (see the [code signing policy](#code-signing-policy)), so
-Windows SmartScreen asks before the first start ("More info", "Run anyway"). macOS
-needs Birchpad.app opened once with Control-click > Open until the app is notarized. Each release
+Windows SmartScreen asks before the first start ("More info", "Run anyway"). Until the app is
+notarized, macOS may block the first launch. On newer macOS, use [Open Anyway in Privacy &
+Security](https://support.apple.com/en-us/102445) after trying to open the app. Each release
 lists SHA-256 checksums and carries GitHub build provenance (`gh attestation verify <file>
 --repo SecurityTrip/Birchpad`).
 
@@ -65,7 +67,7 @@ with > Change All.
 To uninstall, use Installed apps in Windows Settings for the installer and the MSI, or delete the
 folder of a portable copy.
 
-Nightly builds of the next version's branch (`v0.8.1` or `v0.9.0` after 0.8.0) are published as
+Nightly builds of the next version's branch (`v0.8.2` or `v0.9.0` after 0.8.1) are published as
 pre-releases; set `updates.channel = "nightly"` to get them as updates.
 
 ## Code signing policy
@@ -162,7 +164,7 @@ not with `network.online-features = false`. See [ADR 0020](docs/adr/0020-signed-
 | `crates/terminal` | The terminal: a shell on a pseudo-terminal, the emulator, keys as bytes, the screen with its colors (on `alacritty_terminal`). No UI. |
 | `crates/tools` | Built-in tools: JSON and XML formatting, XPath and schemas, hex dumps, comparing texts, spell checking, date formats, HTML export. No UI. |
 | `crates/plugin` | Plugins as WebAssembly components (`wit/birchpad.wit`), Rhai scripts, the plugin manager. No UI. |
-| `crates/update` | Updates: the signed update manifest, channels, versions, installing (Velopack on Windows); the online catalog. No UI. |
+| `crates/update` | Updates: the signed update manifest, channels, versions, installing (Velopack on Windows and macOS); the online catalog. No UI. |
 | `crates/release-tool` | `birchpad-release`: signing keys and the update manifest, for the release workflows. |
 | `crates/diagrams` | PlantUML diagrams for the preview: PlantUML run and kept running, its mistakes by line, the files it includes, SVG drawn as pixels. No UI. |
 | `crates/preferences` | What Preferences lists: the settings by section, how each is edited, their values as text. No UI. |

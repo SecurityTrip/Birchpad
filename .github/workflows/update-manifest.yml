@@ -103,7 +103,7 @@ jobs:
             version="${TAG#v}"
             mkdir -p packages
             packages=()
-            for platform in windows-x64 windows-arm64; do
+            for platform in windows-x64 windows-arm64 macos; do
               file="birchpad-$version-$platform-full.nupkg"
               if gh release download "$TAG" --repo "$REPO" --pattern "$file" --dir packages; then
                 packages+=(--package "$platform=packages/$file")

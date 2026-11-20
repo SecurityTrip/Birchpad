@@ -7,7 +7,6 @@ use std::path::PathBuf;
 use birchpad_commands::Invocation;
 use birchpad_config::{BackupOnSave, DefaultDirectory, LanguageSettings};
 use birchpad_core::{Encoding, LineEnding};
-use chrono::NaiveDate;
 use gpui_kit::{Entity, TestAppContext, VisualTestContext};
 use serde_json::json;
 
@@ -47,10 +46,7 @@ fn language_names_as_typed() {
 
 #[test]
 fn where_backups_on_save_go() {
-    let now = NaiveDate::from_ymd_opt(2026, 10, 13)
-        .unwrap()
-        .and_hms_opt(9, 5, 7)
-        .unwrap();
+    let now = jiff::civil::date(2026, 10, 13).at(9, 5, 7, 0);
     let file = PathBuf::from("/notes/a.txt");
     assert_eq!(backup_path(&file, BackupOnSave::None, "", now), None);
     assert_eq!(

@@ -1160,6 +1160,36 @@ as revision 1 did (105 drawn). With ELK it draws 67. What it showed:
       builds are its pre-releases), `CHANGELOG.md` and this roadmap updated; the
       [release checklist](release-checklist.md) gone through
 
+### Release 0.8.2: winget, macOS installers and translations
+
+- [x] The release workflow prepares the winget manifest for each stable release
+      ([ADR 0071](adr/0071-winget-through-the-windows-msi.md)).
+      The public listing ([#72](https://github.com/SecurityTrip/Birchpad/issues/72)) awaits
+      publication of the draft and acceptance by `microsoft/winget-pkgs`.
+- [x] Every translation checked to be complete: a test compares each locale's keys with
+      `en.yaml` and fails on a missing, extra or untranslated key (one equal to English where
+      it should not be) and on placeholders that differ; what is still in English or missing
+      in German, Russian and French translated
+- [x] The interface in Spanish: `es.yaml` beside the others, every key translated, Spanish in
+      Preferences > Appearance > Interface language and chosen from a Spanish system, with
+      Spanish plurals
+- [x] A disk image for macOS: `birchpad-<version>-macos.dmg` in place of the ZIP, built with
+      `hdiutil` in the release workflow, its window showing Birchpad.app beside a link to
+      Applications to drag it onto; the README, the online catalog and the
+      [release checklist](release-checklist.md) follow. Until Developer ID signing and
+      notarization, the app inside stays ad-hoc signed. On newer macOS use Privacy & Security >
+      Open Anyway if Finder cannot open the app the first time
+- [x] An installer package for macOS that updates itself: `birchpad-<version>-macos.pkg` made by
+      Velopack (`vpk pack` on macOS), as on Windows, with its update package in the signed
+      manifest, so that a copy installed from it updates from the manifest as the Windows one
+      does ([ADR 0020](adr/0020-signed-updates-and-nightly-builds.md)); the disk image stays for
+      those who drag the app themselves. Signing it with a Developer ID Installer certificate,
+      which management tools such as Jamf and Intune ask for, waits for Apple's certificates,
+      as the app's signing does
+- [x] Release 0.8.2: the workspace version, `CHANGELOG.md` and this roadmap updated.
+      The maintainer checks the draft's artifacts against the
+      [release checklist](release-checklist.md) before publishing.
+
 ### Release 0.9.0: large and remote files, other ways to edit
 
 - [ ] 7.8 Multi-gigabyte files through memory mapping, read and searched without loading them

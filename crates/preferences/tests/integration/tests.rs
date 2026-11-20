@@ -3,6 +3,26 @@ use birchpad_preferences::*;
 use toml::Value;
 
 #[test]
+fn interface_language_choices_match_the_built_in_languages() {
+    let entry = ENTRIES
+        .iter()
+        .find(|entry| entry.key == "appearance.language")
+        .unwrap();
+    let Kind::Choice(choices) = entry.kind else {
+        panic!("interface language must offer a list of choices");
+    };
+    let (system, languages) = choices.split_first().unwrap();
+    assert_eq!(system.0, "auto");
+    assert_eq!(languages, birchpad_i18n::LANGUAGES);
+    assert!(languages.contains(&("es", "Español")));
+    assert!(
+        !languages
+            .iter()
+            .any(|(code, _)| code.is_empty() || *code == "es-MX")
+    );
+}
+
+#[test]
 fn every_entry_is_a_setting_with_valid_choices() {
     let settings = Settings::default();
     let mut keys = std::collections::HashSet::new();

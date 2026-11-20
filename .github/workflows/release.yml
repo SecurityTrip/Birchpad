@@ -87,13 +87,24 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          sparse-checkout: CHANGELOG.md
+          sparse-checkout: |
+            CHANGELOG.md
+            .github/winget_manifest.py
           sparse-checkout-cone-mode: false
       - uses: actions/download-artifact@v8
         with:
           pattern: dist-*
           path: dist
           merge-multiple: true
+      - name: Prepare the WinGet submission
+        if: needs.prepare.outputs.channel == 'stable'
+        run: python3 .github/winget_manifest.py "$VERSION" dist winget
+      - uses: actions/upload-artifact@v7
+        if: needs.prepare.outputs.channel == 'stable'
+        with:
+          name: winget-manifests
+          path: winget/
+          if-no-files-found: error
       - name: Checksums
         working-directory: dist
         run: sha256sum -- * > "birchpad-$VERSION-SHA256SUMS.txt"
