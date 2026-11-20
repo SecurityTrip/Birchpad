@@ -25,6 +25,11 @@ version's release notes from its section here.
 - The hex editor uses the `HEX` column label in every interface language.
 - The macOS packager finds the .NET runtime when the runner installs it through Homebrew.
 
+### Security
+
+- Updated the WebAssembly plugin runtime to Wasmtime 50.0.3, which includes the
+  [security fixes in 50.0.2](https://github.com/bytecodealliance/wasmtime/releases/tag/v50.0.2).
+
 ## [0.8.1] - 2026-11-15
 
 ### Added

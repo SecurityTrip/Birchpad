@@ -27,7 +27,7 @@ birchpad-language-servers = { path = "crates/language-servers", version = "0.8.1
 birchpad-lsp = { path = "crates/lsp", version = "0.8.0" }
 birchpad-menu-bar = { path = "crates/menu-bar", version = "0.8.1" }
 birchpad-panels = { path = "crates/panels", version = "0.8.1" }
-birchpad-plugin = { path = "crates/plugin", version = "0.7.6" }
+birchpad-plugin = { path = "crates/plugin", version = "0.8.2" }
 birchpad-preferences = { path = "crates/preferences", version = "0.8.2" }
 birchpad-print-dialog = { path = "crates/print-dialog", version = "0.7.5" }
 birchpad-quick-pick = { path = "crates/quick-pick", version = "0.8.1" }
