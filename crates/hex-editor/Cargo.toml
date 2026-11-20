@@ -17,7 +17,7 @@ birchpad-io.workspace = true
 birchpad-tools.workspace = true
 birchpad-ui.workspace = true
 birchpad-widgets.workspace = true
-gpui-kit = "0.8"
+gpui-kit = "0.10"
 
 [lints]
 workspace = true
