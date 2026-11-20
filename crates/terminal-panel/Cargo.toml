@@ -18,7 +18,7 @@ birchpad-terminal.workspace = true
 birchpad-ui.workspace = true
 birchpad-widgets.workspace = true
 futures = "0.3"
-gpui-kit = "0.8"
+gpui-kit = "0.10"
 
 [features]
 # The sessions a panel started, for the tests to read.
@@ -27,7 +27,7 @@ test-support = []
 [dev-dependencies]
 birchpad-terminal-panel = { path = ".", features = ["test-support"] }
 birchpad-widgets.workspace = true
-gpui-kit = { version = "0.8", features = ["test-support"] }
+gpui-kit = { version = "0.10", features = ["test-support"] }
 
 [lints]
 workspace = true
