@@ -8,8 +8,10 @@ trap 'rm -rf "$work"' EXIT
 app="$work/path with spaces/Birchpad.app"
 image="$work/Birchpad test.dmg"
 
-# The smallest bundle the packager can sign and put in an image.
-mkdir -p "$app/Contents/MacOS"
+# Velopack writes its metadata into Resources after copying the bundle. Keep an icon there,
+# as in the release bundle, so the directory can be copied.
+mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
+cp "$here/../icons/Birchpad.icns" "$app/Contents/Resources/"
 sed 's/@VERSION@/0.0.1/g' "$here/Info.plist" > "$app/Contents/Info.plist"
 if bash "$here/package-dmg.sh" "$app" "$image"; then
     echo "Packaging accepted an incomplete bundle" >&2
