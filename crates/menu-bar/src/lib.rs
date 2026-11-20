@@ -883,8 +883,8 @@ use Select::{First, Last};
 impl Select {
     fn index(self, items: &[Item]) -> Option<usize> {
         match self {
-            Self::First | Self::Next => step(items, None, 1),
-            Self::Last | Self::Previous => step(items, None, -1),
+            First | Self::Next => step(items, None, 1),
+            Last | Self::Previous => step(items, None, -1),
         }
     }
 }
