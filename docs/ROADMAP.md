@@ -1197,7 +1197,7 @@ as revision 1 did (105 drawn). With ELK it draws 67. What it showed:
 - [x] Update gpui-kit and the Cargo dependency group.
 - [x] Add Qodana analysis and address its findings. Isolate the Explorer menu preference test
       from the user's Windows settings.
-- [ ] Release 0.8.3: the workspace version, `CHANGELOG.md` and this roadmap updated.
+- [x] Release 0.8.3: the workspace version, `CHANGELOG.md` and this roadmap updated.
       The maintainer checks the draft's artifacts against the
       [release checklist](release-checklist.md) before publishing.
 
