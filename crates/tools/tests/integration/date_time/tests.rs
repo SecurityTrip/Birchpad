@@ -1,13 +1,8 @@
-use chrono::NaiveDate;
-
 use birchpad_tools::date_time::*;
-use chrono::NaiveDateTime;
+use jiff::civil::{DateTime, date};
 
-fn time(year: i32, month: u32, day: u32, h: u32, m: u32, s: u32) -> NaiveDateTime {
-    NaiveDate::from_ymd_opt(year, month, day)
-        .unwrap()
-        .and_hms_opt(h, m, s)
-        .unwrap()
+fn time(year: i16, month: i8, day: i8, h: i8, m: i8, s: i8) -> DateTime {
+    date(year, month, day).at(h, m, s, 0)
 }
 
 #[test]
@@ -34,6 +29,14 @@ fn edges_of_the_clock_and_the_calendar() {
     let noon = time(1999, 12, 31, 12, 59, 59);
     assert_eq!(format("h tt yy", &noon), "12 PM 99");
     assert_eq!(format("yyyyy", &time(7, 1, 1, 0, 0, 0)), "0007");
+    assert_eq!(
+        format("dddd yyyy-MM-dd HH:mm:ss", &time(2024, 2, 29, 23, 59, 59)),
+        "Thursday 2024-02-29 23:59:59"
+    );
+    assert_eq!(
+        format("ddd yyyy-MM-dd HH:mm:ss", &time(2026, 3, 1, 0, 0, 0)),
+        "Sun 2026-03-01 00:00:00"
+    );
     assert_eq!(format("", &noon), "");
     // An unclosed quote takes the rest.
     assert_eq!(format("HH 'open", &noon), "12 open");

@@ -75,10 +75,9 @@ struct BrowserArgs {
 }
 
 /// A time as the summary shows it.
-fn time(time: SystemTime) -> String {
-    chrono::DateTime::<chrono::Local>::from(time)
-        .format("%Y-%m-%d %H:%M:%S")
-        .to_string()
+fn time(time: SystemTime) -> Option<String> {
+    let local = jiff::Zoned::try_from(time).ok()?;
+    Some(local.strftime("%Y-%m-%d %H:%M:%S").to_string())
 }
 
 /// The summary's rows: label and value.
@@ -93,11 +92,11 @@ pub fn summary_rows(
         path.map_or_else(|| name.to_owned(), |path| path.display().to_string()),
     )];
     if let Some(metadata) = path.and_then(|path| std::fs::metadata(path).ok()) {
-        if let Ok(created) = metadata.created() {
-            rows.push((t!("view-extras.created"), time(created)));
+        if let Some(created) = metadata.created().ok().and_then(time) {
+            rows.push((t!("view-extras.created"), created));
         }
-        if let Ok(modified) = metadata.modified() {
-            rows.push((t!("view-extras.modified"), time(modified)));
+        if let Some(modified) = metadata.modified().ok().and_then(time) {
+            rows.push((t!("view-extras.modified"), modified));
         }
     }
     rows.extend([

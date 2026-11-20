@@ -167,7 +167,7 @@ pub fn backup_path(
     target: &Path,
     mode: birchpad_config::BackupOnSave,
     folder: &str,
-    now: chrono::NaiveDateTime,
+    now: jiff::civil::DateTime,
 ) -> Option<PathBuf> {
     let name = target.file_name()?.to_string_lossy().into_owned();
     match mode {
@@ -178,7 +178,7 @@ pub fn backup_path(
                 "" => target.parent()?.join("nppBackup"),
                 folder => PathBuf::from(folder),
             };
-            let stamp = now.format("%Y-%m-%d_%H%M%S");
+            let stamp = now.strftime("%Y-%m-%d_%H%M%S");
             Some(folder.join(format!("{name}.{stamp}.bak")))
         }
     }
@@ -472,7 +472,7 @@ async fn write_buffer(
             &path,
             files.backup_on_save,
             &files.backup_folder,
-            chrono::Local::now().naive_local(),
+            jiff::Zoned::now().datetime(),
         )
     })?;
     let target = path.clone();

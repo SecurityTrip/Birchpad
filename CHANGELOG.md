@@ -24,6 +24,8 @@ version's release notes from its section here.
   check all translations for missing or extra keys, English text, plural forms and placeholders.
 - The hex editor uses the `HEX` column label in every interface language.
 - The macOS packager finds the .NET runtime when the runner installs it through Homebrew.
+- Switched to the maintained Jiff library for dates and local time while keeping
+  existing date patterns and backup filenames.
 
 ### Security
 

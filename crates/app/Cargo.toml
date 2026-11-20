@@ -39,7 +39,7 @@ birchpad-tray.workspace = true
 birchpad-ui.workspace = true
 birchpad-update = { workspace = true, features = ["installer"] }
 birchpad-view.workspace = true
-chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
+jiff = { workspace = true, features = ["tz-system", "tzdb-zoneinfo", "tzdb-bundle-platform"] }
 futures = "0.3"
 gpui-kit = "0.8"
 raw-window-handle = "0.6"

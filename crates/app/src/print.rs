@@ -86,7 +86,7 @@ impl PrintSource {
         }
         let title = buffer.display_name();
         let path = buffer.path();
-        let now = chrono::Local::now().naive_local();
+        let now = jiff::Zoned::now().datetime();
         let date = |pattern: &str| birchpad_tools::date_time::format(pattern, &now);
         let variables = Variables {
             full_path: path.map_or_else(|| title.clone(), |path| path.display().to_string()),

@@ -232,7 +232,7 @@ fn inserting_the_date_and_time(cx: &mut TestAppContext) {
     cx.update(|_, cx| {
         cx.global_mut::<AppState>().settings.date.custom_format = "'year' yyyy".into();
     });
-    let year = chrono::Datelike::year(&chrono::Local::now());
+    let year = jiff::Zoned::now().year();
     run(
         &workspace,
         Invocation::with_args("edit.insert-date-time", json!({ "format": "custom" })),
