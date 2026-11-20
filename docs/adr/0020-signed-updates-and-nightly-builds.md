@@ -55,7 +55,8 @@ was signed. Phase 2 adds the nightly channel, background checks and automatic up
   elevation, `…-full.nupkg` is the update package. Deltas are not produced yet.
 - Since 0.8.2, `vpk pack` on macOS makes a universal `birchpad-<v>-macos.pkg` and a matching
   `birchpad-<v>-macos-full.nupkg`. Both architectures select the same `macos` entry in the
-  signed manifest. Velopack locates its updater and version metadata in the installed
+  signed manifest. The packager lets Velopack choose its default macOS runtime for the
+  universal bundle. Velopack locates its updater and version metadata in the installed
   bundle. The separate drag-to-Applications disk image omits those files. The PKG has no
   Developer ID Installer signature or notarization yet.
 - Birchpad runs Velopack's startup hooks first thing (installing, uninstalling, and applying an

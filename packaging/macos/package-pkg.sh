@@ -18,10 +18,10 @@ trap 'rm -rf "$work"' EXIT
 # the default location on Apple silicon.
 export DOTNET_ROOT="${DOTNET_ROOT:-$(dirname "$(realpath "$(command -v dotnet)")")}"
 
-# Both the prebuilt app and Velopack's UpdateMac support Apple silicon and Intel.
+# Use the macOS default runtime for the prebuilt universal app and UpdateMac.
 vpk pack --packId Birchpad --packVersion "$version" --packTitle Birchpad \
     --packAuthors "The Birchpad Contributors" --packDir "$app" \
-    --mainExe birchpad --runtime osx --channel "macos-$channel" \
+    --mainExe birchpad --channel "macos-$channel" \
     --delta None --noPortable --outputDir "$work"
 
 installers=("$work"/*.pkg)
