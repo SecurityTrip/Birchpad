@@ -14,6 +14,10 @@ output=$4
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 
+# The vpk launcher does not search PATH for .NET, which Homebrew installs outside
+# the default location on Apple silicon.
+export DOTNET_ROOT="${DOTNET_ROOT:-$(dirname "$(realpath "$(command -v dotnet)")")}"
+
 # Both the prebuilt app and Velopack's UpdateMac support Apple silicon and Intel.
 vpk pack --packId Birchpad --packVersion "$version" --packTitle Birchpad \
     --packAuthors "The Birchpad Contributors" --packDir "$app" \

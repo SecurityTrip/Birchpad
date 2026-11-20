@@ -23,6 +23,7 @@ version's release notes from its section here.
 - Translated remaining English labels in the German, French and Russian interfaces. Tests
   check all translations for missing or extra keys, English text, plural forms and placeholders.
 - The hex editor uses the `HEX` column label in every interface language.
+- The macOS packager finds the .NET runtime when the runner installs it through Homebrew.
 
 ## [0.8.1] - 2026-11-15
 
