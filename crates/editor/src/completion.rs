@@ -305,7 +305,7 @@ impl EditorView {
     /// Typing `typed` with auto-closing: true when it paired or stepped over a partner.
     pub fn type_paired(&mut self, typed: &str, cx: &mut Context<Self>) -> bool {
         let mut chars = typed.chars();
-        let (Some(ch), None) = (chars.next(), chars.next()) else {
+        let Some(ch) = chars.next().filter(|_| chars.next().is_none()) else {
             return false;
         };
         if self.overwrite || !self.is_editable(cx) {

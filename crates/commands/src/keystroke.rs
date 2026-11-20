@@ -200,9 +200,7 @@ impl Keystroke {
             return None;
         }
         let mut chars = self.key.chars();
-        let (Some(key), None) = (chars.next(), chars.next()) else {
-            return None;
-        };
+        let key = chars.next().filter(|_| chars.next().is_none())?;
         let (_, shifted) = US_SHIFTED.iter().find(|(plain, _)| *plain == key)?;
         Some(Self {
             modifiers: Modifiers {

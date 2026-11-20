@@ -604,7 +604,7 @@ impl MenuBar {
             return;
         }
         let mut chars = event.keystroke.key.chars();
-        let (Some(key), None) = (chars.next(), chars.next()) else {
+        let Some(key) = chars.next().filter(|_| chars.next().is_none()) else {
             return;
         };
         let Some(key) = key.to_lowercase().next() else {

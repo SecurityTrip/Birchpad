@@ -40,6 +40,11 @@ profile:
     - inspection: RsWrongLifetimeParametersNumber
       ignore:
         - crates/app/tests/integration/language_servers/tests.rs
+    # Cargo resolves the cross-crate test feature references in these manifests.
+    - inspection: TomlUnresolvedReference
+      ignore:
+        - crates/app/Cargo.toml
+        - crates/editor/Cargo.toml
 
 #Enable inspections
 #include:
