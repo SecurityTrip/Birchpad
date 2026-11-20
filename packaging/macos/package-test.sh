@@ -37,7 +37,7 @@ prefix="$output/birchpad-$version-macos"
 pkgutil --expand-full "$prefix.pkg" "$work/pkg"
 updater=$(find "$work/pkg" -type f -path '*/Birchpad.app/Contents/MacOS/UpdateMac' -print)
 test -x "$updater"
-lipo -verify_arch arm64 x86_64 "$updater"
+lipo "$updater" -verify_arch arm64 x86_64
 unzip -Z1 "$prefix-full.nupkg" > "$work/package-files"
 grep -E '(^|/)Contents/MacOS/UpdateMac$' "$work/package-files"
 grep -E '(^|/)Contents/Resources/sq\.version$' "$work/package-files"
