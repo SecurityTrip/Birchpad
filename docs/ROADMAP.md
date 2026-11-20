@@ -1186,9 +1186,9 @@ as revision 1 did (105 drawn). With ELK it draws 67. What it showed:
       those who drag the app themselves. Signing it with a Developer ID Installer certificate,
       which management tools such as Jamf and Intune ask for, waits for Apple's certificates,
       as the app's signing does
-- [ ] Release 0.8.2: the workspace version (0.8.2, set when its branch opens, so that nightly
-      builds are its pre-releases), `CHANGELOG.md` and this roadmap updated; the
-      [release checklist](release-checklist.md) gone through
+- [x] Release 0.8.2: the workspace version, `CHANGELOG.md` and this roadmap updated.
+      The maintainer checks the draft's artifacts against the
+      [release checklist](release-checklist.md) before publishing.
 
 ### Release 0.9.0: large and remote files, other ways to edit
 
