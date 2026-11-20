@@ -171,7 +171,7 @@ fn add_starts_a_manifest_and_keeps_the_newest_of_each_channel() {
     let file = package_file(dir.path(), "birchpad-full.nupkg", b"package");
     let add = |version: &str, extra: &str| {
         let rest = format!(
-            "--version {version} {PAGE} --package windows-x64={} {extra}",
+            "--version {version} {PAGE} --package macos={} {extra}",
             file.display()
         );
         run_in(dir.path(), "add", &rest, &env)
@@ -188,6 +188,7 @@ fn add_starts_a_manifest_and_keeps_the_newest_of_each_channel() {
     assert_eq!(manifest.timestamp, NOW);
     assert_eq!(manifest.expires, NOW + DEFAULT_EXPIRY_DAYS * DAY);
     let package = &manifest.releases[0].packages[0];
+    assert_eq!(package.platform, "macos");
     assert_eq!(package.url, "https://example.org/d/birchpad-full.nupkg");
 
     // Two of each channel kept, newest first; the same version again replaces it.

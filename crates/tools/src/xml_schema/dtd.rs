@@ -199,8 +199,14 @@ impl Dtd {
                 "NMTOKEN" => AttributeKind::Token,
                 "NMTOKENS" => AttributeKind::Tokens,
                 "NOTATION" => {
+                    let Some(values) = tokens
+                        .get(at + 2)
+                        .filter(|values| values.starts_with('(') && values.ends_with(')'))
+                    else {
+                        return;
+                    };
                     at += 1;
-                    AttributeKind::Choice(choices(&tokens[at + 1]))
+                    AttributeKind::Choice(choices(values))
                 }
                 choice if choice.starts_with('(') => AttributeKind::Choice(choices(choice)),
                 _ => return,

@@ -336,7 +336,7 @@ fn add(options: &Options, env: &Env) -> Result<()> {
 /// Describes a package file: its name, address, size and hashes.
 pub fn package(platform: &str, path: &Path, base: &str) -> Result<Package> {
     ensure!(
-        ["windows-x64", "windows-arm64"].contains(&platform),
+        matches!(platform, "windows-x64" | "windows-arm64" | "macos"),
         "unknown platform {platform:?}"
     );
     let mut file =

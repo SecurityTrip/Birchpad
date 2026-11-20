@@ -6,6 +6,11 @@ version's release notes from its section here.
 
 ## [Unreleased]
 
+### Fixed
+
+- The XML validator handles incomplete DTD notation declarations without crashing.
+- The signed update manifest includes self-updating macOS packages.
+
 ## [0.8.2] - 2026-11-20
 
 ### Added
