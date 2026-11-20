@@ -6,6 +6,13 @@ version's release notes from its section here.
 
 ## [Unreleased]
 
+### Changed
+
+- Updated gpui-kit to 0.10.0 and refreshed the Cargo dependency group
+  ([#76](https://github.com/SecurityTrip/Birchpad/pull/76),
+  [#79](https://github.com/SecurityTrip/Birchpad/pull/79)).
+- Added a Qodana configuration for static analysis.
+
 ### Fixed
 
 - The XML validator handles incomplete DTD notation declarations without crashing.
