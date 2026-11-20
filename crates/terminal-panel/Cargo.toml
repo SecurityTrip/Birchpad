@@ -1,7 +1,7 @@
 [package]
 name = "birchpad-terminal-panel"
 description = "Birchpad's terminal panel: the user's shell drawn in a panel under the documents, its keys and its colors."
-version = "0.8.1"
+version = "0.8.3"
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true

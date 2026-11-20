@@ -1,7 +1,7 @@
 [package]
 name = "birchpad-lsp"
 description = "Birchpad's language server client without a window: the protocol, the server process, positions, URIs and the servers' answers as plain values."
-version = "0.8.0"
+version = "0.8.3"
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true

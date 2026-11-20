@@ -1,7 +1,7 @@
 [package]
 name = "birchpad-spell-check"
 description = "Birchpad's spell checker: misspelled words of a document underlined, the next and the previous one, suggestions and the user's own words."
-version = "0.8.1"
+version = "0.8.3"
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
