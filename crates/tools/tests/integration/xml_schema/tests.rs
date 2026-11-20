@@ -658,8 +658,10 @@ fn dtd_notation_attributes_require_a_parenthesized_list() {
     assert_eq!(validate_dtd(&document("png"), Some(dtd)).unwrap().len(), 1);
 
     let invalid_dtd = dtd.replace("(svg)", "svg");
+    let found = validate_dtd(&document("svg"), Some(&invalid_dtd)).unwrap();
+    assert_eq!(found.len(), 1);
     assert_eq!(
-        validate_dtd(&document("png"), Some(&invalid_dtd)).unwrap(),
-        []
+        found[0].message,
+        "the attribute format is not declared for <a>"
     );
 }
