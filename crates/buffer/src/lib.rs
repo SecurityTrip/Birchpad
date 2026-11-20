@@ -92,7 +92,7 @@ struct SyntaxState {
 
 /// What a user defined language colored, up to `end`, in revision `revision` of the text.
 struct UdlCache {
-    revision: birchpad_core::RevisionId,
+    revision: RevisionId,
     end: usize,
     pieces: std::rc::Rc<Vec<(ByteRange<usize>, UdlKind)>>,
 }
@@ -415,6 +415,7 @@ impl gpui_kit::Global for UserLanguages {}
 impl UserLanguages {
     /// The user defined language of the file named `name`, if the application has one for it.
     pub fn for_file(name: &str, cx: &gpui_kit::App) -> Option<std::rc::Rc<UserLanguage>> {
-        cx.try_global::<Self>().and_then(|find| (find.0)(name, cx))
+        cx.try_global::<Self>()
+            .and_then(|Self(find)| find(name, cx))
     }
 }

@@ -1190,6 +1190,17 @@ as revision 1 did (105 drawn). With ELK it draws 67. What it showed:
       The maintainer checks the draft's artifacts against the
       [release checklist](release-checklist.md) before publishing.
 
+### Release 0.8.3: XML validation and macOS updates
+
+- [x] Report an incomplete DTD notation declaration as a validation error.
+- [x] Include self-updating macOS packages in the signed update manifest.
+- [x] Update gpui-kit and the Cargo dependency group.
+- [x] Add Qodana analysis and address its findings. Isolate the Explorer menu preference test
+      from the user's Windows settings.
+- [x] Release 0.8.3: the workspace version, `CHANGELOG.md` and this roadmap updated.
+      The maintainer checks the draft's artifacts against the
+      [release checklist](release-checklist.md) before publishing.
+
 ### Release 0.9.0: large and remote files, other ways to edit
 
 - [ ] 7.8 Multi-gigabyte files through memory mapping, read and searched without loading them

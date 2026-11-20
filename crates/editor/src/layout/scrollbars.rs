@@ -18,7 +18,7 @@ pub(super) fn vertical_scrollbar(
     let height = (track.size.height * (visible / total))
         .max(px(24.))
         .min(track.size.height);
-    let max_top = (layout.total_rows.saturating_sub(layout.full_rows)) as f32;
+    let max_top = layout.total_rows.saturating_sub(layout.full_rows) as f32;
     let fraction = if max_top > 0. {
         (scroll_top as f32 / max_top).clamp(0., 1.)
     } else {

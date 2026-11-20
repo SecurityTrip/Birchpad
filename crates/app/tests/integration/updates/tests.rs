@@ -439,13 +439,13 @@ fn the_status_bar_shows_a_download_no_window_shows(cx: &mut TestAppContext) {
     assert!((drawn_share("status-update", cx) - 0.25).abs() < 0.01);
 
     // Hovering says what is happening.
-    TOOLTIP.with(|tooltip| tooltip.take());
+    TOOLTIP.take();
     let bar = cx.debug_bounds("status-update-track").unwrap();
     cx.simulate_mouse_move(bar.center(), None, Modifiers::none());
     cx.executor().advance_clock(Duration::from_secs(2));
     cx.run_until_parked();
     assert_eq!(
-        TOOLTIP.with(|tooltip| tooltip.take()).as_deref(),
+        TOOLTIP.take().as_deref(),
         Some("Downloading Birchpad 99.0.0: 1.0 MB of 4.0 MB")
     );
     finish(cx);

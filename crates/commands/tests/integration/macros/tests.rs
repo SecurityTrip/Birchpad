@@ -8,12 +8,10 @@ fn searches_are_recorded_their_own_way() {
         "macro.trim-and-save",
         "file.exit",
     ] {
-        assert!(!birchpad_commands::is_recordable(command), "{command}");
+        assert!(!is_recordable(command), "{command}");
     }
-    assert!(birchpad_commands::is_recordable(
-        "search.select-and-find-next"
-    ));
-    assert!(birchpad_commands::is_recordable("edit.trim"));
+    assert!(is_recordable("search.select-and-find-next"));
+    assert!(is_recordable("edit.trim"));
 }
 
 use birchpad_commands::*;

@@ -393,7 +393,7 @@ impl Render for FunctionList {
                 rows,
                 current,
             } => {
-                let rows = std::rc::Rc::new(rows);
+                let rows = Rc::new(rows);
                 let list_rows = rows.clone();
                 uniform_list(
                     "function-list-rows",

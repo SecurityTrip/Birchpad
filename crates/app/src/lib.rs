@@ -269,18 +269,18 @@ pub fn run() {
                             .update(cx, |workspace, cx| workspace.run(&invocation, window, cx));
                     }
                     // Preferences > MISC > Minimize to system tray, on Windows and macOS.
-                    crate::tray::apply(AppState::global(cx).settings.misc.minimize_to_tray);
-                    if crate::tray::SUPPORTED
-                        && let Err(error) = crate::tray::watch(window)
+                    tray::apply(AppState::global(cx).settings.misc.minimize_to_tray);
+                    if tray::SUPPORTED
+                        && let Err(error) = tray::watch(window)
                     {
                         eprintln!("tray: {error:#}");
                     }
                     // `-systemtray`: in the tray, or minimized where there is none.
-                    match crate::tray::start(command_line.minimized, crate::tray::SUPPORTED) {
-                        crate::tray::Start::Normal => {}
-                        crate::tray::Start::Minimized => window.minimize_window(),
-                        crate::tray::Start::InTray => {
-                            if let Err(error) = crate::tray::send(window) {
+                    match tray::start(command_line.minimized, tray::SUPPORTED) {
+                        tray::Start::Normal => {}
+                        tray::Start::Minimized => window.minimize_window(),
+                        tray::Start::InTray => {
+                            if let Err(error) = tray::send(window) {
                                 eprintln!("tray: {error:#}");
                                 window.minimize_window();
                             }

@@ -45,7 +45,7 @@ pub fn watch(window: &impl HasWindowHandle) -> Result<()> {
     #[cfg(feature = "test-support")]
     {
         let _ = window;
-        WATCHED.with(|watched| watched.set(true));
+        WATCHED.set(true);
         Ok(())
     }
     #[cfg(not(feature = "test-support"))]
@@ -59,7 +59,7 @@ pub fn send(window: &impl HasWindowHandle) -> Result<()> {
     #[cfg(feature = "test-support")]
     {
         let _ = window;
-        IN_TRAY.with(|in_tray| in_tray.set(true));
+        IN_TRAY.set(true);
         Ok(())
     }
     #[cfg(not(feature = "test-support"))]
@@ -106,7 +106,7 @@ mod flag {
 
     #[cfg(feature = "test-support")]
     pub(super) fn set(on: bool) {
-        ON.with(|flag| flag.set(on));
+        ON.set(on);
     }
 
     #[cfg(feature = "test-support")]

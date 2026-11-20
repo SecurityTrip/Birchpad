@@ -32,7 +32,6 @@ birchpad-search-results.workspace = true
 birchpad-spell-check.workspace = true
 birchpad-syntax.workspace = true
 birchpad-terminal-panel.workspace = true
-birchpad-terminal.workspace = true
 birchpad-theme.workspace = true
 birchpad-tools.workspace = true
 birchpad-tray.workspace = true
@@ -41,7 +40,7 @@ birchpad-update = { workspace = true, features = ["installer"] }
 birchpad-view.workspace = true
 jiff = { workspace = true, features = ["tz-system", "tzdb-zoneinfo", "tzdb-bundle-platform"] }
 futures = "0.3"
-gpui-kit = "0.8"
+gpui-kit = "0.10"
 raw-window-handle = "0.6"
 semver = "1"
 serde.workspace = true
@@ -79,7 +78,7 @@ birchpad-editor = { workspace = true, features = ["test-support"] }
 birchpad-ui = { workspace = true, features = ["test-support"] }
 # Tests switch the language each in its own thread.
 birchpad-i18n = { workspace = true, features = ["per-thread"] }
-gpui-kit = { version = "0.8", features = ["test-support"] }
+gpui-kit = { version = "0.10", features = ["test-support"] }
 # The SHA-256 of an update package served in a test.
 sha2 = "0.11"
 tempfile = "3"

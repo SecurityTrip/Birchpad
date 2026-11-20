@@ -247,7 +247,7 @@ pub fn install_package(
     fs::remove_file(&archive).ok();
     let folder = component.folder(data);
     fs::remove_dir_all(&folder).ok();
-    fs::File::create(unpacking.join(INSTALLED)).map_err(|error| error.to_string())?;
+    File::create(unpacking.join(INSTALLED)).map_err(|error| error.to_string())?;
     fs::rename(&unpacking, &folder).map_err(|error| {
         cleanup();
         error.to_string()

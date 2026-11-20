@@ -168,15 +168,9 @@ fn languages_new_documents_and_files() {
     assert!(!settings.session.remember_inaccessible);
     assert!(!settings.tabs.exit_on_last_close);
     assert_eq!(resolved.diagnostics.len(), 1, "{:?}", resolved.diagnostics);
-    assert!(
-        birchpad_config::check_setting("languages.go.tab-width", &toml::Value::Integer(8)).is_ok()
-    );
-    assert!(
-        birchpad_config::check_setting("languages.go.width", &toml::Value::Integer(8)).is_err()
-    );
-    assert!(
-        birchpad_config::check_setting("languages..tab-width", &toml::Value::Integer(8)).is_err()
-    );
+    assert!(check_setting("languages.go.tab-width", &toml::Value::Integer(8)).is_ok());
+    assert!(check_setting("languages.go.width", &toml::Value::Integer(8)).is_err());
+    assert!(check_setting("languages..tab-width", &toml::Value::Integer(8)).is_err());
 }
 
 #[test]

@@ -171,7 +171,7 @@ impl Searcher {
             if !self.whole_word || is_whole_word(text, &found) {
                 return Some(found);
             }
-            start = crate::motion::next_boundary(text, found.start);
+            start = next_boundary(text, found.start);
         }
     }
 
@@ -194,7 +194,7 @@ impl Searcher {
             let mut last = None;
             let mut from = start;
             while let Some(found) = self.find_in(text, from..range.end) {
-                from = crate::motion::next_boundary(text, found.start);
+                from = next_boundary(text, found.start);
                 last = Some(found);
             }
             if last.is_some() || start <= range.start {
@@ -233,7 +233,7 @@ impl Searcher {
         let mut from = 0;
         while let Some(found) = self.find_in(text, from..text.len()) {
             from = if found.is_empty() {
-                crate::motion::next_boundary(text, found.end)
+                next_boundary(text, found.end)
             } else {
                 found.end
             };

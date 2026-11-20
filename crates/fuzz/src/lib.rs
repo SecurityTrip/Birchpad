@@ -114,8 +114,8 @@ pub fn open_file(data: &[u8]) -> bool {
             // As Birchpad saves it: an EBCDIC file read with NEL gets NEL back.
             let saved =
                 encode_document(&file.text, format).expect("text that decoded cleanly encodes");
-            assert!(
-                saved == bytes,
+            assert_eq!(
+                saved, bytes,
                 "{format:?} does not save back to the bytes read"
             );
             assert_eq!(file.changes.count, 0);
@@ -262,7 +262,7 @@ pub fn context_menu(data: &[u8]) -> bool {
         assert_ne!(nodes.first(), Some(&Node::Separator));
         assert_ne!(nodes.last(), Some(&Node::Separator));
         for pair in nodes.windows(2) {
-            assert!(pair != [Node::Separator, Node::Separator]);
+            assert_ne!(pair, [Node::Separator, Node::Separator]);
         }
         for node in nodes {
             match node {

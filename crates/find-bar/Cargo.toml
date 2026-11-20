@@ -1,7 +1,7 @@
 [package]
 name = "birchpad-find-bar"
 description = "Birchpad's find panel: its tabs, fields, search modes and options."
-version = "0.8.1"
+version = "0.8.3"
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
@@ -15,7 +15,7 @@ birchpad-editor.workspace = true
 birchpad-i18n.workspace = true
 birchpad-ui.workspace = true
 birchpad-widgets.workspace = true
-gpui-kit = "0.8"
+gpui-kit = "0.10"
 
 [features]
 # What the tests set and read of the panel.

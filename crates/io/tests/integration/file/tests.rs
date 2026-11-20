@@ -37,7 +37,7 @@ fn ebcdic_lines_broken_with_nel_are_lines() {
         "kept although the text has LF"
     );
     assert_eq!(
-        birchpad_io::encode_document(doc.text(), doc.format()).unwrap(),
+        encode_document(doc.text(), doc.format()).unwrap(),
         bytes,
         "saved as it was read"
     );
@@ -50,10 +50,7 @@ fn nel_stays_a_character_where_lines_break_otherwise() {
     let file = ebcdic(&mixed, "IBM037");
     assert_eq!(file.text.to_string(), "A\u{85}B\n");
     assert_ne!(file.format.line_ending, LineEnding::Nel);
-    assert_eq!(
-        birchpad_io::encode_document(&file.text, file.format).unwrap(),
-        mixed
-    );
+    assert_eq!(encode_document(&file.text, file.format).unwrap(), mixed);
     // No line break at all, and a code page that is not EBCDIC.
     assert_ne!(
         ebcdic(&[0xC1], "IBM037").format.line_ending,
@@ -75,19 +72,19 @@ fn nel_is_written_only_in_ebcdic() {
         line_ending: LineEnding::Nel,
     };
     assert_eq!(
-        birchpad_io::encode_document(&text, nel(Encoding::Legacy("IBM875"))).unwrap(),
+        encode_document(&text, nel(Encoding::Legacy("IBM875"))).unwrap(),
         [0x81, 0x15, 0x82]
     );
     assert_eq!(
-        birchpad_io::encode_document(&text, nel(Encoding::Utf8)).unwrap(),
+        encode_document(&text, nel(Encoding::Utf8)).unwrap(),
         b"a\nb",
         "after Convert to UTF-8, LF"
     );
-    assert!(birchpad_io::is_ebcdic(Encoding::Legacy("IBM875")));
-    assert!(birchpad_io::is_ebcdic(Encoding::Legacy("IBM1140")));
-    assert!(!birchpad_io::is_ebcdic(Encoding::Legacy("IBM866")));
-    assert!(!birchpad_io::is_ebcdic(Encoding::Legacy("windows-1253")));
-    assert!(!birchpad_io::is_ebcdic(Encoding::Utf8));
+    assert!(is_ebcdic(Encoding::Legacy("IBM875")));
+    assert!(is_ebcdic(Encoding::Legacy("IBM1140")));
+    assert!(!is_ebcdic(Encoding::Legacy("IBM866")));
+    assert!(!is_ebcdic(Encoding::Legacy("windows-1253")));
+    assert!(!is_ebcdic(Encoding::Utf8));
 }
 
 #[test]
@@ -169,8 +166,8 @@ fn ascii_files_take_the_encoding_asked_for_and_guessing_can_stop() {
     assert_eq!(decode(b"abc", utf16).encoding, Encoding::Utf8);
     // Without guessing, bytes that are not UTF-8 are ANSI.
     let cyrillic = [0xcf, 0xf0, 0xe8, 0xe2, 0xe5, 0xf2, 0x20, 0xec, 0xe8, 0xf0];
-    let guessing = birchpad_io::detect(&cyrillic, ansi);
-    let not_guessing = birchpad_io::detect_without_guess(&cyrillic, ansi);
+    let guessing = detect(&cyrillic, ansi);
+    let not_guessing = detect_without_guess(&cyrillic, ansi);
     assert_eq!(not_guessing.encoding, ansi);
     assert_eq!(not_guessing.by, DetectedBy::Ansi);
     let _ = guessing;
@@ -186,7 +183,7 @@ fn ascii_files_take_the_encoding_asked_for_and_guessing_can_stop() {
         ansi
     );
     assert_eq!(
-        birchpad_io::detect_without_guess(b"\xef\xbb\xbfa", ansi).by,
+        detect_without_guess(b"\xef\xbb\xbfa", ansi).by,
         DetectedBy::Bom
     );
 }

@@ -1,7 +1,7 @@
 [package]
 name = "birchpad-editor"
 description = "Birchpad's editor view: a document's text drawn and edited in GPUI."
-version = "0.8.1"
+version = "0.8.3"
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
@@ -23,7 +23,7 @@ birchpad-tools.workspace = true
 birchpad-ui.workspace = true
 birchpad-view.workspace = true
 birchpad-widgets.workspace = true
-gpui-kit = "0.8"
+gpui-kit = "0.10"
 serde.workspace = true
 serde_json.workspace = true
 
@@ -36,7 +36,7 @@ test-support = ["birchpad-ui/test-support"]
 birchpad-editor = { path = ".", features = ["test-support"] }
 birchpad-i18n = { workspace = true, features = ["per-thread"] }
 birchpad-ui = { workspace = true, features = ["test-support"] }
-gpui-kit = { version = "0.8", features = ["test-support"] }
+gpui-kit = { version = "0.10", features = ["test-support"] }
 tempfile = "3"
 
 [lints]

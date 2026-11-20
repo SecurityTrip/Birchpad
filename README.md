@@ -6,7 +6,7 @@ English · [Русский](README.ru.md)
 
 A fast, extensible, cross-platform text editor in the spirit of Notepad++, written in Rust.
 
-> **Status: alpha (0.8).** A Notepad++-like editor: tabs and split views, encodings, syntax
+> **Status: beta (0.8).** A Notepad++-like editor: tabs and split views, encodings, syntax
 > highlighting for 50 languages with folding, multi-cursor and column editing, bookmarks,
 > sessions that keep unsaved work, Find in Files, macros, themes, an interface in English,
 > German, Spanish, French and Russian, plugins as WebAssembly components and scripts in Rhai, with Compare, JSON and XML
@@ -67,7 +67,7 @@ with > Change All.
 To uninstall, use Installed apps in Windows Settings for the installer and the MSI, or delete the
 folder of a portable copy.
 
-Nightly builds of the next version's branch (`v0.8.2` or `v0.9.0` after 0.8.1) are published as
+Nightly builds of the next version's branch (such as `v0.8.3`) are published as
 pre-releases; set `updates.channel = "nightly"` to get them as updates.
 
 ## Code signing policy

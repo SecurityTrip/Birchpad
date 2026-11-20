@@ -649,3 +649,19 @@ fn name_tokens_in_a_dtd() {
     let fine = text.replace("x y", "x-y.1").replace(" !", " :z");
     assert_eq!(validate_dtd(&fine, None).unwrap(), []);
 }
+
+#[test]
+fn dtd_notation_attributes_require_a_parenthesized_list() {
+    let dtd = "<!ELEMENT a EMPTY><!ATTLIST a format NOTATION (svg) #IMPLIED>";
+    let document = |value| format!(r#"<!DOCTYPE a SYSTEM "a.dtd"><a format="{value}"/>"#);
+    assert_eq!(validate_dtd(&document("svg"), Some(dtd)).unwrap(), []);
+    assert_eq!(validate_dtd(&document("png"), Some(dtd)).unwrap().len(), 1);
+
+    let invalid_dtd = dtd.replace("(svg)", "svg");
+    let found = validate_dtd(&document("svg"), Some(&invalid_dtd)).unwrap();
+    assert_eq!(found.len(), 1);
+    assert_eq!(
+        found[0].message,
+        "the attribute format is not declared for <a>"
+    );
+}

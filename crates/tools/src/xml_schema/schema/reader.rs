@@ -325,9 +325,7 @@ impl<'a, 'input> SchemaReader<'a, 'input> {
 }
 
 /// Reads the schema `text`.
-pub(super) fn read_schema<'a, 'input>(
-    document: &'a Document<'input>,
-) -> Result<Schema, SchemaError> {
+pub(super) fn read_schema(document: &Document<'_>) -> Result<Schema, SchemaError> {
     let root = document.root_element();
     if !is_xsd(&root, "schema") {
         return Err(SchemaError(t!("tools.xml-schema.not-a-schema")));

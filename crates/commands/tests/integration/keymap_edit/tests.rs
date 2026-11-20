@@ -18,7 +18,7 @@ fn effective(text: &str) -> Keymap {
 fn keys_of(keymap: &Keymap, invocation: &Invocation) -> Vec<String> {
     keymap
         .bindings_for(invocation)
-        .map(birchpad_commands::Binding::keys_string)
+        .map(Binding::keys_string)
         .collect()
 }
 

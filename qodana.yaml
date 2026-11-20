@@ -1,0 +1,83 @@
+#-------------------------------------------------------------------------------#
+#               Qodana analysis is configured by qodana.yaml file               #
+#             https://www.jetbrains.com/help/qodana/qodana-yaml.html            #
+#-------------------------------------------------------------------------------#
+
+#################################################################################
+#              WARNING: Do not store sensitive information in this file,        #
+#               as its contents will be included in the Qodana report.          #
+#################################################################################
+version: "1.0"
+
+#Specify inspection profile for code analysis
+profile:
+  base:
+    name: qodana.starter
+  inspections:
+    # These fixtures are opened as text or built as a separate Cargo workspace.
+    - inspection: RsDetachedFile
+      ignore:
+        - crates/syntax/tests/samples/sample.rs
+        - crates/plugin/tests/fixtures/probe/src/lib.rs
+    - inspection: PyClassHasNoInitInspection
+      ignore:
+        - crates/syntax/tests/samples/sample.py
+    # unittest calls setUp by name.
+    - inspection: PyPep8NamingInspection
+      ignore:
+        - .github/winget_manifest_test.py
+    # Range uses matching from_virtual and to_virtual accessors in its public API.
+    - inspection: RsSelfConvention
+      ignore:
+        - crates/core/src/selection.rs
+    # rustc checks the Copy types, macro expansion and lifetime elision in these tests.
+    - inspection: RsBorrowChecker
+      ignore:
+        - crates/editor/tests/integration/banner/tests.rs
+    - inspection: RsTypeCheck
+      ignore:
+        - crates/commands/tests/integration/keystroke/properties.rs
+    - inspection: RsWrongLifetimeParametersNumber
+      ignore:
+        - crates/app/tests/integration/language_servers/tests.rs
+    # Cargo resolves the cross-crate test feature references in these manifests.
+    - inspection: TomlUnresolvedReference
+      ignore:
+        - crates/app/Cargo.toml
+        - crates/editor/Cargo.toml
+
+#Enable inspections
+#include:
+#  - name: <SomeEnabledInspectionId>
+
+#Disable inspections
+#exclude:
+#  - name: <SomeDisabledInspectionId>
+#    paths:
+#      - <path/where/not/run/inspection>
+
+#Execute shell command before Qodana execution (Applied in CI/CD pipeline)
+#bootstrap: sh ./prepare-qodana.sh
+
+#Install IDE plugins before Qodana execution (Applied in CI/CD pipeline)
+#plugins:
+#  - id: <plugin.id> #(plugin id can be found at https://plugins.jetbrains.com)
+
+# Quality gate. Will fail the CI/CD pipeline if any condition is not met
+# severityThresholds - configures maximum thresholds for different problem severities
+# testCoverageThresholds - configures minimum code coverage on a whole project and newly added code
+# dependencyLicenses - fails the run on prohibited or unknown dependency licenses
+# Code Coverage is available in Ultimate and Ultimate Plus plans
+#failureConditions:
+#  severityThresholds:
+#    any: 15
+#    critical: 5
+#  testCoverageThresholds:
+#    fresh: 70
+#    total: 50
+#  dependencyLicenses:
+#    failOnProhibited: true
+#    failOnUnknown: false
+
+#Specify Qodana linter for analysis (Applied in CI/CD pipeline)
+linter: jetbrains/qodana-rust:2026.2-eap

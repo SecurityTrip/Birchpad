@@ -216,7 +216,7 @@ impl EditorView {
                 .position(|row| row.line == line)
                 .unwrap_or(0);
             let text = self.text(cx).clone();
-            self.go_to(birchpad_core::motion::line_range(&text, line).start, cx);
+            self.go_to(line_range(&text, line).start, cx);
             self.scroll_to_line(line, cx);
             self.scroll_top = (self.scroll_top - above as f64).max(0.);
             self.autoscroll = false;

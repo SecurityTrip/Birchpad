@@ -1,7 +1,7 @@
 [package]
 name = "birchpad-hex-editor"
 description = "Birchpad's hex editor: a document's bytes shown and edited in place of its text."
-version = "0.8.1"
+version = "0.8.3"
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
@@ -17,7 +17,7 @@ birchpad-io.workspace = true
 birchpad-tools.workspace = true
 birchpad-ui.workspace = true
 birchpad-widgets.workspace = true
-gpui-kit = "0.8"
+gpui-kit = "0.10"
 
 [lints]
 workspace = true

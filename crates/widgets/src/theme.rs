@@ -37,8 +37,8 @@ pub struct TextStyle {
 impl From<TextStyle> for birchpad_theme::Style {
     fn from(style: TextStyle) -> Self {
         Self {
-            color: style.color.map(birchpad_theme::Color),
-            background: style.background.map(birchpad_theme::Color),
+            color: style.color.map(Color),
+            background: style.background.map(Color),
             bold: style.bold,
             italic: style.italic,
             underline: style.underline,
@@ -98,7 +98,7 @@ thread_local! {
 
 /// The interface's colors apart from the theme's, or the theme's again (`None`).
 pub fn set_interface(colors: Option<UiColors>) {
-    INTERFACE.with(|interface| interface.set(colors));
+    INTERFACE.set(colors);
 }
 
 /// The theme in use.
