@@ -12,6 +12,7 @@ extern crate birchpad_i18n;
 
 pub mod character_panel;
 pub mod clipboard_history;
+pub mod csv_viewer;
 pub mod document_list;
 pub mod document_map;
 pub mod function_list;
@@ -19,6 +20,7 @@ pub mod json_viewer;
 
 pub use character_panel::CharacterPanel;
 pub use clipboard_history::ClipboardHistory;
+pub use csv_viewer::CsvViewer;
 pub use document_list::DocumentList;
 pub use document_map::DocumentMap;
 pub use function_list::FunctionList;
