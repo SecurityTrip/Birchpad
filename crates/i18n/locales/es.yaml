@@ -999,9 +999,9 @@ pane:
   tabs-are-counted-from-1: "Las pestañas se cuentan desde 1"
   there-is-no-tab-color: "No hay color de pestaña {color}; los colores van desde 1 hasta {last}"
 vim:
-  normal: "Vim · Normal"
+  normal: "Vim · Modo normal"
   insert: "Vim · Inserción"
-  visual: "Vim · Visual"
+  visual: "Vim · Modo visual"
 panel:
   csv-viewer: "Visor CSV"
   character-panel: "Panel de caracteres"

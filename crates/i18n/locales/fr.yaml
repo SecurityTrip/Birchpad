@@ -1000,7 +1000,7 @@ pane:
   tabs-are-counted-from-1: "les onglets sont comptés à partir de 1"
   there-is-no-tab-color: "il n'y a pas de couleur d'onglet {color} ; les couleurs vont de 1 à {last}"
 vim:
-  normal: "Vim · Normal"
+  normal: "Vim · Mode normal"
   insert: "Vim · Insertion"
   visual: "Vim · Visuel"
 panel:
