@@ -6,6 +6,10 @@ version's release notes from its section here.
 
 ## [Unreleased]
 
+### Fixed
+
+- Updated the URL parser to 2.5.9 to resolve [RUSTSEC-2026-0592](https://rustsec.org/advisories/RUSTSEC-2026-0592.html).
+
 ### Added
 
 - Plugins > Show CSV Viewer opens a read-only table beside the active document and
