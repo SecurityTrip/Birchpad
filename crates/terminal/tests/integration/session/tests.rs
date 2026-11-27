@@ -34,9 +34,17 @@ fn echo(text: &str, folder: &std::path::Path) -> SessionOptions {
 /// The interactive shell.
 fn shell(folder: &std::path::Path) -> SessionOptions {
     if cfg!(windows) {
-        options("cmd.exe", &[], folder)
+        options(
+            "cmd.exe",
+            &["/d", "/q", "/k", "prompt birchpad-test$G"],
+            folder,
+        )
     } else {
-        options("/bin/sh", &[], folder)
+        options(
+            "/bin/sh",
+            &["-c", "PS1='birchpad-test> '; export PS1; exec /bin/sh -i"],
+            folder,
+        )
     }
 }
 
@@ -76,6 +84,11 @@ fn a_shell_runs_prints_and_exits() {
 fn what_is_typed_reaches_the_shell() {
     let dir = tempfile::tempdir().unwrap();
     let session = Session::spawn(&shell(dir.path()), || {}).unwrap();
+    // Wait until the shell has configured the terminal and can read a command.
+    assert!(wait_for(|| session
+        .screen(&Palette::DARK)
+        .text()
+        .contains("birchpad-test>")));
     for c in "echo typed-in-birchpad".chars() {
         assert!(session.key(Key::Char(c), Modifiers::default()));
     }
@@ -83,9 +96,8 @@ fn what_is_typed_reaches_the_shell() {
     assert!(wait_for(|| session
         .screen(&Palette::DARK)
         .text()
-        .matches("typed-in-birchpad")
-        .count()
-        >= 2));
+        .lines()
+        .any(|line| line.trim() == "typed-in-birchpad")));
     // A key that sends nothing.
     assert!(!session.key(Key::F(13), Modifiers::default()));
     // Pasted, then resized: the shell goes on.
@@ -93,9 +105,8 @@ fn what_is_typed_reaches_the_shell() {
     assert!(wait_for(|| session
         .screen(&Palette::LIGHT)
         .text()
-        .matches("pasted-in-birchpad")
-        .count()
-        >= 2));
+        .lines()
+        .any(|line| line.trim() == "pasted-in-birchpad")));
     session.resize(40, 8);
     assert_eq!(session.size(), (40, 8));
     let screen = session.screen(&Palette::LIGHT);
