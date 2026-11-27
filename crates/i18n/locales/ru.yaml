@@ -272,6 +272,7 @@ command:
     folder-as-workspace: "Папка как рабочее пространство"
     function-list: "Список функций"
     json-viewer: "Показать JSON Viewer"
+    csv-viewer: "Показать таблицу CSV"
     plugin: "Панель плагина"
     project: "Панель проекта"
   plugin:
@@ -998,6 +999,7 @@ pane:
   tabs-are-counted-from-1: "вкладки нумеруются с 1"
   there-is-no-tab-color: "нет цвета вкладки {color}; цвета нумеруются от 1 до {last}"
 panel:
+  csv-viewer: "Просмотр CSV"
   character-panel: "Панель символов"
   clipboard-history: "История буфера обмена"
   document-list: "Список документов"
@@ -1010,6 +1012,13 @@ panel:
   project-2: "Панель проекта 2"
   project-3: "Панель проекта 3"
 panels:
+  csv-viewer:
+    empty: "Нет записей CSV"
+    invalid: "Не удалось прочитать CSV: {error}"
+    no-document: "Нет документа"
+    too-large: "Просмотр CSV поддерживает документы до 4 МиБ"
+    too-many-columns: "Просмотр CSV поддерживает до {count} столбцов"
+    too-many-rows: "Просмотр CSV поддерживает до {count} строк"
   clipboard-history:
     copied-texts-show-here: "Здесь появятся скопированные тексты"
   document-list:
