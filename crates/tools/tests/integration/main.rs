@@ -6,6 +6,8 @@ mod compare_properties;
 
 #[path = "compare/tests.rs"]
 mod compare;
+#[path = "csv/tests.rs"]
+mod csv;
 
 #[path = "date_time/tests.rs"]
 mod date_time;

@@ -1208,7 +1208,10 @@ as revision 1 did (105 drawn). With ELK it draws 67. What it showed:
       Deferred: the editor currently requires a fully decoded rope. A read-only mapped view
       needs a separate document source and must protect the mapping against external writes
       and truncation. The file-backed mapping requires a safety review under CONTRIBUTING.md.
-- [ ] 7.9 CSV and JSON viewers: a table and a tree beside the text, which follow its edits
+- [x] 7.9 CSV and JSON viewers: a table and a tree beside the text, which follow its edits.
+      Plugins > Show CSV Viewer opens a read-only table alongside the existing JSON Viewer.
+      It reads comma-separated records of equal width, including the first record, up to
+      4 MiB, 50,000 rows and 128 columns.
 - [ ] 7.10 Remote editing over SSH and SFTP: files and folders opened and saved on a server
 - [ ] 7.11 Vim mode
 - [ ] Release 0.9.0: the workspace version (0.9.0, set when its branch opens, so that nightly

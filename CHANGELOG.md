@@ -6,6 +6,11 @@ version's release notes from its section here.
 
 ## [Unreleased]
 
+### Added
+
+- Plugins > Show CSV Viewer opens a read-only table beside the active document and
+  refreshes when the text changes. The existing JSON Viewer continues to show a live tree.
+
 ### Deferred
 
 - Memory-mapped viewing and search for multi-gigabyte files need a separate document source
