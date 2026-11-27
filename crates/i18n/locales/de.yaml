@@ -271,6 +271,7 @@ command:
     folder-as-workspace: "Ordner als Arbeitsbereich"
     function-list: "Funktionsliste"
     json-viewer: "JSON-Viewer anzeigen"
+    csv-viewer: "CSV-Viewer anzeigen"
     plugin: "Plugin-Bereich"
     project: "Projektbereich"
   plugin:
@@ -997,6 +998,7 @@ pane:
   tabs-are-counted-from-1: "Tabs werden ab 1 gezählt"
   there-is-no-tab-color: "es gibt keine Tabfarbe {color}; die Farben gehen von 1 bis {last}"
 panel:
+  csv-viewer: "CSV-Viewer"
   character-panel: "Zeichentabelle"
   clipboard-history: "Zwischenablage-Verlauf"
   document-list: "Dokumentliste"
@@ -1009,6 +1011,13 @@ panel:
   project-2: "Projektbereich 2"
   project-3: "Projektbereich 3"
 panels:
+  csv-viewer:
+    empty: "Keine CSV-Datensätze"
+    invalid: "CSV kann nicht gelesen werden: {error}"
+    no-document: "Kein Dokument"
+    too-large: "Der CSV-Viewer unterstützt bis zu 4 MiB"
+    too-many-columns: "Der CSV-Viewer unterstützt bis zu {count} Spalten"
+    too-many-rows: "Der CSV-Viewer unterstützt bis zu {count} Zeilen"
   clipboard-history:
     copied-texts-show-here: "Kopierte Texte erscheinen hier"
   document-list:
