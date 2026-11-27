@@ -90,7 +90,7 @@ fn the_summary_of_a_document() {
     let (_, modified) = rows.iter().find(|(label, _)| label == "Modified").unwrap();
     assert_eq!(
         jiff::civil::DateTime::strptime("%Y-%m-%d %H:%M:%S", modified).unwrap(),
-        jiff::Zoned::try_from(epoch).unwrap().datetime()
+        jiff::ZonedDateTime::try_from(epoch).unwrap().datetime()
     );
     let absent = path.with_file_name("absent.txt");
     let absent_rows = summary_rows(Some(&absent), "absent.txt", counts, &[]);

@@ -472,7 +472,7 @@ async fn write_buffer(
             &path,
             files.backup_on_save,
             &files.backup_folder,
-            jiff::Zoned::now().datetime(),
+            jiff::ZonedDateTime::now().datetime(),
         )
     })?;
     let target = path.clone();

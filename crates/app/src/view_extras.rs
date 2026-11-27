@@ -76,7 +76,7 @@ struct BrowserArgs {
 
 /// A time as the summary shows it.
 fn time(time: SystemTime) -> Option<String> {
-    let local = jiff::Zoned::try_from(time).ok()?;
+    let local = jiff::ZonedDateTime::try_from(time).ok()?;
     Some(local.strftime("%Y-%m-%d %H:%M:%S").to_string())
 }
 
