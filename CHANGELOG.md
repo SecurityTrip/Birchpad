@@ -14,6 +14,8 @@ version's release notes from its section here.
 
 - Plugins > Show CSV Viewer opens a read-only table beside the active document and
   refreshes when the text changes. The existing JSON Viewer continues to show a live tree.
+- Preferences > Editing offers Vim mode with Normal, Insert and characterwise Visual modes
+  for navigation, selection and basic editing.
 
 ### Deferred
 

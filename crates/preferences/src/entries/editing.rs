@@ -3,6 +3,7 @@
 use crate::{Entry, Kind, entry};
 
 pub(super) const ENTRIES: &[Entry] = &[
+    entry("Editing", "editor.vim-mode", "Vim mode", Kind::Bool),
     entry(
         "Editing",
         "editor.tab-width",

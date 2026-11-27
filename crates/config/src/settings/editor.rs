@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default, rename_all = "kebab-case")]
 pub struct EditorSettings {
+    pub vim_mode: bool,
     pub tab_width: u8,
     pub insert_spaces: bool,
     pub word_wrap: bool,
@@ -241,6 +242,7 @@ pub enum AutoIndent {
 impl Default for EditorSettings {
     fn default() -> Self {
         Self {
+            vim_mode: false,
             tab_width: 4,
             insert_spaces: false,
             word_wrap: false,

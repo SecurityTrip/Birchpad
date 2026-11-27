@@ -1217,7 +1217,10 @@ as revision 1 did (105 drawn). With ELK it draws 67. What it showed:
       semantics. A remote backend needs host-key verification, conflict-safe writes and
       end-to-end verification against an SSH/SFTP server. The release environment has
       an OpenSSH client but no test server.
-- [ ] 7.11 Vim mode
+- [x] 7.11 Vim mode ([ADR 0072](adr/0072-vim-mode.md)): opt in under Preferences >
+      Editing. Normal, Insert and characterwise Visual modes cover `hjkl`, arrow keys,
+      `w b 0 $ gg G`, `i a I A`, `v`, `c d y` with motions or doubled for lines,
+      `x p P u` and Ctrl+R. Counts work for repeated motions, operators, `x` and `u`.
 - [ ] Release 0.9.0: the workspace version (0.9.0, set when its branch opens, so that nightly
       builds are its pre-releases), `CHANGELOG.md` and this roadmap updated; the
       [release checklist](release-checklist.md) gone through

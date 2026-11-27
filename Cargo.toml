@@ -14,10 +14,10 @@ authors = ["The Birchpad Contributors"]
 birchpad-buffer = { path = "crates/buffer", version = "0.8.3" }
 birchpad-cli = { path = "crates/cli", version = "0.8.3" }
 birchpad-commands = { path = "crates/commands", version = "0.9.0" }
-birchpad-config = { path = "crates/config", version = "0.8.3" }
+birchpad-config = { path = "crates/config", version = "0.9.0" }
 birchpad-core = { path = "crates/core", version = "0.8.3" }
 birchpad-diagrams = { path = "crates/diagrams", version = "0.8.1" }
-birchpad-editor = { path = "crates/editor", version = "0.8.3" }
+birchpad-editor = { path = "crates/editor", version = "0.9.0" }
 birchpad-find-bar = { path = "crates/find-bar", version = "0.8.3" }
 birchpad-hex-editor = { path = "crates/hex-editor", version = "0.8.3" }
 birchpad-i18n = { path = "crates/i18n", version = "0.9.0" }
@@ -28,7 +28,7 @@ birchpad-lsp = { path = "crates/lsp", version = "0.8.3" }
 birchpad-menu-bar = { path = "crates/menu-bar", version = "0.8.3" }
 birchpad-panels = { path = "crates/panels", version = "0.9.0" }
 birchpad-plugin = { path = "crates/plugin", version = "0.9.0" }
-birchpad-preferences = { path = "crates/preferences", version = "0.8.2" }
+birchpad-preferences = { path = "crates/preferences", version = "0.9.0" }
 birchpad-print-dialog = { path = "crates/print-dialog", version = "0.7.5" }
 birchpad-quick-pick = { path = "crates/quick-pick", version = "0.8.3" }
 birchpad-search-results = { path = "crates/search-results", version = "0.8.3" }

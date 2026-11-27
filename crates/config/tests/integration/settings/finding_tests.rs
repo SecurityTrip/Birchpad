@@ -84,6 +84,15 @@ fn go_to_file_s_limit_stays_within_its_bounds() {
 }
 
 #[test]
+fn vim_mode_is_disabled_for_old_settings_and_accepts_a_boolean() {
+    let old: Settings = toml::from_str("[editor]\ntab-width = 2\n").unwrap();
+    assert!(!old.editor.vim_mode);
+    let enabled: Settings = toml::from_str("[editor]\nvim-mode = true\n").unwrap();
+    assert!(enabled.editor.vim_mode);
+    assert!(check_setting("editor.vim-mode", &toml::Value::Integer(1)).is_err());
+}
+
+#[test]
 fn sticky_scroll_is_off_and_keeps_five_lines_by_default() {
     let editor = EditorSettings::default();
     assert!(!editor.sticky_scroll);

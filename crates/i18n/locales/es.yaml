@@ -998,6 +998,10 @@ palette:
 pane:
   tabs-are-counted-from-1: "Las pestañas se cuentan desde 1"
   there-is-no-tab-color: "No hay color de pestaña {color}; los colores van desde 1 hasta {last}"
+vim:
+  normal: "Vim · Normal"
+  insert: "Vim · Inserción"
+  visual: "Vim · Visual"
 panel:
   csv-viewer: "Visor CSV"
   character-panel: "Panel de caracteres"
@@ -1177,6 +1181,7 @@ preferences:
   cannot-change-the-explorer-s-menu: "No se puede cambiar el menú del Explorador: {error}"
   caret-blink-rate-ms-0-no-blinking: "Tasa de parpadeo del cursor (ms, 0: sin parpadeo)"
   caret-width: "Anchura del cursor"
+  vim-mode: "Modo Vim"
   change-history: "Historial de cambios"
   change-inactive-tab-color: "Cambiar color de pestañas inactivas"
   channel: "Canal"

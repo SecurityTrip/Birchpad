@@ -6,6 +6,7 @@ mod editing;
 mod keyboard;
 mod mouse;
 mod settings;
+mod vim;
 
 pub use commands::{EditorCommands, register_commands};
 pub use keyboard::without_control_characters;
@@ -143,6 +144,7 @@ pub struct EditorView {
     /// Column (in cells from the row start) that vertical movement aims for.
     pub(crate) goal_column: Option<usize>,
     pub(crate) last_edit: LastEdit,
+    vim: vim::State,
     drag: Option<Drag>,
     pub(crate) caret_visible: bool,
     /// Whether the view has keyboard focus; the caret only blinks then.
@@ -250,6 +252,7 @@ impl EditorView {
             }
         });
         let focus_handle = cx.focus_handle();
+        let vim_keys = vim::intercept(&focus_handle, cx);
         let text = buffer.read(cx).doc().text().clone();
         let settings = ViewSettings::for_buffer(buffer.read(cx), cx);
         let display = DisplayMap::new(
@@ -282,6 +285,7 @@ impl EditorView {
             autoscroll: false,
             goal_column: None,
             last_edit: LastEdit::None,
+            vim: vim::State::default(),
             drag: None,
             caret_visible: true,
             focused: false,
@@ -301,7 +305,7 @@ impl EditorView {
             begin_select: None,
             last_scroll: None,
             synced_scroll: false,
-            _subscriptions: vec![events],
+            _subscriptions: vec![events, vim_keys],
         }
     }
 
@@ -497,6 +501,9 @@ impl EditorView {
 
     /// Zoom, word wrap or Show Symbol changed: keep the caret in view after the relayout.
     pub fn settings_changed(&mut self, cx: &mut Context<Self>) {
+        if !vim::enabled(cx) {
+            self.vim = vim::State::default();
+        }
         self.buffer
             .update(cx, |buffer, cx| buffer.sync_syntax_options(cx));
         self.scroll_width = px(0.);
@@ -555,6 +562,7 @@ impl Render for EditorView {
             .bg(theme::paint(theme::editor().background))
             .text_color(theme::paint(theme::editor().text))
             .children(banner)
+            .children(self.vim_indicator(cx))
             .child(
                 div()
                     .id("text")

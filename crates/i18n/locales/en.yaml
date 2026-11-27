@@ -999,6 +999,10 @@ palette:
 pane:
   tabs-are-counted-from-1: "tabs are counted from 1"
   there-is-no-tab-color: "there is no tab color {color}; the colors go from 1 to {last}"
+vim:
+  normal: "Vim · Normal"
+  insert: "Vim · Insert"
+  visual: "Vim · Visual"
 panel:
   csv-viewer: "CSV Viewer"
   character-panel: "Character Panel"
@@ -1165,6 +1169,7 @@ preferences:
   cannot-change-the-explorer-s-menu: "cannot change the Explorer's menu: {error}"
   caret-blink-rate-ms-0-no-blinking: "Caret blink rate (ms, 0: no blinking)"
   caret-width: "Caret width"
+  vim-mode: "Vim mode"
   change-history: "Change history"
   change-inactive-tab-color: "Change inactive tab color"
   channel: "Channel"

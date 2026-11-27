@@ -999,6 +999,10 @@ palette:
 pane:
   tabs-are-counted-from-1: "les onglets sont comptés à partir de 1"
   there-is-no-tab-color: "il n'y a pas de couleur d'onglet {color} ; les couleurs vont de 1 à {last}"
+vim:
+  normal: "Vim · Normal"
+  insert: "Vim · Insertion"
+  visual: "Vim · Visuel"
 panel:
   csv-viewer: "Visionneuse CSV"
   character-panel: "Panneau des caractères"
@@ -1165,6 +1169,7 @@ preferences:
   cannot-change-the-explorer-s-menu: "impossible de modifier le menu de l'Explorateur : {error}"
   caret-blink-rate-ms-0-no-blinking: "Clignotement du curseur (ms, 0 : sans clignotement)"
   caret-width: "Largeur du curseur"
+  vim-mode: "Mode Vim"
   change-history: "Historique des modifications"
   change-inactive-tab-color: "Changer la couleur des onglets inactifs"
   channel: "Canal"

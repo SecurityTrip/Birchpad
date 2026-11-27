@@ -998,6 +998,10 @@ palette:
 pane:
   tabs-are-counted-from-1: "вкладки нумеруются с 1"
   there-is-no-tab-color: "нет цвета вкладки {color}; цвета нумеруются от 1 до {last}"
+vim:
+  normal: "Vim · Команды"
+  insert: "Vim · Вставка"
+  visual: "Vim · Выделение"
 panel:
   csv-viewer: "Просмотр CSV"
   character-panel: "Панель символов"
@@ -1177,6 +1181,7 @@ preferences:
   cannot-change-the-explorer-s-menu: "не удалось изменить меню Проводника: {error}"
   caret-blink-rate-ms-0-no-blinking: "Частота мигания курсора (мс, 0 — не мигает)"
   caret-width: "Ширина курсора"
+  vim-mode: "Режим Vim"
   change-history: "История изменений"
   change-inactive-tab-color: "Свой цвет неактивных вкладок"
   channel: "Канал"

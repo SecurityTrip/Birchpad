@@ -9,3 +9,5 @@ mod command_sweep_tests;
 mod hidden_lines_tests;
 #[path = "editor_tests/links_tests.rs"]
 mod links_tests;
+#[path = "editor_tests/vim_tests.rs"]
+mod vim_tests;

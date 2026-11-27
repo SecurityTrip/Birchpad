@@ -997,6 +997,10 @@ palette:
 pane:
   tabs-are-counted-from-1: "Tabs werden ab 1 gezählt"
   there-is-no-tab-color: "es gibt keine Tabfarbe {color}; die Farben gehen von 1 bis {last}"
+vim:
+  normal: "Vim · Normalmodus"
+  insert: "Vim · Einfügemodus"
+  visual: "Vim · Auswahlmodus"
 panel:
   csv-viewer: "CSV-Viewer"
   character-panel: "Zeichentabelle"
@@ -1163,6 +1167,7 @@ preferences:
   cannot-change-the-explorer-s-menu: "das Explorer-Menü kann nicht geändert werden: {error}"
   caret-blink-rate-ms-0-no-blinking: "Blinkrate der Einfügemarke (ms, 0: kein Blinken)"
   caret-width: "Breite der Einfügemarke"
+  vim-mode: "Vim-Modus"
   change-history: "Änderungsverlauf"
   change-inactive-tab-color: "Farbe inaktiver Register ändern"
   channel: "Kanal"

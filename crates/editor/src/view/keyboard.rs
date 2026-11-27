@@ -56,6 +56,9 @@ impl EntityInputHandler for EditorView {
         _: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        if !self.vim_accepts_text(cx) {
+            return;
+        }
         // Keys such as Ctrl+E may type a control character: nothing, unless asked for.
         let filtered;
         let text = if AppState::global(cx).settings.editor.prevent_control_typing {
@@ -86,7 +89,7 @@ impl EntityInputHandler for EditorView {
         _: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        if !self.is_editable(cx) {
+        if !self.vim_accepts_text(cx) || !self.is_editable(cx) {
             return;
         }
         let target = range_utf16
