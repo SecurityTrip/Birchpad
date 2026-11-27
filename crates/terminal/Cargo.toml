@@ -1,7 +1,7 @@
 [package]
 name = "birchpad-terminal"
 description = "Birchpad's terminal without a window: the emulator, a shell on a pseudo-terminal, keys as bytes, the screen with its colors."
-version = "0.8.0"
+version = "0.9.0"
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
