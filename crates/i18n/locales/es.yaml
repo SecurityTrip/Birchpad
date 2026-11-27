@@ -272,6 +272,7 @@ command:
     folder-as-workspace: "Carpeta como Espacio de Trabajo"
     function-list: "Lista de Funciones"
     json-viewer: "Mostrar Visor JSON"
+    csv-viewer: "Mostrar visor CSV"
     plugin: "Panel de Plugins"
     project: "Panel del Proyecto"
   plugin:
@@ -998,6 +999,7 @@ pane:
   tabs-are-counted-from-1: "Las pestañas se cuentan desde 1"
   there-is-no-tab-color: "No hay color de pestaña {color}; los colores van desde 1 hasta {last}"
 panel:
+  csv-viewer: "Visor CSV"
   character-panel: "Panel de caracteres"
   clipboard-history: "Historial del Portapapeles"
   document-list: "Lista de Documentos"
@@ -1010,6 +1012,13 @@ panel:
   project-2: "Panel de Proyecto 2"
   project-3: "Panel de Proyecto 3"
 panels:
+  csv-viewer:
+    empty: "No hay registros CSV"
+    invalid: "No se pudo leer el CSV: {error}"
+    no-document: "No hay documento"
+    too-large: "El visor CSV admite hasta 4 MiB"
+    too-many-columns: "El visor CSV admite hasta {count} columnas"
+    too-many-rows: "El visor CSV admite hasta {count} filas"
   clipboard-history:
     copied-texts-show-here: "Copias en el Portapapeles se muestran aquí"
   document-list:
