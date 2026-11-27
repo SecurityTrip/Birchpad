@@ -48,6 +48,7 @@ pub const TARGETS: &[(&str, Check)] = &[
     ("catalog", catalog),
     ("json", json),
     ("json_tree", json_tree),
+    ("csv_table", csv_table),
     ("xml", xml),
     ("xpath", xpath),
     ("xml_schema", xml_schema),
@@ -610,6 +611,34 @@ pub fn catalog(data: &[u8]) -> bool {
     ids.sort_unstable();
     ids.dedup();
     assert_eq!(ids.len(), catalog.plugins.len());
+    true
+}
+
+/// Serializing accepted cells as quoted CSV and reading them again preserves the table.
+pub fn csv_table(data: &[u8]) -> bool {
+    use birchpad_tools::csv;
+
+    let Ok(text) = std::str::from_utf8(data) else {
+        return false;
+    };
+    let Ok(rows) = csv::parse(text) else {
+        return false;
+    };
+    let mut quoted = String::new();
+    for row in &rows {
+        for (column, value) in row.iter().enumerate() {
+            if column != 0 {
+                quoted.push(',');
+            }
+            quoted.push('"');
+            quoted.push_str(&value.replace('"', "\"\""));
+            quoted.push('"');
+        }
+        quoted.push('\n');
+    }
+    if quoted.len() <= csv::MAX_BYTES {
+        assert_eq!(csv::parse(&quoted).unwrap(), rows);
+    }
     true
 }
 

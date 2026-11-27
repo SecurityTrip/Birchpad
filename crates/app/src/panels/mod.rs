@@ -30,9 +30,9 @@ use crate::editor::widgets::{BarColors, Line, bar};
 use crate::workspace::Workspace;
 
 pub use birchpad_panels::{
-    CharacterPanel, ClipboardHistory, DocumentList, DocumentMap, FollowView, FunctionList,
-    JsonViewer, character_panel, clipboard_history, document_list, document_map, function_list,
-    json_viewer,
+    CharacterPanel, ClipboardHistory, CsvViewer, DocumentList, DocumentMap, FollowView,
+    FunctionList, JsonViewer, character_panel, clipboard_history, document_list, document_map,
+    function_list, json_viewer,
 };
 pub use folder_workspace::FolderWorkspace;
 pub use plugin_panel::PluginPanel;
@@ -63,10 +63,11 @@ pub enum PanelKind {
     PluginPanel,
     /// Plugins > JSON Viewer's tree.
     JsonViewer,
+    CsvViewer,
 }
 
 impl PanelKind {
-    pub const ALL: [Self; 11] = [
+    pub const ALL: [Self; 12] = [
         Self::FolderWorkspace,
         Self::Project(1),
         Self::Project(2),
@@ -78,6 +79,7 @@ impl PanelKind {
         Self::DocumentMap,
         Self::PluginPanel,
         Self::JsonViewer,
+        Self::CsvViewer,
     ];
 
     /// The name kept in `state.toml`.
@@ -94,6 +96,7 @@ impl PanelKind {
             Self::DocumentMap => "document-map",
             Self::PluginPanel => "plugin-panel",
             Self::JsonViewer => "json-viewer",
+            Self::CsvViewer => "csv-viewer",
         }
     }
 
@@ -114,14 +117,17 @@ impl PanelKind {
             Self::DocumentMap => "Document Map",
             Self::PluginPanel => "Plugin Panel",
             Self::JsonViewer => "JSON Viewer",
+            Self::CsvViewer => "CSV Viewer",
         }
     }
 
     pub fn side(self) -> Side {
         match self {
-            Self::FunctionList | Self::DocumentMap | Self::PluginPanel | Self::JsonViewer => {
-                Side::Right
-            }
+            Self::FunctionList
+            | Self::DocumentMap
+            | Self::PluginPanel
+            | Self::JsonViewer
+            | Self::CsvViewer => Side::Right,
             _ => Side::Left,
         }
     }
@@ -143,6 +149,7 @@ impl PanelKind {
             Self::DocumentMap => "panel.document-map",
             Self::PluginPanel => "panel.plugin",
             Self::JsonViewer => "panel.json-viewer",
+            Self::CsvViewer => "panel.csv-viewer",
         }
     }
 
@@ -336,6 +343,7 @@ impl Workspace {
             PanelKind::CharacterPanel => cx.new(|cx| CharacterPanel::new(host, window, cx)).into(),
             PanelKind::PluginPanel => cx.new(|cx| PluginPanel::new(workspace, window, cx)).into(),
             PanelKind::JsonViewer => cx.new(|cx| JsonViewer::new(host, window, cx)).into(),
+            PanelKind::CsvViewer => cx.new(|cx| CsvViewer::new(host, cx)).into(),
             PanelKind::Project(panel) => cx
                 .new(|cx| ProjectPanel::new(panel, workspace, window, cx))
                 .into(),
