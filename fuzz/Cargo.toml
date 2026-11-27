@@ -204,6 +204,13 @@ doc = false
 bench = false
 
 [[bin]]
+name = "csv_table"
+path = "fuzz_targets/csv_table.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
 name = "xml_schema"
 path = "fuzz_targets/xml_schema.rs"
 test = false

@@ -30,6 +30,45 @@ fn plain(text: String) -> String {
     text.replace("\r\n", "\n").replace('\t', "    ")
 }
 
+#[gpui_kit::test]
+fn csv_viewer_follows_edits_and_recovers_from_unequal_rows(cx: &mut TestAppContext) {
+    use birchpad::panels::{CsvViewer, PanelKind};
+
+    let (workspace, cx) = open_workspace(cx);
+    run(&workspace, "panel.csv-viewer", cx).unwrap();
+    let viewer = workspace.read_with(cx, |workspace, _| {
+        workspace
+            .docks
+            .view(PanelKind::CsvViewer)
+            .unwrap()
+            .clone()
+            .downcast::<CsvViewer>()
+            .unwrap()
+    });
+    let rows = |cx: &mut VisualTestContext| {
+        cx.update(|window, _| window.refresh());
+        cx.run_until_parked();
+        viewer.read_with(cx, |viewer, _| {
+            viewer
+                .rows()
+                .unwrap()
+                .map(|rows| {
+                    rows.iter()
+                        .map(|row| row.iter().collect::<Vec<_>>().join("|"))
+                        .collect::<Vec<_>>()
+                })
+                .ok()
+        })
+    };
+    assert_eq!(rows(cx), Some(Vec::new()));
+    type_text(&workspace, "a,b\n1", cx);
+    assert_eq!(rows(cx), None);
+    type_text(&workspace, ",2", cx);
+    assert_eq!(rows(cx).unwrap(), ["a|b", "1|2"]);
+    run(&workspace, "edit.undo", cx).unwrap();
+    assert_eq!(rows(cx), None);
+}
+
 fn selection(workspace: &Entity<Workspace>, cx: &mut VisualTestContext) -> (usize, usize) {
     workspace.read_with(cx, |workspace, cx| {
         let range = workspace
