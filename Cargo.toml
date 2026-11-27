@@ -27,7 +27,7 @@ birchpad-language-servers = { path = "crates/language-servers", version = "0.8.3
 birchpad-lsp = { path = "crates/lsp", version = "0.8.3" }
 birchpad-menu-bar = { path = "crates/menu-bar", version = "0.8.3" }
 birchpad-panels = { path = "crates/panels", version = "0.9.0" }
-birchpad-plugin = { path = "crates/plugin", version = "0.8.2" }
+birchpad-plugin = { path = "crates/plugin", version = "0.9.0" }
 birchpad-preferences = { path = "crates/preferences", version = "0.8.2" }
 birchpad-print-dialog = { path = "crates/print-dialog", version = "0.7.5" }
 birchpad-quick-pick = { path = "crates/quick-pick", version = "0.8.3" }
@@ -46,7 +46,7 @@ birchpad-view = { path = "crates/view", version = "0.8.1" }
 birchpad-widgets = { path = "crates/widgets", version = "0.8.3" }
 
 anyhow = "1"
-jiff = { version = "0.2", default-features = false, features = ["std"] }
+jiff = { version = "1.0", default-features = false, features = ["std"] }
 proptest = "1.11"
 ropey = { version = "=2.0.0-beta.1", features = ["metric_utf16", "metric_lines_lf"] }
 serde = { version = "1", features = ["derive"] }

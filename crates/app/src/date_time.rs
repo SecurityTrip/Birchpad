@@ -11,7 +11,7 @@ use crate::commands::{CommandRegistry, Register as _};
 pub fn register_commands(registry: &mut CommandRegistry) {
     registry.editor("edit.insert-date-time", |this, args: DateArgs, _, cx| {
         let settings = crate::app_state::AppState::global(cx).settings.date.clone();
-        let now = jiff::Zoned::now().datetime();
+        let now = jiff::ZonedDateTime::now().datetime();
         let text = match args.format {
             Kind::Short => format(&short(settings.reverse), &now),
             Kind::Long => format(&long(settings.reverse), &now),
