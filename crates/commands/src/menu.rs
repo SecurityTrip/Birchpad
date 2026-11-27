@@ -897,6 +897,7 @@ pub fn main_menu() -> Vec<Menu> {
     let plugins = Menu::new(
         "Plugins",
         vec![
+            cmd("panel.csv-viewer"),
             Submenu(Menu::new(
                 "JSON Viewer",
                 vec![

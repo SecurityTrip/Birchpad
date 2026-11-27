@@ -346,6 +346,7 @@ fuzz_tests!(
     catalog,
     json,
     json_tree,
+    csv_table,
     xml,
     xpath,
     xml_schema,
