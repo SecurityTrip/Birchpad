@@ -273,6 +273,7 @@ command:
     folder-as-workspace: "Dossier comme espace de travail"
     function-list: "Liste des fonctions"
     json-viewer: "Afficher la visionneuse JSON"
+    csv-viewer: "Afficher la visionneuse CSV"
     plugin: "Panneau du module"
     project: "Panneau de projet"
   plugin:
@@ -999,6 +1000,7 @@ pane:
   tabs-are-counted-from-1: "les onglets sont comptés à partir de 1"
   there-is-no-tab-color: "il n'y a pas de couleur d'onglet {color} ; les couleurs vont de 1 à {last}"
 panel:
+  csv-viewer: "Visionneuse CSV"
   character-panel: "Panneau des caractères"
   clipboard-history: "Historique du presse-papiers"
   document-list: "Liste des documents"
@@ -1011,6 +1013,13 @@ panel:
   project-2: "Panneau de projet 2"
   project-3: "Panneau de projet 3"
 panels:
+  csv-viewer:
+    empty: "Aucun enregistrement CSV"
+    invalid: "Impossible de lire le CSV : {error}"
+    no-document: "Aucun document"
+    too-large: "Taille maximale du CSV : 4 Mio"
+    too-many-columns: "Nombre maximal de colonnes : {count}"
+    too-many-rows: "Nombre maximal de lignes : {count}"
   clipboard-history:
     copied-texts-show-here: "Les textes copiés s'affichent ici"
   document-list:

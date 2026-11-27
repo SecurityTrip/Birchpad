@@ -34,7 +34,7 @@ birchpad-quick-pick = { path = "crates/quick-pick", version = "0.8.3" }
 birchpad-search-results = { path = "crates/search-results", version = "0.8.3" }
 birchpad-spell-check = { path = "crates/spell-check", version = "0.8.3" }
 birchpad-syntax = { path = "crates/syntax", version = "0.7.7" }
-birchpad-terminal = { path = "crates/terminal", version = "0.8.0" }
+birchpad-terminal = { path = "crates/terminal", version = "0.9.0" }
 birchpad-terminal-panel = { path = "crates/terminal-panel", version = "0.8.3" }
 birchpad-theme = { path = "crates/theme", version = "0.8.3" }
 birchpad-tools = { path = "crates/tools", version = "0.9.0" }
