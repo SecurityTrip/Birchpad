@@ -1213,6 +1213,10 @@ as revision 1 did (105 drawn). With ELK it draws 67. What it showed:
       It reads comma-separated records of equal width, including the first record, up to
       4 MiB, 50,000 rows and 128 columns.
 - [ ] 7.10 Remote editing over SSH and SFTP: files and folders opened and saved on a server
+      Deferred: opening and saving currently depend on local paths and local recovery
+      semantics. A remote backend needs host-key verification, conflict-safe writes and
+      end-to-end verification against an SSH/SFTP server. The release environment has
+      an OpenSSH client but no test server.
 - [ ] 7.11 Vim mode
 - [ ] Release 0.9.0: the workspace version (0.9.0, set when its branch opens, so that nightly
       builds are its pre-releases), `CHANGELOG.md` and this roadmap updated; the

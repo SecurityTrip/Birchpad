@@ -15,6 +15,8 @@ version's release notes from its section here.
 
 - Memory-mapped viewing and search for multi-gigabyte files need a separate document source
   and a safety review for external writes and truncation.
+- SSH/SFTP editing needs a remote file backend and end-to-end verification of host keys
+  and safe saves on a test server.
 
 ## [0.8.3] - 2026-11-21
 
