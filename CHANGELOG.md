@@ -6,6 +6,11 @@ version's release notes from its section here.
 
 ## [Unreleased]
 
+### Deferred
+
+- Memory-mapped viewing and search for multi-gigabyte files need a separate document source
+  and a safety review for external writes and truncation.
+
 ## [0.8.3] - 2026-11-21
 
 ### Changed
